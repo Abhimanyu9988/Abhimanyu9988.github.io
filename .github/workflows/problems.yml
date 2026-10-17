@@ -3,30 +3,29 @@ on:
   schedule:
     - cron: "0 6 * * 3"
   workflow_dispatch:
-    inputs:
-      dry_run:
-        type: boolean
-        default: false
 permissions:
   contents: read
+  issues: read
 concurrency: problems
 jobs:
   problems:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/create-github-app-token@v2
-        id: bot
         with:
-          app-id: ${{ vars.BOT_APP_ID }}
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          persist-credentials: false
       - name: problems
         run: python3 pipeline/problems.py
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           RADAR_MODEL: ${{ vars.RADAR_MODEL }}
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: proposals
+          path: proposals.json
+          retention-days: 14
+          if-no-files-found: ignore
