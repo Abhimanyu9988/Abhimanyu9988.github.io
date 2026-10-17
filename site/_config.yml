@@ -1,0 +1,7 @@
+title: Abhimanyu Bajaj
+description: Real problems on AWS containers, reproduced and explained
+url: https://abhimanyu9988.github.io
+baseurl: ""
+permalink: /posts/:slug/
+theme: minima
+defaults: [{ scope: { path: "" }, values: { layout: post } }]

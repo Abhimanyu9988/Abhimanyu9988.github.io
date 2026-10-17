@@ -1,0 +1,48 @@
+name: publish
+on:
+  push: { branches: [main], paths: ["site/**"] }
+  workflow_dispatch:
+concurrency: { group: publish, cancel-in-progress: false }
+jobs:
+  deploy-site:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pages: write, id-token: write }
+    environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/jekyll-build-pages@v1
+        with: { source: ./site, destination: ./_site }
+      - uses: actions/upload-pages-artifact@v3
+      - id: d
+        uses: actions/deploy-pages@v4
+  syndicate:
+    needs: deploy-site
+    runs-on: ubuntu-latest
+    environment: publish
+    permissions: { contents: write, issues: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/checkout@v4
+        with: { ref: publish-state, path: state }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r pipeline/requirements.txt
+      - run: python pipeline/publish.py
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          HASHNODE_TOKEN: ${{ secrets.HASHNODE_TOKEN }}
+          HASHNODE_PUB_ID: ${{ secrets.HASHNODE_PUB_ID }}
+      - if: always()
+        working-directory: state
+        run: |
+          git config user.name hero-pipeline-bot
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add publish-state.json
+          git diff --cached --quiet || (git commit -m "publish state" && git push)
+      - if: always()
+        run: |
+          gh issue create --title "Publish report: $(date +%F)" --body-file publish-report.md
+        env: { GH_TOKEN: "${{ github.token }}" }
