@@ -35,6 +35,7 @@ jobs:
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
           HASHNODE_TOKEN: ${{ secrets.HASHNODE_TOKEN }}
           HASHNODE_PUB_ID: ${{ secrets.HASHNODE_PUB_ID }}
+          HASHNODE_API_URL: ${{ vars.HASHNODE_API_URL }}
       - if: always()
         working-directory: state
         run: |
