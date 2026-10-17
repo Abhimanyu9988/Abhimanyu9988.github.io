@@ -48,7 +48,7 @@ def devto(meta, body, canonical, prev_id):
     return r["id"], r["url"]
 
 def hashnode(meta, body, canonical, prev_id):
-    h = {"Authorization": os.environ["HASHNODE_TOKEN"]}
+    h = {"Authorization": "Bearer " + os.environ["HASHNODE_TOKEN"]}
     f = {"title": meta["title"], "contentMarkdown": body, "originalArticleURL": canonical}
     if prev_id:
         q, key = "mutation($i: UpdatePostInput!){ updatePost(input:$i){ post{ id url } } }", "updatePost"
@@ -57,7 +57,8 @@ def hashnode(meta, body, canonical, prev_id):
         q, key = "mutation($i: PublishPostInput!){ publishPost(input:$i){ post{ id url } } }", "publishPost"
         i = {**f, "publicationId": os.environ["HASHNODE_PUB_ID"],
              "tags": [{"slug": t, "name": t} for t in meta.get("tags", [])[:5]]}
-    r = call("POST", "https://gql.hashnode.com", {"query": q, "variables": {"i": i}}, h)
+    api = os.environ.get("HASHNODE_API_URL") or "https://gql-beta.hashnode.com/"
+    r = call("POST", api, {"query": q, "variables": {"i": i}}, h)
     if r.get("errors"):
         raise RuntimeError(r["errors"])
     p = r["data"][key]["post"]
