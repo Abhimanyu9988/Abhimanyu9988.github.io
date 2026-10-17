@@ -84,9 +84,11 @@ def ask_claude(items, existing):
         "lab (1-2 sentences), sources (array of URLs copied exactly from ITEMS).\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}")
     r = call("POST", "https://api.anthropic.com/v1/messages",
-             {"model": model, "max_tokens": 2000, "messages": [{"role": "user", "content": prompt}]},
+             {"model": model, "max_tokens": 8000, "messages": [{"role": "user", "content": prompt}]},
              anthropic_headers(key), timeout=120)
     print(f"usage: {r.get('usage')}")
+    if r.get("stop_reason") == "max_tokens":
+        raise RuntimeError("Claude reply was cut off (max_tokens); raise max_tokens in radar.py")
     text = "".join(b.get("text", "") for b in r["content"] if b.get("type") == "text")
     m = re.search(r"\[.*\]", text, re.S)
     if not m:
