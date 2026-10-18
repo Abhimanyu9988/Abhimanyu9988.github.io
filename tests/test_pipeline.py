@@ -372,6 +372,59 @@ draft.main()
 check("draft: no result -> explanatory comment", len(sent) == 1 and sent[0][1].endswith("/issues/4/comments"))
 shutil.rmtree(tmp)
 
+# ---------- AWS Hero helpers ----------
+import hero
+tmp = tempfile.mkdtemp(); os.chdir(tmp)
+pathlib.Path("site/_posts").mkdir(parents=True)
+pathlib.Path("site/_posts/2026-10-18-why-ecs.md").write_text('---\ntitle: "Why ECS stays at zero"\ndescription: "d"\n---\nBody text.\n')
+check("hero: posts read from front matter", hero.posts()[0]["title"] == "Why ECS stays at zero"
+      and hero.posts()[0]["url"].endswith("/posts/why-ecs/"))
+hero.fetch = lambda url: "<html><button>Join the waitlist</button></html>"
+check("hero: waitlist detected", hero.cb_status() == "waitlist")
+hero.fetch = lambda url: "<html>Applications are now open. Apply now</html>"
+check("hero: open detected", hero.cb_status() == "open")
+opened, wrote = [], []
+hero.post_issue = lambda t, b, l: opened.append((t, b, l)) or {"number": 1}
+hero.ensure_label = lambda l: None
+hero.analytics.read_file = lambda path, ref="analytics": ("{}", None)
+hero.analytics.ensure_branch = lambda: None
+hero.analytics.write_file = lambda path, text, sha, msg: wrote.append(json.loads(text))
+hero.analytics.load_ledger = lambda: ([], None)
+hero.watch()
+check("hero: opening applications triggers one hero-goal issue with the application kit",
+      len(opened) == 1 and opened[0][2] == "hero-goal" and "Why ECS stays at zero" in opened[0][1]
+      and wrote[-1]["cb_status"] == "open")
+hero.analytics.read_file = lambda path, ref="analytics": (json.dumps({"cb_status": "open"}), "s")
+opened.clear(); hero.watch()
+check("hero: no repeat alert while it stays open (outside January)", opened == [] or hero.NOW.month == 1)
+replies_c = []
+hero.comment = lambda n, b: replies_c.append(b)
+hero.question_text = lambda url: "How do I scale ECS from zero with SQS?"
+hero.llm.ask = lambda *a, **k: {"reply": "I hit this. Thanks @bob, see aws/x#5. I reproduced this here: "
+                                 "https://abhimanyu9988.github.io/posts/why-ecs/", "uses_post": ""}
+hero.llm.refine = lambda kind, d, *a, **k: (d, {"points": []})
+os.environ.update(ISSUE="7", COMMENT_BODY="/reply https://stackoverflow.com/questions/123/x please keep it short")
+hero.reply()
+check("hero /reply: draft comment, SO rule, no live mentions or refs",
+      len(replies_c) == 1 and "own words" in replies_c[0] and "@bob" not in replies_c[0] and "aws/x#5" not in replies_c[0]
+      and "abhimanyu9988.github.io/posts/why-ecs/" in replies_c[0])
+os.environ["COMMENT_BODY"] = "/reply not-a-link"; replies_c.clear(); hero.reply()
+check("hero /reply: usage help on a bad command", "Usage" in replies_c[0])
+def kit_ask(who, system, prompt, schema, tool="submit", tier="write"):
+    if "talk" in prompt.lower() and "10-minute" in prompt:
+        return {"title": "Scaling from zero", "abstract": "a", "audience": "devs", "cfp_short": "c",
+                "outline": [{"minutes": 3, "part": "Hook", "what": "w"}], "demo": ["terraform apply"], "takeaways": ["t"]}
+    return {"title": "ECS from zero", "goals": ["g"], "prerequisites": ["p"], "cost_note": "destroy it", "hands_on": ["h"],
+            "agenda": [{"minutes": 10, "part": "Intro", "what": "w"}], "discussion": ["d"], "feedback_questions": ["f"],
+            "quiz": [{"q": "Why?", "options": ["a", "b"], "answer": "a"}]}
+hero.llm.ask = kit_ask
+hero.llm.refine = lambda kind, d, *a, **k: (d, {"points": []})
+opened.clear(); hero.monthly()
+check("hero monthly: talk kit and student session issues, each with the /stats hint",
+      [o[2] for o in opened] == ["talk-kit", "teaching"] and all("/stats why-ecs" in o[1] for o in opened)
+      and "Answer: a" in opened[1][1])
+os.chdir("/"); shutil.rmtree(tmp)
+
 # ---------- lab runner end to end, simulated (no AWS, no docker) ----------
 def simulate(plans, repros, fixes, attempts=3):
     """plans/repros/fixes: per-attempt outcomes. Returns (result, destroy calls)."""

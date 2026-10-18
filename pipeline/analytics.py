@@ -16,7 +16,8 @@ from radar import HOME_REPO, gh, call, safe_text, comment, ensure_label, post_is
 
 BRANCH, LEDGER, INSIGHTS = "analytics", "analytics/ledger.csv", "analytics/insights.md"
 FIELDS = ["date_utc", "post", "platform", "metric", "value", "source", "url"]
-PLATFORMS = {"linkedin", "medium", "devto", "hashnode", "site", "youtube", "twitter", "other"}
+PLATFORMS = {"linkedin", "medium", "devto", "hashnode", "site", "youtube", "twitter", "talk", "teaching", "repost",
+             "stackoverflow", "other"}
 TODAY = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
 # ---------- storage on the analytics branch ----------
