@@ -1,1 +1,10 @@
-{}
+{
+  "https://abhimanyu9988.github.io/posts/scale-to-zero-sqs-workers-on-ecs-fargate/": {
+    "devto": {
+      "id": 4872547,
+      "url": "https://dev.to/abhimanyu9988/fargate-sqs-worker-stuck-at-0-tasks-the-ifrunning-0-guard-never-gets-to-run-19n4",
+      "hash": "1f5c4318fc96bb5e24955f88d1baa7956502bf26623f7636cd0034939fdd0482"
+    },
+    "linkedin_draft": true
+  }
+}
