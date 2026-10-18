@@ -1,0 +1,46 @@
+$ bash reproduce.sh
+# exit 0 after 572s
+
+== Initial state: desired=0 running=0
+[
+    {
+        "min": 0,
+        "max": 5
+    }
+]
+== Sending 10 messages
+== Waiting up to 8 minutes for the service to leave 0 tasks
+t+30s desired=0 running=0 visible_in_queue=10
+t+60s desired=0 running=0 visible_in_queue=10
+t+90s desired=0 running=0 visible_in_queue=10
+t+120s desired=0 running=0 visible_in_queue=10
+t+150s desired=0 running=0 visible_in_queue=10
+t+180s desired=0 running=0 visible_in_queue=10
+t+210s desired=0 running=0 visible_in_queue=10
+t+240s desired=0 running=0 visible_in_queue=10
+t+270s desired=0 running=0 visible_in_queue=10
+t+300s desired=0 running=0 visible_in_queue=10
+t+330s desired=0 running=0 visible_in_queue=10
+t+360s desired=0 running=0 visible_in_queue=10
+t+390s desired=0 running=0 visible_in_queue=10
+t+420s desired=0 running=0 visible_in_queue=10
+t+450s desired=0 running=0 visible_in_queue=10
+t+480s desired=0 running=0 visible_in_queue=10
+
+== Policy alarms
+TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmHigh-bca35fd1-1f83-47f3-bb4f-7e1460dd8a71	INSUFFICIENT_DATA
+TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmLow-af7b562c-9e1e-4887-b89d-fae66aa4bd5e	INSUFFICIENT_DATA
+Unchecked: Initial alarm creation
+
+== Metric math as the policy evaluates it (last 15 min, 60s period)
+{"Id":"backlog","datapoints":8,"Values":[10.0,10.0,10.0,10.0,10.0,10.0,10.0,10.0]}
+{"Id":"running","datapoints":0,"Values":[]}
+{"Id":"bpt","datapoints":0,"Values":[]}
+bpt datapoints: 0
+
+== Scaling activities
+
+Final: desired=0 running=0 messages_waiting=10 bpt_datapoints=0
+Messages are waiting but the 'bpt' series has no datapoints (RunningTaskCount missing), so the alarm never fires and the service stays at 0.
+HERO_RESULT: reproduced
+
