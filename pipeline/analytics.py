@@ -126,7 +126,7 @@ def insights(tbl, posts):
             views[who] = llm.ask(who, "You are one of three AI analysts (Claude, ChatGPT, Gemini).", f"{q}\n\n{ctx}",
                                  INSIGHT_SCHEMA, tool="submit_insights")
         except Exception as e:
-            print(f"warn: {who} gave no insights: {str(e)[:200]}")
+            llm.warn(f"{who} gave no insights: {str(e)[:400]}")
     if not views:
         return ""
     merged = llm.ask("claude", "You merge three analysts' views into one short brief.",
