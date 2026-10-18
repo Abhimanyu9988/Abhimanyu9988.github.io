@@ -1,5 +1,7 @@
-import hashlib, json, os, pathlib, subprocess, sys, time, urllib.request
+import hashlib, json, os, pathlib, subprocess, sys, time, urllib.parse, urllib.request
 import frontmatter, yaml
+os.environ.setdefault("REPO", "Abhimanyu9988/Abhimanyu9988.github.io")
+from radar import safe_text          # the report is a GitHub issue: same link/mention safety as the bot
 
 SITE = yaml.safe_load(open("site/_config.yml"))
 BLOG = SITE["url"] + (SITE.get("baseurl") or "")
@@ -41,7 +43,8 @@ def call(method, url, payload, headers):
 
 def devto(meta, body, canonical, prev_id):
     art = {"article": {"title": meta["title"], "body_markdown": body, "published": True,
-                       "tags": meta.get("tags", [])[:4], "canonical_url": canonical}}
+                       "tags": meta.get("tags", [])[:4], "canonical_url": canonical,
+                       "description": (meta.get("description") or "")[:250]}}
     h = {"api-key": os.environ["DEVTO_API_KEY"]}
     r = (call("PUT", f"https://dev.to/api/articles/{prev_id}", art, h) if prev_id
          else call("POST", "https://dev.to/api/articles", art, h))
@@ -66,6 +69,24 @@ def hashnode(meta, body, canonical, prev_id):
 
 CHANNELS = {"devto": devto, "hashnode": hashnode}
 NEEDS = {"devto": "DEVTO_API_KEY", "hashnode": "HASHNODE_TOKEN"}
+
+def share_block(post, canonical, done, slug):
+    """The one-tap links for the places that can't be automated: Medium import and a prefilled LinkedIn post."""
+    lines = [f"\n### {safe_text(post.get('title'))}", f"- Your site (the original): {canonical}"]
+    if done.get("devto", {}).get("url"):
+        lines.append(f"- dev.to: {done['devto']['url']}")
+    if not post.get("canonical_url"):
+        lines.append("- **Medium:** open https://medium.com/p/import and paste your site link above. Medium keeps your "
+                     "site as the original.")
+    li = str(post.get("linkedin") or "").replace("{POST_URL}", canonical).strip()
+    if li:
+        share = "https://www.linkedin.com/feed/?shareActive=true&text=" + urllib.parse.quote(li, safe="")
+        lines += [f"- **LinkedIn:** [open the post box with this text filled in]({share}). Edit it, then press Post.",
+                  "", "<details><summary>LinkedIn text</summary>", "", safe_text(li), "", "</details>"]
+    lines += ["", "After it's been up a few days, record numbers by commenting here, for example:",
+              "`/stats linkedin impressions=1200 reactions=40 comments=6 reposts=2` or "
+              "`/stats medium views=300 reads=120 claps=50`", f"<!-- post: {slug} -->"]
+    return lines
 
 def main(paths):
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
@@ -93,8 +114,7 @@ def main(paths):
                 report.append(f"- {ch}: {url}")
             except Exception as e:
                 report.append(f"- {ch}: FAILED {e}"); failed = True
-        if not post.get("canonical_url"):
-            report.append(f"- medium: import -> https://medium.com/p/import?url={canonical}")
+        report += share_block(post, canonical, done, pathlib.Path(path).stem.split("-", 3)[3])
         STATE.write_text(json.dumps(state, indent=2))
     pathlib.Path("publish-report.md").write_text("\n".join(report) or "Nothing to publish.")
     sys.exit(1 if failed else 0)

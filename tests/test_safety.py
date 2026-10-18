@@ -67,7 +67,12 @@ for name, m, path, b in [
     ("PR body with cross-repo ref", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "Closes aws/x#5", "head": "draft/x", "base": "main"}),
     ("unknown label", "POST", f"/repos/{HOME}/issues/1/labels", {"labels": ["good first issue"]}),
     ("comment with mention", "POST", f"/repos/{HOME}/issues/1/comments", {"body": "thanks @jmdeal"}),
-    ("label edit", "PATCH", f"/repos/{HOME}/labels/radar", {"color": "000000"})]:
+    ("label edit", "PATCH", f"/repos/{HOME}/labels/radar", {"color": "000000"}),
+    ("analytics file on main", "PUT", f"/repos/{HOME}/contents/analytics/ledger.csv", {**B64, "branch": "main"}),
+    ("analytics file on a draft branch", "PUT", f"/repos/{HOME}/contents/analytics/ledger.csv", B64),
+    ("analytics subfolder escape", "PUT", f"/repos/{HOME}/contents/analytics/x/../../.github/x.yml", {**B64, "branch": "analytics"}),
+    ("post file on the analytics branch", "PUT", f"/repos/{HOME}/contents/site/_posts/x.md", {**B64, "branch": "analytics"}),
+    ("other branch name", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/analytics-x", "sha": "0"})]:
     check(f"blocked: {name}", raises((r.Blocked, r.Unsafe), r.gh, m, path, b))
 check("nothing was sent", sent == [])
 got = []
@@ -85,6 +90,8 @@ for name, m, path, b in [
     ("draft branch", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/draft/my-topic", "sha": "0"}),
     ("post file", "PUT", f"/repos/{HOME}/contents/site/_posts/2026-10-18-my-topic.md", {**B64, "branch": "draft/my-topic"}),
     ("lab evidence file", "PUT", f"/repos/{HOME}/contents/labs/my-topic/evidence/01-init.log", {**B64, "branch": "draft/my-topic"}),
+    ("analytics branch", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/analytics", "sha": "0"}),
+    ("analytics ledger", "PUT", f"/repos/{HOME}/contents/analytics/ledger.csv", {**B64, "branch": "analytics", "sha": "1"}),
     ("draft PR closing its topic", "POST", f"/repos/{HOME}/pulls",
      {"title": "Draft: t", "body": "summary\n\nCloses #4", "head": "draft/my-topic", "base": "main"})]:
     n = len(sent); r.gh(m, path, b)
