@@ -114,8 +114,11 @@ def share_block(post, canonical, done, slug):
         lines.append(f"- **Medium:** your draft is ready, with code blocks and your site as the original: "
                      f"{done['medium']['url']}. Open it, check it, press Publish.")
     elif not post.get("canonical_url"):
-        lines.append("- **Medium:** open https://medium.com/p/import and paste your site link above (Medium keeps "
-                     "your site as the original). Save a MEDIUM_TOKEN to get a ready draft instead.")
+        ready = f"{BLOG}/medium/{slug}/"
+        lines.append(f"- **Medium:** open https://medium.com/p/import and paste the Medium-ready copy: {ready} "
+                     "(plain code blocks Medium understands). If anything is missing, open that page, select all, copy, "
+                     "and paste into a new Medium story. Then in the story settings, under Advanced settings, set the "
+                     f"canonical link to {canonical} so your site stays the original.")
     li = str(post.get("linkedin") or "").replace("{POST_URL}", canonical).strip()
     if li:
         share = "https://www.linkedin.com/feed/?shareActive=true&text=" + urllib.parse.quote(li, safe="")
