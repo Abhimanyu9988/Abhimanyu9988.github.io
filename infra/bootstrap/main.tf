@@ -1,4 +1,7 @@
 variable "github_repo" { default = "Abhimanyu9988/Abhimanyu9988.github.io" }
+# The repo uses GitHub's immutable OIDC subject: owner and repo are pinned by numeric ID, so a renamed or
+# re-created repo with the same name can never assume the lab role.
+variable "github_subject_prefix" { default = "repo:Abhimanyu9988@32825278/Abhimanyu9988.github.io@1423743121" }
 variable "region" { default = "eu-central-1" }
 provider "aws" { region = var.region }
 data "aws_caller_identity" "me" {}
@@ -36,7 +39,7 @@ data "aws_iam_policy_document" "trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:environment:aws-lab"]
+      values   = ["${var.github_subject_prefix}:environment:aws-lab"]
     }
   }
 }
