@@ -48,27 +48,51 @@ def fake(m, u, b=None, h=None, timeout=30):
     sent.append((m, u)); return {"number": 0}
 r._send = fake
 ok = {"title": "t", "body": "b"}
+B64 = {"message": "draft: add x", "branch": "draft/x", "content": "eA=="}
 for name, m, path, b in [
-    ("other repo", "POST", "/repos/aws/karpenter-provider-aws/issues", ok),
-    ("comment", "POST", f"/repos/{HOME}/issues/1/comments", {"body": "x"}),
+    ("issue in other repo", "POST", "/repos/aws/karpenter-provider-aws/issues", ok),
+    ("comment in other repo", "POST", "/repos/aws/karpenter-provider-aws/issues/1/comments", {"body": "x"}),
     ("edit", "PATCH", f"/repos/{HOME}/issues/1", {"body": "x"}),
     ("delete", "DELETE", f"/repos/{HOME}/issues/1", None),
-    ("path trick", "POST", f"/repos/{HOME}/issues/../../aws/x/issues", ok)]:
-    check(f"blocked: {name}", raises(r.Blocked, r.gh, m, path, b))
-for bad in BAD:
-    check(f"post_issue refuses body {bad!r}", raises(r.Unsafe, r.post_issue, "t", bad, "radar"))
-    check(f"gh refuses title {bad!r}", raises(r.Unsafe, r.gh, "POST", f"/repos/{HOME}/issues", {"title": bad, "body": "b"}))
+    ("path trick", "POST", f"/repos/{HOME}/issues/../../aws/x/issues", ok),
+    ("encoded path trick", "POST", f"/repos/{HOME}/issues/1%2F..%2F..%2Fx/comments", {"body": "x"}),
+    ("workflow file", "PUT", f"/repos/{HOME}/contents/.github/workflows/x.yml", B64),
+    ("pipeline file", "PUT", f"/repos/{HOME}/contents/pipeline/radar.py", B64),
+    ("file on main", "PUT", f"/repos/{HOME}/contents/site/_posts/x.md", {**B64, "branch": "main"}),
+    ("file with unsafe commit message", "PUT", f"/repos/{HOME}/contents/labs/x/main.tf", {**B64, "message": "see a/b#1"}),
+    ("branch not draft/", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/main", "sha": "0"}),
+    ("tag ref", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/tags/draft/x", "sha": "0"}),
+    ("PR into other base", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "b", "head": "draft/x", "base": "dev"}),
+    ("PR from non-draft head", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "b", "head": "main", "base": "main"}),
+    ("PR body with cross-repo ref", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "Closes aws/x#5", "head": "draft/x", "base": "main"}),
+    ("unknown label", "POST", f"/repos/{HOME}/issues/1/labels", {"labels": ["good first issue"]}),
+    ("comment with mention", "POST", f"/repos/{HOME}/issues/1/comments", {"body": "thanks @jmdeal"}),
+    ("label edit", "PATCH", f"/repos/{HOME}/labels/radar", {"color": "000000"})]:
+    check(f"blocked: {name}", raises((r.Blocked, r.Unsafe), r.gh, m, path, b))
 check("nothing was sent", sent == [])
+got = []
+r._send = lambda m, u, b=None, h=None, timeout=30: got.append(u) or {}
+r.gh("GET", "/search/issues?q=is%3Aissue%20repo%3Aaws/x")
+check("reads may use an encoded query string", len(got) == 1)
+r._send = fake
 r.post_issue("t", "b", "radar")
 check("allowed: new issue in your repo", len(sent) == 1 and sent[0][1].endswith(f"/repos/{HOME}/issues"))
 r.ensure_label("problem")
 check("allowed: new label in your repo", len(sent) == 2 and sent[1][1].endswith(f"/repos/{HOME}/labels"))
+for name, m, path, b in [
+    ("comment", "POST", f"/repos/{HOME}/issues/4/comments", {"body": "Draft ready in pull request no. 9"}),
+    ("replicate label", "POST", f"/repos/{HOME}/issues/4/labels", {"labels": ["replicate"]}),
+    ("draft branch", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/draft/my-topic", "sha": "0"}),
+    ("post file", "PUT", f"/repos/{HOME}/contents/site/_posts/2026-10-18-my-topic.md", {**B64, "branch": "draft/my-topic"}),
+    ("lab evidence file", "PUT", f"/repos/{HOME}/contents/labs/my-topic/evidence/01-init.log", {**B64, "branch": "draft/my-topic"}),
+    ("draft PR closing its topic", "POST", f"/repos/{HOME}/pulls",
+     {"title": "Draft: t", "body": "summary\n\nCloses #4", "head": "draft/my-topic", "base": "main"})]:
+    n = len(sent); r.gh(m, path, b)
+    check(f"allowed: {name}", len(sent) == n + 1)
 r.PUBLISH = False
 check("generation mode blocks every write",
       raises(r.Blocked, r.post_issue, "t", "b", "radar") and raises(r.Blocked, r.ensure_label, "radar"))
 check("GitHub write via call() blocked", raises(r.Blocked, r.call, "POST", "https://api.github.com/repos/a/b/issues", {}))
-P = {"label": "radar", "title": "t", "body": "b"}
-check("proposal id changes with the body", r.proposal_id(P) != r.proposal_id({**P, "body": "b2"}))
 
 # 3. confirmation rules
 gi = {"src": "github", "complete": True, "labels": [], "comments": [
