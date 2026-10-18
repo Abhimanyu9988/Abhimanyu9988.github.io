@@ -149,6 +149,12 @@ check("publish: Medium import and dev.to link listed", "medium.com/p/import" in 
 check("publish: report text has no live @mention", "@AWS" not in block.split("](https://www.linkedin.com")[0]
       and "@\u200bAWS" in block)
 check("publish: report carries the post marker for /stats", "<!-- post: why-ecs -->" in block)
+check("draft: literal \\t fixed in output blocks only",
+      draft.fix_output_tabs("```text\nA\\tB\n```\n```bash\nprintf 'a\\tb'\n```") == "```text\nA\tB\n```\n```bash\nprintf 'a\\tb'\n```")
+block2 = "\n".join(publish.share_block({"title": "T", "linkedin": "x", "replies": [{"url": "https://stackoverflow.com/q/1",
+          "text": "IF(running > 0, a) <b>"}]}, "https://abhimanyu9988.github.io/posts/t/", {}, "t"))
+check("publish: replies copy cleanly (real > and <), LinkedIn line doesn't claim a draft exists",
+      "IF(running > 0, a) <b>" in block2 and "a draft is waiting" not in block2)
 post_meta["replies"] = [{"url": "https://stackoverflow.com/questions/80006730/x", "text": "I reproduced this. {POST_URL}"}]
 block = "\n".join(publish.share_block(post_meta, "https://abhimanyu9988.github.io/posts/why-ecs/",
                                        {"medium": {"url": "https://medium.com/@abhi/draft-1"}}, "why-ecs"))

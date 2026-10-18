@@ -48,8 +48,8 @@ t+480s desired=0 running=0 visible_in_queue=10
 The target-tracking alarms never get enough data:
 
 ```text
-TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmHigh-bca35fd1-1f83-47f3-bb4f-7e1460dd8a71\tINSUFFICIENT_DATA
-TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmLow-af7b562c-9e1e-4887-b89d-fae66aa4bd5e\tINSUFFICIENT_DATA
+TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmHigh-bca35fd1-1f83-47f3-bb4f-7e1460dd8a71	INSUFFICIENT_DATA
+TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmLow-af7b562c-9e1e-4887-b89d-fae66aa4bd5e	INSUFFICIENT_DATA
 Unchecked: Initial alarm creation
 ```
 
@@ -225,8 +225,8 @@ Output:
 
 ```text
 == Policy alarms
-TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmHigh-bca35fd1-1f83-47f3-bb4f-7e1460dd8a71\tINSUFFICIENT_DATA
-TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmLow-af7b562c-9e1e-4887-b89d-fae66aa4bd5e\tINSUFFICIENT_DATA
+TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmHigh-bca35fd1-1f83-47f3-bb4f-7e1460dd8a71	INSUFFICIENT_DATA
+TargetTracking-service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker-AlarmLow-af7b562c-9e1e-4887-b89d-fae66aa4bd5e	INSUFFICIENT_DATA
 Unchecked: Initial alarm creation
 ```
 
@@ -363,7 +363,7 @@ Output:
 
 ```text
 == Scaling activities
-Successful\tSetting desired count to 5.
+Successful	Setting desired count to 5.
 ```
 
 13. Watch the queue drain.

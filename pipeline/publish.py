@@ -14,6 +14,11 @@ import frontmatter, yaml
 os.environ.setdefault("REPO", "Abhimanyu9988/Abhimanyu9988.github.io")
 from radar import safe_text          # the report is a GitHub issue: same link/mention safety as the bot
 
+def safe_code(text):
+    """For text inside a ```text fence: same link/mention neutralizing, but keep < and > so it copies cleanly
+    (GitHub doesn't render HTML inside fences)."""
+    return safe_text(text, "[left out: failed the link-safety check]").replace("\u2039", "<").replace("\u203a", ">")
+
 SITE = yaml.safe_load(open("site/_config.yml"))
 BLOG = SITE["url"] + (SITE.get("baseurl") or "")
 STATE = pathlib.Path("state/publish-state.json")
@@ -114,10 +119,10 @@ def share_block(post, canonical, done, slug):
     li = str(post.get("linkedin") or "").replace("{POST_URL}", canonical).strip()
     if li:
         share = "https://www.linkedin.com/feed/?shareActive=true&text=" + urllib.parse.quote(li, safe="")
-        lines += ["- **LinkedIn:** a draft is waiting in your profile repo (issue \"LinkedIn draft: ...\", label "
-                  "linkedin-draft). Comment `/post` there and it goes live. Or "
-                  f"[open the LinkedIn post box with this text filled in]({share}).",
-                  "", "<details><summary>LinkedIn text</summary>", "", safe_text(li), "", "</details>"]
+        lines += [f"- **LinkedIn:** [open the LinkedIn post box with this text filled in]({share}), check it, press "
+                  "Post. If the hero bot is installed on your profile repo, a `linkedin-draft` issue also opens there "
+                  "and `/post` publishes it for you.",
+                  "", "<details><summary>LinkedIn text</summary>", "", "```text", safe_code(li), "```", "", "</details>"]
     for r in post.get("replies") or []:
         text = str(r.get("text", "")).replace("{POST_URL}", canonical)
         where = str(r.get("url", ""))
@@ -125,7 +130,7 @@ def share_block(post, canonical, done, slug):
         lines += ["", f"**Reply for the source thread:** {safe_text(where, 'the source thread')}",
                   ("_Stack Overflow doesn't allow AI-written answers: rewrite this in your own words before you "
                    "post it._" if so else "_Post it yourself if it helps the thread; the bot never does._"),
-                  "", "```text", safe_text(text, "[left out: failed the link-safety check]"), "```"]
+                  "", "```text", safe_code(text), "```"]
     lines += ["", "After it's been up a few days, record numbers by commenting here, for example:",
               "`/stats linkedin impressions=1200 reactions=40 comments=6 reposts=2` or "
               "`/stats medium views=300 reads=120 claps=50`", f"<!-- post: {slug} -->"]
