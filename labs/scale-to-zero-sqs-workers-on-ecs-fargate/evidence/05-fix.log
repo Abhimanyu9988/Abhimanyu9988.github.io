@@ -1,0 +1,18 @@
+$ bash fix.sh
+# exit 0 after 162s
+
+== Before: desired=0 running=0 visible=10
+== Updating policy with: IF(FILL(running, 0) > 0, backlog / FILL(running, 0), backlog)
+arn:aws:autoscaling:eu-central-1:<account-id>:scalingPolicy:0b5eb0c3-92be-46eb-9e09-d6e225ccfe6b:resource/ecs/service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker:policyName/scale-to-zero-sqs-worker-447482-backlog-per-task
+== Waiting up to 10 minutes for the service to scale out from 0 and a task to reach RUNNING
+t+30s desired=5 running=0 visible=10 in_flight=0
+t+60s desired=5 running=5 visible=10 in_flight=0
+
+== Scaling activities
+Successful	Setting desired count to 5.
+== Watching queue drain (up to 2.5 min, bounded by script time budget)
+visible=6 in_flight=0 desired=5 running=5
+visible=0 in_flight=4 desired=5 running=5
+visible=0 in_flight=0 desired=5 running=5
+HERO_RESULT: fixed
+
