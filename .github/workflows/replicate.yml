@@ -1,0 +1,138 @@
+name: replicate
+# Adding the `replicate` label to a topic issue (by the bot or by you) runs that topic on the AWS lab
+# account. GitHub asks you to approve the aws-lab deployment first: that tap is the cost/safety gate.
+on:
+  issues:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Topic issue number"
+        required: true
+        type: string
+      dry_run:
+        description: "Write and review the lab, but don't touch AWS"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  issues: read
+concurrency:
+  # One lab at a time. Other label events (radar, drafted, ...) get their own group so they never
+  # cancel a queued lab.
+  group: ${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'replicate') && 'replicate' || format('skip-{0}', github.run_id) }}
+  cancel-in-progress: false
+jobs:
+  lab:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.label.name == 'replicate' &&
+        (github.event.sender.login == 'Abhimanyu9988' || github.event.sender.login == 'hero-bot-abhimanyu9988[bot]')))
+    runs-on: ubuntu-latest
+    environment: aws-lab
+    timeout-minutes: 150
+    permissions:
+      contents: read
+      issues: read
+      id-token: write
+    env:
+      ISSUE: ${{ inputs.issue || github.event.issue.number }}
+      DRY_RUN: ${{ inputs.dry_run || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Terraform and every AI-written script run inside this image, not on the runner.
+      - name: build lab sandbox
+        if: env.DRY_RUN != 'true'
+        timeout-minutes: 10
+        run: docker build -q -t hero-lab:local -f pipeline/lab.Dockerfile pipeline
+      - if: env.DRY_RUN != 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 7200
+          role-session-name: replicate-${{ github.run_id }}
+      - name: replicate
+        timeout-minutes: 112
+        run: python3 pipeline/lab.py
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      # Fresh credentials: the first session may be close to its 2-hour limit by now.
+      - if: always() && env.DRY_RUN != 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 3600
+          role-session-name: safety-${{ github.run_id }}
+      - name: safety-net destroy
+        if: always() && env.DRY_RUN != 'true'
+        timeout-minutes: 30
+        run: python3 pipeline/lab.py --destroy-only
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab
+          path: out/
+          retention-days: 30
+          if-no-files-found: ignore
+
+  draft:
+    needs: lab
+    if: always() && needs.lab.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ISSUE: ${{ inputs.issue || github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: lab
+          path: out
+      # The bot may only create draft/* branches, files under site/_posts and labs/, PRs into main,
+      # and comments/labels on issues in this repo. pipeline/radar.py enforces it.
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+      - name: draft
+        run: python3 pipeline/draft.py
+        env:
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}

@@ -65,6 +65,7 @@ def hashnode(meta, body, canonical, prev_id):
     return p["id"], p["url"]
 
 CHANNELS = {"devto": devto, "hashnode": hashnode}
+NEEDS = {"devto": "DEVTO_API_KEY", "hashnode": "HASHNODE_TOKEN"}
 
 def main(paths):
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
@@ -84,6 +85,8 @@ def main(paths):
                 continue
             if ch not in CHANNELS:
                 report.append(f"- {ch}: not automated yet"); continue
+            if not os.environ.get(NEEDS[ch]):
+                report.append(f"- {ch}: skipped (no {NEEDS[ch]} saved)"); continue
             try:
                 pid, url = CHANNELS[ch](post.metadata, post.content, canonical, prev.get("id"))
                 done[ch] = {"id": pid, "url": url, "hash": digest}

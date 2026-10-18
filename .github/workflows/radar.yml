@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print what would be opened; write nothing"
+        type: boolean
+        default: false
 permissions:
   contents: read
   issues: read
@@ -11,21 +16,29 @@ jobs:
   radar:
     if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      # The bot writes issues and labels in this repo only; pipeline/radar.py enforces the rules.
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
       - name: radar
         run: python3 pipeline/radar.py
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HERO_PUBLISH: "1"
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RADAR_MODEL: ${{ vars.RADAR_MODEL }}
-      - uses: actions/upload-artifact@v4
-        with:
-          name: proposals
-          path: proposals.json
-          retention-days: 14
-          if-no-files-found: ignore
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
