@@ -1,0 +1,54 @@
+name: analytics
+# Weekly impact log (dev.to numbers + what the three AIs make of them), and `/stats` comments from you for
+# the platforms that don't share numbers through an API (LinkedIn, Medium).
+on:
+  schedule:
+    - cron: "0 7 * * 0"
+  workflow_dispatch:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+concurrency: analytics
+jobs:
+  analytics:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      (github.event_name != 'issue_comment' ||
+       (startsWith(github.event.comment.body, '/stats') && github.event.comment.user.login == 'Abhimanyu9988' &&
+        !github.event.issue.pull_request))
+    runs-on: ubuntu-latest
+    environment: publish          # DEVTO_API_KEY lives here
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # The bot may only write analytics/* on the analytics branch, and comment/open the impact log issue.
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+      - name: analytics
+        run: python3 pipeline/analytics.py
+        env:
+          MODE: ${{ github.event_name == 'issue_comment' && 'stats' || 'collect' }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RADAR_MODEL: ${{ vars.RADAR_MODEL }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}

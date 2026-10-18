@@ -6,29 +6,36 @@ Real problems on AWS containers, **replicated in a disposable AWS lab** and expl
 
 ## How a post gets made
 
-Three AIs work as a panel: **Claude** does the main work, **ChatGPT** reviews it, and **Gemini** breaks ties.
-I review and edit every post before it goes out.
+Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit every post before it goes out.
 
-```
- radar (Mon) / problems (Thu)          replicate (on the `replicate` label)                 publish (on merge)
- ─────────────────────────────         ──────────────────────────────────────────           ──────────────────
- AWS What's New, releases, HN,   ──▶   I approve the aws-lab deployment (one tap)    ──▶   GitHub Pages
- GitHub issues of AWS container        Claude writes Terraform + reproduce/fix scripts      + dev.to
- projects, Stack Overflow              ChatGPT reviews · Gemini rules on disputes           + Hashnode
- Claude proposes · ChatGPT votes       plan → plan check → apply → reproduce → fix          (canonical link
- Gemini breaks ties                    always: cleanup → destroy                            back to the site)
- → topic issues; best → `replicate`    Claude drafts the post from the REAL output
-                                       ChatGPT checks it · Gemini rules → draft PR → I edit & merge
-```
+1. **Choose (Mon radar, Thu problems).** Each AI reads the week's sources and proposes its own picks: AWS What's
+   New, releases and issues of AWS container projects, and Stack Overflow. It also sees what has performed well so
+   far. Then all three vote on the pooled list. Topics with 2 of 3 votes open as issues showing who proposed them
+   and how each AI voted. The best one gets `replicate`.
+2. **Replicate (I approve the `aws-lab` deployment).** Claude writes the Terraform and scripts, ChatGPT reviews them
+   and Gemini settles disputes. The lab runs: plan → plan check → apply → reproduce → fix. Destroy always runs.
+3. **Confirm.** All three read the real output and say whether it genuinely replicated the problem. 2 of 3 is
+   needed to write.
+4. **Write.** ChatGPT writes the article, story-first and in my voice, with every command to replicate it by hand,
+   plus a LinkedIn post. Claude checks the technical details against the real output and Gemini settles disputes.
+   The bot opens a PR that shows the post itself.
+5. **Publish (when I merge).** The site and dev.to are automatic, and Hashnode is too once a token is saved. A
+   report issue gives a one-tap Medium import and a LinkedIn link that opens the post box already filled in.
+6. **Measure (weekly).** dev.to numbers come in automatically; LinkedIn and Medium numbers via a `/stats` comment.
+   Everything goes into a dated, append-only ledger (`analytics/ledger.csv` on the `analytics` branch). The three
+   AIs write what's working (`analytics/insights.md`), and the next topic choice reads it.
 
 | Piece | File |
 |---|---|
-| Panel (vote, review, tiebreak) | `pipeline/llm.py` |
+| Panel (ask, vote, verdict, review/revise) | `pipeline/llm.py` |
 | Topic finders + GitHub write rules | `pipeline/radar.py`, `pipeline/problems.py` |
-| Lab runner | `pipeline/lab.py`, `pipeline/check_plan.py` |
+| Lab runner | `pipeline/lab.py`, `pipeline/check_plan.py`, `pipeline/lab.Dockerfile` |
 | Drafter | `pipeline/draft.py` |
-| Syndication | `pipeline/publish.py` |
+| Publishing + share links | `pipeline/publish.py` |
+| Impact log | `pipeline/analytics.py` |
 | AWS lab account guardrails | `infra/bootstrap/main.tf` |
+
+To rewrite a draft without another AWS run, run `replicate` with `issue` and `from_run` (the earlier run's id).
 
 ## Guardrails
 

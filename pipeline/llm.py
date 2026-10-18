@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Claude, ChatGPT and Gemini, and the two ways they decide together.
+"""Claude, ChatGPT and Gemini, and the ways they decide together.
 
-  vote()    Claude proposes candidates (that is its "yes"). ChatGPT votes yes/no on each.
-            Agreement decides. A split goes to Gemini, so every decision is 2:1 or 2:0.
-  refine()  Claude drafts. ChatGPT reviews and raises points. Claude accepts or rejects each
-            point and revises. Gemini rules on every rejected blocking point; if Gemini sides
-            with ChatGPT, Claude must apply it.
+  ask()          one schema-shaped JSON answer from any of the three.
+  panel_votes()  all three vote yes/no on every candidate; 2 of 3 decides.
+  verdict()      all three answer one yes/no question independently; 2 of 3 decides.
+  refine()       a writer drafts, a reviewer raises points, the writer accepts or rejects each one, and a
+                 judge rules on every rejected blocking point (the writer must apply the ones it loses).
+                 Labs: Claude writes, ChatGPT reviews, Gemini judges. Articles: ChatGPT writes, Claude
+                 reviews, Gemini judges.
 
 Every call is logged (model + token usage) to LEDGER so runs can report what they cost.
 Source material passed in `context` is untrusted: every system prompt says so.
@@ -212,8 +214,20 @@ def gemini_json(system, prompt, max_tokens=32768):
     raise last
 
 # ---------- deciding together ----------
-VOTE_SHAPE = ('{"votes": [{"id": "<candidate id>", "vote": "yes" or "no", '
-              '"reason": "<one sentence>"}]}')
+NAMES = {"claude": "Claude", "chatgpt": "ChatGPT", "gemini": "Gemini"}
+PANEL = ("claude", "chatgpt", "gemini")
+
+def ask(who, system, prompt, schema, tool="submit", tier="write"):
+    """One JSON answer shaped like `schema` from any of the three."""
+    if who == "claude":
+        return claude_json(system, prompt, schema, tool=tool, tier=tier)
+    shaped = f"{prompt}\n\nReply with one JSON object matching this JSON schema:\n{json.dumps(schema)}"
+    return gpt_json(system, shaped) if who == "chatgpt" else gemini_json(system, shaped)
+
+VOTES_SCHEMA = {"type": "object", "required": ["votes"], "properties": {"votes": {"type": "array", "items": {
+    "type": "object", "required": ["id", "vote", "reason"], "properties": {
+        "id": {"type": "string"}, "vote": {"enum": ["yes", "no"]},
+        "reason": {"type": "string", "description": "one sentence"}}}}}}
 
 def _votes(reply, ids):
     out = {}
@@ -222,84 +236,103 @@ def _votes(reply, ids):
             out[v["id"]] = (v["vote"], str(v.get("reason", ""))[:300])
     return out
 
-def vote(candidates, question, context=""):
-    """candidates: dicts with a unique "id", proposed by Claude. Returns one decision per candidate:
-    {"id", "accepted", "chatgpt": (vote, reason), "gemini": (vote, reason) or None}."""
+def panel_votes(candidates, question, context="", tier="scout"):
+    """All three vote yes/no on every candidate (dicts with a unique "id"). A candidate passes with 2+ yes.
+    Returns {id: {"votes": {who: (vote, reason)}, "yes": n, "accepted": bool}}. A model that fails counts as
+    'no vote' for every candidate, so two working models must both agree."""
     ids = {c["id"] for c in candidates}
     if not ids:
-        return []
-    ask = lambda cs: (f"QUESTION: {question}\n\nVote yes or no on EVERY candidate. Reply as JSON: {VOTE_SHAPE}"
-                      f"\n\nCANDIDATES:\n{json.dumps(cs, indent=1)}\n\n{context}")
-    sysmsg = "You are a strict reviewer on a three-AI panel choosing content for an AWS containers blog."
-    gpt = _votes(gpt_json(sysmsg, ask(candidates)), ids)
-    split = [c for c in candidates if gpt.get(c["id"], ("no",))[0] != "yes"]
-    gem = {}
-    if split:
-        tie = [{**c, "chatgpt_said": gpt.get(c["id"], ("no", "no vote"))[1]} for c in split]
-        gem = _votes(gemini_json(sysmsg + " You are the tiebreaker: Claude proposed these (a yes) and "
-                                 "ChatGPT voted no or did not vote.", ask(tie)), {c["id"] for c in split})
-    out = []
+        return {}
+    prompt = (f"QUESTION: {question}\n\nVote yes or no on EVERY candidate, each with a one-sentence reason."
+              f"\n\nCANDIDATES:\n{json.dumps(candidates, indent=1)}\n\n{context}")
+    sysmsg = "You are one of three AI reviewers (Claude, ChatGPT, Gemini) choosing content for an AWS containers blog."
+    got = {}
+    for who in PANEL:
+        try:
+            got[who] = _votes(ask(who, sysmsg, prompt, VOTES_SCHEMA, tool="submit_votes", tier=tier), ids)
+        except Exception as e:
+            print(f"warn: {who} could not vote: {str(e)[:200]}"); got[who] = {}
+    out = {}
     for c in candidates:
-        g = gpt.get(c["id"], ("no", "no vote"))
-        t = None if g[0] == "yes" else gem.get(c["id"], ("no", "no vote"))
-        out.append({"id": c["id"], "accepted": g[0] == "yes" or (t or ("no",))[0] == "yes",
-                    "chatgpt": g, "gemini": t})
+        votes = {who: got[who].get(c["id"], ("no", "no vote")) for who in PANEL}
+        yes = sum(v[0] == "yes" for v in votes.values())
+        out[c["id"]] = {"votes": votes, "yes": yes, "accepted": yes >= 2}
     return out
 
-REVIEW_SHAPE = ('{"approve": true or false, "points": [{"id": "p1", "severity": "blocking" or "minor", '
-                '"issue": "<what is wrong>", "suggestion": "<concrete change>"}]}')
-RULING_SHAPE = '{"rulings": [{"id": "<point id>", "side": "chatgpt" or "claude", "reason": "<one sentence>"}]}'
+VERDICT_SCHEMA = {"type": "object", "required": ["vote", "reason"], "properties": {
+    "vote": {"enum": ["yes", "no"]}, "reason": {"type": "string", "description": "two or three sentences"}}}
 
-def refine(kind, draft, rubric, context, schema):
-    """Review-and-revise loop. `draft` and the result both match `schema` (a JSON schema for an object).
-    Returns (final_draft, log) where log records every point and who won it."""
-    review = gpt_json(f"You review {kind} drafts written by Claude. Be specific and only raise real problems.",
-                      f"RUBRIC:\n{rubric}\n\nReply as JSON: {REVIEW_SHAPE}\n\nDRAFT:\n{json.dumps(draft)}\n\n{context}")
+def verdict(question, context):
+    """Each of the three answers yes/no independently. Passes with 2+ yes."""
+    votes = {}
+    for who in PANEL:
+        try:
+            r = ask(who, "You are one of three independent AI reviewers. Judge only from the evidence given.",
+                    f"{question}\n\n{context}", VERDICT_SCHEMA, tool="submit_verdict")
+            votes[who] = (r.get("vote") if r.get("vote") in ("yes", "no") else "no", str(r.get("reason", ""))[:600])
+        except Exception as e:
+            print(f"warn: {who} gave no verdict: {str(e)[:200]}"); votes[who] = ("no", "no verdict (model call failed)")
+    yes = sum(v[0] == "yes" for v in votes.values())
+    return {"votes": votes, "yes": yes, "passed": yes >= 2}
+
+REVIEW_SCHEMA = {"type": "object", "required": ["approve", "points"], "properties": {
+    "approve": {"type": "boolean"}, "points": {"type": "array", "items": {"type": "object",
+        "required": ["id", "severity", "issue", "suggestion"], "properties": {
+            "id": {"type": "string", "description": "p1, p2, ..."}, "severity": {"enum": ["blocking", "minor"]},
+            "issue": {"type": "string"}, "suggestion": {"type": "string"}}}}}}
+RULING_SCHEMA = {"type": "object", "required": ["rulings"], "properties": {"rulings": {"type": "array", "items": {
+    "type": "object", "required": ["id", "side", "reason"], "properties": {
+        "id": {"type": "string"}, "side": {"enum": ["reviewer", "writer"]}, "reason": {"type": "string"}}}}}}
+
+def refine(kind, draft, rubric, context, schema, writer="claude", reviewer="chatgpt", judge="gemini"):
+    """Review-and-revise loop. The writer drafted `draft`; the reviewer raises points; the writer accepts or
+    rejects each and revises; the judge rules on every rejected blocking point, and the writer must apply the
+    ones it loses. Returns (final_draft, log)."""
+    W, R, J = NAMES[writer], NAMES[reviewer], NAMES[judge]
+    review = ask(reviewer, f"You review {kind} drafts written by {W}. Be specific and only raise real problems.",
+                 f"RUBRIC:\n{rubric}\n\nDRAFT:\n{json.dumps(draft)}\n\n{context}", REVIEW_SCHEMA, tool="submit_review")
     points = [p for p in (review.get("points") or []) if isinstance(p, dict) and p.get("id")]
-    log = {"chatgpt_approved": bool(review.get("approve")) and not any(p.get("severity") == "blocking" for p in points),
+    log = {"writer": W, "reviewer": R, "judge": J,
+           "approved": bool(review.get("approve")) and not any(p.get("severity") == "blocking" for p in points),
            "points": []}
     if not points:
         return draft, log
-
     resp_schema = {"type": "object", "required": ["responses", "revised"], "properties": {
         "responses": {"type": "array", "items": {"type": "object", "required": ["id", "decision", "reason"],
                       "properties": {"id": {"type": "string"}, "decision": {"enum": ["accept", "reject"]},
                                      "reason": {"type": "string"}}}},
         "revised": schema}}
-    ans = claude_json(f"You wrote this {kind}. ChatGPT reviewed it. For each point, accept it (and apply it) or "
-                      "reject it with a reason. Reject only when the point is wrong. Return the full revised draft.",
-                      f"RUBRIC:\n{rubric}\n\nREVIEW POINTS:\n{json.dumps(points, indent=1)}\n\n"
-                      f"YOUR DRAFT:\n{json.dumps(draft)}\n\n{context}", resp_schema, tool="respond")
+    ans = ask(writer, f"You wrote this {kind}. {R} reviewed it. For each point, accept it (and apply it) or reject "
+                      "it with a reason. Reject only when the point is wrong. Return the full revised draft.",
+              f"RUBRIC:\n{rubric}\n\nREVIEW POINTS:\n{json.dumps(points, indent=1)}\n\nYOUR DRAFT:\n"
+              f"{json.dumps(draft)}\n\n{context}", resp_schema, tool="respond")
     decided = {r["id"]: r for r in ans.get("responses", []) if isinstance(r, dict) and "id" in r}
     final = ans.get("revised") or draft
     disputed = [p for p in points if p.get("severity") == "blocking" and decided.get(p["id"], {}).get("decision") != "accept"]
     rulings = {}
     if disputed:
-        ask = [{**p, "claude_reason": decided.get(p["id"], {}).get("reason", "no answer")} for p in disputed]
-        g = gemini_json(f"You are the tiebreaker on a three-AI panel reviewing a {kind}. ChatGPT raised blocking "
-                        "points; Claude rejected them. Decide each one on the merits.",
-                        f"RUBRIC:\n{rubric}\n\nDISPUTED POINTS:\n{json.dumps(ask, indent=1)}\n\n"
-                        f"Reply as JSON: {RULING_SHAPE}\n\nDRAFT:\n{json.dumps(final)}\n\n{context}")
+        q = [{**p, "writer_reason": decided.get(p["id"], {}).get("reason", "no answer")} for p in disputed]
+        g = ask(judge, f"You are the tiebreaker on a three-AI panel reviewing a {kind}. The reviewer ({R}) raised "
+                       f"blocking points; the writer ({W}) rejected them. Decide each one on the merits.",
+                f"RUBRIC:\n{rubric}\n\nDISPUTED POINTS:\n{json.dumps(q, indent=1)}\n\nDRAFT:\n{json.dumps(final)}"
+                f"\n\n{context}", RULING_SCHEMA, tool="submit_rulings")
         rulings = {r["id"]: r for r in (g.get("rulings") or []) if isinstance(r, dict) and r.get("id")}
-        lost = [p for p in disputed if rulings.get(p["id"], {}).get("side") == "chatgpt"]
+        lost = [p for p in disputed if rulings.get(p["id"], {}).get("side") == "reviewer"]
         if lost:
-            final = claude_json(f"The tiebreaker ruled against you on these points of your {kind}. Apply every one "
+            final = ask(writer, f"The tiebreaker ruled against you on these points of your {kind}. Apply every one "
                                 "of them and return the full revised draft.",
-                                f"POINTS TO APPLY:\n{json.dumps(lost, indent=1)}\n\nDRAFT:\n{json.dumps(final)}\n\n{context}",
-                                schema, tool="revise")
+                        f"POINTS TO APPLY:\n{json.dumps(lost, indent=1)}\n\nDRAFT:\n{json.dumps(final)}\n\n{context}",
+                        schema, tool="revise")
     for p in points:
-        d = decided.get(p["id"], {})
-        r = rulings.get(p["id"])
+        d, r = decided.get(p["id"], {}), rulings.get(p["id"])
         if d.get("decision") == "accept":
-            outcome = "applied (Claude agreed)"
+            outcome = f"applied ({W} agreed)"
         elif r:
-            outcome = ("applied (Gemini sided with ChatGPT)" if r.get("side") == "chatgpt"
-                       else "not applied (Gemini sided with Claude)")
+            outcome = f"applied ({J} sided with {R})" if r.get("side") == "reviewer" else f"not applied ({J} sided with {W})"
         else:
-            outcome = "not applied (minor, Claude declined)"
-        log["points"].append({"severity": p.get("severity"), "issue": str(p.get("issue", ""))[:300],
-                              "outcome": outcome, "claude": str(d.get("reason", ""))[:300],
-                              "gemini": str((r or {}).get("reason", ""))[:300]})
+            outcome = f"not applied (minor, {W} declined)"
+        log["points"].append({"severity": p.get("severity"), "issue": str(p.get("issue", ""))[:300], "outcome": outcome,
+                              "writer": str(d.get("reason", ""))[:300], "judge": str((r or {}).get("reason", ""))[:300]})
     return final, log
 
 def usage_summary():

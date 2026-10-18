@@ -23,7 +23,9 @@ LABELS = {"radar": ("0e8a16", "Topic idea from the radar"),
           "problem": ("d93f0b", "Problem idea from the problem finder"),
           "replicate": ("5319e7", "Replicate this on the AWS lab account (needs your deployment approval)"),
           "drafted": ("1d76db", "Replicated; a draft post PR is open"),
-          "not-reproduced": ("cccccc", "The lab could not reproduce this")}
+          "not-reproduced": ("cccccc", "The lab could not reproduce this"),
+          "replication-disputed": ("fbca04", "The lab ran, but the panel did not confirm the replication"),
+          "analytics": ("0052cc", "Impact log: weekly analytics for the published posts")}
 # AWS container projects: releases feed the radar, issues feed the problem finder.
 WATCH = ["aws/containers-roadmap", "aws/karpenter-provider-aws", "aws/amazon-vpc-cni-k8s",
          "kubernetes-sigs/aws-load-balancer-controller", "kubernetes-sigs/aws-ebs-csi-driver",
@@ -182,12 +184,17 @@ def _labels(b):
         raise Blocked(f"labels not allowed: {bad or 'none given'}")
 
 def _ref(b):
-    if not re.fullmatch(r"refs/heads/draft/[a-z0-9][a-z0-9-]{0,80}", str(b.get("ref", ""))):
-        raise Blocked(f"branches must be draft/<slug>, got {b.get('ref')!r}")
+    if not re.fullmatch(r"refs/heads/(draft/[a-z0-9][a-z0-9-]{0,80}|analytics)", str(b.get("ref", ""))):
+        raise Blocked(f"branches must be draft/<slug> or analytics, got {b.get('ref')!r}")
 
 def _contents(b):
     if not re.fullmatch(r"draft/[a-z0-9][a-z0-9-]{0,80}", str(b.get("branch", ""))):
         raise Blocked("file writes must target a draft/<slug> branch")
+    assert_safe(b.get("message", ""))
+
+def _analytics(b):
+    if b.get("branch") != "analytics":
+        raise Blocked("analytics files may only be written to the analytics branch")
     assert_safe(b.get("message", ""))
 
 def _pull(b):
@@ -203,6 +210,7 @@ WRITE_RULES = [
     ("POST", rf"{_H}/issues/\d+/labels", _labels),
     ("POST", rf"{_H}/git/refs", _ref),
     ("PUT", rf"{_H}/contents/(?:site/_posts|labs)/[\w.-]+(?:/[\w.-]+){{0,3}}", _contents),
+    ("PUT", rf"{_H}/contents/analytics/[\w.-]+", _analytics),
     ("POST", rf"{_H}/pulls", _pull),
 ]
 
@@ -268,13 +276,14 @@ def comment(number, body):
     assert_safe(body)
     gh("POST", f"/repos/{REPO}/issues/{int(number)}/comments", {"body": body})
 
-def panel_line(d):
-    """One line showing how the three AIs voted on a topic."""
-    yes = lambda v: "\u2705" if v == "yes" else "\u274c"
-    out = "**Panel:** Claude \u2705 proposed \u00b7 ChatGPT " + yes(d["chatgpt"][0]) + f" _{neutralize(d['chatgpt'][1])}_"
-    if d.get("gemini"):
-        out += " \u00b7 Gemini (tiebreak) " + yes(d["gemini"][0]) + f" _{neutralize(d['gemini'][1])}_"
-    return out
+def panel_line(c, d):
+    """How the three AIs proposed and voted on a topic."""
+    import llm
+    mark = lambda v: "\u2705" if v == "yes" else "\u274c"
+    who = ", ".join(llm.NAMES[w] for w in c["by"])
+    lines = [f"**Proposed by:** {who} \u00b7 **Panel vote:** {d['yes']} of 3"]
+    lines += [f"- {llm.NAMES[w]} {mark(v)} _{safe_text(r)}_" for w, (v, r) in d["votes"].items()]
+    return "\n".join(lines)
 
 PANEL_QUESTION = ("Should this become a post on Abhimanyu's blog? The niche: take a real problem AWS container users "
                   "hit (EKS, ECS, Fargate, ECR, Karpenter), REPLICATE it in a disposable AWS lab, then show the fix. "
@@ -282,48 +291,70 @@ PANEL_QUESTION = ("Should this become a post on Abhimanyu's blog? The niche: tak
                   "enough to support an AWS Container Hero nomination. Vote no if it cannot be reproduced within the "
                   "LAB LIMITS, has no clear lesson, is vendor drama or opinion, or repeats an existing topic.")
 
-def post_topics(topics, items, existing, used, label, render, limit):
-    """Panel vote, then open the accepted topics as issues and mark the best one `replicate`.
+def load_insights():
+    """What the analytics panel learned so far (analytics branch), or "" before there is any."""
+    try:
+        f = gh("GET", f"/repos/{HOME_REPO}/contents/analytics/insights.md?ref=analytics")
+        return base64.b64decode(f.get("content", "")).decode("utf-8", "replace")[:6000]
+    except Exception:
+        return ""
+
+def propose_all(system, prompt, schema):
+    """Each of the three proposes topics on its own. Returns [(who, topic)]."""
+    import llm
+    out = []
+    for who in llm.PANEL:
+        try:
+            got = llm.ask(who, system, prompt, schema, tool="submit_topics", tier="scout")
+            ts = [t for t in (got.get("topics") or []) if isinstance(t, dict)]
+            print(f"{who} proposed {len(ts)} topic(s)")
+            out += [(who, t) for t in ts]
+        except Exception as e:
+            print(f"warn: {who} could not propose: {str(e)[:200]}")
+    return out
+
+def post_topics(proposals, items, existing, used, label, render, limit):
+    """proposals: [(who, topic)] from propose_all. Pool them (same title or shared source = one topic), let all
+    three vote, open the topics with 2+ yes as issues, and mark the best one `replicate`.
     render(topic, sources) returns the top text of the issue, or None to skip the topic."""
     import llm
     allowed = {i["url"] for i in items}
     have = {norm(t) for t in existing}
     cands = []
-    for n, t in enumerate(topics, 1):
+    for who, t in proposals:
         title = neutralize(t.get("title")).strip()[:100]
-        if not title or norm(title) in have:
-            print(f"skip duplicate/empty title: {title}"); continue
         srcs = [u for u in (t.get("sources") or []) if isinstance(u, str) and u in allowed]
-        if not srcs:
-            print(f"skip no valid sources: {title}"); continue
-        if any(u in used for u in srcs):
-            print(f"skip source already covered: {title}"); continue
+        if not title or norm(title) in have or not srcs or any(u in used for u in srcs):
+            print(f"skip ({who}) duplicate, empty, unsourced or already covered: {title}"); continue
+        same = next((c for c in cands if norm(c["title"]) == norm(title) or set(srcs) & set(c["srcs"])), None)
+        if same:
+            if who not in same["by"]:
+                same["by"].append(who)
+            continue
         top = render(t, srcs)
         if top is None:
             continue
-        cands.append({"id": f"t{n}", "title": title, "top": top, "srcs": srcs,
+        cands.append({"id": f"t{len(cands) + 1}", "title": title, "top": top, "srcs": srcs, "by": [who],
                       "score": int(t.get("replicability") or 0)})
-        have.add(norm(title))
-    view = [{"id": c["id"], "title": c["title"], "details": c["top"], "replicability_1_to_10": c["score"]}
-            for c in cands]
-    votes = {d["id"]: d for d in llm.vote(view, PANEL_QUESTION, f"LAB LIMITS:\n{LAB_LIMITS}\n\n"
-                                          f"EXISTING TOPICS:\n{json.dumps(existing[:150])}")}
-    accepted = []
+    insights = load_insights()
+    view = [{"id": c["id"], "title": c["title"], "details": c["top"], "replicability_1_to_10": c["score"],
+             "proposed_by": [llm.NAMES[w] for w in c["by"]]} for c in cands]
+    votes = llm.panel_votes(view, PANEL_QUESTION, f"LAB LIMITS:\n{LAB_LIMITS}\n\nEXISTING TOPICS:\n"
+                            f"{json.dumps(existing[:150])}\n\nWHAT HAS WORKED SO FAR (analytics panel):\n"
+                            f"{insights or 'no posts measured yet'}")
     for c in cands:
         d = votes[c["id"]]
-        print(f"{'ACCEPT' if d['accepted'] else 'reject'}: {c['title']} | chatgpt={d['chatgpt'][0]} "
-              f"gemini={(d['gemini'] or ('-',))[0]}")
-        if d["accepted"] and len(accepted) < limit:
-            accepted.append(c)
-    best = max(accepted, key=lambda c: c["score"], default=None)
-    if best and best["score"] < 7:
-        print(f"no topic scored 7+ for replicability; nothing marked replicate")
-        best = None
-    if accepted and not DRY:
+        print(f"{'ACCEPT' if d['accepted'] else 'reject'} {d['yes']}/3 by={c['by']}: {c['title']}")
+    ranked = sorted((c for c in cands if votes[c["id"]]["accepted"]),
+                    key=lambda c: (votes[c["id"]]["yes"], len(c["by"]), c["score"]), reverse=True)[:limit]
+    best = next((c for c in ranked if c["score"] >= 7), None)
+    if ranked and not best:
+        print("no accepted topic scored 7+ for replicability; nothing marked replicate")
+    if ranked and not DRY:
         ensure_label(label)
     made = 0
-    for c in accepted:
-        body = (f"{c['top']}\n\n{panel_line(votes[c['id']])}\n\n{sources_block(c['srcs'])}\n\n"
+    for c in ranked:
+        body = (f"{c['top']}\n\n{panel_line(c, votes[c['id']])}\n\n{sources_block(c['srcs'])}\n\n"
                 f"_Found by the {label} bot. Add the `replicate` label to run it on the AWS lab; close it if "
                 f"you're not interested._\n\n{src_marker(c['srcs'])}")
         try:
@@ -395,18 +426,17 @@ TOPIC_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics
         "replicability": {"type": "integer", "description": "1-10: how well this can be reproduced within LAB LIMITS"},
         "sources": {"type": "array", "items": {"type": "string"}, "description": "URLs copied exactly from ITEMS"}}}}}}
 
-def ask_claude(items, existing):
-    import llm
-    got = llm.claude_json(
+def ask_panel(items, existing):
+    return propose_all(
         "You pick topics for Abhimanyu's hands-on blog about AWS containers. Every post replicates something "
         "real in a disposable AWS lab and shows the result.",
         f"From the ITEMS below (AWS What's New entries, releases of AWS container projects, and Hacker News "
         f"stories), choose up to {MAX_ISSUES + 2} topics that would make a strong hands-on post right now: a new "
         "feature or behaviour change that people will trip over, demonstrated in a lab. Prefer EKS, ECS, Fargate, "
         f"ECR and Karpenter. Do not repeat anything in EXISTING. {NO_REFS}\n\nLAB LIMITS:\n{LAB_LIMITS}\n\n"
+        f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",
-        TOPIC_SCHEMA, tool="submit_topics", tier="scout", max_tokens=8000)
-    return [t for t in got.get("topics", []) if isinstance(t, dict)]
+        TOPIC_SCHEMA)
 
 def main():
     existing, used = existing_issues()
@@ -414,7 +444,7 @@ def main():
     print(f"collected {len(items)} new items ({len(used)} source URLs already used)")
     if not items:
         print("done: nothing new"); return
-    topics = ask_claude(items, existing)
+    topics = ask_panel(items, existing)
     post_topics(topics, items, existing, used, LABEL,
                 lambda t, srcs: f"**Why now:** {neutralize(t.get('why'))}\n\n**Lab idea:** {neutralize(t.get('lab'))}",
                 MAX_ISSUES)

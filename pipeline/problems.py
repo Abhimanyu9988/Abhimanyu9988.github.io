@@ -2,7 +2,8 @@
 """Problem finder: find problems many AWS container users hit, let the three-AI panel vote, and open
 the winners as issues. The best one gets `replicate`. GitHub access and text safety live in radar.py."""
 import gzip, html, json, os, re, time, urllib.parse, urllib.request
-from radar import (WATCH, SKIP_SOURCES, NO_REFS, LAB_LIMITS, gh, neutralize, existing_issues, post_topics)
+from radar import (WATCH, SKIP_SOURCES, NO_REFS, LAB_LIMITS, gh, neutralize, existing_issues, post_topics,
+                   propose_all, load_insights)
 
 MAX_ISSUES, LABEL, UA, DAYS = 3, "problem", "hero-problems/1.0", 30
 SO_TAGS = ["amazon-eks", "amazon-ecs", "aws-fargate", "eksctl", "karpenter", "aws-load-balancer-controller",
@@ -156,9 +157,8 @@ TOPIC_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics
             "properties": {"url": {"type": "string"}, "verdict": {"enum": ["supports", "disputes", "silent"]},
                            "evidence_ids": {"type": "array", "items": {"type": "string"}}}}}}}}}}
 
-def ask_claude(items, existing):
-    import llm
-    got = llm.claude_json(
+def ask_panel(items, existing):
+    return propose_all(
         "You pick topics for Abhimanyu's hands-on blog about AWS containers. Every post REPLICATES a real "
         "problem in a disposable AWS lab, then investigates or fixes it.",
         "From the ITEMS below (GitHub issues from AWS container projects and Stack Overflow questions), choose up "
@@ -175,9 +175,9 @@ def ask_claude(items, existing):
         "unsupported cause as fact, and never use 'fix' in the title unless a source supports the cause; "
         "use wording like 'Debugging X' or 'Why X happens'.\n"
         f"{NO_REFS}\n\nLAB LIMITS:\n{LAB_LIMITS}\n\n"
+        f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",
-        TOPIC_SCHEMA, tool="submit_topics", tier="scout", max_tokens=8000)
-    return [t for t in got.get("topics", []) if isinstance(t, dict)]
+        TOPIC_SCHEMA)
 
 def main():
     existing, used = existing_issues()
@@ -185,7 +185,7 @@ def main():
     print(f"collected {len(items)} new items ({len(used)} source URLs already used)")
     if not items:
         print("done: nothing new"); return
-    topics = ask_claude(items, existing)
+    topics = ask_panel(items, existing)
     by_url = {i["url"]: i for i in items}
     texts = {x["id"]: x["text"] for i in items for x in i.get("comments", []) + i.get("answers", [])}
 

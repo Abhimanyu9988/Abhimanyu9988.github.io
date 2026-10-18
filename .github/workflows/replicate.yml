@@ -14,6 +14,10 @@ on:
         description: "Write and review the lab, but don't touch AWS"
         type: boolean
         default: false
+      from_run:
+        description: "Redraft only: id of an earlier replicate run whose lab output to reuse (no AWS)"
+        required: false
+        type: string
 permissions:
   contents: read
   issues: read
@@ -26,6 +30,7 @@ jobs:
   lab:
     if: >-
       github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      !inputs.from_run &&
       (github.event_name == 'workflow_dispatch' ||
        (github.event.label.name == 'replicate' &&
         (github.event.sender.login == 'Abhimanyu9988' || github.event.sender.login == 'hero-bot-abhimanyu9988[bot]')))
@@ -111,9 +116,15 @@ jobs:
 
   draft:
     needs: lab
-    if: always() && needs.lab.result != 'skipped'
+    if: >-
+      always() && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      (needs.lab.result != 'skipped' || inputs.from_run != '')
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: read
+      actions: read
     env:
       ISSUE: ${{ inputs.issue || github.event.issue.number }}
     steps:
@@ -125,6 +136,8 @@ jobs:
         with:
           name: lab
           path: out
+          run-id: ${{ inputs.from_run || github.run_id }}
+          github-token: ${{ github.token }}
       # The bot may only create draft/* branches, files under site/_posts and labs/, PRs into main,
       # and comments/labels on issues in this repo. pipeline/radar.py enforces it.
       - uses: actions/create-github-app-token@v2
