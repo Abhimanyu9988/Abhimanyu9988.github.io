@@ -293,9 +293,17 @@ res = {"status": "reproduced_and_fixed", "slug": "debugging-ecs-pending", "run_i
 (draft.OUT / "result.json").write_text(json.dumps(res))
 (draft.OUT / "topic.json").write_text(json.dumps({"sources": [{"url": "https://stackoverflow.com/questions/1/a"}]}))
 writer_calls = []
+prompts_seen = []
 def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
+    prompts_seen.append((who, tool, prompt))
     if tool == "submit_verdict":
         return {"vote": VERDICT.get(who, "yes"), "reason": "the evidence shows it, see @bob and aws/x#5"}
+    if tool == "submit_headline":
+        return {"title": f"{who} title", "hook": f"{who} hook: the queue fills and nothing starts."}
+    if tool == "submit_votes":
+        import re as _re
+        ids = _re.findall(r'"id": "(h\d)"', prompt)
+        return {"votes": [{"id": i, "vote": "yes" if i == "h2" or who == "claude" else "no", "reason": "r"} for i in ids]}
     writer_calls.append(who)
     return {"title": "Why ECS tasks stay PENDING", "description": "d", "tags": ["AWS", "ECS!", "fargate", "devops", "extra"],
             "body": "Someone hit this at 2am.\n\nBody links https://github.com/aws/x/issues/5 freely.",
@@ -304,6 +312,7 @@ def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
                                {"url": "https://made-up.example/x", "text": "spam"}]}
 VERDICT = {}
 llm.ask = draft_ask
+draft.style_signals = lambda: "- Why my pods won't start (412 reactions)"
 real_refine = llm.refine
 roles = []
 llm.refine = lambda kind, d, *a, **k: (roles.append((k.get("writer"), k.get("reviewer"), k.get("judge"))) or
@@ -322,6 +331,13 @@ import base64
 text = base64.b64decode(post["content"]).decode()
 check("draft: front matter has channels and cleaned tags", 'tags: ["aws", "ecs", "fargate", "devops"]' in text and "channels:" in text)
 check("draft: ChatGPT writes, Claude reviews, Gemini judges", writer_calls == ["chatgpt"] and roles == [("chatgpt", "claude", "gemini")])
+writer_prompt = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
+check("headline round: all three propose, the 2-of-3 winner goes to the writer with AUTHOR facts and STYLE SIGNALS",
+      sum(1 for w, t, p in prompts_seen if t == "submit_headline") == 3 and "TITLE: chatgpt title" in writer_prompt
+      and "AUTHOR:" in writer_prompt and "observability agents" in writer_prompt and "412 reactions" in writer_prompt)
+_pr = next(b for m, p_, b in sent if p_.endswith("/pulls"))
+check("headline round shown in the PR", "Headline round:** the panel picked ChatGPT" in _pr["body"])
+check("checklist no longer asks Abhi to write his own line", "add a line from your own experience" not in _pr["body"])
 check("draft: LinkedIn text stored in front matter", "linkedin: " in text and "{POST_URL}" in text)
 check("draft: source replies kept only for real sources, stored in front matter", "replies: " in text
       and "stackoverflow.com/questions/1/a" in text and "made-up.example" not in text)
