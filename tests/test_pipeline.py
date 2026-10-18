@@ -72,6 +72,20 @@ check("validate: path escape refused", "../evil.sh" in errs)
 check("validate: runner file refused", "_runner.tf" in errs)
 check("validate: backend / default provider / reserved variable refused",
       "backend" in errs and "default aws provider" in errs and "variable" in errs)
+check("validate: one-line default provider refused",
+      "default aws provider" in " ".join(lab.validate({"files": good["files"] + [{"path": "p.tf", "content": 'provider "aws" {}'}]})))
+check("validate: 'alias' only in a comment does not count",
+      "default aws provider" in " ".join(lab.validate({"files": good["files"] + [{"path": "p.tf",
+          "content": 'provider "aws" {\n  # alias = "x"\n  region = "us-east-1"\n}'}]})))
+check("validate: override files refused", "override" in " ".join(lab.validate({"files": good["files"] + [{"path": "x_override.tf", "content": ""}]})))
+check("validate: external data source refused",
+      "external" in " ".join(lab.validate({"files": good["files"] + [{"path": "e.tf", "content": 'data "external" "x" {}'}]})))
+check("validate: scripts may not run terraform apply",
+      "terraform output" in " ".join(lab.validate({"files": [f if f["path"] != "fix.sh" else {"path": "fix.sh",
+          "content": "terraform apply -auto-approve"} for f in good["files"]]})))
+check("validate: scripts may read terraform output",
+      lab.validate({"files": [f if f["path"] != "reproduce.sh" else {"path": "reproduce.sh",
+          "content": 'C=$(terraform output -raw cluster_name)'} for f in good["files"]]}) == [])
 check("validate: aliased aws provider allowed",
       lab.validate({"files": good["files"] + [{"path": "x.tf", "content": 'provider "aws" {\n  alias = "use1"\n}\n'}]}) == [])
 check("validate: missing files reported", "missing required file fix.sh" in " ".join(lab.validate({"files": [{"path": "main.tf", "content": ""}]})))
@@ -79,6 +93,34 @@ check("hero_result: last line wins", lab.hero_result("HERO_RESULT: not_reproduce
 check("hero_result: absent", lab.hero_result("done") is None)
 red = lab.redact("arn:aws:iam::300054528837:role/x key ASIAABCDEFGHIJKLMNOP aws_session_token = abc/def")
 check("redact: account id, key id, session token", "300054528837" not in red and "ASIA" not in red and "abc/def" not in red)
+os.environ["OPENAI_API_KEY"] = "zz-not-a-pattern-but-the-real-value-123"
+red = lab.redact("k1 sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAA k2 AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA "
+                 "k3 ghs_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA k4 zz-not-a-pattern-but-the-real-value-123 bucket=hero-pipeline-tfstate-300054528837")
+check("redact: model keys, GitHub tokens, exact secret values, account in bucket name",
+      not any(x in red for x in ("sk-ant-api03", "AIzaSy", "ghs_", "real-value", "300054528837")))
+
+# sandbox: what reaches AI-written code
+captured = {}
+class FakeP:
+    pid, returncode = 0, 0
+    def __init__(self, args, **kw): captured.update(args=args, env=kw["env"])
+    def communicate(self, timeout=None): return "ok", None
+real_popen = lab.subprocess.Popen; lab.subprocess.Popen = FakeP
+os.environ.update(AWS_ACCESS_KEY_ID="AKIAEXAMPLE", AWS_SECRET_ACCESS_KEY="secret-value-xyz", ANTHROPIC_API_KEY="sk-ant-real",
+                  ACTIONS_ID_TOKEN_REQUEST_TOKEN="oidc-request-token")
+tmpw = pathlib.Path(tempfile.mkdtemp())
+lab.TFCACHE = tmpw / ".tfcache"
+lab.run("t", ["bash", "fix.sh"], 60, cwd=tmpw, env={"LAB_NAME": "x"}, sandbox=True)
+argv, env = " ".join(captured["args"]), captured["env"]
+check("sandbox: runs in docker as the runner's uid", captured["args"][:3] == ["docker", "run", "--rm"] and "--user" in captured["args"])
+check("sandbox: AWS credentials passed by name only, never on argv",
+      " -e AWS_SECRET_ACCESS_KEY " in f" {argv} " and "secret-value-xyz" not in argv)
+check("sandbox: model keys and OIDC request token never reach the container",
+      "ANTHROPIC" not in argv and "ACTIONS_ID_TOKEN" not in argv and "ANTHROPIC_API_KEY" not in env
+      and "ACTIONS_ID_TOKEN_REQUEST_TOKEN" not in env)
+check("sandbox: only the lab folder is mounted", argv.count(" -v ") == 2 and f"{tmpw.resolve()}:/lab" in argv)
+lab.subprocess.Popen = real_popen
+shutil.rmtree(tmpw)
 check("slugify", lab.slugify("Debugging ECS: Tasks stuck in PENDING (Fargate)!") == "debugging-ecs-tasks-stuck-in-pending-far")
 
 def plan(*rcs):
@@ -89,6 +131,12 @@ check("plan: big instance refused", check_plan.problems(plan(("aws_instance", {"
 check("plan: managed node group refused", check_plan.problems(plan(("aws_eks_node_group", {}))) != [])
 check("plan: 4 instances refused", check_plan.problems(plan(*[("aws_instance", {"instance_type": "t3.medium"})] * 4)) != [])
 check("plan: 200 GB volume refused", check_plan.problems(plan(("aws_ebs_volume", {"size": 200}))) != [])
+check("plan: io2 volume refused", check_plan.problems(plan(("aws_ebs_volume", {"size": 10, "type": "io2"}))) != [])
+check("plan: dedicated tenancy refused", check_plan.problems(plan(("aws_instance", {"instance_type": "t3.medium", "tenancy": "dedicated"}))) != [])
+check("plan: unlisted resource type refused (dedicated host)", check_plan.problems(plan(("aws_ec2_host", {}))) != [])
+check("plan: typical EKS + k8s lab allowed", check_plan.problems(plan(("aws_vpc", {}), ("aws_subnet", {}), ("aws_eks_cluster", {}),
+      ("aws_iam_role", {}), ("aws_eks_access_entry", {}), ("helm_release", {}), ("kubernetes_namespace_v1", {}),
+      ("aws_vpc_security_group_ingress_rule", {}), ("tls_private_key", {}))) == [])
 
 # ---------- drafter, against the real write allowlist ----------
 tmp = tempfile.mkdtemp(); os.chdir(tmp)
@@ -130,6 +178,8 @@ check("draft: front matter has channels and cleaned tags", 'tags: ["aws", "ecs",
 check("draft: post file may link to GitHub (files never backlink)", "github.com/aws/x/issues/5" in text)
 pr = next(b for m, p, b in sent if p.endswith("/pulls"))
 check("draft: PR closes the topic and neutralizes AI text", pr["body"].endswith("Closes #4") and "aws/x#5" not in pr["body"])
+order = [m for m, p, b in sent]
+check("draft: branch created only after the PR text passed the checks", order.index("POST") >= 0 and sent[0][1].endswith("/git/refs"))
 check("draft: comment + drafted label", any(p.endswith("/issues/4/comments") for m, p, b in sent)
       and any(p.endswith("/issues/4/labels") and b == {"labels": ["drafted"]} for m, p, b in sent))
 
@@ -140,8 +190,59 @@ res.update(status="not_reproduced", last_failure={"step": "reproduce (problem di
 draft.main()
 check("draft: not reproduced -> comment + label, no PR",
       not any(p.endswith("/pulls") for m, p, b in sent) and any(b == {"labels": ["not-reproduced"]} for m, p, b in sent))
+sent.clear()
+res.update(status="failed", last_failure=None, error="RuntimeError: Claude's reply was cut off (max_tokens)")
+(draft.OUT / "result.json").write_text(json.dumps(res))
+draft.main()
+check("draft: early error -> comment shows the error", len(sent) == 1 and "cut off" in sent[0][2]["body"])
 sent.clear(); (draft.OUT / "result.json").unlink()
 draft.main()
 check("draft: no result -> explanatory comment", len(sent) == 1 and sent[0][1].endswith("/issues/4/comments"))
 shutil.rmtree(tmp)
+
+# ---------- lab runner end to end, simulated (no AWS, no docker) ----------
+def simulate(plans, repros, fixes, attempts=3):
+    """plans/repros/fixes: per-attempt outcomes. Returns (result, destroy calls)."""
+    tmp = tempfile.mkdtemp(); os.chdir(tmp)
+    lab.OUT, lab.WORK, lab.GOOD, lab.TFCACHE = pathlib.Path("out"), pathlib.Path("work/lab"), pathlib.Path("work/good"), pathlib.Path("work/.tfcache")
+    lab.EVIDENCE.clear(); lab.MAX_ATTEMPTS = attempts; lab.DRY = False; lab.BUCKET = "b"
+    n = {"plan": 0, "repro": 0, "fix": 0, "lab": 0}; destroys = []
+    def mk():
+        n["lab"] += 1
+        return {"summary": f"v{n['lab']}", "expected": "", "files": [{"path": f, "content": f"v{n['lab']}"} for f in lab.REQUIRED]}
+    llm.claude_json = lambda *a, **k: mk()
+    llm.refine = lambda kind, d, *a, **k: (d, {"chatgpt_approved": True, "points": []})
+    def fake_run(step, cmd, timeout, cwd=None, env=None, record=True, sandbox=False):
+        c = " ".join(cmd)
+        if "terraform plan" in c:
+            ok = plans[n["plan"]]; n["plan"] += 1; return (0, "planned") if ok else (1, "Error: invalid HCL")
+        if "terraform show" in c: return 0, '{"resource_changes": []}'
+        if "reproduce.sh" in c:
+            r_ = repros[n["repro"]]; n["repro"] += 1; return 0, f"HERO_RESULT: {r_}"
+        if "fix.sh" in c:
+            f_ = fixes[n["fix"]]; n["fix"] += 1; return 0, f"HERO_RESULT: {f_}"
+        if "terraform destroy" in c:
+            destroys.append((pathlib.Path(cwd) / "main.tf").read_text()); return 0, ""
+        if "sts" in c: return 0, "300054528837"
+        if "list-objects-v2" in c: return 0, "[]"
+        if cmd[0] == "aws" and "--output" in cmd: return 0, "{}"
+        return 0, ""
+    lab.run, lab.s3 = fake_run, (lambda *a: (0, ""))
+    def gh_issue(m, u, b=None, h=None, timeout=30):
+        return {"title": "Why ECS tasks stay PENDING", "body": "x", "labels": [{"name": "problem"}]}
+    r._send = gh_issue
+    lab.main()
+    res = json.loads((lab.OUT / "result.json").read_text())
+    os.chdir("/"); shutil.rmtree(tmp)
+    return res, destroys
+
+res, d = simulate([True], ["reproduced"], ["fixed"])
+check("lab sim: happy path -> reproduced_and_fixed, destroyed once", res["status"] == "reproduced_and_fixed" and res["destroyed"] and len(d) == 1)
+res, d = simulate([True, False], ["not_reproduced"], [], attempts=2)
+check("lab sim: broken revision -> destroy uses the last config that planned (v1, not v2)", d == ["v1"] and res["destroyed"])
+check("lab sim: last failure recorded", res["last_failure"]["step"] == "plan" and res["status"] == "failed")
+res, d = simulate([True, False, True], ["not_reproduced", "reproduced"], ["fixed"])
+check("lab sim: recovers on attempt 3 and destroys v3", res["status"] == "reproduced_and_fixed" and res["attempts"] == 3 and d == ["v3"])
+res, d = simulate([False, False, False], [], [])
+check("lab sim: nothing ever planned -> nothing to destroy", res["destroyed"] is True and d == [])
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)

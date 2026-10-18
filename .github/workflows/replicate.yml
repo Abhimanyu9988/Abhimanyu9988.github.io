@@ -31,7 +31,7 @@ jobs:
         (github.event.sender.login == 'Abhimanyu9988' || github.event.sender.login == 'hero-bot-abhimanyu9988[bot]')))
     runs-on: ubuntu-latest
     environment: aws-lab
-    timeout-minutes: 130
+    timeout-minutes: 150
     permissions:
       contents: read
       issues: read
@@ -43,9 +43,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
+      # Terraform and every AI-written script run inside this image, not on the runner.
+      - name: build lab sandbox
+        if: env.DRY_RUN != 'true'
+        timeout-minutes: 10
+        run: docker build -q -t hero-lab:local -f pipeline/lab.Dockerfile pipeline
       - if: env.DRY_RUN != 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -54,7 +56,7 @@ jobs:
           role-duration-seconds: 7200
           role-session-name: replicate-${{ github.run_id }}
       - name: replicate
-        timeout-minutes: 100
+        timeout-minutes: 112
         run: python3 pipeline/lab.py
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
@@ -68,9 +70,17 @@ jobs:
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+      # Fresh credentials: the first session may be close to its 2-hour limit by now.
+      - if: always() && env.DRY_RUN != 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 3600
+          role-session-name: safety-${{ github.run_id }}
       - name: safety-net destroy
         if: always() && env.DRY_RUN != 'true'
-        timeout-minutes: 25
+        timeout-minutes: 30
         run: python3 pipeline/lab.py --destroy-only
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}

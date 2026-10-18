@@ -6,7 +6,7 @@ Gemini rules on disagreements. The bot opens a PR from draft/<slug> with the pos
 raw output. Abhimanyu reviews, edits and merges; publish.yml then publishes it everywhere.
 """
 import base64, datetime, json, os, pathlib, re
-from radar import HOME_REPO, gh, neutralize, comment, add_label
+from radar import HOME_REPO, gh, safe_text, assert_safe, comment, add_label, Unsafe
 import llm
 
 OUT = pathlib.Path("out")
@@ -47,7 +47,8 @@ def review_md(name, log):
     head = f"**{name}:** ChatGPT {'approved it as written' if log.get('chatgpt_approved') else 'raised points'}"
     if not pts:
         return head + "."
-    lines = [f"- _{p.get('severity')}_ {neutralize(p.get('issue'))[:240]} → {p.get('outcome')}" for p in pts[:12]]
+    lines = [f"- _{safe_text(p.get('severity'), 'note')[:12]}_ {safe_text(p.get('issue'))[:240]} → "
+             f"{safe_text(p.get('outcome'))}" for p in pts[:12]]
     return head + f" ({len(pts)}):\n" + "\n".join(lines)
 
 def put(branch, path, text, msg):
@@ -82,13 +83,14 @@ def write_post(res, topic, slug):
 
 def open_pr(issue_no, res, topic):
     slug = res["slug"][:60].strip("-")
+    if not branch_free(f"draft/{slug}"):
+        slug = f"{slug[:50].strip('-')}-{res['run_id'][-6:]}"      # branch, post and lab folder all move
     branch = f"draft/{slug}"
-    if not branch_free(branch):
-        branch = f"draft/{slug[:50].strip('-')}-{res['run_id'][-6:]}"
     post, log, lab = write_post(res, topic, slug)
     tags = [t for t in (re.sub(r"[^a-z0-9]", "", str(t).lower()) for t in post.get("tags", [])) if t][:4]
     today = datetime.date.today().isoformat()
-    front = "\n".join(["---", f"title: {json.dumps(post['title'][:90])}", f"description: {json.dumps(post['description'][:300])}",
+    j = lambda v: json.dumps(v, ensure_ascii=False)
+    front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
                        f"tags: {json.dumps(tags)}", "channels: [\"devto\", \"hashnode\"]", f"lab: labs/{slug}", "---", ""])
     files = {f"site/_posts/{today}-{slug}.md": front + post["body"].strip() + "\n"}
     for name, text in lab.items():
@@ -102,25 +104,27 @@ def open_pr(issue_no, res, topic):
     for p in sorted((OUT / "evidence").glob("*.log")):
         files[f"labs/{slug}/evidence/{p.name}"] = p.read_text()
 
-    base = gh("GET", f"/repos/{HOME_REPO}/git/ref/heads/main")["object"]["sha"]
-    gh("POST", f"/repos/{HOME_REPO}/git/refs", {"ref": f"refs/heads/{branch}", "sha": base})
-    for path, text in files.items():
-        put(branch, path, text, f"draft: add {path}")
     warn = "" if res.get("destroyed") else ("\n\n⚠️ **The lab may not have been fully destroyed.** The next lab run "
                                              "retries automatically; check the AWS console if you're worried.")
     body = (f"Draft post for topic issue no. {issue_no}, replicated on the AWS lab account.\n\n"
-            f"**Lab:** {neutralize(res.get('summary'))}\n\n"
+            f"**Lab:** {safe_text(res.get('summary'))}\n\n"
             f"**Run:** reproduced and fixed in attempt {res.get('attempts')}, {res.get('minutes')} min total "
             f"(workflow run {res['run_id']}).{warn}\n\n"
             f"{review_md('Lab review', res.get('review'))}\n\n{review_md('Article review', log)}\n\n"
-            f"**Model usage:** {llm.usage_summary()}\n\n"
+            f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n"
             "**Before you merge** (merging publishes to the site, dev.to and Hashnode):\n"
             "- [ ] Every output in the post matches a file in the lab's evidence folder\n"
             "- [ ] The cause is stated no more strongly than the sources support\n"
             "- [ ] Add your own intro or story, and make the title yours\n\n"
-            f"Closes #{issue_no}")
-    pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": neutralize("Draft: " + post["title"])[:120],
-                                                  "head": branch, "base": "main", "body": body})
+            )
+    title = safe_text("Draft: " + post["title"], "Draft post")[:120]
+    assert_safe(title); assert_safe(body)          # check before anything is created, so a failure leaves no mess
+    base = gh("GET", f"/repos/{HOME_REPO}/git/ref/heads/main")["object"]["sha"]
+    gh("POST", f"/repos/{HOME_REPO}/git/refs", {"ref": f"refs/heads/{branch}", "sha": base})
+    for path, text in files.items():
+        put(branch, path, text, f"draft: add {path}")
+    pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": title, "head": branch, "base": "main",
+                                                  "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
     comment(issue_no, f"✅ Replicated and fixed. The draft post is ready for your review in pull request no. "
                       f"{pr['number']} (branch {branch}).{warn}")
@@ -136,24 +140,42 @@ def main():
     res = json.loads(rf.read_text())
     topic = json.loads((OUT / "topic.json").read_text()) if (OUT / "topic.json").exists() else {}
     if res["status"] == "reproduced_and_fixed":
-        open_pr(issue_no, res, topic); return
+        try:
+            open_pr(issue_no, res, topic)
+        except Unsafe:
+            comment(issue_no, "Replicated and fixed, but the draft's PR text failed the link-safety check, so no PR "
+                              f"was opened. The lab and its output are in the `lab` attachment of workflow run {res['run_id']}.")
+        return
     warn = "" if res.get("destroyed") in (True, None) else "\n\n⚠️ **The lab may not have been fully destroyed.** The next run retries."
     if res["status"] == "dry_run":
-        msg = (f"Dry run: the panel wrote and reviewed a lab; AWS was not touched.\n\n**Lab:** {neutralize(res.get('summary'))}"
+        msg = (f"Dry run: the panel wrote and reviewed a lab; AWS was not touched.\n\n**Lab:** {safe_text(res.get('summary'))}"
                f"\n\n{review_md('Lab review', res.get('review'))}\n\n**Model usage:** {res.get('usage')}")
     else:
         lf = res.get("last_failure") or {}
-        out = neutralize(lf.get("output", ""))[-1500:].replace("```", "'''")
+        out = safe_text(lf.get("output") or res.get("error") or "", "[output left out: failed the link-safety check]")[-1500:]
+        out = out.replace("```", "'''")
         nice = {"not_reproduced": "\U0001f50e The lab ran but could not reproduce the problem.",
                 "reproduced_fix_failed": "\U0001f9ea The lab reproduced the problem, but the fix did not work.",
                 "failed": "❌ The lab did not get to a result."}.get(res["status"], res["status"])
         msg = (f"{nice} {res.get('attempts')} attempt(s), {res.get('minutes')} min, workflow run {res['run_id']}."
-               f"{warn}\n\n**Last failure:** {neutralize(lf.get('step'))}\n```\n{out}\n```\n\n"
-               f"**Lab:** {neutralize(res.get('summary'))}\n\nThe lab files and raw output are in the run's `lab` "
+               f"{warn}\n\n**Last failure:** {safe_text(lf.get('step') or 'before the lab ran')}\n```\n{out}\n```\n\n"
+               f"{_cleanup_md(res)}**Lab:** {safe_text(res.get('summary') or 'not written')}\n\nThe lab files and raw output are in the run's `lab` "
                f"attachment. Remove and re-add the `replicate` label to retry.\n\n**Model usage:** {res.get('usage')}")
         if res["status"] == "not_reproduced":
             add_label(issue_no, "not-reproduced")
-    comment(issue_no, msg)
+    try:
+        comment(issue_no, msg)
+    except Unsafe:
+        comment(issue_no, f"The lab run ended with status {res['status']}. Details failed the link-safety check; see the "
+                          f"`lab` attachment of workflow run {res['run_id']}.")
+
+def _cleanup_md(res):
+    acts = (res.get("janitor_before") or []) + (res.get("janitor_after") or [])
+    swept = [s for s in res.get("swept") or [] if s.get("destroyed")]
+    if not acts and not swept:
+        return ""
+    lines = [f"- destroyed leftover lab {safe_text(s['lab'])}" for s in swept] + [f"- {safe_text(a)}" for a in acts[:15]]
+    return "**Cleanup of leftovers:**\n" + "\n".join(lines) + "\n\n"
 
 if __name__ == "__main__":
     main()

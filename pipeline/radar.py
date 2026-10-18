@@ -42,7 +42,7 @@ GitHub Actions job (about 60 minutes of wall time, under 1 USD per run).
 - Services the lab can use: EKS, EC2, ECS (incl. Fargate in public subnets), ECR, ELB, CloudWatch, Logs, SQS,
   EventBridge, Application Auto Scaling, SSM parameters (read). Not available: RDS, S3 buckets, Lambda, Route 53, KMS.
 - IAM: only roles named hero-lab-* that carry the permissions boundary. EKS Pod Identity and IRSA both work.
-- Tools on the runner: terraform, aws CLI v2, kubectl, helm, jq, curl, docker."""
+- Tools in the lab sandbox: terraform, aws CLI v2, kubectl, helm, jq, curl, git, openssl (no docker)."""
 # Sources of the deleted issues 9 and 10. Never use them again.
 SKIP_SOURCES = {
     "https://github.com/aws/karpenter-provider-aws/issues/9616",
@@ -81,10 +81,16 @@ def _describe(m):
         return f"{repo} release {p[4][:40]}"
     return f"{repo} on GitHub"
 
+REL_PATH = re.compile(r"(?<![\w.:/-])/([\w.-]+)/([\w.-]+)/(issues|pull|pulls|discussions|commit)/(\w+)", re.I)
+
 def neutralize(s):
-    """Turn GitHub links and references into plain text, and break @mentions."""
-    s = str(s or "").replace("<", "\u2039").replace(">", "\u203a")
+    """Turn GitHub links and references into plain text, and break @mentions. Works on the decoded
+    text (the same forms assert_safe checks), so encoded tricks can't survive it."""
+    s = _views(str(s or ""))[-1]
+    s = re.sub(r"github\s*\.\s*com", "github.com", ZW.sub("", s), flags=re.I)
+    s = s.replace("<", "\u2039").replace(">", "\u203a")
     s = GH_URL.sub(_describe, s)
+    s = REL_PATH.sub(lambda m: f"{m[1]}/{m[2]} {KINDS.get(m[3].lower(), m[3])} {m[4][:40]}", s)
     s = XREF.sub(r"\1 issue \2", s)
     s = SHAREF.sub(r"\1 commit \2", s)
     s = HASHREF.sub(r"no. \1", s)
@@ -100,6 +106,15 @@ def _views(text):
             break
         out.append(t)
     return out
+
+def safe_text(text, fallback="[left out: failed the link-safety check]"):
+    """neutralize(), and if anything still fails assert_safe, a fixed placeholder instead."""
+    t = neutralize(text)
+    try:
+        assert_safe(t)
+        return t
+    except Unsafe:
+        return fallback
 
 def assert_safe(text):
     """Final check on the complete text, URLs included. Raises Unsafe."""
@@ -155,7 +170,7 @@ def call(method, url, body=None, headers=None, timeout=30):
     return _send(method, url, body, headers, timeout)
 
 _H = re.escape(f"/repos/{HOME_REPO}")
-CLOSES = re.compile(r"^Closes #\d+$", re.M)       # the one reference code (never AI) adds to a draft PR
+CLOSES = re.compile(r"\n\nCloses #\d+\Z")       # the one reference code (never AI) appends to a draft PR
 
 def _issue(b):
     for k in ("title", "body"):

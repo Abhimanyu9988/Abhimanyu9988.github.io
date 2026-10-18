@@ -32,10 +32,15 @@ I review and edit every post before it goes out.
 
 ## Guardrails
 
-- **AWS:** labs run in a separate account through a short-lived OIDC role with a permissions boundary
-  (one region, small instance types only, no NAT gateways, no node groups or ASGs, no IAM escalation), a plan
-  check before every apply, a $10/month budget that pauses the lab role at 80%, and a destroy that always runs,
-  plus a sweep that removes anything a crashed run left behind.
+- **AWS:** labs run in a separate, dedicated account through a short-lived OIDC role with a permissions boundary
+  (one region, small instance types and volumes, default tenancy, no reservations, dedicated hosts, NAT gateways,
+  node groups or ASGs, no IAM escalation). There is an allowlist plan check before every apply and a $10/month
+  budget that pauses the lab role at 80%. Destroy always runs, from the last config that planned cleanly. A sweep
+  and a janitor remove anything billable that a crashed run left behind. Only one lab runs at a time, and a third
+  queued request replaces the second.
+- **Sandbox:** Terraform and every AI-written script run in a throwaway container (`pipeline/lab.Dockerfile`)
+  that gets only the AWS credentials. It never sees the model keys, GitHub tokens or the runner. Logs and evidence
+  are scrubbed of account IDs and keys before they're published.
 - **GitHub:** the bot can only open issues, comment, label, create `draft/*` branches with files under
   `site/_posts/` and `labs/`, and open PRs into `main` that I must approve. Nothing it writes to an issue,
   comment, PR or commit message can contain a GitHub link, reference or @mention, so other projects never get

@@ -100,7 +100,25 @@ resource "aws_iam_policy" "boundary" {
     { Sid      = "AllowedInstanceTypesOnly", Effect = "Deny", Action = "ec2:RunInstances",
       Resource = "arn:aws:ec2:*:*:instance/*",
     Condition = { StringNotEquals = { "ec2:InstanceType" = local.instances } } },
-    { Sid = "NoNat", Effect = "Deny", Action = "ec2:CreateNatGateway", Resource = "*" }
+    { Sid = "NoNat", Effect = "Deny", Action = "ec2:CreateNatGateway", Resource = "*" },
+    { Sid    = "NoCommitmentsOrPricyNetworking", Effect = "Deny", Resource = "*",
+      Action = ["ec2:Purchase*", "ec2:AllocateHosts", "ec2:ModifyHosts", "ec2:CreateCapacityReservation*",
+        "ec2:ModifyCapacityReservation*", "ec2:ModifyInstanceCapacityReservationAttributes",
+        "ec2:CreateTransitGateway*", "ec2:CreateVpnConnection", "ec2:CreateVpnGateway",
+        "ec2:CreateClientVpnEndpoint", "ec2:CreateTrafficMirror*", "ec2:CreateVerifiedAccess*",
+        "ec2:CreateIpam*", "ec2:ModifyVolume", "ec2:EnableFastSnapshotRestores",
+    "ec2:CreateDefaultVpc"] },
+    { Sid = "NoInstanceTypeChangeAfterLaunch", Effect = "Deny", Action = "ec2:ModifyInstanceAttribute",
+    Resource = "*", Condition = { Null = { "ec2:Attribute/InstanceType" = "false" } } },
+    { Sid = "DefaultTenancyOnly", Effect = "Deny", Action = "ec2:RunInstances",
+      Resource  = "arn:aws:ec2:*:*:instance/*",
+    Condition = { StringNotEquals = { "ec2:Tenancy" = "default" } } },
+    { Sid    = "CheapVolumesOnly", Effect = "Deny", Action = ["ec2:CreateVolume", "ec2:RunInstances"],
+      Resource  = "arn:aws:ec2:*:*:volume/*",
+    Condition = { StringEquals = { "ec2:VolumeType" = ["io1", "io2"] } } },
+    { Sid    = "SmallVolumesOnly", Effect = "Deny", Action = ["ec2:CreateVolume", "ec2:RunInstances"],
+      Resource  = "arn:aws:ec2:*:*:volume/*",
+    Condition = { NumericGreaterThan = { "ec2:VolumeSize" = 50 } } }
   ] })
 }
 
