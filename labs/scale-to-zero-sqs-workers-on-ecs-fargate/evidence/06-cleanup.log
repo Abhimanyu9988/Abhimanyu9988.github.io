@@ -1,0 +1,4 @@
+$ bash cleanup.sh
+# exit 0 after 17s
+
+
