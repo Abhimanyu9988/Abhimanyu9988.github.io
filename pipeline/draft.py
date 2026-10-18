@@ -50,10 +50,11 @@ Sections after the TL;DR (markdown, no front matter, no H1):
      Readers must be able to follow this section by hand without running the scripts.
   "## What I didn't test": honest limits.
   "## Cost and time": the run's real minutes and resource counts; region eu-central-1.
-  "## Sources": the source URLs as a list.
-End with one or two sentences of practical advice in Abhi's voice, then this exact line:
-_I reproduced this in a disposable AWS lab. The lab code and raw output are in the repo. Drafted with AI assistance
-and reviewed by me._
+  "## The takeaway": one or two sentences of practical advice in Abhi's voice.
+  "## Sources": each source as a markdown link with a readable title, e.g.
+     "- [Stack Overflow: ECS Fargate SQS autoscaling with min capacity 0](https://...)", never a bare URL.
+Then a line with only "---", then this exact line, on ONE line:
+_I reproduced this in a disposable AWS lab. The lab code and raw output are in the repo. Drafted with AI assistance and reviewed by me._
 
 Write the steps for a READER, not about the pipeline: plain `terraform init` and `terraform apply` (the lab's
 providers.tf already sets the region), never the pipeline's own S3 backend settings, -backend-config, plan files,
@@ -70,7 +71,12 @@ LinkedIn post (field "linkedin"), plain text, no markdown, 120 to 220 words:
 - Who hits it and why it hurts, what I found in the lab (cause + fix) in two or three short lines.
 - One question that invites people to share their experience.
 - Then the line: "Full write-up, every command and the lab: {POST_URL}"
-- Then 3 to 5 hashtags. At most two emojis in the whole post."""
+- Then 3 to 5 hashtags. At most two emojis in the whole post. No @mentions (Abhi tags people himself).
+
+Source replies (field "source_replies"): for EACH source URL, a short reply Abhi could post on that thread himself,
+60 to 120 words, first person, helpful on its own (what I reproduced, what fixed it, one caveat), ending with
+"I wrote up the full replication here: {POST_URL}". No greeting fluff, no self-promotion beyond that one link.
+Stack Overflow does not allow AI-written answers, so these are drafts Abhi rewrites in his own words."""
 
 ARTICLE_RUBRIC = """You are the technical checker. Blocking: any command, output, error text, version or number that is
 not in EVIDENCE or LAB; a command in the step-by-step section that differs from the lab files, or a command the
@@ -78,12 +84,14 @@ scripts run that is missing from it; a claim about the cause stronger than the s
 missing reproduction or fix verification; anything in the LinkedIn post that the article does not support; anything
 that would mislead a beginner. Minor: tone that reads robotic or like an AI, clarity, structure, title, length."""
 
-POST_SCHEMA = {"type": "object", "required": ["title", "description", "tags", "body", "linkedin"], "properties": {
+POST_SCHEMA = {"type": "object", "required": ["title", "description", "tags", "body", "linkedin", "source_replies"], "properties": {
     "title": {"type": "string", "description": "max 90 characters, specific and human, no clickbait"},
     "description": {"type": "string", "description": "one or two sentences for previews"},
     "tags": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
     "body": {"type": "string", "description": "the article in markdown"},
-    "linkedin": {"type": "string", "description": "the LinkedIn post, plain text, with {POST_URL} placeholder"}}}
+    "linkedin": {"type": "string", "description": "the LinkedIn post, plain text, with {POST_URL} placeholder"},
+    "source_replies": {"type": "array", "items": {"type": "object", "required": ["url", "text"], "properties": {
+        "url": {"type": "string"}, "text": {"type": "string"}}}}}}
 
 def review_md(name, log):
     if not log:
@@ -164,10 +172,14 @@ def open_pr(issue_no, res, topic):
     tags = [t for t in (re.sub(r"[^a-z0-9]", "", str(t).lower()) for t in post.get("tags", [])) if t][:4]
     today = datetime.date.today().isoformat()
     j = lambda v: json.dumps(v, ensure_ascii=False)
-    linkedin = str(post.get("linkedin", "")).strip()
+    linkedin = re.sub(r"@(?=\w)", "", str(post.get("linkedin", "")).strip())
+    srcs = {x.get("url") for x in topic.get("sources") or [] if isinstance(x, dict)}
+    replies = [{"url": str(r["url"]), "text": re.sub(r"@(?=\w)", "", str(r.get("text", "")).strip())}
+               for r in post.get("source_replies") or []
+               if isinstance(r, dict) and r.get("text") and (not srcs or r.get("url") in srcs)]
     front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
                        f"tags: {json.dumps(tags)}", "channels: [\"devto\", \"hashnode\"]", f"lab: labs/{slug}",
-                       f"linkedin: {j(linkedin)}", "---", ""])
+                       f"linkedin: {j(linkedin)}", f"replies: {j(replies)}", "---", ""])
     files = {f"site/_posts/{today}-{slug}.md": front + post["body"].strip() + "\n"}
     for name, text in lab.items():
         files[f"labs/{slug}/{name}"] = text
@@ -189,7 +201,11 @@ def open_pr(issue_no, res, topic):
             f"file `site/_posts/{today}-{slug}.md` in this PR to change it.\n\n"
             f"<details open><summary><b>Read the post</b></summary>\n\n{preview}\n\n</details>\n\n"
             f"<details><summary><b>LinkedIn draft</b> (you'll get a one-tap link after publishing)</summary>\n\n"
-            f"{li_preview}\n\n</details>\n\n---\n\n"
+            f"{li_preview}\n\n</details>\n\n"
+            + "".join(f"<details><summary><b>Reply for the source thread</b> ({safe_text(r['url'], 'a source')})"
+                      "</summary>\n\n" + safe_text(r["text"].replace("{POST_URL}", "(link to the post)"), "[left out]")
+                      + "\n\n</details>\n\n" for r in replies)
+            + "---\n\n"
             f"**Topic:** issue no. {issue_no}. **Lab:** {safe_text(res.get('summary'))}\n\n"
             f"**Run:** reproduced and fixed in attempt {res.get('attempts')}, {res.get('minutes')} min total "
             f"(workflow run {res['run_id']}).{warn}\n\n{verdict_md(v)}\n\n"

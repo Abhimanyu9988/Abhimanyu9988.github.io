@@ -13,6 +13,7 @@ import base64, calendar, hashlib, html, json, os, re, time, urllib.error, urllib
 import xml.etree.ElementTree as ET
 
 HOME_REPO = "Abhimanyu9988/Abhimanyu9988.github.io"
+PROFILE_REPO = "Abhimanyu9988/Abhimanyu9988"     # his own profile repo: LinkedIn drafts only
 REPO = os.environ["REPO"]
 if REPO != HOME_REPO:
     raise SystemExit(f"refusing to run: REPO is {REPO!r}, not {HOME_REPO}")
@@ -197,6 +198,11 @@ def _analytics(b):
         raise Blocked("analytics files may only be written to the analytics branch")
     assert_safe(b.get("message", ""))
 
+def _linkedin_draft(b):
+    if b.get("labels") != ["linkedin-draft"] or b.get("assignees"):
+        raise Blocked("profile repo: only issues labelled exactly linkedin-draft")
+    _issue(b)
+
 def _pull(b):
     if b.get("base") != "main" or not re.fullmatch(r"draft/[a-z0-9][a-z0-9-]{0,80}", str(b.get("head", ""))):
         raise Blocked("PRs must go from draft/<slug> into main")
@@ -212,6 +218,7 @@ WRITE_RULES = [
     ("PUT", rf"{_H}/contents/(?:site/_posts|labs)/[\w.-]+(?:/[\w.-]+){{0,3}}", _contents),
     ("PUT", rf"{_H}/contents/analytics/[\w.-]+", _analytics),
     ("POST", rf"{_H}/pulls", _pull),
+    ("POST", rf"{re.escape(f'/repos/{PROFILE_REPO}')}/issues", _linkedin_draft),
 ]
 
 def gh(method, path, body=None):
