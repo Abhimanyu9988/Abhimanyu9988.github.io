@@ -31,6 +31,17 @@ except RuntimeError as e: ok = "cut off" in str(e)
 check("claude_json: truncation is reported", ok)
 llm._claude_stream = real_stream
 
+# ---------- Gemini model choice ----------
+llm._models.pop("gemini", None)
+real_call = llm.call
+llm.call = lambda m, u, *a, **k: {"models": [{"name": n, "supportedGenerationMethods": ["generateContent"]} for n in
+    ("models/gemini-2.5-pro", "models/gemini-3.1-pro-preview", "models/gemini-3.8-flash", "models/gemini-2.5-flash",
+     "models/gemini-3.1-pro-preview-tts", "models/gemini-embedding-001")]}
+os.environ["GEMINI_API_KEY"] = "x"
+check("gemini: newest pro (preview ok) first, then fallbacks", llm.gemini_models() ==
+      ["models/gemini-3.1-pro-preview", "models/gemini-2.5-pro", "models/gemini-3.8-flash", "models/gemini-2.5-flash"])
+llm.call = real_call; llm._models.pop("gemini", None)
+
 # ---------- panel votes and verdict (all three vote, 2 of 3 decides) ----------
 VOTES = {"claude": {"t1": "yes", "t2": "yes", "t3": "no"},
          "chatgpt": {"t1": "yes", "t2": "no", "t3": "no"},

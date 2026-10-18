@@ -83,11 +83,11 @@ def gemini_models():
         names = [m["name"] for m in data.get("models", [])
                  if "generateContent" in m.get("supportedGenerationMethods", [])]
         out = []
-        for kind in ("pro", "flash"):
-            got = [(n, re.fullmatch(rf"models/gemini-(\d+(?:\.\d+)?)-{kind}", n)) for n in names]
-            got = sorted(((n, m) for n, m in got if m), key=lambda x: _ver(x[1].group(1)), reverse=True)
-            if got:
-                out.append(got[0][0])
+        for kind in ("pro", "flash"):          # newest version first; a GA model beats a preview of the same version
+            got = [(n, re.fullmatch(rf"models/gemini-(\d+(?:\.\d+)?)-{kind}(-preview)?", n)) for n in names]
+            got = sorted(((n, m) for n, m in got if m), key=lambda x: (_ver(x[1].group(1)), not x[1].group(2)),
+                         reverse=True)
+            out += [n for n, _ in got[:2]]     # a fallback of the same kind in case the newest is retired for us
         if not out:
             raise RuntimeError("no gemini-N-pro/flash model visible to this key; set GEMINI_MODEL")
         _models["gemini"] = out
