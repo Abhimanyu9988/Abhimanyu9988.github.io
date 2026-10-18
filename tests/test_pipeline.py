@@ -149,6 +149,12 @@ check("publish: Medium import and dev.to link listed", "medium.com/p/import" in 
 check("publish: report text has no live @mention", "@AWS" not in block.split("](https://www.linkedin.com")[0]
       and "@\u200bAWS" in block)
 check("publish: report carries the post marker for /stats", "<!-- post: why-ecs -->" in block)
+check("draft: literal \\t fixed in output blocks only",
+      draft.fix_output_tabs("```text\nA\\tB\n```\n```bash\nprintf 'a\\tb'\n```") == "```text\nA\tB\n```\n```bash\nprintf 'a\\tb'\n```")
+block2 = "\n".join(publish.share_block({"title": "T", "linkedin": "x", "replies": [{"url": "https://stackoverflow.com/q/1",
+          "text": "IF(running > 0, a) <b>"}]}, "https://abhimanyu9988.github.io/posts/t/", {}, "t"))
+check("publish: replies copy cleanly (real > and <), LinkedIn line doesn't claim a draft exists",
+      "IF(running > 0, a) <b>" in block2 and "a draft is waiting" not in block2)
 post_meta["replies"] = [{"url": "https://stackoverflow.com/questions/80006730/x", "text": "I reproduced this. {POST_URL}"}]
 block = "\n".join(publish.share_block(post_meta, "https://abhimanyu9988.github.io/posts/why-ecs/",
                                        {"medium": {"url": "https://medium.com/@abhi/draft-1"}}, "why-ecs"))
@@ -440,6 +446,24 @@ check("hero monthly: talk kit and student session issues, each with the /stats h
       [o[2] for o in opened] == ["talk-kit", "teaching"] and all("/stats why-ecs" in o[1] for o in opened)
       and "Answer: a" in opened[1][1])
 os.chdir("/"); shutil.rmtree(tmp)
+
+# ---------- Medium-ready pages ----------
+try:
+    import medium_pages
+    mt = tempfile.mkdtemp()
+    pathlib.Path(mt, "posts").mkdir()
+    pathlib.Path(mt, "posts", "2026-10-18-why-ecs.md").write_text(
+        '---\ntitle: "Why ECS > zero"\ndescription: "d"\n---\nIntro.\n\n1. Get the lab.\n\n```bash\ngit clone x\n```\n\n'
+        '2. Apply it.\n\n```text\nApply complete!\n```\n\n## Sources\n\n- [SO question](https://stackoverflow.com/q/1)\n')
+    medium_pages.build(f"{mt}/posts", f"{mt}/out")
+    page = pathlib.Path(mt, "out", "why-ecs", "index.html").read_text()
+    check("medium page: plain code blocks, Step headings, canonical to the real post, noindex, links kept",
+          page.count("<pre><code>") == 2 and "<h3>Step 1: Get the lab</h3>" in page and "<h3>Step 2: Apply it</h3>" in page
+          and 'rel="canonical" href="https://abhimanyu9988.github.io/posts/why-ecs/"' in page and "noindex" in page
+          and 'href="https://stackoverflow.com/q/1"' in page and "Why ECS &gt; zero" in page)
+    shutil.rmtree(mt)
+except ImportError:
+    print("SKIP medium page test (python-markdown not installed)")
 
 # ---------- lab runner end to end, simulated (no AWS, no docker) ----------
 def simulate(plans, repros, fixes, attempts=3):

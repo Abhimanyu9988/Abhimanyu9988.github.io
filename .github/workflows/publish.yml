@@ -10,6 +10,10 @@ jobs:
     environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
     steps:
       - uses: actions/checkout@v4
+      # Medium-ready copies (plain HTML Medium's importer understands), built into the site before Jekyll runs.
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install markdown==3.10.3 && python pipeline/medium_pages.py
       - uses: actions/configure-pages@v5
       - uses: actions/jekyll-build-pages@v1
         with: { source: ./site, destination: ./_site }

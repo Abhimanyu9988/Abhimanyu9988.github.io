@@ -16,4 +16,5 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 tests/test_safety.py
+      - run: pip install markdown==3.10.3
       - run: python3 tests/test_pipeline.py

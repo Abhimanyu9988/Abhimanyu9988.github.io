@@ -108,6 +108,15 @@ def review_md(name, log):
              f"{safe_text(p.get('outcome'))}" for p in pts[:12]]
     return head + f" ({len(pts)}):\n" + "\n".join(lines)
 
+def fix_output_tabs(md):
+    """Writers sometimes double-escape tabs in pasted output; turn a literal \\t back into a tab, but only inside
+    output blocks (```text or bare), never in shell commands where \\t can be intended."""
+    def fix(m):
+        if m.group(1).strip().lower() not in ("", "text", "txt", "console", "output"):
+            return m.group(0)
+        return f"```{m.group(1)}\n{m.group(2).replace(chr(92) + 't', chr(9))}```"
+    return re.sub(r"```([^\n`]*)\n(.*?)```", fix, md, flags=re.S)
+
 def headline_md(h):
     if not h:
         return ""
@@ -260,7 +269,7 @@ def open_pr(issue_no, res, topic):
     front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
                        f"tags: {json.dumps(tags)}", "channels: [\"devto\", \"hashnode\"]", f"lab: labs/{slug}",
                        f"linkedin: {j(linkedin)}", f"replies: {j(replies)}", "---", ""])
-    files = {f"site/_posts/{today}-{slug}.md": front + post["body"].strip() + "\n"}
+    files = {f"site/_posts/{today}-{slug}.md": front + fix_output_tabs(post["body"]).strip() + "\n"}
     for name, text in lab.items():
         files[f"labs/{slug}/{name}"] = text
     files[f"labs/{slug}/providers.tf"] = (
