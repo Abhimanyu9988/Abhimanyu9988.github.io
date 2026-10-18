@@ -48,6 +48,19 @@ jobs:
         if: env.DRY_RUN != 'true'
         timeout-minutes: 10
         run: docker build -q -t hero-lab:local -f pipeline/lab.Dockerfile pipeline
+      # Shows who GitHub says this job is (claims only, never the token), as a run annotation.
+      # The AWS role trusts exactly repo:<owner>/<repo>:environment:aws-lab.
+      - name: show OIDC subject
+        if: env.DRY_RUN != 'true'
+        run: |
+          python3 - <<'PY'
+          import base64, json, os, urllib.request
+          req = urllib.request.Request(os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"] + "&audience=sts.amazonaws.com",
+                                       headers={"Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]})
+          part = json.load(urllib.request.urlopen(req))["value"].split(".")[1]
+          claims = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+          print("::notice title=OIDC subject::" + json.dumps({k: claims.get(k) for k in ("sub", "aud", "environment", "ref")}))
+          PY
       - if: env.DRY_RUN != 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
