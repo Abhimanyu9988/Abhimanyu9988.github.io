@@ -7,6 +7,10 @@ sys.path.insert(0, PIPE)
 import radar as r, llm, lab, draft, check_plan
 
 fails = 0
+def raises_unsafe(text):
+    try: r.assert_safe(text); return False
+    except r.Unsafe: return True
+
 def check(name, ok):
     global fails
     print(("PASS " if ok else "FAIL ") + name); fails += not ok
@@ -134,6 +138,32 @@ check("publish: Medium import and dev.to link listed", "medium.com/p/import" in 
 check("publish: report text has no live @mention", "@AWS" not in block.split("](https://www.linkedin.com")[0]
       and "@\u200bAWS" in block)
 check("publish: report carries the post marker for /stats", "<!-- post: why-ecs -->" in block)
+post_meta["replies"] = [{"url": "https://stackoverflow.com/questions/80006730/x", "text": "I reproduced this. {POST_URL}"}]
+block = "\n".join(publish.share_block(post_meta, "https://abhimanyu9988.github.io/posts/why-ecs/",
+                                       {"medium": {"url": "https://medium.com/@abhi/draft-1"}}, "why-ecs"))
+check("publish: source reply ready to post, with the SO rule and the real link",
+      "I reproduced this. https://abhimanyu9988.github.io/posts/why-ecs/" in block and "own words" in block)
+check("publish: Medium draft link instead of import when a draft was made",
+      "medium.com/@abhi/draft-1" in block and "medium.com/p/import" not in block)
+calls_m = []
+def fake_medium_call(method, url, payload, headers):
+    calls_m.append((method, url, payload))
+    return {"data": {"id": "u1"}} if url.endswith("/me") else {"data": {"id": "p1", "url": "https://medium.com/p/p1"}}
+publish.call = fake_medium_call; os.environ["MEDIUM_TOKEN"] = "x"
+pid, url = publish.medium({"title": "T", "description": "D", "tags": ["aws", "ecs", "sqs", "devops"]},
+                          "Text\n\n```bash\nterraform apply\n```", "https://abhimanyu9988.github.io/posts/t/", None)
+sent_m = calls_m[-1][2]
+check("medium: created as a DRAFT in markdown with canonical, code fences intact",
+      sent_m["publishStatus"] == "draft" and sent_m["contentFormat"] == "markdown"
+      and sent_m["canonicalUrl"].endswith("/posts/t/") and "```bash\nterraform apply\n```" in sent_m["content"])
+check("medium: never re-created", publish.medium({}, "", "", "p1") == ("p1", None))
+import share
+li_body = share.body_for({"slug": "why-ecs", "title": "Why ECS", "canonical": "https://abhimanyu9988.github.io/posts/why-ecs/",
+                          "linkedin": "Queue full. Thanks @AWS team.\n#aws\nhttps://abhimanyu9988.github.io/posts/why-ecs/"})
+check("share: draft issue in the profile panel's format (/post works there)",
+      "<!-- POST:START -->" in li_body and "<!-- POST:END -->" in li_body and "social:meta" in li_body)
+check("share: no @mentions, passes the link-safety check",
+      "@AWS" not in li_body and not raises_unsafe(li_body))
 check("stats: platform + numbers, post taken from the report marker",
       analytics.parse_stats("/stats linkedin impressions=1,200 reactions=40", "x <!-- post: why-ecs -->")
       == ("why-ecs", "linkedin", {"impressions": 1200, "reactions": 40}))
@@ -249,7 +279,8 @@ res = {"status": "reproduced_and_fixed", "slug": "debugging-ecs-pending", "run_i
        "minutes": 31.5, "summary": "ECS on Fargate in public subnets", "destroyed": True,
        "review": {"chatgpt_approved": False, "points": [{"severity": "blocking", "issue": "see aws/x#5 @bob",
                                                           "outcome": "applied (Claude agreed)"}]}}
-(draft.OUT / "result.json").write_text(json.dumps(res)); (draft.OUT / "topic.json").write_text("{}")
+(draft.OUT / "result.json").write_text(json.dumps(res))
+(draft.OUT / "topic.json").write_text(json.dumps({"sources": [{"url": "https://stackoverflow.com/questions/1/a"}]}))
 writer_calls = []
 def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
     if tool == "submit_verdict":
@@ -257,7 +288,9 @@ def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
     writer_calls.append(who)
     return {"title": "Why ECS tasks stay PENDING", "description": "d", "tags": ["AWS", "ECS!", "fargate", "devops", "extra"],
             "body": "Someone hit this at 2am.\n\nBody links https://github.com/aws/x/issues/5 freely.",
-            "linkedin": "Your queue is full and Fargate sits at zero. Thoughts? @AWS #aws\n\nFull write-up: {POST_URL}"}
+            "linkedin": "Your queue is full and Fargate sits at zero. Thoughts? @AWS #aws\n\nFull write-up: {POST_URL}",
+            "source_replies": [{"url": "https://stackoverflow.com/questions/1/a", "text": "I hit this too. {POST_URL}"},
+                               {"url": "https://made-up.example/x", "text": "spam"}]}
 VERDICT = {}
 llm.ask = draft_ask
 real_refine = llm.refine
@@ -279,6 +312,8 @@ text = base64.b64decode(post["content"]).decode()
 check("draft: front matter has channels and cleaned tags", 'tags: ["aws", "ecs", "fargate", "devops"]' in text and "channels:" in text)
 check("draft: ChatGPT writes, Claude reviews, Gemini judges", writer_calls == ["chatgpt"] and roles == [("chatgpt", "claude", "gemini")])
 check("draft: LinkedIn text stored in front matter", "linkedin: " in text and "{POST_URL}" in text)
+check("draft: source replies kept only for real sources, stored in front matter", "replies: " in text
+      and "stackoverflow.com/questions/1/a" in text and "made-up.example" not in text)
 check("draft: post file may link to GitHub (files never backlink)", "github.com/aws/x/issues/5" in text)
 pr = next(b for m, p, b in sent if p.endswith("/pulls"))
 check("draft: PR closes the topic and neutralizes AI text", pr["body"].endswith("Closes #4") and "aws/x#5" not in pr["body"]

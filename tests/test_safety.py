@@ -72,7 +72,12 @@ for name, m, path, b in [
     ("analytics file on a draft branch", "PUT", f"/repos/{HOME}/contents/analytics/ledger.csv", B64),
     ("analytics subfolder escape", "PUT", f"/repos/{HOME}/contents/analytics/x/../../.github/x.yml", {**B64, "branch": "analytics"}),
     ("post file on the analytics branch", "PUT", f"/repos/{HOME}/contents/site/_posts/x.md", {**B64, "branch": "analytics"}),
-    ("other branch name", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/analytics-x", "sha": "0"})]:
+    ("other branch name", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/analytics-x", "sha": "0"}),
+    ("profile repo: other label", "POST", "/repos/Abhimanyu9988/Abhimanyu9988/issues", {**ok, "labels": ["milestone"]}),
+    ("profile repo: comment", "POST", "/repos/Abhimanyu9988/Abhimanyu9988/issues/3/comments", {"body": "/post"}),
+    ("profile repo: edit", "PATCH", "/repos/Abhimanyu9988/Abhimanyu9988/issues/3", {"state": "closed"}),
+    ("profile repo: mention in draft", "POST", "/repos/Abhimanyu9988/Abhimanyu9988/issues",
+     {"title": "t", "body": "thanks @bob", "labels": ["linkedin-draft"]})]:
     check(f"blocked: {name}", raises((r.Blocked, r.Unsafe), r.gh, m, path, b))
 check("nothing was sent", sent == [])
 got = []
@@ -92,6 +97,8 @@ for name, m, path, b in [
     ("lab evidence file", "PUT", f"/repos/{HOME}/contents/labs/my-topic/evidence/01-init.log", {**B64, "branch": "draft/my-topic"}),
     ("analytics branch", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/heads/analytics", "sha": "0"}),
     ("analytics ledger", "PUT", f"/repos/{HOME}/contents/analytics/ledger.csv", {**B64, "branch": "analytics", "sha": "1"}),
+    ("LinkedIn draft in the profile repo", "POST", "/repos/Abhimanyu9988/Abhimanyu9988/issues",
+     {"title": "LinkedIn draft: t", "body": "text", "labels": ["linkedin-draft"]}),
     ("draft PR closing its topic", "POST", f"/repos/{HOME}/pulls",
      {"title": "Draft: t", "body": "summary\n\nCloses #4", "head": "draft/my-topic", "base": "main"})]:
     n = len(sent); r.gh(m, path, b)
