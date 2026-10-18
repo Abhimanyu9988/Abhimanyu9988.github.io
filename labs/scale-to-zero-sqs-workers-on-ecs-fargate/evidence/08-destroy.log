@@ -1,0 +1,190 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 87s
+
+[... earlier output cut ...]
+[]
+              - protocol         = "-1"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 0
+                # (1 unchanged attribute hidden)
+            },
+        ] -> null
+      - id                     = "sg-0af6b6c2b1e469849" -> null
+      - ingress                = [] -> null
+      - name                   = "scale-to-zero-sqs-worker-447482-worker" -> null
+      - owner_id               = "<account-id>" -> null
+      - revoke_rules_on_delete = false -> null
+      - tags                   = {} -> null
+      - tags_all               = {
+          - "hero-lab" = "scale-to-zero-sqs-worker-447482"
+        } -> null
+      - vpc_id                 = "vpc-037333a988d5e2748" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_sqs_queue.jobs will be destroyed
+  - resource "aws_sqs_queue" "jobs" {
+      - arn                               = "arn:aws:sqs:eu-central-1:<account-id>:scale-to-zero-sqs-worker-447482-jobs" -> null
+      - content_based_deduplication       = false -> null
+      - delay_seconds                     = 0 -> null
+      - fifo_queue                        = false -> null
+      - id                                = "https://sqs.eu-central-1.amazonaws.com/<account-id>/scale-to-zero-sqs-worker-447482-jobs" -> null
+      - kms_data_key_reuse_period_seconds = 300 -> null
+      - max_message_size                  = 262144 -> null
+      - message_retention_seconds         = 3600 -> null
+      - name                              = "scale-to-zero-sqs-worker-447482-jobs" -> null
+      - receive_wait_time_seconds         = 0 -> null
+      - sqs_managed_sse_enabled           = true -> null
+      - tags                              = {} -> null
+      - tags_all                          = {
+          - "hero-lab" = "scale-to-zero-sqs-worker-447482"
+        } -> null
+      - url                               = "https://sqs.eu-central-1.amazonaws.com/<account-id>/scale-to-zero-sqs-worker-447482-jobs" -> null
+      - visibility_timeout_seconds        = 60 -> null
+        # (7 unchanged attributes hidden)
+    }
+
+  # aws_subnet.public[0] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0dbb2c3c7ddb2addb" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1a" -> null
+      - availability_zone_id                           = "euc1-az2" -> null
+      - cidr_block                                     = "10.60.0.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0dbb2c3c7ddb2addb" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "scale-to-zero-sqs-worker-447482-public-0"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "scale-to-zero-sqs-worker-447482-public-0"
+          - "hero-lab" = "scale-to-zero-sqs-worker-447482"
+        } -> null
+      - vpc_id                                         = "vpc-037333a988d5e2748" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_subnet.public[1] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0155970a2b43b700a" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1b" -> null
+      - availability_zone_id                           = "euc1-az3" -> null
+      - cidr_block                                     = "10.60.1.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0155970a2b43b700a" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "scale-to-zero-sqs-worker-447482-public-1"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "scale-to-zero-sqs-worker-447482-public-1"
+          - "hero-lab" = "scale-to-zero-sqs-worker-447482"
+        } -> null
+      - vpc_id                                         = "vpc-037333a988d5e2748" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_vpc.this will be destroyed
+  - resource "aws_vpc" "this" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-037333a988d5e2748" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.60.0.0/16" -> null
+      - default_network_acl_id               = "acl-04c5a79612a79a58d" -> null
+      - default_route_table_id               = "rtb-09e46c2ebb644468e" -> null
+      - default_security_group_id            = "sg-0f263ed88995b77b0" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-037333a988d5e2748" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-09e46c2ebb644468e" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "scale-to-zero-sqs-worker-447482-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "scale-to-zero-sqs-worker-447482-vpc"
+          - "hero-lab" = "scale-to-zero-sqs-worker-447482"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 18 to destroy.
+
+Changes to Outputs:
+  - cluster_name = "scale-to-zero-sqs-worker-447482-cluster" -> null
+  - policy_name  = "scale-to-zero-sqs-worker-447482-backlog-per-task" -> null
+  - queue_name   = "scale-to-zero-sqs-worker-447482-jobs" -> null
+  - queue_url    = "https://sqs.eu-central-1.amazonaws.com/<account-id>/scale-to-zero-sqs-worker-447482-jobs" -> null
+  - resource_id  = "service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker" -> null
+  - service_name = "scale-to-zero-sqs-worker-447482-worker" -> null
+aws_route_table_association.public[1]: Destroying... [id=rtbassoc-00e46d4b51b6c46a8]
+aws_iam_role_policy_attachment.exec: Destroying... [id=hero-lab-scale-to-zero-sqs-worker-447482-exec-20261018122137273500000001]
+aws_iam_role_policy.task: Destroying... [id=hero-lab-scale-to-zero-sqs-worker-447482-task:scale-to-zero-sqs-worker-447482-sqs-worker]
+aws_route_table_association.public[0]: Destroying... [id=rtbassoc-04dfcb666e8ce60d5]
+aws_appautoscaling_target.worker: Destroying... [id=service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker]
+aws_iam_role_policy.task: Destruction complete after 1s
+aws_iam_role_policy_attachment.exec: Destruction complete after 1s
+aws_appautoscaling_target.worker: Destruction complete after 1s
+aws_ecs_service.worker: Destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:service/scale-to-zero-sqs-worker-447482-cluster/scale-to-zero-sqs-worker-447482-worker]
+aws_route_table_association.public[1]: Destruction complete after 1s
+aws_route_table_association.public[0]: Destruction complete after 1s
+aws_route_table.public: Destroying... [id=rtb-0083238414aa0cdf3]
+aws_route_table.public: Destruction complete after 1s
+aws_internet_gateway.this: Destroying... [id=igw-073dbf287d8ca5e01]
+aws_ecs_service.worker: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...scale-to-zero-sqs-worker-447482-worker, 00m10s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-073dbf287d8ca5e01, 00m10s elapsed]
+aws_ecs_service.worker: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...scale-to-zero-sqs-worker-447482-worker, 00m20s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-073dbf287d8ca5e01, 00m20s elapsed]
+aws_ecs_service.worker: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...scale-to-zero-sqs-worker-447482-worker, 00m30s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-073dbf287d8ca5e01, 00m30s elapsed]
+aws_ecs_service.worker: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...scale-to-zero-sqs-worker-447482-worker, 00m40s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-073dbf287d8ca5e01, 00m40s elapsed]
+aws_ecs_service.worker: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...scale-to-zero-sqs-worker-447482-worker, 00m50s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-073dbf287d8ca5e01, 00m50s elapsed]
+aws_internet_gateway.this: Destruction complete after 54s
+aws_ecs_service.worker: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...scale-to-zero-sqs-worker-447482-worker, 01m00s elapsed]
+aws_ecs_service.worker: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...scale-to-zero-sqs-worker-447482-worker, 01m10s elapsed]
+aws_ecs_service.worker: Destruction complete after 1m11s
+aws_ecs_cluster.this: Destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:cluster/scale-to-zero-sqs-worker-447482-cluster]
+aws_subnet.public[1]: Destroying... [id=subnet-0155970a2b43b700a]
+aws_subnet.public[0]: Destroying... [id=subnet-0dbb2c3c7ddb2addb]
+aws_security_group.worker: Destroying... [id=sg-0af6b6c2b1e469849]
+aws_ecs_task_definition.worker: Destroying... [id=scale-to-zero-sqs-worker-447482-worker]
+aws_ecs_task_definition.worker: Destruction complete after 1s
+aws_cloudwatch_log_group.worker: Destroying... [id=/scale-to-zero-sqs-worker-447482/worker]
+aws_iam_role.exec: Destroying... [id=hero-lab-scale-to-zero-sqs-worker-447482-exec]
+aws_iam_role.task: Destroying... [id=hero-lab-scale-to-zero-sqs-worker-447482-task]
+aws_sqs_queue.jobs: Destroying... [id=https://sqs.eu-central-1.amazonaws.com/<account-id>/scale-to-zero-sqs-worker-447482-jobs]
+aws_ecs_cluster.this: Destruction complete after 1s
+aws_iam_role.exec: Destruction complete after 0s
+aws_iam_role.task: Destruction complete after 0s
+aws_subnet.public[1]: Destruction complete after 1s
+aws_subnet.public[0]: Destruction complete after 1s
+aws_cloudwatch_log_group.worker: Destruction complete after 0s
+aws_security_group.worker: Destruction complete after 2s
+aws_vpc.this: Destroying... [id=vpc-037333a988d5e2748]
+aws_vpc.this: Destruction complete after 1s
+aws_sqs_queue.jobs: Destruction complete after 4s
+
+Destroy complete! Resources: 18 destroyed.
+
