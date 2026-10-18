@@ -55,8 +55,14 @@ End with one or two sentences of practical advice in Abhi's voice, then this exa
 _I reproduced this in a disposable AWS lab. The lab code and raw output are in the repo. Drafted with AI assistance
 and reviewed by me._
 
+Write the steps for a READER, not about the pipeline: plain `terraform init` and `terraform apply` (the lab's
+providers.tf already sets the region), never the pipeline's own S3 backend settings, -backend-config, plan files,
+-no-color or HERO_RESULT lines. Introduce each command with what it does and why, in plain words, the way you'd walk
+a colleague through it; don't narrate script mechanics ("the script loops over...", "formatted output of the
+helper commands"). Group closely related commands in one block. Shell variables the scripts set from Terraform
+outputs should be shown once, near the start.
 Hard rules: every command, output, error message, version or number must appear in LAB or EVIDENCE (trim with
-"..."). Never invent output. Keep <account-id> placeholders. 1200 to 2400 words.
+"..."). Never invent output. Keep <account-id> placeholders. 1200 to 2600 words.
 Tags: at most 4, lowercase letters and digits only (for example aws, ecs, kubernetes, devops).
 
 LinkedIn post (field "linkedin"), plain text, no markdown, 120 to 220 words:
@@ -130,11 +136,22 @@ def write_post(context):
     return llm.refine("blog article and LinkedIn post", post, ARTICLE_RUBRIC, f"RULES:\n{ARTICLE_RULES}\n\n{context}",
                       POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
 
+def on_main(path):
+    try:
+        gh("GET", f"/repos/{HOME_REPO}/contents/{path}?ref=main")
+        return True
+    except RuntimeError as e:
+        if "HTTP 404" in str(e):
+            return False
+        raise
+
 def open_pr(issue_no, res, topic):
     slug = res["slug"][:60].strip("-")
-    if not branch_free(f"draft/{slug}"):
-        slug = f"{slug[:50].strip('-')}-{res['run_id'][-6:]}"      # branch, post and lab folder all move
-    branch = f"draft/{slug}"
+    if on_main(f"labs/{slug}"):                    # already published: the new post needs its own name
+        slug = f"{slug[:50].strip('-')}-{res['run_id'][-6:]}"
+    branch, n = f"draft/{slug}", 2
+    while not branch_free(branch):                 # a redraft: new branch, same post and lab names
+        branch, n = f"draft/{slug[:70]}-v{n}", n + 1
     lab, context = gather(res, topic, slug)
     v = llm.verdict(VERDICT_Q, context)
     if not v["passed"]:

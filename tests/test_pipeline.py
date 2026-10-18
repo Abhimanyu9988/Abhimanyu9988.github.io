@@ -227,10 +227,15 @@ check("plan: typical EKS + k8s lab allowed", check_plan.problems(plan(("aws_vpc"
 
 # ---------- drafter, against the real write allowlist ----------
 tmp = tempfile.mkdtemp(); os.chdir(tmp)
-sent = []
+sent, TAKEN, PUBLISHED = [], set(), set()
 def fake_send(m, u, b=None, h=None, timeout=30):
     path = u.replace("https://api.github.com", "")
-    if m == "GET" and "/git/ref/heads/draft/" in path: raise RuntimeError("HTTP 404")
+    if m == "GET" and "/git/ref/heads/draft/" in path:
+        if path.endswith(tuple(TAKEN)): return {"object": {"sha": "x"}}
+        raise RuntimeError("HTTP 404")
+    if m == "GET" and "/contents/labs/" in path:
+        if path.split("/contents/")[1].split("?")[0] in PUBLISHED: return {}
+        raise RuntimeError("HTTP 404")
     if m == "GET" and path.endswith("/git/ref/heads/main"): return {"object": {"sha": "abc"}}
     if m == "GET" and "/labels/" in path: return {}
     sent.append((m, path, b)); return {"number": 9}
@@ -285,6 +290,18 @@ check("draft: branch created only after the PR text passed the checks", order.in
 check("draft: comment + drafted label", any(p.endswith("/issues/4/comments") for m, p, b in sent)
       and any(p.endswith("/issues/4/labels") and b == {"labels": ["drafted"]} for m, p, b in sent))
 
+sent.clear(); TAKEN.add("draft/debugging-ecs-pending")
+draft.main()
+refs = [b["ref"] for m, p, b in sent if p.endswith("/git/refs")]
+puts = [p for m, p, b in sent if m == "PUT"]
+check("redraft: new branch -v2, but the post and lab keep their clean names",
+      refs == ["refs/heads/draft/debugging-ecs-pending-v2"] and any(p.endswith("-debugging-ecs-pending.md") for p in puts)
+      and any("/labs/debugging-ecs-pending/main.tf" in p for p in puts))
+sent.clear(); TAKEN.clear(); PUBLISHED.add("labs/debugging-ecs-pending")
+draft.main()
+puts = [p for m, p, b in sent if m == "PUT"]
+check("draft: a name already published on main gets the run suffix", any("/labs/debugging-ecs-pending-456789/" in p for p in puts))
+PUBLISHED.clear()
 sent.clear(); writer_calls.clear()
 VERDICT.update(chatgpt="no", gemini="no")
 draft.main()

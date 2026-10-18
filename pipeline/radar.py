@@ -310,7 +310,7 @@ def propose_all(system, prompt, schema):
             print(f"{who} proposed {len(ts)} topic(s)")
             out += [(who, t) for t in ts]
         except Exception as e:
-            print(f"warn: {who} could not propose: {str(e)[:200]}")
+            llm.warn(f"{who} could not propose: {str(e)[:400]}")
     return out
 
 def post_topics(proposals, items, existing, used, label, render, limit):
