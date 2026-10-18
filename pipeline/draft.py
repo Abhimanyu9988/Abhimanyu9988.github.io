@@ -22,15 +22,18 @@ Say no if the lab reproduced a different or contrived problem, if the evidence d
 if the fix only "worked" because of a shortcut, or if the result would mislead a reader. Judge only from TOPIC, LAB and
 EVIDENCE."""
 
-ARTICLE_RULES = """You are writing as Abhimanyu (Abhi), in the first person. He is a support engineering lead who
-spends his days helping people out of Kubernetes and AWS trouble, and he reproduced this problem himself in a
-disposable AWS lab. Write the way he'd explain it to a teammate or a student over coffee: warm, plain, specific.
-Readers: students learning AWS containers, and working engineers who just hit this.
+ARTICLE_RULES = """You are writing as Abhimanyu (Abhi), in the first person. AUTHOR lists true facts about him; he
+reproduced this problem himself in a disposable AWS lab. Write the way he'd explain it to a teammate or a student
+over coffee: warm, plain, specific. Readers: students learning AWS containers, and working engineers who just hit this.
 
 Make it human:
-- Open with the person who hit this and the moment it hurts (from the sources: what they were trying to do, what
-  they saw, why it was confusing). Two or three short paragraphs, no heading. Do not invent personal anecdotes
-  about Abhi; you may say this is the kind of thing he sees in support work.
+- Use the chosen TITLE (polish the wording only if it truly reads better) and open with the chosen HOOK: keep its
+  substance and its first line. Then the person who hit this and the moment it hurts (from the sources: what they
+  were trying to do, what they saw, why it was confusing). Two or three short paragraphs, no heading.
+- Add one or two personal lines that connect it to Abhi's own work, using ONLY facts in AUTHOR. Never invent
+  anecdotes, numbers, customers or employers.
+- STYLE SIGNALS show titles, openings and section headings that are doing well right now. Borrow what makes them
+  work (a concrete symptom up front, a clear promise, scannable headings); never copy their wording.
 - Then a short **TL;DR**: problem, cause, fix, in three lines.
 - Short paragraphs. Plain words. Explain jargon the first time. Use "you" and "I".
 - Banned: "In today's...", "delve", "landscape", "robust", "seamless", "game-changer", "leverage", "Let's dive in",
@@ -78,8 +81,8 @@ Source replies (field "source_replies"): for EACH source URL, a short reply Abhi
 "I wrote up the full replication here: {POST_URL}". No greeting fluff, no self-promotion beyond that one link.
 Stack Overflow does not allow AI-written answers, so these are drafts Abhi rewrites in his own words."""
 
-ARTICLE_RUBRIC = """You are the technical checker. Blocking: any command, output, error text, version or number that is
-not in EVIDENCE or LAB; a command in the step-by-step section that differs from the lab files, or a command the
+ARTICLE_RUBRIC = """You are the technical checker. Blocking: any personal claim about Abhi that is not in AUTHOR; any
+command, output, error text, version or number that is not in EVIDENCE or LAB; a command in the step-by-step section that differs from the lab files, or a command the
 scripts run that is missing from it; a claim about the cause stronger than the sources and evidence support; a
 missing reproduction or fix verification; anything in the LinkedIn post that the article does not support; anything
 that would mislead a beginner. Minor: tone that reads robotic or like an AI, clarity, structure, title, length."""
@@ -104,6 +107,13 @@ def review_md(name, log):
     lines = [f"- _{safe_text(p.get('severity'), 'note')[:12]}_ {safe_text(p.get('issue'))[:240]} \u2192 "
              f"{safe_text(p.get('outcome'))}" for p in pts[:12]]
     return head + f" ({len(pts)}):\n" + "\n".join(lines)
+
+def headline_md(h):
+    if not h:
+        return ""
+    others = "".join(f"\n- {safe_text(o)}" for o in h.get("others", []))
+    return (f"**Headline round:** the panel picked {h['by']}'s title and opening ({h['yes']} of 3 votes), shaped by "
+            f"what's getting the most reactions on dev.to right now.{others}\n\n")
 
 def verdict_md(v):
     mark = lambda x: "\u2705" if x == "yes" else "\u274c"
@@ -137,12 +147,82 @@ def gather(res, topic, slug):
                f"{REPO_WEB}/tree/main/labs/{slug}\n\nLAB:\n{json.dumps(lab)[:60000]}\n\nEVIDENCE:\n{json.dumps(ev)}")
     return lab, context
 
+AUTHOR_FILE = pathlib.Path(__file__).with_name("author.md")
+STYLE_TAGS = ("aws", "kubernetes", "devops", "docker")
+
+def style_signals():
+    """Titles, openings and headings of the most-reacted recent dev.to posts in our tags, plus what has worked on
+    Abhi's own posts. Signals only: the writer borrows what works, never the wording."""
+    from radar import call, load_insights
+    seen, arts = set(), []
+    for tag in STYLE_TAGS:
+        try:
+            for a in call("GET", f"https://dev.to/api/articles?tag={tag}&top=30&per_page=30") or []:
+                if a.get("id") not in seen:
+                    seen.add(a.get("id")); arts.append(a)
+        except Exception as e:
+            llm.warn(f"style signals: dev.to tag {tag}: {str(e)[:200]}")
+    arts.sort(key=lambda a: -(a.get("public_reactions_count") or a.get("positive_reactions_count") or 0))
+    lines = [f"- {a.get('title')} ({a.get('public_reactions_count') or a.get('positive_reactions_count') or 0} "
+             f"reactions, {a.get('comments_count', 0)} comments)" for a in arts[:15]]
+    shapes = []
+    for a in arts[:5]:
+        try:
+            full = call("GET", f"https://dev.to/api/articles/{a['id']}")
+            body = full.get("body_markdown") or ""
+            first = next((p.strip() for p in body.split("\n\n") if p.strip() and not p.lstrip().startswith(("#", "!", "{%", "---"))), "")
+            heads = re.findall(r"^#{2,3} (.+)$", body, re.M)[:8]
+            shapes.append(f"- \"{a.get('title')}\": opens with: {first[:300]!r}; headings: {heads}")
+        except Exception as e:
+            llm.warn(f"style signals: dev.to article: {str(e)[:200]}")
+    own = load_insights()
+    return ("Most-reacted recent dev.to posts (aws, kubernetes, devops, docker):\n" + "\n".join(lines) +
+            "\n\nHow the top ones open and section themselves:\n" + "\n".join(shapes) +
+            f"\n\nWhat has worked on Abhi's own posts:\n{own or 'nothing measured yet'}")
+
+HEADLINE_SCHEMA = {"type": "object", "required": ["title", "hook"], "properties": {
+    "title": {"type": "string", "description": "max 90 characters, specific and true to the evidence"},
+    "hook": {"type": "string", "description": "the first two or three sentences of the post"}}}
+
+def headline_round(context, signals, author):
+    """Each of the three proposes a title and opening; all three vote; 2 of 3 or the most votes wins."""
+    props = []
+    for who in llm.PANEL:
+        try:
+            h = llm.ask(who, "You write headlines and openings for Abhimanyu's hands-on AWS container posts.",
+                        "Propose ONE title and ONE opening (two or three sentences) for this post. It must make an "
+                        "engineer who has this problem stop scrolling, and it must be true to the evidence: no "
+                        "clickbait, no promises the lab doesn't back. Use STYLE SIGNALS for what works now and AUTHOR "
+                        f"for any personal angle.\n\nSTYLE SIGNALS:\n{signals}\n\nAUTHOR:\n{author}\n\n"
+                        f"{context[:40000]}", HEADLINE_SCHEMA, tool="submit_headline")
+            if h.get("title") and h.get("hook"):
+                props.append({"id": f"h{len(props) + 1}", "by": llm.NAMES[who], "title": str(h["title"])[:120],
+                              "hook": str(h["hook"])[:800]})
+        except Exception as e:
+            llm.warn(f"{who} proposed no headline: {str(e)[:200]}")
+    if not props:
+        return None
+    votes = llm.panel_votes(props, "Which title and opening would make an AWS or Kubernetes engineer click AND keep "
+                            "reading, while staying accurate to the lab? Vote yes only for ones you would publish.",
+                            f"STYLE SIGNALS:\n{signals}", tier="write")
+    best = max(props, key=lambda p: votes[p["id"]]["yes"])
+    best["yes"] = votes[best["id"]]["yes"]
+    best["others"] = [f"{p['by']}: {p['title']} ({votes[p['id']]['yes']}/3)" for p in props if p is not best]
+    return best
+
 def write_post(context):
+    author = AUTHOR_FILE.read_text() if AUTHOR_FILE.exists() else ""
+    signals = style_signals()
+    head = headline_round(context, signals, author)
+    chosen = (f"TITLE: {head['title']}\nHOOK: {head['hook']}" if head else "TITLE/HOOK: write your own")
+    context = f"{chosen}\n\nAUTHOR:\n{author}\n\nSTYLE SIGNALS:\n{signals}\n\n{context}"
     post = llm.ask("chatgpt", "You write hands-on AWS container articles for Abhimanyu's blog, strictly from real lab "
                               "output, in a warm human voice.", f"Write the article and the LinkedIn post.\n\n"
                    f"RULES:\n{ARTICLE_RULES}\n\n{context}", POST_SCHEMA)
-    return llm.refine("blog article and LinkedIn post", post, ARTICLE_RUBRIC, f"RULES:\n{ARTICLE_RULES}\n\n{context}",
-                      POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
+    post, log = llm.refine("blog article and LinkedIn post", post, ARTICLE_RUBRIC, f"RULES:\n{ARTICLE_RULES}\n\n{context}",
+                           POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
+    log["headline"] = head
+    return post, log
 
 def on_main(path):
     try:
@@ -209,10 +289,11 @@ def open_pr(issue_no, res, topic):
             f"**Topic:** issue no. {issue_no}. **Lab:** {safe_text(res.get('summary'))}\n\n"
             f"**Run:** reproduced and fixed in attempt {res.get('attempts')}, {res.get('minutes')} min total "
             f"(workflow run {res['run_id']}).{warn}\n\n{verdict_md(v)}\n\n"
+            f"{headline_md(log.get('headline'))}"
             f"{review_md('Lab review', res.get('review'))}\n\n{review_md('Article review', log)}\n\n"
             f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n"
             "**Before you merge** (merging publishes to your site and dev.to; you then get Medium and LinkedIn links):\n"
-            "- [ ] It sounds like you: add a line from your own experience, make the title yours\n"
+            "- [ ] It reads like you (edit `pipeline/author.md` to change what the panel knows about you)\n"
             "- [ ] Every output in the post matches a file in the lab's evidence folder\n"
             "- [ ] The cause is stated no more strongly than the sources support\n")
     title = safe_text("Draft: " + post["title"], "Draft post")[:120]
