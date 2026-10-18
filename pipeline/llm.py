@@ -92,12 +92,12 @@ def _anthropic_headers():
     return {"x-api-key": _key("ANTHROPIC_API_KEY"), "anthropic-version": "2023-06-01"}
 
 def _claude_stream(body):
-    """Streamed Messages call (long tool inputs would otherwise risk idle timeouts). Returns
-    (tool input dict, stop_reason, usage)."""
+    """Streamed Messages call (long tool inputs would otherwise risk idle timeouts).
+    Returns (tool inputs by name, text, stop_reason, usage)."""
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", json.dumps({**body, "stream": True}).encode(),
                                  {**_anthropic_headers(), "Content-Type": "application/json", "User-Agent": "hero-pipeline/1.0"},
                                  method="POST")
-    parts, stop, usage = [], None, {}
+    blocks, stop, usage = {}, None, {}
     try:
         with urllib.request.urlopen(req, timeout=300) as r:          # 300 s without a byte = dead
             for raw in r:
@@ -108,8 +108,15 @@ def _claude_stream(body):
                 t = ev.get("type")
                 if t == "message_start":
                     usage.update(ev["message"].get("usage") or {})
-                elif t == "content_block_delta" and ev["delta"].get("type") == "input_json_delta":
-                    parts.append(ev["delta"].get("partial_json", ""))
+                elif t == "content_block_start":
+                    cb = ev.get("content_block") or {}
+                    blocks[ev.get("index")] = {"type": cb.get("type"), "name": cb.get("name"), "parts": [cb.get("text") or ""]}
+                elif t == "content_block_delta":
+                    d, b = ev.get("delta") or {}, blocks.setdefault(ev.get("index"), {"type": None, "parts": []})
+                    if d.get("type") == "input_json_delta":
+                        b["parts"].append(d.get("partial_json", ""))
+                    elif d.get("type") == "text_delta":
+                        b["parts"].append(d.get("text", ""))
                 elif t == "message_delta":
                     stop = ev["delta"].get("stop_reason") or stop
                     usage.update(ev.get("usage") or {})
@@ -118,22 +125,43 @@ def _claude_stream(body):
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"POST api.anthropic.com/v1/messages -> HTTP {e.code}: "
                            f"{e.read()[:400].decode('utf-8', 'replace')}") from None
-    return (json.loads("".join(parts)) if parts else None), stop, usage
+    tools, text = {}, []
+    for _, b in sorted(blocks.items(), key=lambda kv: kv[0] if isinstance(kv[0], int) else -1):
+        if b["type"] == "tool_use":
+            raw = "".join(b["parts"])
+            tools[b.get("name")] = json.loads(raw) if raw.strip() else {}
+        elif b["type"] == "text":
+            text.append("".join(b["parts"]))
+    return tools, "".join(text), stop, usage
 
 def claude_json(system, prompt, schema, tool="submit", tier="write", max_tokens=32000):
-    """Claude answers by calling one forced tool, so the reply is always schema-shaped JSON."""
+    """Claude answers by calling the `tool` tool, so the reply is schema-shaped JSON. tool_choice stays
+    "auto" because some models refuse a forced tool; if Claude answers in text instead, we parse JSON from
+    it, and failing that ask once more."""
     model = claude_model(tier)
-    body = {"model": model, "max_tokens": max_tokens, "system": f"{system}\n\n{UNTRUSTED}",
-            "tools": [{"name": tool, "description": "Submit your answer.", "input_schema": schema}],
-            "tool_choice": {"type": "tool", "name": tool},
-            "messages": [{"role": "user", "content": prompt}]}
-    got, stop, u = _retry(lambda: _claude_stream(body))
-    LEDGER.append({"who": "claude", "model": model, "in": u.get("input_tokens", 0), "out": u.get("output_tokens", 0)})
-    if stop == "max_tokens":
-        raise RuntimeError("Claude's reply was cut off (max_tokens)")
-    if not isinstance(got, dict):
-        raise RuntimeError("Claude did not return a tool call")
-    return got
+    sysmsg = (f"{system}\n\n{UNTRUSTED}\n\nGive your answer ONLY by calling the `{tool}` tool exactly once, "
+              "with every required field filled in.")
+    messages = [{"role": "user", "content": prompt}]
+    for round_ in range(2):
+        body = {"model": model, "max_tokens": max_tokens, "system": sysmsg, "messages": messages,
+                "tools": [{"name": tool, "description": "Submit your answer.", "input_schema": schema}],
+                "tool_choice": {"type": "auto"}}
+        tools, text, stop, u = _retry(lambda: _claude_stream(body))
+        LEDGER.append({"who": "claude", "model": model, "in": u.get("input_tokens", 0), "out": u.get("output_tokens", 0)})
+        if stop == "max_tokens":
+            raise RuntimeError(f"Claude ({model}) reply was cut off (max_tokens)")
+        if isinstance(tools.get(tool), dict) and tools[tool]:
+            return tools[tool]
+        try:
+            got = _parse(text, "Claude")
+            if isinstance(got, dict) and got:
+                return got
+        except (RuntimeError, ValueError):
+            pass
+        print(f"warn: {model} answered without calling {tool}; asking again")
+        messages = messages + [{"role": "assistant", "content": text or "(no answer)"},
+                               {"role": "user", "content": f"Please submit that answer now by calling the `{tool}` tool."}]
+    raise RuntimeError(f"Claude ({model}) did not return a {tool} tool call")
 
 def _parse(text, who):
     text = text.strip()

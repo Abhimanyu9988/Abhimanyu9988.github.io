@@ -11,6 +11,26 @@ def check(name, ok):
     global fails
     print(("PASS " if ok else "FAIL ") + name); fails += not ok
 
+# ---------- claude_json without forced tool choice ----------
+llm._models["claude"] = {"write": "claude-test", "scout": "claude-test"}
+sent_bodies, replies = [], []
+def fake_stream(body):
+    sent_bodies.append(body); return replies.pop(0)
+real_stream, real_cj = llm._claude_stream, llm.claude_json
+llm._claude_stream = fake_stream
+replies[:] = [({"submit": {"a": 1}}, "", "tool_use", {})]
+check("claude_json: tool call returned", llm.claude_json("s", "p", {}) == {"a": 1})
+check("claude_json: tool_choice is auto (works on every model)", sent_bodies[-1]["tool_choice"] == {"type": "auto"})
+replies[:] = [({}, 'Here you go: {"a": 2}', "end_turn", {})]
+check("claude_json: JSON in text accepted", llm.claude_json("s", "p", {}) == {"a": 2})
+replies[:] = [({}, "I think the lab should...", "end_turn", {}), ({"submit": {"a": 3}}, "", "tool_use", {})]
+check("claude_json: asks again when it gets prose", llm.claude_json("s", "p", {}) == {"a": 3} and len(sent_bodies[-1]["messages"]) == 3)
+replies[:] = [({}, "", "max_tokens", {})]
+try: llm.claude_json("s", "p", {}); ok = False
+except RuntimeError as e: ok = "cut off" in str(e)
+check("claude_json: truncation is reported", ok)
+llm._claude_stream = real_stream
+
 # ---------- vote ----------
 calls = []
 def fake_gpt(system, prompt, **k):
