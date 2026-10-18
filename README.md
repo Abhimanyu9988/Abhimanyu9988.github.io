@@ -37,6 +37,16 @@ Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit eve
 
 To rewrite a draft without another AWS run, run `replicate` with `issue` and `from_run` (the earlier run's id).
 
+## Beyond the posts (AWS Hero helpers, `pipeline/hero.py`)
+
+- **Community Builders watcher (Mondays):** when the application window opens, or in early January when it
+  usually does, an issue opens with an application kit: every post with its reach.
+- **Monthly kits (1st of the month):** last month's best lab becomes a 10-minute talk kit (abstract, CFP blurb,
+  timing, live demo) and a 60-minute student session pack (goals, cost safety, agenda, hands-on, quiz, feedback).
+- **`/reply <question link>`:** comment it on any issue to get a drafted answer for a re:Post, Stack Overflow or
+  GitHub question, linking your lab when it genuinely helps. You post it yourself.
+- Talks, sessions and answers you post go into the impact log with `/stats <post> talk|teaching|repost ...`.
+
 ## Guardrails
 
 - **AWS:** labs run in a separate, dedicated account through a short-lived OIDC role with a permissions boundary

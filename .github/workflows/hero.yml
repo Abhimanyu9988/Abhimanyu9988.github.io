@@ -1,0 +1,59 @@
+name: hero
+# AWS Hero helpers: Community Builders watcher (Mondays), monthly talk kit + student session (1st of the month),
+# and `/reply <question link>` comments that draft an answer you post yourself.
+on:
+  schedule:
+    - cron: "30 7 * * 1"
+    - cron: "0 8 1 * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [watch, monthly]
+        default: watch
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+concurrency: hero-${{ github.event_name }}
+jobs:
+  hero:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      (github.event_name != 'issue_comment' ||
+       (startsWith(github.event.comment.body, '/reply') && github.event.comment.user.login == 'Abhimanyu9988' &&
+        !github.event.issue.pull_request))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      # Issues and comments in this repo, plus analytics/watch.json on the analytics branch; radar.py enforces it.
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+      - name: hero
+        run: python3 pipeline/hero.py
+        env:
+          MODE: >-
+            ${{ github.event_name == 'issue_comment' && 'reply' ||
+                github.event_name == 'workflow_dispatch' && inputs.mode ||
+                github.event.schedule == '0 8 1 * *' && 'monthly' || 'watch' }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE: ${{ github.event.issue.number }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}

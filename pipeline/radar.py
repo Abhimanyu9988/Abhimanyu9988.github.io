@@ -26,7 +26,10 @@ LABELS = {"radar": ("0e8a16", "Topic idea from the radar"),
           "drafted": ("1d76db", "Replicated; a draft post PR is open"),
           "not-reproduced": ("cccccc", "The lab could not reproduce this"),
           "replication-disputed": ("fbca04", "The lab ran, but the panel did not confirm the replication"),
-          "analytics": ("0052cc", "Impact log: weekly analytics for the published posts")}
+          "analytics": ("0052cc", "Impact log: weekly analytics for the published posts"),
+          "hero-goal": ("b60205", "AWS Hero milestones: Community Builders and other applications"),
+          "talk-kit": ("5319e7", "A 10-minute talk built from a lab"),
+          "teaching": ("0e8a16", "A student session built from a lab")}
 # AWS container projects: releases feed the radar, issues feed the problem finder.
 WATCH = ["aws/containers-roadmap", "aws/karpenter-provider-aws", "aws/amazon-vpc-cni-k8s",
          "kubernetes-sigs/aws-load-balancer-controller", "kubernetes-sigs/aws-ebs-csi-driver",
