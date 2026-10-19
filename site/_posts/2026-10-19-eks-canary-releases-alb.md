@@ -1,15 +1,15 @@
 ---
-title: "Canary EKS releases at 10% on an ALB and roll back without a redeploy"
+title: "Canary releases on EKS: send 10% to v2, roll back in 16 seconds"
 description: "Build an EKS lab where the AWS Load Balancer Controller sends 10% of ALB traffic to v2, shifts to 50/50, then rolls back to 100/0 by changing an Ingress annotation."
-image: /assets/posts/shift-traffic-gradually-between-two-eks/cover.png
+image: /assets/posts/eks-canary-releases-alb/cover.png
 image_alt: "Chart of curl tallies per ALB weight stage: v2 gets 21 of 200 at 90/10, 108 at 50/50, and 0 after rollback to 100/0."
 tags: ["aws", "eks", "kubernetes", "devops"]
 channels: ["devto", "hashnode"]
-lab: labs/shift-traffic-gradually-between-two-eks
+lab: labs/eks-canary-releases-alb
 linkedin: "Canary EKS releases at 10% on an ALB, with rollback to 0% without redeploying pods.\n\nI built a small EKS lab with two app versions behind the AWS Load Balancer Controller. The ALB listener rule moved from 90/10 to 50/50 to 100/0, and curl tallies showed the split at each step.\n\nIt took 25.4 minutes in my run. The idea is simple: keep v1 and v2 as separate Services, then change the weighted forward action on the Ingress annotation.\n\nI built it in a throwaway AWS lab, and the post has every step.\n{LINKS}\n\n#aws #eks #kubernetes #devops"
 replies: []
 ---
-![Chart of curl tallies per ALB weight stage: v2 gets 21 of 200 at 90/10, 108 at 50/50, and 0 after rollback to 100/0.](https://abhimanyu9988.github.io/assets/posts/shift-traffic-gradually-between-two-eks/cover.png)
+![Chart of curl tallies per ALB weight stage: v2 gets 21 of 200 at 90/10, 108 at 50/50, and 0 after rollback to 100/0.](https://abhimanyu9988.github.io/assets/posts/eks-canary-releases-alb/cover.png)
 
 One kubectl annotate command moves an ALB from 90/10 to 50/50 to 100/0 between two versions of an app on EKS, and the pods never restart. Without it, a plain Service splits traffic by pod count, so a 10% canary would need nine v1 pods for every v2 pod. I rebuilt this in a throwaway AWS account with the AWS Load Balancer Controller and Pod Identity, and the post shows the curl tallies and the ALB listener-rule weights at each step.
 
@@ -39,7 +39,7 @@ Prerequisites: Terraform, AWS CLI v2, kubectl, helm, jq, and curl.
 
 ```bash
 git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git
-cd Abhimanyu9988.github.io/labs/shift-traffic-gradually-between-two-eks
+cd Abhimanyu9988.github.io/labs/eks-canary-releases-alb
 export AWS_REGION=eu-central-1
 export LAB_NAME=canary
 export TF_VAR_lab_name="$LAB_NAME"
