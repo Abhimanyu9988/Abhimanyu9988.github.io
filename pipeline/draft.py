@@ -68,12 +68,7 @@ Hard rules: every command, output, error message, version or number must appear 
 "..."). Never invent output. Keep <account-id> placeholders.
 Tags: at most 4, lowercase letters and digits only (for example aws, ecs, kubernetes, devops).
 
-LinkedIn post (field "linkedin"), plain text, no markdown, 70 to 140 words, written as "a problem I solved":
-- First line: the symptom as the reader would say it (no clickbait, no "I'm excited to share").
-- Two or three short lines: what was really going on, and the fix, in plain words.
-- One line: I reproduced it in a throwaway AWS lab and wrote up the fix with every command.
-- Then a line containing only {LINKS} (the dev.to and Medium links are filled in there).
-- Then 3 or 4 hashtags. At most one emoji. No @mentions (Abhi tags people himself). No other URLs.
+LinkedIn post (field "linkedin"): follow LINKEDIN RULES below, as "a problem I solved".
 
 Source replies (field "source_replies"): for EACH source URL, a short reply Abhi could post on that thread himself,
 50 to 100 words, first person, helpful on its own (what I reproduced, what fixed it, one caveat), ending with
@@ -133,12 +128,7 @@ Hard rules: every command, output, error message, version or number must appear 
 than what EVIDENCE shows.
 Tags: at most 4, lowercase letters and digits only (for example aws, eks, opentelemetry, devops).
 
-LinkedIn post (field "linkedin"), plain text, no markdown, 70 to 140 words, written as "something I built":
-- First line: the outcome in the reader's words (no clickbait, no "I'm excited to share").
-- Two or three short lines: what it does, how long it took, the one idea that makes it work.
-- One line: I built it in a throwaway AWS lab, and the post has every step.
-- Then a line containing only {LINKS} (the dev.to and Medium links are filled in there).
-- Then 3 or 4 hashtags. At most one emoji. No @mentions. No other URLs.
+LinkedIn post (field "linkedin"): follow LINKEDIN RULES below, as "something I built".
 
 Source replies (field "source_replies"): for EACH source URL that is a discussion thread (Stack Overflow, GitHub
 issue, forum), a short reply Abhi could post there himself, 50 to 100 words, first person, helpful on its own,
@@ -158,6 +148,71 @@ a scope word ("any app", "zero code changes", "from 0 to 10") or a time ("in 20 
 Under 75 characters. Shapes that work: "Monitor any app on EKS with zero code changes", "Scale ECS workers from SQS
 queue depth, from 0 to 5 in a minute", "Ship EKS secrets without hard-coding a single one". The opening shows the
 payoff in the first sentence."""
+
+LINKEDIN_RULES = """A LinkedIn post that stops the scroll, in Abhi's first person, plain text, no markdown, 120 to 220 words.
+- Lines 1 and 2 are all most people see before "...see more" (under 150 characters together). Make them a contrast
+  or a surprising, true number from the reader's world: what they normally live with, then what happened here.
+  Example shape: "A Kubernetes rollback usually means a redeploy. / Mine took 16 seconds and didn't restart a single pod."
+- Then short lines with white space between groups. One idea per line.
+- How it works in two to four lines starting with an arrow, plain words, no jargon soup.
+- The proof: two to four lines of the real numbers from the ARTICLE.
+- One line on why it matters at work.
+- One line that says I built and tested it (build) or reproduced it (problem) in a throwaway AWS account and that the
+  post has every step, ending with a colon; then a line containing only {LINKS} (dev.to and Medium go there).
+- One honest question for readers, about their own practice.
+- Last line: 3 or 4 hashtags.
+Never: "I'm excited to share", "game-changer", "Here's the thing", "Let that sink in", hype adjectives, more than
+one emoji, @mentions, other URLs. Every number and claim must be in the ARTICLE."""
+
+LINKEDIN_SCHEMA = {"type": "object", "required": ["linkedin"], "properties": {
+    "linkedin": {"type": "string", "description": "the LinkedIn post, plain text, with a {LINKS} line"}}}
+LINKEDIN_CHECK = {"type": "object", "required": ["ok", "problems"], "properties": {
+    "ok": {"type": "boolean"}, "problems": {"type": "array", "items": {"type": "string"}}}}
+
+def linkedin_round(post, kind):
+    """The writer's LinkedIn post plus one each from the other two; all three vote on which would stop the scroll;
+    Claude checks the winner against the article (falling back to the runner-up). Returns (post, log)."""
+    who_wrote = {"chatgpt": post.get("linkedin", "")}
+    angle = "something I built" if kind == "build" else "a problem I solved"
+    for who in ("claude", "gemini"):
+        try:
+            got = llm.ask(who, "You write LinkedIn posts for Abhimanyu, an AWS containers engineer, from his own articles.",
+                          f"Write the LinkedIn post for this article, as {angle}.\n\nLINKEDIN RULES:\n{LINKEDIN_RULES}"
+                          f"\n\nTITLE: {post['title']}\n\nARTICLE:\n{post['body'][:20000]}", LINKEDIN_SCHEMA,
+                          tool="submit_linkedin")
+            if got.get("linkedin"):
+                who_wrote[who] = str(got["linkedin"])
+        except Exception as e:
+            llm.warn(f"linkedin round: {who}: {str(e)[:200]}")
+    cands = [{"id": f"l{i + 1}", "by": llm.NAMES[w], "text": t} for i, (w, t) in enumerate(who_wrote.items()) if t]
+    if len(cands) < 2:
+        return post, None
+    votes = llm.panel_votes([{"id": c["id"], "post": c["text"]} for c in cands],
+                            "You are an ECS/EKS engineer scrolling LinkedIn. Which of these would make you stop at the "
+                            "first two lines, read past 'see more', and click the link? Vote yes only for ones that "
+                            f"also follow the rules and sound like a real engineer, not marketing.\n{LINKEDIN_RULES}",
+                            f"ARTICLE TITLE: {post['title']}", tier="write")
+    ranked = sorted(cands, key=lambda c: -votes[c["id"]]["yes"])
+    for c in ranked:
+        try:
+            chk = llm.ask("claude", "You check LinkedIn posts against the article they promote.",
+                          "Is every number and claim in POST supported by ARTICLE, with nothing about Abhi beyond what "
+                          f"ARTICLE says? List problems if not.\n\nPOST:\n{c['text']}\n\nARTICLE:\n{post['body'][:20000]}",
+                          LINKEDIN_CHECK, tool="submit_check")
+        except Exception as e:
+            llm.warn(f"linkedin check: {str(e)[:200]}"); continue
+        if chk.get("ok"):
+            log = {"by": c["by"], "yes": votes[c["id"]]["yes"],
+                   "others": [f"{o['by']} ({votes[o['id']]['yes']}/3)" for o in cands if o is not c]}
+            return {**post, "linkedin": c["text"]}, log
+        llm.warn(f"linkedin check: {c['by']}'s post failed: {'; '.join(map(str, chk.get('problems') or []))[:200]}")
+    return post, None
+
+def linkedin_md(l):
+    if not l:
+        return ""
+    return (f"**LinkedIn round:** the panel picked {l['by']}'s post ({l['yes']} of 3 votes); Claude checked it against "
+            f"the article. Others: {', '.join(l['others'])}.\n\n")
 
 POST_SCHEMA = {"type": "object", "required": ["title", "description", "tags", "body", "linkedin", "source_replies"], "properties": {
     "title": {"type": "string", "description": "max 80 characters; names the symptom the reader hit, no clickbait"},
@@ -213,7 +268,7 @@ def put(branch, path, data, msg):
     gh("PUT", f"/repos/{HOME_REPO}/contents/{path}",
        {"message": msg, "branch": branch, "content": base64.b64encode(raw).decode()})
 
-def make_cover(post, tags, out):
+def make_cover(post, tags, out, kind="problem"):
     """Claude picks the evidence to show; cover.verify drops anything not in the logs; then it's drawn."""
     ev = {p.name: p.read_text() for p in sorted((OUT / "evidence").glob("*.log"))}
     fig = None
@@ -227,7 +282,7 @@ def make_cover(post, tags, out):
             llm.warn("cover: the picked evidence didn't match the logs; using the title-only card")
     except Exception as e:
         llm.warn(f"cover: {str(e)[:200]}")
-    cover.render(post["title"], fig, tags, out)
+    cover.render(post["title"], fig, tags, out, kind)
     return fig
 
 def branch_free(name):
@@ -396,11 +451,12 @@ def write_post(context, kind="problem"):
     context = f"{chosen}\n\nAUTHOR:\n{author}\n\nSTYLE SIGNALS:\n{signals}\n\n{context}"
     post = llm.ask("chatgpt", "You write hands-on AWS container articles for Abhimanyu's blog, strictly from real lab "
                               "output, in a warm human voice.", f"Write the article and the LinkedIn post.\n\n"
-                   f"RULES:\n{K['rules']}\n\n{context}", POST_SCHEMA)
+                   f"RULES:\n{K['rules']}\n\nLINKEDIN RULES:\n{LINKEDIN_RULES}\n\n{context}", POST_SCHEMA)
     post, log = llm.refine("blog article and LinkedIn post", post, K["rubric"], f"RULES:\n{K['rules']}\n\n{context}",
                            POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
     log["headline"] = head
     post, log["tightened"] = tighten(post, kind)
+    post, log["linkedin"] = linkedin_round(post, kind)
     return post, log
 
 def on_main(path):
@@ -439,7 +495,7 @@ def open_pr(issue_no, res, topic):
                for r in post.get("source_replies") or []
                if isinstance(r, dict) and r.get("text") and (not srcs or r.get("url") in srcs)]
     png = OUT / "cover.png"
-    fig = make_cover(post, tags, png)
+    fig = make_cover(post, tags, png, kind)
     img_path = f"/assets/posts/{slug}/cover.png"
     alt = re.sub(r"[\[\]\n]", " ", (fig or {}).get("alt") or f"Cover: {post['title']}")[:300]
     body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + post["body"].strip() + "\n"
@@ -483,7 +539,7 @@ def open_pr(issue_no, res, topic):
             f"**Topic:** issue no. {issue_no}. **Lab:** {safe_text(res.get('summary'))}\n\n"
             f"**Run:** {'built and proven' if kind == 'build' else 'reproduced and fixed'} in attempt {res.get('attempts')}, {res.get('minutes')} min total "
             f"(workflow run {res['run_id']}).\n\n{verdict_md(v, kind)}\n\n"
-            f"{headline_md(log.get('headline'))}"
+            f"{headline_md(log.get('headline'))}{linkedin_md(log.get('linkedin'))}"
             f"{review_md('Lab review', res.get('review'))}\n\n{review_md('Article review', log)}\n\n"
             f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n</details>{warn}\n\n"
             "**Merge** to publish on your site and dev.to; you then get the Medium link and your LinkedIn draft. "

@@ -75,14 +75,14 @@ def verify(fig, evidence):
         return None
     return {"kind": "terminal", "alt": str(fig.get("alt") or "")[:300], "lines": keep[:6], "highlight": hl[:2]}
 
-def render(title, fig, tags, out_path):
+def render(title, fig, tags, out_path, kind="problem"):
     """Draw the card to out_path (PNG). fig may be None: then it's the title card alone."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch
     f = plt.figure(figsize=(W, H), dpi=DPI, facecolor=BG)
-    label = "REPRODUCED IN A REAL AWS LAB" + ("  \u00b7  " + "  ".join(t.upper() for t in tags[:3]) if tags else "")
+    label = ("BUILT AND TESTED IN A REAL AWS LAB" if kind == "build" else "REPRODUCED IN A REAL AWS LAB") + ("  \u00b7  " + "  ".join(t.upper() for t in tags[:3]) if tags else "")
     size, width = (30, 38) if len(title) <= 76 else (26, 46)   # fits DejaVu, the runner's font
     tl = textwrap.wrap(title, width)[:3]
     title_h = len(tl) * (size * 1.15 / (H * 72))
