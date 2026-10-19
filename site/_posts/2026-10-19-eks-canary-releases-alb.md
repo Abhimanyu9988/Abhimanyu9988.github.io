@@ -1,12 +1,12 @@
 ---
-title: "Canary releases on EKS: send 10% to v2, roll back in 16 seconds"
+title: "Roll back an EKS release in 16 seconds without restarting a pod"
 description: "Build an EKS lab where the AWS Load Balancer Controller sends 10% of ALB traffic to v2, shifts to 50/50, then rolls back to 100/0 by changing an Ingress annotation."
 image: /assets/posts/eks-canary-releases-alb/cover.png
 image_alt: "Chart of curl tallies per ALB weight stage: v2 gets 21 of 200 at 90/10, 108 at 50/50, and 0 after rollback to 100/0."
 tags: ["aws", "eks", "kubernetes", "devops"]
 channels: ["devto", "hashnode"]
 lab: labs/eks-canary-releases-alb
-linkedin: "Canary EKS releases at 10% on an ALB, with rollback to 0% without redeploying pods.\n\nI built a small EKS lab with two app versions behind the AWS Load Balancer Controller. The ALB listener rule moved from 90/10 to 50/50 to 100/0, and curl tallies showed the split at each step.\n\nIt took 25.4 minutes in my run. The idea is simple: keep v1 and v2 as separate Services, then change the weighted forward action on the Ingress annotation.\n\nI built it in a throwaway AWS lab, and the post has every step.\n{LINKS}\n\n#aws #eks #kubernetes #devops"
+linkedin: "A Kubernetes rollback usually means a redeploy.\nMine took 16 seconds and didn't restart a single pod.\n\nHere's what I built on EKS:\n\n→ v1 and v2 of the app run side by side, each behind its own Service\n→ The AWS Load Balancer Controller turns one Ingress into an ALB with weighted target groups\n→ The traffic split lives in a single Ingress annotation\n\nThen I moved the dial with kubectl:\n90/10: 21 of 200 requests hit v2\n50/50: 108 of 200\n100/0: 0. Fully back on v1 in 16 seconds.\n\nNo rollout. No new pods. Restarts: 0.\n\nWhy it matters: a plain Kubernetes Service splits traffic by pod count, so a real 10% canary would need nine v1 pods for every v2 pod. The ALB gives you an actual dial.\n\nI built and tested it in a throwaway AWS account. Every step, the Terraform and the raw output are in the post:\n{LINKS}\n\nHow do you roll back today: redeploy, or shift traffic?\n\n#aws #eks #kubernetes #devops"
 replies: []
 ---
 ![Chart of curl tallies per ALB weight stage: v2 gets 21 of 200 at 90/10, 108 at 50/50, and 0 after rollback to 100/0.](https://abhimanyu9988.github.io/assets/posts/eks-canary-releases-alb/cover.png)
