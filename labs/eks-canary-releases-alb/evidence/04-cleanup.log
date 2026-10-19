@@ -1,0 +1,9 @@
+$ bash cleanup.sh
+# exit 0 after 17s
+
+Deleting Ingresses and LoadBalancer Services (controller removes the ALB)...
+No resources found
+Error from server (NotFound): namespaces "demo" not found
+Waiting for load balancers in vpc-03c2a0425ca6709c8 to disappear...
+Cleanup finished.
+

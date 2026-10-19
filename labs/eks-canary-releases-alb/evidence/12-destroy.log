@@ -1,0 +1,178 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 131s
+
+[... earlier output cut ...]
+null
+      - description            = "VPC to nodes and pods (ALB targets)" -> null
+      - from_port              = 0 -> null
+      - id                     = "sgrule-2388281192" -> null
+      - protocol               = "-1" -> null
+      - security_group_id      = "sg-08ee5cc0b8012ba4f" -> null
+      - security_group_rule_id = "sgr-03e067e630590ae22" -> null
+      - self                   = false -> null
+      - to_port                = 0 -> null
+      - type                   = "ingress" -> null
+    }
+
+  # aws_subnet.public[0] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0d5c0809f7994553a" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1a" -> null
+      - availability_zone_id                           = "euc1-az2" -> null
+      - cidr_block                                     = "10.20.0.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0d5c0809f7994553a" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name"                                                     = "shift-traffic-gradually-713185-public-0"
+          - "kubernetes.io/cluster/shift-traffic-gradually-713185-eks" = "shared"
+          - "kubernetes.io/role/elb"                                   = "1"
+        } -> null
+      - tags_all                                       = {
+          - "Name"                                                     = "shift-traffic-gradually-713185-public-0"
+          - "hero-lab"                                                 = "shift-traffic-gradually-713185"
+          - "kubernetes.io/cluster/shift-traffic-gradually-713185-eks" = "shared"
+          - "kubernetes.io/role/elb"                                   = "1"
+        } -> null
+      - vpc_id                                         = "vpc-03c2a0425ca6709c8" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_subnet.public[1] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-02efe7ffc929a4f84" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1b" -> null
+      - availability_zone_id                           = "euc1-az3" -> null
+      - cidr_block                                     = "10.20.1.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-02efe7ffc929a4f84" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name"                                                     = "shift-traffic-gradually-713185-public-1"
+          - "kubernetes.io/cluster/shift-traffic-gradually-713185-eks" = "shared"
+          - "kubernetes.io/role/elb"                                   = "1"
+        } -> null
+      - tags_all                                       = {
+          - "Name"                                                     = "shift-traffic-gradually-713185-public-1"
+          - "hero-lab"                                                 = "shift-traffic-gradually-713185"
+          - "kubernetes.io/cluster/shift-traffic-gradually-713185-eks" = "shared"
+          - "kubernetes.io/role/elb"                                   = "1"
+        } -> null
+      - vpc_id                                         = "vpc-03c2a0425ca6709c8" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_vpc.this will be destroyed
+  - resource "aws_vpc" "this" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-03c2a0425ca6709c8" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.20.0.0/16" -> null
+      - default_network_acl_id               = "acl-086fc6fe02c97a550" -> null
+      - default_route_table_id               = "rtb-0d67fc7e2a7ddea1c" -> null
+      - default_security_group_id            = "sg-097361cd1a4d48d64" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-03c2a0425ca6709c8" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-0d67fc7e2a7ddea1c" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "shift-traffic-gradually-713185-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "shift-traffic-gradually-713185-vpc"
+          - "hero-lab" = "shift-traffic-gradually-713185"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 23 to destroy.
+
+Changes to Outputs:
+  - cluster_name = "shift-traffic-gradually-713185-eks" -> null
+  - lbc_role_arn = "arn:aws:iam::<account-id>:role/hero-lab-shift-traffic-gradually-713185-lbc" -> null
+  - vpc_id       = "vpc-03c2a0425ca6709c8" -> null
+aws_route_table_association.public[1]: Destroying... [id=rtbassoc-08784ecaf6ff1ae17]
+aws_iam_role_policy.lbc: Destroying... [id=hero-lab-shift-traffic-gradually-713185-lbc:shift-traffic-gradually-713185-lbc]
+aws_eks_pod_identity_association.lbc: Destroying... [id=a-tdp6e0ovxnxudtscn]
+aws_security_group_rule.vpc_to_nodes: Destroying... [id=sgrule-2388281192]
+aws_route_table_association.public[0]: Destroying... [id=rtbassoc-029e9c7d475c6fbd2]
+aws_iam_role_policy.lbc: Destruction complete after 1s
+aws_eks_pod_identity_association.lbc: Destruction complete after 1s
+aws_eks_addon.pod_identity_agent: Destroying... [id=shift-traffic-gradually-713185-eks:eks-pod-identity-agent]
+aws_iam_role.lbc: Destroying... [id=hero-lab-shift-traffic-gradually-713185-lbc]
+aws_route_table_association.public[1]: Destruction complete after 1s
+aws_route_table_association.public[0]: Destruction complete after 1s
+aws_route_table.public: Destroying... [id=rtb-06ceff1a6cad98f0b]
+aws_security_group_rule.vpc_to_nodes: Destruction complete after 1s
+aws_iam_role.lbc: Destruction complete after 0s
+aws_route_table.public: Destruction complete after 1s
+aws_internet_gateway.this: Destroying... [id=igw-0d7270207cc0b513c]
+aws_eks_addon.pod_identity_agent: Destruction complete after 2s
+aws_instance.node[1]: Destroying... [id=i-07e90a2f8379ea5bc]
+aws_instance.node[0]: Destroying... [id=i-05f35faef4b990dbf]
+aws_internet_gateway.this: Still destroying... [id=igw-0d7270207cc0b513c, 00m10s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-05f35faef4b990dbf, 00m10s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-07e90a2f8379ea5bc, 00m10s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-0d7270207cc0b513c, 00m20s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-07e90a2f8379ea5bc, 00m20s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-05f35faef4b990dbf, 00m20s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-0d7270207cc0b513c, 00m30s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-05f35faef4b990dbf, 00m30s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-07e90a2f8379ea5bc, 00m30s elapsed]
+aws_instance.node[1]: Destruction complete after 32s
+aws_internet_gateway.this: Destruction complete after 40s
+aws_instance.node[0]: Still destroying... [id=i-05f35faef4b990dbf, 00m40s elapsed]
+aws_instance.node[0]: Destruction complete after 42s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destroying... [id=hero-lab-shift-traffic-gradually-713185-node-20261019172657989600000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destroying... [id=hero-lab-shift-traffic-gradually-713185-node-20261019172658043000000003]
+aws_eks_access_entry.node: Destroying... [id=shift-traffic-gradually-713185-eks:arn:aws:iam::<account-id>:role/hero-lab-shift-traffic-gradually-713185-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destroying... [id=hero-lab-shift-traffic-gradually-713185-node-20261019172658100300000004]
+aws_iam_instance_profile.node: Destroying... [id=hero-lab-shift-traffic-gradually-713185-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destruction complete after 0s
+aws_iam_instance_profile.node: Destruction complete after 0s
+aws_eks_access_entry.node: Destruction complete after 0s
+aws_iam_role.node: Destroying... [id=hero-lab-shift-traffic-gradually-713185-node]
+aws_eks_cluster.this: Destroying... [id=shift-traffic-gradually-713185-eks]
+aws_iam_role.node: Destruction complete after 1s
+aws_eks_cluster.this: Still destroying... [id=shift-traffic-gradually-713185-eks, 00m10s elapsed]
+aws_eks_cluster.this: Still destroying... [id=shift-traffic-gradually-713185-eks, 00m20s elapsed]
+aws_eks_cluster.this: Still destroying... [id=shift-traffic-gradually-713185-eks, 00m30s elapsed]
+aws_eks_cluster.this: Still destroying... [id=shift-traffic-gradually-713185-eks, 00m40s elapsed]
+aws_eks_cluster.this: Still destroying... [id=shift-traffic-gradually-713185-eks, 00m50s elapsed]
+aws_eks_cluster.this: Still destroying... [id=shift-traffic-gradually-713185-eks, 01m00s elapsed]
+aws_eks_cluster.this: Destruction complete after 1m10s
+aws_subnet.public[0]: Destroying... [id=subnet-0d5c0809f7994553a]
+aws_subnet.public[1]: Destroying... [id=subnet-02efe7ffc929a4f84]
+aws_iam_role_policy_attachment.cluster: Destroying... [id=hero-lab-shift-traffic-gradually-713185-cluster-20261019172657879000000001]
+aws_iam_role_policy_attachment.cluster: Destruction complete after 0s
+aws_iam_role.cluster: Destroying... [id=hero-lab-shift-traffic-gradually-713185-cluster]
+aws_iam_role.cluster: Destruction complete after 0s
+aws_subnet.public[0]: Destruction complete after 1s
+aws_subnet.public[1]: Destruction complete after 1s
+aws_vpc.this: Destroying... [id=vpc-03c2a0425ca6709c8]
+aws_vpc.this: Destruction complete after 1s
+
+Destroy complete! Resources: 23 destroyed.
+

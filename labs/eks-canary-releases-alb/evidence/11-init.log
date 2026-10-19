@@ -1,0 +1,14 @@
+$ terraform init -input=false -no-color -reconfigure -backend-config=bucket=hero-pipeline-tfstate-<account-id> -backend-config=key=labs/shift-traffic-gradually-713185/terraform.tfstate -backend-config=region=eu-central-1 -backend-config=use_lockfile=true
+# exit 0 after 3s
+
+Initializing the backend...
+
+Successfully configured the backend "s3"! Terraform will automatically
+use this backend unless the backend configuration changes.
+
+Initializing provider plugins...
+- Reusing previous version of hashicorp/aws from the dependency lock file
+- Using hashicorp/aws v5.100.0 from the shared cache directory
+
+Terraform has been successfully initialized!
+
