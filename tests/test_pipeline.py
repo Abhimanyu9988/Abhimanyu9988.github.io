@@ -149,6 +149,8 @@ check("publish: LinkedIn step asks for /medium (or /linkedin), no long text or c
 check("publish: Medium import and dev.to link listed", "medium.com/p/import" in block and "dev.to/abhi/why-ecs" in block)
 check("publish: report text has no live @mention", "@AWS" not in block)
 check("publish: report carries the post marker for /stats", "<!-- post: why-ecs -->" in block)
+check("draft: runner's HERO_RESULT lines dropped from code blocks only",
+      draft.drop_pipeline_lines("x\n```text\nok\nHERO_RESULT: fixed\n```\n") == "x\n```text\nok\n```\n")
 check("draft: literal \\t fixed in output blocks only",
       draft.fix_output_tabs("```text\nA\\tB\n```\n```bash\nprintf 'a\\tb'\n```") == "```text\nA\tB\n```\n```bash\nprintf 'a\\tb'\n```")
 block2 = "\n".join(publish.share_block({"title": "T", "linkedin": "x", "replies": [{"url": "https://stackoverflow.com/q/1",

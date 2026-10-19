@@ -48,7 +48,10 @@ Structure (markdown, no front matter, no H1):
      ./reproduce.sh      # shows the problem
      ./fix.sh            # applies the fix and checks it
      ./cleanup.sh && terraform destroy
-  (match the lab: if the fix is fix.tf, say how it's applied; leave out scripts that don't exist). Then one line:
+  (match the lab: if the fix is fix.tf, say how it's applied; leave out scripts that don't exist). providers.tf
+  already sets region and permissions_boundary, so never pass -var for them. If the scripts read an environment
+  variable such as LAB_NAME, export it once with a concrete example value (no <placeholders>) and pass the same
+  value to terraform apply and destroy. Then one line:
   the run's real minutes and that it costs a few cents (only if LAB or EVIDENCE supports it), and one line that every
   command is in those short scripts and the raw output of my run is in the lab's evidence folder.
 - "## What I didn't test": two or three bullets.
@@ -104,6 +107,11 @@ def review_md(name, log):
     lines = [f"- _{safe_text(p.get('severity'), 'note')[:12]}_ {safe_text(p.get('issue'))[:240]} \u2192 "
              f"{safe_text(p.get('outcome'))}" for p in pts[:12]]
     return head + f" ({len(pts)}):\n" + "\n".join(lines)
+
+def drop_pipeline_lines(md):
+    """HERO_RESULT lines are the lab runner's signal, not output a reader would see; drop them from code blocks."""
+    return re.sub(r"```([^\n`]*)\n(.*?)```", lambda m: f"```{m.group(1)}\n" + "".join(
+        l for l in m.group(2).splitlines(True) if not l.lstrip().startswith("HERO_RESULT")) + "```", md, flags=re.S)
 
 def fix_output_tabs(md):
     """Writers sometimes double-escape tabs in pasted output; turn a literal \\t back into a tab, but only inside
@@ -332,6 +340,7 @@ def open_pr(issue_no, res, topic):
                           f"`lab` attachment of workflow run {res['run_id']}.")
         return
     post, log = write_post(context)
+    post["body"] = drop_pipeline_lines(fix_output_tabs(post["body"]))
     tags = [t for t in (re.sub(r"[^a-z0-9]", "", str(t).lower()) for t in post.get("tags", [])) if t][:4]
     today = datetime.date.today().isoformat()
     j = lambda v: json.dumps(v, ensure_ascii=False)
@@ -344,7 +353,7 @@ def open_pr(issue_no, res, topic):
     fig = make_cover(post, tags, png)
     img_path = f"/assets/posts/{slug}/cover.png"
     alt = re.sub(r"[\[\]\n]", " ", (fig or {}).get("alt") or f"Cover: {post['title']}")[:300]
-    body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + fix_output_tabs(post["body"]).strip() + "\n"
+    body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + post["body"].strip() + "\n"
     front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
                        f"image: {img_path}", f"image_alt: {j(alt)}",
                        f"tags: {json.dumps(tags)}", "channels: [\"devto\", \"hashnode\"]", f"lab: labs/{slug}",

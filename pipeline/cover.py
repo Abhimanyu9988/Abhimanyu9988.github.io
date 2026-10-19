@@ -83,7 +83,7 @@ def render(title, fig, tags, out_path):
     from matplotlib.patches import FancyBboxPatch
     f = plt.figure(figsize=(W, H), dpi=DPI, facecolor=BG)
     label = "REPRODUCED IN A REAL AWS LAB" + ("  \u00b7  " + "  ".join(t.upper() for t in tags[:3]) if tags else "")
-    size, width = (30, 44) if len(title) <= 88 else (26, 52)
+    size, width = (30, 38) if len(title) <= 76 else (26, 46)   # fits DejaVu, the runner's font
     tl = textwrap.wrap(title, width)[:3]
     title_h = len(tl) * (size * 1.15 / (H * 72))
     panel_h = (0.11 + len(fig["lines"]) * 0.058) if fig and fig["kind"] == "terminal" else None
