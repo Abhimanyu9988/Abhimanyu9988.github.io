@@ -1,0 +1,63 @@
+$ bash fix.sh
+# exit 0 after 239s
+
+== 1. Install AWS Load Balancer Controller chart 1.11.0 (controller v2.11.0), credentials via Pod Identity
+daemon set "eks-pod-identity-agent" successfully rolled out
+-------------------------------------------------
+|          ListPodIdentityAssociations          |
++--------------+--------------------------------+
+|      ns      |              sa                |
++--------------+--------------------------------+
+|  kube-system |  aws-load-balancer-controller  |
++--------------+--------------------------------+
+Release "aws-load-balancer-controller" does not exist. Installing it now.
+NAME: aws-load-balancer-controller
+LAST DEPLOYED: Mon Oct 19 17:37:39 2026
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+AWS Load Balancer controller installed!
+Pod Identity env injected into the controller pod:
+  AWS_CONTAINER_CREDENTIALS_FULL_URI
+  AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE
+
+== 2. Create the Ingress with a weighted forward action (v1=90, v2=10)
+ingress.networking.k8s.io/app created
+ALB: http://k8s-demo-app-6e205e5398-1840384111.eu-central-1.elb.amazonaws.com
+Waiting for the ALB to become active and both target groups to be healthy...
+
+ALB listener rule created by the controller:
+  target group k8s-demo-appv2-3238509479  weight=10
+  target group k8s-demo-appv1-fd4520aa57  weight=90
+{"level":"info","ts":"2026-10-19T17:38:14Z","logger":"controllers.ingress","msg":"successfully deployed model","ingressGroup":"demo/app"}
+
+== 3. Stage A: weights 90/10 (canary takes 10%)
+  first 20 responses: v1 v1 v1 v1 v1 v1 v1 v1 v1 v2 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 
+  90/10: v1=179 v2=21 other=0 of 200  => v1 89% / v2 10%
+
+== 4. Stage B: kubectl annotate -> 50/50
+  target group k8s-demo-appv2-3238509479  weight=50
+  target group k8s-demo-appv1-fd4520aa57  weight=50
+  first 20 responses: v1 v1 v1 v1 v1 v2 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v2 v2 v1 
+  50/50: v1=92 v2=108 other=0 of 200  => v1 46% / v2 54%
+
+== 5. Stage C: errors rise on v2 -> ROLLBACK, v1=100 v2=0 (no redeploy)
+  ALB rule updated 3s after kubectl annotate; 100% of sampled traffic on v1 after 16s
+  target group k8s-demo-appv2-3238509479  weight=0
+  target group k8s-demo-appv1-fd4520aa57  weight=100
+  first 20 responses: v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 v1 
+  100/0: v1=200 v2=0 other=0 of 200  => v1 100% / v2 0%
+
+== Summary (requests per stage: 200)
+  90/10  -> v1=179 v2=21 other=0
+  50/50  -> v1=92 v2=108 other=0
+  100/0  -> v1=200 v2=0 other=0   (rollback in 16s, pods untouched)
+  pod app-v1-5b8cd854d6-2k7kl Running restarts=0 age=4m13s
+  pod app-v1-5b8cd854d6-6m5vm Running restarts=0 age=4m13s
+  pod app-v1-5b8cd854d6-krvvr Running restarts=0 age=4m13s
+  pod app-v2-649d75bcd8-dd555 Running restarts=0 age=4m13s
+  pod tester Running restarts=0 age=4m11s
+HERO_RESULT: fixed
+
