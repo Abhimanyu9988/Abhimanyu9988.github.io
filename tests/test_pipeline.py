@@ -322,12 +322,16 @@ def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
         return {"vote": VERDICT.get(who, "yes"), "reason": "the evidence shows it, see @bob and aws/x#5"}
     if tool == "submit_headline":
         return {"title": f"{who} title", "hook": f"{who} hook: the queue fills and nothing starts."}
+    if tool == "submit_linkedin":
+        return {"linkedin": f"{who} linkedin: rollback took 16 seconds\n{{LINKS}}\n#aws"}
+    if tool == "submit_check":
+        return {"ok": "gemini" not in prompt.split("ARTICLE:")[0], "problems": ["made-up number"]}
     if tool == "submit_figure":
         return {"kind": "terminal", "alt": "Lab output [x]", "lines": ["Error: pods are stuck", "invented line", "3 pods Pending", "HERO_RESULT: reproduced"]}
     if tool == "submit_votes":
         import re as _re
-        ids = _re.findall(r'"id": "(h\d)"', prompt)
-        return {"votes": [{"id": i, "vote": "yes" if i == "h2" or who == "claude" else "no", "reason": "r"} for i in ids]}
+        ids = _re.findall(r'"id": "([hl]\d)"', prompt)
+        return {"votes": [{"id": i, "vote": "yes" if i in ("h2", "l3") or who == "claude" else "no", "reason": "r"} for i in ids]}
     writer_calls.append(who)
     return {"title": "Why ECS tasks stay PENDING", "description": "d", "tags": ["AWS", "ECS!", "fargate", "devops", "extra"],
             "body": "Someone hit this at 2am.\n\nBody links https://github.com/aws/x/issues/5 freely.",
@@ -367,6 +371,9 @@ check("headline round: all three propose, the 2-of-3 winner goes to the writer w
       and "AUTHOR:" in writer_prompt and "observability agents" in writer_prompt and "412 reactions" in writer_prompt)
 _pr = next(b for m, p_, b in sent if p_.endswith("/pulls"))
 pr_body_first = _pr["body"]
+check("LinkedIn round: all three write, the top-voted post that fails the fact check is skipped for the next",
+      "gemini linkedin" not in text and "LinkedIn round:** the panel picked ChatGPT" in _pr["body"]
+      and "Gemini (3/3)" in _pr["body"])
 check("headline round shown in the PR", "Headline round:** the panel picked ChatGPT" in _pr["body"])
 check("checklist no longer asks Abhi to write his own line", "add a line from your own experience" not in _pr["body"])
 check("draft: LinkedIn text stored in front matter", "linkedin: " in text and "{POST_URL}" in text)
