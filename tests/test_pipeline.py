@@ -133,6 +133,20 @@ check("topics: same source from two models becomes one topic proposed by both",
 check("topics: a source not in the collected items is dropped", "Opinion piece" not in json.dumps(seen_view["v"]))
 check("topics: best replicable topic is marked replicate", "would open + replicate: ECS stuck at zero" in outp)
 check("topics: issue shows who proposed and every vote", "Proposed by:** Claude, Gemini" in outp and "ChatGPT \u2705" in outp)
+sent_issue = []
+r.DRY = False
+real_post_issue = r.post_issue
+r.ensure_label = lambda l: None
+r.post_issue = lambda t, b, label, extra=(): (sent_issue.append((label, tuple(extra))) or {"number": 1})
+r.add_label = lambda n, l: None
+r.post_topics(props, items, [], set(), "radar", lambda t, srcs: "x", 3, question=r.BUILD_QUESTION, extra_labels=("build",))
+check("build topics: issues carry radar + build labels, and the vote uses the build question",
+      sent_issue and all(x == ("radar", ("build",)) for x in sent_issue))
+docs = sorted(r.DOCS_URLS)[0]
+used = {docs}
+check("build topics: official docs may be cited again (not 'already used')",
+      not any(u in used and u not in r.DOCS_URLS for u in [docs]))
+r.post_issue = real_post_issue
 llm.panel_votes = real_pv; r.DRY = False
 
 # ---------- publish links and /stats ----------
@@ -149,6 +163,8 @@ check("publish: LinkedIn step asks for /medium (or /linkedin), no long text or c
 check("publish: Medium import and dev.to link listed", "medium.com/p/import" in block and "dev.to/abhi/why-ecs" in block)
 check("publish: report text has no live @mention", "@AWS" not in block)
 check("publish: report carries the post marker for /stats", "<!-- post: why-ecs -->" in block)
+check("draft: runner's HERO_RESULT lines dropped from code blocks only",
+      draft.drop_pipeline_lines("x\n```text\nok\nHERO_RESULT: fixed\n```\n") == "x\n```text\nok\n```\n")
 check("draft: literal \\t fixed in output blocks only",
       draft.fix_output_tabs("```text\nA\\tB\n```\n```bash\nprintf 'a\\tb'\n```") == "```text\nA\tB\n```\n```bash\nprintf 'a\\tb'\n```")
 block2 = "\n".join(publish.share_block({"title": "T", "linkedin": "x", "replies": [{"url": "https://stackoverflow.com/q/1",
@@ -392,6 +408,16 @@ check("write rules: a PR may only be closed, not edited", ok)
 try: r.gh("PUT", f"/repos/{HOME}/contents/site/assets/posts/x/cover.png", {"branch": "main", "message": "m"}); ok = False
 except r.Blocked: ok = True
 check("write rules: cover images only on draft branches", ok)
+sent.clear(); TAKEN.clear(); prompts_seen.clear()
+(draft.OUT / "topic.json").write_text(json.dumps({"sources": [{"url": "https://stackoverflow.com/questions/1/a"}], "kind": "build"}))
+draft.main()
+wp = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
+vq = [p for w, t, p in prompts_seen if t == "submit_verdict"]
+pr_b = next(b for m, p_, b in sent if p_.endswith("/pulls"))
+check("build draft: build rules, build verdict, build check in the PR",
+      "This is a teaching post" in wp and "## Build it" in wp and vq and "BUILD topic" in vq[0]
+      and "Build check:** 3 of 3 say the lab built it and proved it works" in pr_b["body"])
+(draft.OUT / "topic.json").write_text(json.dumps({"sources": [{"url": "https://stackoverflow.com/questions/1/a"}]}))
 sent.clear(); TAKEN.clear(); PUBLISHED.add("labs/debugging-ecs-pending")
 draft.main()
 puts = [p for m, p, b in sent if m == "PUT"]
@@ -550,7 +576,8 @@ except ImportError:
     print("SKIP medium page test (python-markdown not installed)")
 
 # ---------- lab runner end to end, simulated (no AWS, no docker) ----------
-def simulate(plans, repros, fixes, attempts=3):
+LAB_PROMPTS = []
+def simulate(plans, repros, fixes, attempts=3, label="problem"):
     """plans/repros/fixes: per-attempt outcomes. Returns (result, destroy calls)."""
     tmp = tempfile.mkdtemp(); os.chdir(tmp)
     lab.OUT, lab.WORK, lab.GOOD, lab.TFCACHE = pathlib.Path("out"), pathlib.Path("work/lab"), pathlib.Path("work/good"), pathlib.Path("work/.tfcache")
@@ -559,7 +586,7 @@ def simulate(plans, repros, fixes, attempts=3):
     def mk():
         n["lab"] += 1
         return {"summary": f"v{n['lab']}", "expected": "", "files": [{"path": f, "content": f"v{n['lab']}"} for f in lab.REQUIRED]}
-    llm.claude_json = lambda *a, **k: mk()
+    llm.claude_json = lambda *a, **k: (LAB_PROMPTS.append(a[0] + "\n" + a[1]) or mk())
     llm.refine = lambda kind, d, *a, **k: (d, {"approved": True, "reviewer": "ChatGPT", "points": []})
     def fake_run(step, cmd, timeout, cwd=None, env=None, record=True, sandbox=False):
         c = " ".join(cmd)
@@ -578,10 +605,11 @@ def simulate(plans, repros, fixes, attempts=3):
         return 0, ""
     lab.run, lab.s3 = fake_run, (lambda *a: (0, ""))
     def gh_issue(m, u, b=None, h=None, timeout=30):
-        return {"title": "Why ECS tasks stay PENDING", "body": "x", "labels": [{"name": "problem"}]}
+        return {"title": "Why ECS tasks stay PENDING", "body": "x", "labels": [{"name": l} for l in label.split(",")]}
     r._send = gh_issue
     lab.main()
     res = json.loads((lab.OUT / "result.json").read_text())
+    res["_topic"] = json.loads((lab.OUT / "topic.json").read_text())
     os.chdir("/"); shutil.rmtree(tmp)
     return res, destroys
 
@@ -594,4 +622,11 @@ res, d = simulate([True, False, True], ["not_reproduced", "reproduced"], ["fixed
 check("lab sim: recovers on attempt 3 and destroys v3", res["status"] == "reproduced_and_fixed" and res["attempts"] == 3 and d == ["v3"])
 res, d = simulate([False, False, False], [], [])
 check("lab sim: nothing ever planned -> nothing to destroy", res["destroyed"] is True and d == [])
+LAB_PROMPTS.clear()
+res, d = simulate([True], ["reproduced"], ["fixed"], label="radar,build")
+check("build topic: the lab is told to show the before-state and prove the build, and topic.json says build",
+      res["_topic"]["kind"] == "build" and "THIS IS A BUILD TOPIC" in LAB_PROMPTS[0] and "prove it works" in LAB_PROMPTS[0])
+LAB_PROMPTS.clear()
+res, d = simulate([True], ["reproduced"], ["fixed"])
+check("problem topic: no build rules", res["_topic"]["kind"] == "problem" and "BUILD TOPIC" not in LAB_PROMPTS[0])
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)

@@ -27,8 +27,36 @@ concurrency:
   group: ${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'replicate') && 'replicate' || format('skip-{0}', github.run_id) }}
   cancel-in-progress: false
 jobs:
+  # GitHub sometimes delivers the same `replicate` label event twice. The copy would sit waiting for your
+  # aws-lab approval and hold the one-lab-at-a-time queue, blocking every later lab and redraft.
+  gate:
+    if: github.event_name == 'issues' && github.event.label.name == 'replicate'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { actions: read }
+    outputs:
+      duplicate: ${{ steps.d.outputs.duplicate }}
+    steps:
+      - id: d
+        env: { GH_TOKEN: "${{ github.token }}", TITLE: "${{ github.event.issue.title }}" }
+        run: |
+          me=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .created_at)
+          # earlier runs for the same issue within 5 minutes whose gate ran (other label events skip it)
+          ids=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/replicate.yml/runs?event=issues&per_page=50" \
+            --jq ".workflow_runs[] | select(.id < $GITHUB_RUN_ID and .display_title == env.TITLE)
+                  | select((\"$me\" | fromdateiso8601) - (.created_at | fromdateiso8601) < 300) | .id")
+          dup=0
+          for id in $ids; do
+            n=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" \
+              --jq '[.jobs[] | select(.name == "gate" and .conclusion != "skipped")] | length')
+            if [ "$n" -gt 0 ]; then dup=1; fi
+          done
+          echo "duplicate=$([ "$dup" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          [ "$dup" -gt 0 ] && echo "::notice::Same replicate event delivered twice; this copy does nothing." || true
   lab:
+    needs: gate
     if: >-
+      always() && needs.gate.outputs.duplicate != 'true' &&
       github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
       !inputs.from_run &&
       (github.event_name == 'workflow_dispatch' ||
