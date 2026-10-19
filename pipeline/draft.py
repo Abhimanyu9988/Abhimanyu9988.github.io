@@ -32,16 +32,21 @@ LENGTH IS A HARD RULE: 600 to 900 words of prose, about 1,200 words in total wit
 output block longer than 10 lines (cut with "..." and keep the lines that prove the point). If something isn't
 needed to understand or fix the problem, leave it out; the lab folder has the rest.
 
+HEADINGS SELL THE POST: each "##" heading is specific to THIS post and makes the reader want the next section, not
+a generic label. Use the section roles below but word the headings for this problem, for example "What you'll see:
+the service says 1 task, the API says 4", "Why the scaling guard never runs", "The fix: one FILL() in the metric
+math", "Try it yourself in 20 minutes".
+
 Structure (markdown, no front matter, no H1):
 - Open with the chosen HOOK (keep its substance and first line): the moment it hurts, in two or three short
   paragraphs, no heading. One personal line at most, using ONLY facts in AUTHOR. Never invent anecdotes, numbers,
   customers or employers.
 - **TL;DR**: problem, cause, fix, in three short lines.
-- "## What you'll see": the symptom, with ONE trimmed output block from EVIDENCE.
-- "## Why it happens": the cause in plain words. Say what the sources and the lab confirm and what is only likely.
-- "## The fix": the one to three commands or config lines that ARE the fix, then the trimmed output that shows it
+- A "## What you'll see: <the symptom in a few words>" section: the symptom, with ONE trimmed output block from EVIDENCE.
+- A "## Why <it> happens" section: the cause in plain words. Say what the sources and the lab confirm and what is only likely.
+- A "## The fix: <the idea in a few words>" section: the one to three commands or config lines that ARE the fix, then the trimmed output that shows it
   working. Mention any caveat in one sentence.
-- "## Try it yourself": ONE code block that runs the whole lab, using the lab's real file names, e.g.
+- A "## Try it yourself ..." section: ONE code block that runs the whole lab, using the lab's real file names, e.g.
      git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git
      cd Abhimanyu9988.github.io/labs/LAB_SLUG
      terraform init && terraform apply
@@ -96,23 +101,34 @@ do this", and be able to. Write it the way he'd walk a teammate through it: warm
 LENGTH: 800 to 1,100 words of prose, about 1,500 words in total with code. At most 10 code blocks, no output block
 longer than 10 lines (cut with "..."). Every step earns its place; background a reader can skip goes.
 
+HEADINGS SELL THE POST. Many readers only scan headings, so each one must be specific to THIS post and make the
+reader want the next section: a promise, a contrast or the key idea, in plain words. Never generic labels like
+"How it works", "Build it", "See it work" or "Conclusion". Model (a real post of Abhi's):
+  "Why a normal Kubernetes Service can't give you a 10% canary" / "The trick: one Ingress, two target groups, one
+  dial" / "Build it yourself in 4 steps" (with "### Step 1: Create the cluster (about 12 to 15 minutes)" ...) /
+  "The proof: 90/10, 50/50, and a 16-second rollback" / "Use it for your own releases" / "Clean up (the ALB costs
+  money while it runs)".
+
 Structure (markdown, no front matter, no H1):
-- Open with the chosen HOOK (keep its substance and first line): the payoff, what they'll have running at the end
-  and why they'd want it at work. Two short paragraphs, no heading. One personal line at most, using ONLY facts in
+- Open with the chosen HOOK (keep its substance and first line): a moment every reader recognises, then the payoff
+  with its most impressive TRUE number in bold. Two or three short paragraphs, no heading, ending with a one-line
+  promise ("Here's how it works, and how to build it yourself."). One personal line at most, using ONLY facts in
   AUTHOR. Never invent anecdotes, numbers, customers or employers.
-- **What you'll build**: three short lines: the outcome, the time it took (from EVIDENCE/RUN), roughly what it
-  costs (only if LAB or EVIDENCE supports it).
-- "## How it works": the moving parts in plain words, four to six sentences or a short list. No marketing.
-- "## Build it": numbered steps in the order a reader runs them, each a one-line why plus the command(s) from the
-  lab files, with a trimmed real output only where it reassures ("you should see..."). Start with the git clone of
-  https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git and `cd Abhimanyu9988.github.io/labs/LAB_SLUG`, then
-  `terraform init && terraform apply` (providers.tf already sets region and permissions_boundary; never pass -var for
-  them; if the scripts read an environment variable such as LAB_NAME, export it once with a concrete example value
-  and pass the same value to apply and destroy). Group closely related commands; show the commands that teach the
-  idea (the install, the key config) rather than every polling loop, and say which script runs the rest.
-- "## See it work": the proof from EVIDENCE: the before (from reproduce.sh) next to the after (from fix.sh).
-- "## Make it yours": two or three bullets on adapting it to a real service.
-- "## Clean up": the cleanup and destroy commands, in one block.
+- A "> **TL;DR**" blockquote with four bullets: What you get / The trick / The proof (real numbers) / Time and cost
+  (only what LAB, RUN or EVIDENCE support).
+- A "## Why ..." section: the limit or pain of the usual way, with ONE short real output block from reproduce.sh.
+- A "## The trick: ..." section: the one idea that makes it work, with the key config or command, in plain words.
+- A "## Build it yourself in N steps" section with "### Step N: <what it does> (<time if known>)" subheadings, in
+  the order a reader runs them, each a one-line why plus the command(s) from the lab files and, where it reassures,
+  what they should see. Start with the git clone of https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git
+  and `cd Abhimanyu9988.github.io/labs/LAB_SLUG`, then `terraform init && terraform apply` (providers.tf already sets
+  region and permissions_boundary; never pass -var for them; if the scripts read an environment variable such as
+  LAB_NAME, export it once with a concrete example value and pass the same value to Terraform with TF_VAR_lab_name).
+  Show the commands that teach the idea rather than every polling loop, and say which script runs the rest.
+- A "## The proof: ..." section with the real numbers: a small table when there are stages, plus one or two short
+  output blocks.
+- A "## Use it for ..." section: two or three bold-led bullets on adapting it to a real service.
+- A "## Clean up (...)" section: the cleanup and destroy commands in one block.
 - "## What I didn't test": two or three bullets.
 - "## Sources": each source as a markdown link with a readable title, never a bare URL.
 Then a line with only "---", then this exact line, on ONE line:

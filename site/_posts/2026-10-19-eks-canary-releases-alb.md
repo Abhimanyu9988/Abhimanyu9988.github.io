@@ -1,6 +1,6 @@
 ---
 title: "Roll back an EKS release in 16 seconds without restarting a pod"
-description: "Build an EKS lab where the AWS Load Balancer Controller sends 10% of ALB traffic to v2, shifts to 50/50, then rolls back to 100/0 by changing an Ingress annotation."
+description: "A real traffic dial for EKS releases: send 10% to v2 with one Ingress annotation, and roll back in 16 seconds without restarting a pod. Built and tested in a real AWS lab, every step included."
 image: /assets/posts/eks-canary-releases-alb/cover.png
 image_alt: "Chart of curl tallies per ALB weight stage: v2 gets 21 of 200 at 90/10, 108 at 50/50, and 0 after rollback to 100/0."
 tags: ["aws", "eks", "kubernetes", "devops"]
@@ -11,31 +11,51 @@ replies: []
 ---
 ![Chart of curl tallies per ALB weight stage: v2 gets 21 of 200 at 90/10, 108 at 50/50, and 0 after rollback to 100/0.](https://abhimanyu9988.github.io/assets/posts/eks-canary-releases-alb/cover.png)
 
-One kubectl annotate command moves an ALB from 90/10 to 50/50 to 100/0 between two versions of an app on EKS, and the pods never restart. Without it, a plain Service splits traffic by pod count, so a 10% canary would need nine v1 pods for every v2 pod. I rebuilt this in a throwaway AWS account with the AWS Load Balancer Controller and Pod Identity, and the post shows the curl tallies and the ALB listener-rule weights at each step.
+Every team running on Kubernetes knows this moment. A release goes out, something looks off, and the only "undo" button is another deploy: roll back the image, wait for new pods, hope nothing else breaks on the way.
 
-The useful part is the rollback path: v2 can stay deployed and healthy, but the ALB stops sending it user traffic. No Deployment rollout is needed.
+I wanted a rollback that is just a dial. So I built one on EKS. The new version gets 10% of real traffic first, and if it misbehaves, one `kubectl` command sends everyone back to the old one. In my lab, traffic was fully back on v1 **16 seconds** later, and not a single pod restarted.
 
-**What you'll build**
+Here's how it works, and how to build it yourself.
 
-An internet-facing ALB in front of two EKS app versions, with weighted target groups managed from Kubernetes.
+> **TL;DR**
+> - **What you get:** an Application Load Balancer in front of two versions of your app, with a traffic dial you turn from Kubernetes.
+> - **The trick:** the AWS Load Balancer Controller reads the traffic weights from one Ingress annotation.
+> - **The proof:** 90/10, then 50/50, then a rollback to 100/0 in 16 seconds, with 0 pod restarts.
+> - **Time and cost:** my run took 25 minutes end to end in a throwaway AWS account; the lab budgets about 45 minutes and under 1 USD.
 
-My run took 25.4 minutes; the README says to expect about 45 minutes end to end.
+## Why a normal Kubernetes Service can't give you a 10% canary
 
-The README also says to expect under 1 USD in a throwaway account.
+A Service spreads requests across whatever pods match its selector. Put 3 v1 pods and 1 v2 pod behind one Service, and v2 gets "about a quarter, depending on luck". That's what my lab showed before the build:
 
-## How it works
+```text
+== Before: how is traffic split between v1 and v2? (40 in-cluster requests to Service 'app')
+     34 version-v1
+      6 version-v2
+v1=34 v2=6  (ratio follows the pod count 3:1; to get 10% you would need 9 v1 pods per v2 pod)
+```
 
-A normal Kubernetes Service load-balances across the pods it selects. If one Service selects both versions, the split is tied to the current endpoints, not to a release weight you can set to 10%.
+So a real 10% canary means running nine v1 pods for every v2 pod. And rolling back means scaling or redeploying. There is no weight you can set to zero.
 
-The AWS Load Balancer Controller watches an Ingress and creates an AWS Application Load Balancer. In this lab, the Ingress has a weighted `forward` action that points at two Services: `app-v1` and `app-v2`. The weights live in one Ingress annotation. EKS Pod Identity gives the controller AWS credentials without adding load balancer permissions to the node role.
+## The trick: one Ingress, two target groups, one dial
 
-The pods stay at three v1 replicas and one v2 replica. The ALB listener rule decides whether v2 gets 10%, 50%, or 0%.
+The AWS Load Balancer Controller turns a Kubernetes Ingress into an ALB. Give the Ingress a weighted `forward` action, and the ALB splits traffic between two target groups, one per Service, by weight. The number of pods behind each Service no longer matters.
 
-## Build it
+The whole dial is one annotation:
 
-Prerequisites: Terraform, AWS CLI v2, kubectl, helm, jq, and curl.
+```yaml
+alb.ingress.kubernetes.io/actions.weighted: >-
+  {"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"app-v1","servicePort":80,"weight":90},{"serviceName":"app-v2","servicePort":80,"weight":10}]}}
+```
 
-1. Clone the lab, set one lab name, and create the AWS resources. `LAB_NAME` is for the scripts and `TF_VAR_lab_name` gives Terraform the same value. The apply creates the EKS 1.31 cluster, two `t3.medium` workers, the Pod Identity agent addon, and the Pod Identity association. The README says this apply is about 12-15 minutes.
+Change the numbers, and the controller updates the ALB listener rule. Your Deployments never change. The controller gets its AWS permissions through EKS Pod Identity, so there's no IRSA setup and nothing extra on the node role.
+
+## Build it yourself in 4 steps
+
+You need Terraform, the AWS CLI v2, kubectl, helm, jq and curl, plus an AWS account you can experiment in.
+
+### Step 1: Create the cluster (about 12 to 15 minutes)
+
+This creates an EKS 1.31 cluster with two `t3.medium` workers, the Pod Identity agent and the IAM role for the controller.
 
 ```bash
 git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git
@@ -46,94 +66,74 @@ export TF_VAR_lab_name="$LAB_NAME"
 terraform init && terraform apply
 ```
 
-A fresh apply adds the 23 Terraform resources from the plan. Names, IDs, and ARNs will differ in your account; this is the trimmed output from my run:
+You should see `Plan: 23 to add, 0 to change, 0 to destroy.` before you confirm.
 
-```text
-Plan: 23 to add, 0 to change, 0 to destroy.
-...
-aws_eks_addon.pod_identity_agent: Creation complete after 26s [id=shift-traffic-gradually-713185-eks:eks-pod-identity-agent]
-aws_eks_pod_identity_association.lbc: Creation complete after 1s [id=a-tdp6e0ovxnxudtscn]
-Outputs:
-cluster_name = "shift-traffic-gradually-713185-eks"
-lbc_role_arn = "arn:aws:iam::<account-id>:role/hero-lab-shift-traffic-gradually-713185-lbc"
-vpc_id = "vpc-03c2a0425ca6709c8"
-```
-
-2. Run the before-state script. It creates the demo namespace, two Deployments, three v1 pods, one v2 pod, three Services, and a tester pod. Then it curls the combined Service from inside the cluster.
+### Step 2: Deploy two versions of the app
 
 ```bash
 bash reproduce.sh
 ```
 
-This is the baseline: there is no Ingress, no external ALB, and no release weight to change. The sample is random, but it shows the important limit: a plain Service does not give you a 10% dial.
+This creates `app-v1` (3 pods) and `app-v2` (1 pod) in the `demo` namespace, one Service for each, and shows the "before" split above.
 
-3. Install the controller, create the weighted Ingress, and run the traffic stages.
+### Step 3: Add the load balancer and the dial
 
 ```bash
 bash fix.sh
 ```
 
-`fix.sh` installs AWS Load Balancer Controller Helm chart `1.11.0` with controller `v2.11.0`, using Pod Identity. It applies `k8s/ingress.yaml`, waits for the ALB, then walks the weights through 90/10, 50/50, and 100/0. The tallies in the next section come from this run.
+This installs the AWS Load Balancer Controller (Helm chart `1.11.0`, controller `v2.11.0`) with Pod Identity, applies `k8s/ingress.yaml` with the 90/10 weights, waits for the ALB, and then walks through 90/10, 50/50 and 100/0, counting 200 requests at each stage.
 
-The key config is the weighted forward action on the Ingress:
+### Step 4: Turn the dial yourself
 
-```yaml
-alb.ingress.kubernetes.io/actions.weighted: >-
-  {"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"app-v1","servicePort":80,"weight":90},{"serviceName":"app-v2","servicePort":80,"weight":10}]}}
-```
-
-4. Re-run the same dial manually if you want to test the change yourself. The script already ran these stages; these are the commands behind the 50/50 step and the rollback step.
+Send half the traffic to v2:
 
 ```bash
 kubectl -n demo annotate ingress app --overwrite 'alb.ingress.kubernetes.io/actions.weighted={"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"app-v1","servicePort":80,"weight":50},{"serviceName":"app-v2","servicePort":80,"weight":50}]}}'
+```
+
+Something wrong with v2? Roll back:
+
+```bash
 kubectl -n demo annotate ingress app --overwrite 'alb.ingress.kubernetes.io/actions.weighted={"type":"forward","forwardConfig":{"targetGroups":[{"serviceName":"app-v1","servicePort":80,"weight":100},{"serviceName":"app-v2","servicePort":80,"weight":0}]}}'
 ```
 
-Both commands update one Kubernetes object. The Deployments do not change.
+## The proof: 90/10, 50/50, and a 16-second rollback
 
-## See it work
+Each stage sent 200 requests through the ALB:
 
-Before the ALB exists, the combined Service sends traffic to both versions with no weight setting:
+| Weights | ALB listener rule | What 200 requests hit |
+| --- | --- | --- |
+| 90/10 | app-v1=90, app-v2=10 | v1=179, v2=21 |
+| 50/50 | app-v1=50, app-v2=50 | v1=92, v2=108 |
+| 100/0 (rollback) | app-v1=100, app-v2=0 | v1=200, v2=0 |
+
+The rollback timing, straight from the run:
 
 ```text
-== Before: how is traffic split between v1 and v2? (40 in-cluster requests to Service 'app')
-     34 version-v1
-      6 version-v2
-kubectl get ingress -A -> No resources found
-Services of type LoadBalancer: 0
+ALB rule updated 3s after kubectl annotate; 100% of sampled traffic on v1 after 16s
 ```
 
-After `fix.sh`, the ALB listener rule and the curl tallies moved with the annotation:
-
-| Stage | ALB listener-rule weights | Curl tally |
-| --- | --- | --- |
-| 90/10 | `app-v2=10`, `app-v1=90` | `v1=179 v2=21 other=0 of 200` => v2 10% |
-| 50/50 | `app-v2=50`, `app-v1=50` | `v1=92 v2=108 other=0 of 200` => v2 54% |
-| 100/0 | `app-v2=0`, `app-v1=100` | `v1=200 v2=0 other=0 of 200` => v2 0% |
-
-For rollback, the ALB rule updated 3 seconds after `kubectl annotate`, and the sampled traffic was fully back on v1 after 16 seconds.
-
-The last check is that the pods were not redeployed. The same pods were still running with zero restarts:
+And the pods? The same ones, still running, never restarted:
 
 ```text
 pod app-v1-5b8cd854d6-2k7kl Running restarts=0 age=4m13s
 pod app-v1-5b8cd854d6-6m5vm Running restarts=0 age=4m13s
 pod app-v1-5b8cd854d6-krvvr Running restarts=0 age=4m13s
 pod app-v2-649d75bcd8-dd555 Running restarts=0 age=4m13s
-pod tester Running restarts=0 age=4m11s
 ```
 
-That is the release control this lab proves: the app versions can stay deployed, while the ALB controls how much traffic each one receives.
+That's the whole point: v2 can stay deployed and healthy while the load balancer decides how much traffic it gets.
 
-## Make it yours
+## Use it for your own releases
 
-- Keep separate Services per version, like `app-v1` and `app-v2`. The weighted forward action points at Services, not directly at Deployments.
-- Put the annotation update behind your normal release process. A 10% canary, a 50% step, and a 0% rollback are the same object update with different weights.
-- For production IAM, use the official controller policy from the AWS Load Balancer Controller release instead of the simplified lab policy.
+- **Give each version its own Service**, like `app-v1` and `app-v2`. The weighted action points at Services, not Deployments.
+- **Make the annotation your release step.** 10%, 50%, 100% and a rollback to 0% are the same one-line change, so they fit any pipeline.
+- **Use the official IAM policy in production.** The lab's controller policy is simplified for a throwaway account; take the official one from the controller release.
 
-## Clean up
+## Clean up (the ALB costs money while it runs)
 
-Delete the Ingress first so the controller removes the ALB, target groups, and security groups. Then destroy the Terraform resources. Keep the same lab name for destroy.
+Delete the Ingress first, so the controller removes the ALB, target groups and security groups, then destroy everything else. Use the same lab name.
 
 ```bash
 export AWS_REGION=eu-central-1
@@ -143,13 +143,11 @@ bash cleanup.sh
 terraform destroy
 ```
 
-My cleanup removed the Ingress and namespace, then Terraform destroyed all 23 resources.
-
 ## What I didn't test
 
-- TLS certificates, host-based routing, or multiple paths on the same ALB.
-- Automatic metric-based promotion or rollback.
-- Long-running connection behavior during a weight change.
+- TLS certificates, host-based routing, or several paths on one ALB.
+- Automatic promotion or rollback driven by metrics.
+- Long-running connections while the weights change.
 
 ## Sources
 

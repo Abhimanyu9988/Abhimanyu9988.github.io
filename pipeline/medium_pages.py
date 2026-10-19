@@ -12,6 +12,16 @@ import markdown
 
 BLOG = "https://abhimanyu9988.github.io"
 
+def tables_as_text(md):
+    """Markdown tables become a ```text block with aligned columns, which Medium keeps as a code block."""
+    def conv(m):
+        rows = [[c.strip().strip("`") for c in r.strip().strip("|").split("|")] for r in m.group(0).strip().splitlines()]
+        rows = [r for r in rows if not all(re.fullmatch(r":?-{3,}:?", c) for c in r)]
+        w = [max(len(r[i]) if i < len(r) else 0 for r in rows) for i in range(max(map(len, rows)))]
+        lines = ["  ".join(c.ljust(w[i]) for i, c in enumerate(r)).rstrip() for r in rows]
+        return "```text\n" + "\n".join(lines) + "\n```\n"
+    return re.sub(r"(?m)^\|.*\|[ \t]*\n\|[ :|-]+\|[ \t]*\n(?:\|.*\|[ \t]*(?:\n|$))+", conv, md)
+
 def build(posts_dir="site/_posts", out_dir="site/medium"):
     made = []
     for p in sorted(pathlib.Path(posts_dir).glob("*.md")):
@@ -27,6 +37,7 @@ def build(posts_dir="site/_posts", out_dir="site/medium"):
                 return v.strip('"')
         slug = field("slug") or p.stem.split("-", 3)[3]
         url = f"{BLOG}/posts/{slug}/"
+        body = tables_as_text(body)                       # Medium has no tables: keep them as aligned text
         content = markdown.markdown(body, extensions=["fenced_code", "tables", "sane_lists"], output_format="html")
         content = re.sub(r'<code class="language-[^"]*">', "<code>", content)       # Medium ignores languages anyway
         # Steps written as "1. Do X" followed by a code block become one-item lists that Medium would all number "1.";
