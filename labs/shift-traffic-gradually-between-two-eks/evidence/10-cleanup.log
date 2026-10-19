@@ -1,0 +1,9 @@
+$ bash cleanup.sh
+# exit 0 after 80s
+
+Deleting Ingresses and LoadBalancer Services (controller removes the ALB)...
+ingress.networking.k8s.io "app" deleted from demo namespace
+namespace "demo" deleted
+Waiting for load balancers in vpc-03c2a0425ca6709c8 to disappear...
+Cleanup finished.
+
