@@ -8,12 +8,15 @@ Real problems on AWS containers, **replicated in a disposable AWS lab** and expl
 
 Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit every post before it goes out.
 
-1. **Choose (Mon radar, Thu problems).** Each AI reads the week's sources and proposes its own picks: AWS What's
-   New, releases and issues of AWS container projects, and Stack Overflow. It also sees what has performed well so
-   far. Each pick is scored for audience (would ECS/EKS engineers recognise the pain?) as well as replicability.
-   Then all three vote on the pooled list. Topics with 2 of 3 votes open as issues showing who proposed them
-   and how each AI voted. The best one gets `replicate`.
-2. **Replicate (I approve the `aws-lab` deployment).** Claude writes the Terraform and scripts, ChatGPT reviews them
+1. **Choose.** Monday is **build and teach**: each AI proposes something readers would want running at work (zero-code
+   observability, autoscaling from a queue, secrets without hard-coding...), from AWS What's New, project releases,
+   Hacker News and official docs, scored on "would an ECS/EKS engineer think *I want to deploy this*?". Thursday is
+   **fix a real problem** from issues and Stack Overflow, scored on whether engineers would recognise the pain. Both
+   also see what has performed well so far. All three vote on the pooled list; topics with 2 of 3 votes open as
+   issues, and the best one gets `replicate`.
+2. **Lab (I approve the `aws-lab` deployment).** For a build topic the lab shows the "before", builds the thing and
+   proves it works with real output; for a problem it reproduces the problem and fixes it. Claude writes the
+   Terraform and scripts, ChatGPT reviews them
    and Gemini settles disputes. The lab runs: plan → plan check → apply → reproduce → fix. Destroy always runs.
 3. **Confirm.** All three read the real output and say whether it genuinely replicated the problem. 2 of 3 is
    needed to write.

@@ -87,6 +87,78 @@ or fix verification; anything in the LinkedIn post that the article does not sup
 beginner; over 900 words of prose or an output block over 10 lines. Minor: tone that reads robotic or like an AI,
 clarity, a title that doesn't name the reader's symptom, anything a busy reader could skip."""
 
+VERDICT_Q_BUILD = """This is a BUILD topic. Did the lab GENUINELY build what TOPIC promises, and does EVIDENCE prove it works
+end to end (real output a reader would want: traces or metrics arriving, scaling with numbers, a request succeeding),
+not just "installed"? Say no if the proof is missing or faked, if it only worked because of a shortcut a reader
+couldn't use, or if the post's promise would be bigger than what the evidence shows. Judge only from TOPIC, LAB and
+EVIDENCE."""
+
+BUILD_ARTICLE_RULES = """You are writing as Abhimanyu (Abhi), in the first person. AUTHOR lists true facts about him; he
+built this himself in a disposable AWS lab. Readers: working engineers and students on AWS containers who want the
+OUTCOME in the title running in their own account. This is a teaching post: they should finish it thinking "I can
+do this", and be able to. Write it the way he'd walk a teammate through it: warm, plain, confident, specific.
+
+LENGTH: 800 to 1,100 words of prose, about 1,500 words in total with code. At most 10 code blocks, no output block
+longer than 10 lines (cut with "..."). Every step earns its place; background a reader can skip goes.
+
+Structure (markdown, no front matter, no H1):
+- Open with the chosen HOOK (keep its substance and first line): the payoff, what they'll have running at the end
+  and why they'd want it at work. Two short paragraphs, no heading. One personal line at most, using ONLY facts in
+  AUTHOR. Never invent anecdotes, numbers, customers or employers.
+- **What you'll build**: three short lines: the outcome, the time it took (from EVIDENCE/RUN), roughly what it
+  costs (only if LAB or EVIDENCE supports it).
+- "## How it works": the moving parts in plain words, four to six sentences or a short list. No marketing.
+- "## Build it": numbered steps in the order a reader runs them, each a one-line why plus the command(s) from the
+  lab files, with a trimmed real output only where it reassures ("you should see..."). Start with the git clone of
+  https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git and `cd Abhimanyu9988.github.io/labs/LAB_SLUG`, then
+  `terraform init && terraform apply` (providers.tf already sets region and permissions_boundary; never pass -var for
+  them; if the scripts read an environment variable such as LAB_NAME, export it once with a concrete example value
+  and pass the same value to apply and destroy). Group closely related commands; show the commands that teach the
+  idea (the install, the key config) rather than every polling loop, and say which script runs the rest.
+- "## See it work": the proof from EVIDENCE: the before (from reproduce.sh) next to the after (from fix.sh).
+- "## Make it yours": two or three bullets on adapting it to a real service.
+- "## Clean up": the cleanup and destroy commands, in one block.
+- "## What I didn't test": two or three bullets.
+- "## Sources": each source as a markdown link with a readable title, never a bare URL.
+Then a line with only "---", then this exact line, on ONE line:
+_I built this in a disposable AWS lab. The lab code and raw output are in the repo. Drafted with AI assistance and reviewed by me._
+
+Voice: short paragraphs, plain words, explain jargon once, "you" and "I". STYLE SIGNALS show what works on dev.to
+right now: borrow the shape, never the wording. Banned: "In today's...", "delve", "landscape", "robust", "seamless",
+"game-changer", "leverage", "Let's dive in", "unlock", "journey", emojis in headings, exclamation marks. Never mention
+the pipeline (S3 backends, plan files, -no-color, HERO_RESULT, "the script loops over"). Never call the before-state
+a bug or the build a fix.
+Hard rules: every command, output, error message, version or number must appear in LAB or EVIDENCE (trim with
+"..."). Never invent output. Keep <account-id> placeholders. The promise in the title and opening must not be bigger
+than what EVIDENCE shows.
+Tags: at most 4, lowercase letters and digits only (for example aws, eks, opentelemetry, devops).
+
+LinkedIn post (field "linkedin"), plain text, no markdown, 70 to 140 words, written as "something I built":
+- First line: the outcome in the reader's words (no clickbait, no "I'm excited to share").
+- Two or three short lines: what it does, how long it took, the one idea that makes it work.
+- One line: I built it in a throwaway AWS lab, and the post has every step.
+- Then a line containing only {LINKS} (the dev.to and Medium links are filled in there).
+- Then 3 or 4 hashtags. At most one emoji. No @mentions. No other URLs.
+
+Source replies (field "source_replies"): for EACH source URL that is a discussion thread (Stack Overflow, GitHub
+issue, forum), a short reply Abhi could post there himself, 50 to 100 words, first person, helpful on its own,
+ending with "I wrote up the full build here: {POST_URL}". Return an empty list for docs pages and announcements.
+Stack Overflow does not allow AI-written answers, so these are drafts Abhi rewrites in his own words."""
+
+BUILD_RUBRIC = """You are the technical checker. Blocking: any personal claim about Abhi that is not in AUTHOR; any
+command, output, error text, version or number that is not in EVIDENCE or LAB; a command or file name that differs
+from the lab files; a step a reader could not follow (a missing variable, a value only the pipeline had); a promise
+in the title or opening bigger than what EVIDENCE proves; missing proof that the build works; anything in the
+LinkedIn post that the article does not support; over 1,100 words of prose or an output block over 10 lines.
+Minor: tone that reads robotic or like an AI, clarity, a title that doesn't state the outcome, anything skippable."""
+
+BUILD_TITLE_RULES = """A good title states the OUTCOME the reader gets, with a big but true promise and the service name
+early, so an ECS/EKS engineer reads it and thinks "I want that running". Name the result, not the tool's feature;
+a scope word ("any app", "zero code changes", "from 0 to 10") or a time ("in 20 minutes") only if EVIDENCE backs it.
+Under 75 characters. Shapes that work: "Monitor any app on EKS with zero code changes", "Scale ECS workers from SQS
+queue depth, from 0 to 5 in a minute", "Ship EKS secrets without hard-coding a single one". The opening shows the
+payoff in the first sentence."""
+
 POST_SCHEMA = {"type": "object", "required": ["title", "description", "tags", "body", "linkedin", "source_replies"], "properties": {
     "title": {"type": "string", "description": "max 80 characters; names the symptom the reader hit, no clickbait"},
     "description": {"type": "string", "description": "one or two sentences for previews"},
@@ -129,10 +201,12 @@ def headline_md(h):
     return (f"**Headline round:** the panel picked {h['by']}'s title and opening ({h['yes']} of 3 votes), shaped by "
             f"what's getting the most reactions on dev.to right now.{others}\n\n")
 
-def verdict_md(v):
+def verdict_md(v, kind="problem"):
     mark = lambda x: "\u2705" if x == "yes" else "\u274c"
     lines = [f"- {llm.NAMES[w]} {mark(a)} _{safe_text(r)}_" for w, (a, r) in v["votes"].items()]
-    return f"**Replication check:** {v['yes']} of 3 say the lab genuinely replicated it\n" + "\n".join(lines)
+    what = "built it and proved it works" if kind == "build" else "genuinely replicated it"
+    head = "Build check" if kind == "build" else "Replication check"
+    return f"**{head}:** {v['yes']} of 3 say the lab {what}\n" + "\n".join(lines)
 
 def put(branch, path, data, msg):
     raw = data if isinstance(data, bytes) else data.encode()
@@ -218,17 +292,26 @@ it only if that's what they'd type. A small surprise or contrast is good; clickb
 are not. Under 75 characters. Shapes that work: "ECS shows 1 running task while 3 are still draining", "Fargate worker stuck at 0 tasks? The scaling guard never runs", "EKS pods stuck in ContainerCreating after
 an upgrade". The opening puts the reader in that moment in the first sentence."""
 
+KINDS = {
+    "problem": {"verdict": VERDICT_Q, "rules": ARTICLE_RULES, "rubric": ARTICLE_RUBRIC, "titles": TITLE_RULES,
+                "limits": (900, 6, 10), "vote": "because it names a problem you've had or fear"},
+    "build": {"verdict": VERDICT_Q_BUILD, "rules": BUILD_ARTICLE_RULES, "rubric": BUILD_RUBRIC,
+              "titles": BUILD_TITLE_RULES, "limits": (1100, 10, 10),
+              "vote": "because you want that outcome running at work"},
+}
+
 HEADLINE_SCHEMA = {"type": "object", "required": ["title", "hook"], "properties": {
     "title": {"type": "string", "description": "max 75 characters: the reader's symptom, true to the evidence"},
     "hook": {"type": "string", "description": "the first two or three sentences of the post"}}}
 
-def headline_round(context, signals, author):
+def headline_round(context, signals, author, kind="problem"):
+    K = KINDS[kind]
     """Each of the three proposes a title and opening; all three vote; 2 of 3 or the most votes wins."""
     props = []
     for who in llm.PANEL:
         try:
             h = llm.ask(who, "You write headlines and openings for Abhimanyu's hands-on AWS container posts.",
-                        f"Propose ONE title and ONE opening (two or three sentences) for this post.\n{TITLE_RULES}\n"
+                        f"Propose ONE title and ONE opening (two or three sentences) for this post.\n{K['titles']}\n"
                         "Use STYLE SIGNALS for what works now and AUTHOR for any personal angle.\n\nSTYLE SIGNALS:\n"
                         f"{signals}\n\nAUTHOR:\n{author}\n\n"
                         f"{context[:40000]}", HEADLINE_SCHEMA, tool="submit_headline")
@@ -240,8 +323,8 @@ def headline_round(context, signals, author):
     if not props:
         return None
     votes = llm.panel_votes(props, "You are a busy ECS/EKS engineer scrolling dev.to or LinkedIn. Which of these would "
-                            "you click, because it names a problem you've had or fear, AND would the post deliver it? "
-                            f"Vote yes only for ones you would publish.\n{TITLE_RULES}",
+                            f"you click, {K['vote']}, AND would the post deliver it? "
+                            f"Vote yes only for ones you would publish.\n{K['titles']}",
                             f"STYLE SIGNALS:\n{signals}", tier="write")
     best = max(props, key=lambda p: votes[p["id"]]["yes"])
     best["yes"] = votes[best["id"]]["yes"]
@@ -249,7 +332,10 @@ def headline_round(context, signals, author):
     return best
 
 CODE_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", re.S)
-LIMITS = {"prose": 950, "blocks": 7, "longest": 12}       # the rules say 900 / 6 / 10; a little slack before cutting
+def limits(kind="problem"):
+    """What tighten() enforces: the rules' numbers plus a little slack before cutting."""
+    prose, blocks, longest = KINDS[kind]["limits"]
+    return {"prose": prose + 50, "blocks": blocks + 1, "longest": longest + 2}
 
 def measure(md):
     blocks = CODE_BLOCK.findall(md)
@@ -257,8 +343,8 @@ def measure(md):
     return {"prose": len(re.findall(r"[A-Za-z0-9][\w'\u2019.-]*", prose)), "blocks": len(blocks),
             "longest": max((len(b.strip("\n").splitlines()) for b in blocks), default=0)}
 
-def over(m):
-    return [k for k, v in LIMITS.items() if m[k] > v]
+def over(m, kind="problem"):
+    return [k for k, v in limits(kind).items() if m[k] > v]
 
 def _code_lines(md):
     return {re.sub(r"\s+", " ", l).strip() for b in CODE_BLOCK.findall(md) for l in b.splitlines()}
@@ -272,20 +358,21 @@ def only_cuts(old, new):
             return False
     return True
 
-def tighten(post):
+def tighten(post, kind="problem"):
     """The reviewed post, cut to length if it runs long. Returns (post, note for the PR)."""
     m0 = m = measure(post.get("body", ""))
+    P, B, L = KINDS[kind]["limits"]
     for _ in range(2):
-        if not over(m):
+        if not over(m, kind):
             break
         try:
             cut = llm.ask("chatgpt", "You edit hands-on posts down to length without changing what they say.",
-                          f"This post is too long: {m['prose']} words of prose (limit 900), {m['blocks']} code blocks "
-                          f"(limit 6), longest block {m['longest']} lines (limit 10). Cut it to fit. REMOVE, don't "
+                          f"This post is too long: {m['prose']} words of prose (limit {P}), {m['blocks']} code blocks "
+                          f"(limit {B}), longest block {m['longest']} lines (limit {L}). Cut it to fit. REMOVE, don't "
                           "rewrite: keep the title, the opening, the section structure, every fact and the voice. "
                           "Trim output blocks with '...' and keep the lines that prove the point. Drop repetition, "
                           "background a reader can skip, and detail that lives in the lab scripts. Never add a command, "
-                          f"output or claim. Return every field.\n\nRULES:\n{ARTICLE_RULES}\n\nPOST:\n{json.dumps(post)}",
+                          f"output or claim. Return every field.\n\nRULES:\n{KINDS[kind]['rules']}\n\nPOST:\n{json.dumps(post)}",
                           POST_SCHEMA, tool="revise")
         except Exception as e:
             llm.warn(f"tighten: {str(e)[:200]}"); break
@@ -296,23 +383,24 @@ def tighten(post):
     note = (f"cut from {m0['prose']} to {m['prose']} words of prose" if m is not m0 else "")
     return post, note
 
-def write_post(context):
+def write_post(context, kind="problem"):
+    K = KINDS[kind]
     notes = os.environ.get("REDRAFT_NOTES", "").strip()[:2000]
     if notes:                                      # Abhi's `/redraft` comment on the previous draft
         context = (f"ABHI'S NOTES ON THE PREVIOUS DRAFT (follow them; they override style choices, never the hard "
                    f"rules):\n{notes}\n\n{context}")
     author = AUTHOR_FILE.read_text() if AUTHOR_FILE.exists() else ""
     signals = style_signals()
-    head = headline_round(context, signals, author)
+    head = headline_round(context, signals, author, kind)
     chosen = (f"TITLE: {head['title']}\nHOOK: {head['hook']}" if head else "TITLE/HOOK: write your own")
     context = f"{chosen}\n\nAUTHOR:\n{author}\n\nSTYLE SIGNALS:\n{signals}\n\n{context}"
     post = llm.ask("chatgpt", "You write hands-on AWS container articles for Abhimanyu's blog, strictly from real lab "
                               "output, in a warm human voice.", f"Write the article and the LinkedIn post.\n\n"
-                   f"RULES:\n{ARTICLE_RULES}\n\n{context}", POST_SCHEMA)
-    post, log = llm.refine("blog article and LinkedIn post", post, ARTICLE_RUBRIC, f"RULES:\n{ARTICLE_RULES}\n\n{context}",
+                   f"RULES:\n{K['rules']}\n\n{context}", POST_SCHEMA)
+    post, log = llm.refine("blog article and LinkedIn post", post, K["rubric"], f"RULES:\n{K['rules']}\n\n{context}",
                            POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
     log["headline"] = head
-    post, log["tightened"] = tighten(post)
+    post, log["tightened"] = tighten(post, kind)
     return post, log
 
 def on_main(path):
@@ -332,14 +420,15 @@ def open_pr(issue_no, res, topic):
     while not branch_free(branch):                 # a redraft: new branch, same post and lab names
         branch, n = f"draft/{slug[:70]}-v{n}", n + 1
     lab, context = gather(res, topic, slug)
-    v = llm.verdict(VERDICT_Q, context)
+    kind = topic.get("kind") if topic.get("kind") in KINDS else "problem"
+    v = llm.verdict(KINDS[kind]["verdict"], context)
     if not v["passed"]:
         add_label(issue_no, "replication-disputed")
         comment(issue_no, "\u26a0\ufe0f The lab reported reproduced-and-fixed, but the panel did not confirm the "
-                          f"replication, so nothing was drafted.\n\n{verdict_md(v)}\n\nThe lab and raw output are in the "
+                          f"result, so nothing was drafted.\n\n{verdict_md(v, kind)}\n\nThe lab and raw output are in the "
                           f"`lab` attachment of workflow run {res['run_id']}.")
         return
-    post, log = write_post(context)
+    post, log = write_post(context, kind)
     post["body"] = drop_pipeline_lines(fix_output_tabs(post["body"]))
     tags = [t for t in (re.sub(r"[^a-z0-9]", "", str(t).lower()) for t in post.get("tags", [])) if t][:4]
     today = datetime.date.today().isoformat()
@@ -392,8 +481,8 @@ def open_pr(issue_no, res, topic):
                       + "\n\n</details>\n\n" for r in replies)
             + "<details><summary><b>How the panel checked it</b></summary>\n\n"
             f"**Topic:** issue no. {issue_no}. **Lab:** {safe_text(res.get('summary'))}\n\n"
-            f"**Run:** reproduced and fixed in attempt {res.get('attempts')}, {res.get('minutes')} min total "
-            f"(workflow run {res['run_id']}).\n\n{verdict_md(v)}\n\n"
+            f"**Run:** {'built and proven' if kind == 'build' else 'reproduced and fixed'} in attempt {res.get('attempts')}, {res.get('minutes')} min total "
+            f"(workflow run {res['run_id']}).\n\n{verdict_md(v, kind)}\n\n"
             f"{headline_md(log.get('headline'))}"
             f"{review_md('Lab review', res.get('review'))}\n\n{review_md('Article review', log)}\n\n"
             f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n</details>{warn}\n\n"
@@ -414,7 +503,7 @@ def open_pr(issue_no, res, topic):
     if old.isdigit():                              # a `/redraft`: retire the draft it replaces
         comment(int(old), f"Replaced by the redraft in pull request no. {pr['number']}.")
         gh("PATCH", f"/repos/{HOME_REPO}/pulls/{old}", {"state": "closed"})
-    comment(issue_no, f"\u2705 Replicated and fixed, and the panel confirmed it ({v['yes']} of 3). The draft post is "
+    comment(issue_no, f"\u2705 {'Built and proven' if kind == 'build' else 'Replicated and fixed'}, and the panel confirmed it ({v['yes']} of 3). The draft post is "
                       f"ready for your review in pull request no. {pr['number']}.{warn}")
     add_label(issue_no, "drafted")
 

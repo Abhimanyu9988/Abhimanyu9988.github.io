@@ -66,6 +66,16 @@ Each script must finish within 15 minutes. AWS_REGION and LAB_NAME are set in th
 credentials. Use the cheapest design that genuinely reproduces the problem: a single EC2 instance with k3s, or ECS,
 beats EKS when the problem is not EKS-specific. EKS control plane creation takes about 10 minutes."""
 
+BUILD_RULES = """THIS IS A BUILD TOPIC: the lab builds something useful and proves it works; it is not a bug hunt.
+- reproduce.sh is the BEFORE: deploy the starting point (for example the sample app with no telemetry, a worker
+  that doesn't scale, a secret hard-coded in a task definition) and print evidence of the gap the build closes.
+  End with `HERO_RESULT: reproduced` once the before-state is shown.
+- fix.sh is the BUILD: install and configure the thing, then PROVE it works end to end with real output a reader
+  would want to see (traces or metrics arriving with real names, pods or tasks scaling from N to M with timings, a
+  rollout finishing, a request succeeding). "Installed successfully" is not proof. End with `HERO_RESULT: fixed`
+  only when the proof is printed.
+- Keep it copy-paste friendly: pinned chart and image versions, a small sample app, readable script steps."""
+
 LAB_RUBRIC = """Blocking problems: the lab would fail to apply (breaks a LAB LIMIT or a file rule, IAM naming or
 boundary missing, invalid Terraform or provider usage), would not actually reproduce the problem described in the
 topic and sources, a script could hang or never print its HERO_RESULT line, or cleanup.sh would leave AWS
@@ -504,17 +514,24 @@ def main():
         if "pull_request" in issue or not labels & {"radar", "problem"}:
             raise RuntimeError("that issue is not a radar/problem topic")
         slug = slugify(issue["title"])
+        kind = "build" if "build" in labels else "problem"
+        rules = LAB_RULES + ("\n\n" + BUILD_RULES if kind == "build" else "")
+        goal = ("build something useful on AWS and prove it works with real output" if kind == "build" else
+                "reproduce a real problem on AWS and then fix it")
         lab_id = f"{slug[:24].strip('-')}-{RUN_ID[-6:]}"
         result.update(title=issue["title"], slug=slug, lab_id=lab_id)
         sources = fetch_sources(used_sources(issue.get("body") or ""))
-        (OUT / "topic.json").write_text(json.dumps({"title": issue["title"], "body": issue.get("body"), "sources": sources}))
+        (OUT / "topic.json").write_text(json.dumps({"title": issue["title"], "body": issue.get("body"), "sources": sources,
+                                                     "kind": kind}))
         context = (f"TOPIC ISSUE TITLE: {issue['title']}\n\nTOPIC ISSUE BODY:\n{issue.get('body')}\n\n"
                    f"SOURCES:\n{json.dumps(sources)}")
         lab = llm.claude_json("You are an AWS container engineer. You write small, reliable, disposable labs that "
-                              "reproduce a real problem on AWS and then fix it.",
-                              f"Write the lab for this topic.\n\nLAB RULES:\n{LAB_RULES}\n\n{context}",
+                              f"{goal}.",
+                              f"Write the lab for this topic.\n\nLAB RULES:\n{rules}\n\n{context}",
                               LAB_SCHEMA, tool="submit_lab")
-        lab, review = llm.refine("AWS replication lab", lab, LAB_RUBRIC, f"LAB RULES:\n{LAB_RULES}\n\n{context}", LAB_SCHEMA)
+        rubric = LAB_RUBRIC + (" For a BUILD topic, blocking also: fix.sh doesn't print real proof that the build "
+                               "works end to end." if kind == "build" else "")
+        lab, review = llm.refine("AWS lab", lab, rubric, f"LAB RULES:\n{rules}\n\n{context}", LAB_SCHEMA)
         result.update(review=review, summary=lab.get("summary", ""), expected=lab.get("expected", ""))
         save(result, lab)
         if DRY:
@@ -542,8 +559,9 @@ def main():
             lab = llm.claude_json(
                 "You are an AWS container engineer fixing your own lab after a failed run.",
                 f"Attempt {attempt} of {MAX_ATTEMPTS} failed at step: {failed}.\n\nEVIDENCE (output tail):\n"
-                f"{tail(redact(out), 8000)}\n\nFix the lab so it runs and genuinely reproduces the problem. If the "
-                f"problem did not appear, rethink the reproduction. Return the full lab.\n\nLAB RULES:\n{LAB_RULES}\n\n"
+                f"{tail(redact(out), 8000)}\n\nFix the lab so it runs and genuinely does what the topic needs (reproduce "
+                f"the problem, or for a build topic, show the before-state and prove the build works). Return the full "
+                f"lab.\n\nLAB RULES:\n{rules}\n\n"
                 f"YOUR LAB:\n{json.dumps(lab)}\n\n{context}", LAB_SCHEMA, tool="submit_lab")
             result.update(summary=lab.get("summary", ""), expected=lab.get("expected", ""))
     except Exception as e:

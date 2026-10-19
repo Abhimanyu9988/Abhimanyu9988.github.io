@@ -9,7 +9,7 @@ Safety rules, shared by every script in pipeline/:
     link, reference or @mention, so other projects never get a "mentioned this" backlink or a
     notification. (File contents in a draft PR may link out: files never create backlinks.)
 """
-import base64, calendar, hashlib, html, json, os, re, time, urllib.error, urllib.parse, urllib.request
+import base64, calendar, hashlib, html, json, os, pathlib, re, time, urllib.error, urllib.parse, urllib.request
 import xml.etree.ElementTree as ET
 
 HOME_REPO = "Abhimanyu9988/Abhimanyu9988.github.io"
@@ -29,7 +29,8 @@ LABELS = {"radar": ("0e8a16", "Topic idea from the radar"),
           "analytics": ("0052cc", "Impact log: weekly analytics for the published posts"),
           "hero-goal": ("b60205", "AWS Hero milestones: Community Builders and other applications"),
           "talk-kit": ("5319e7", "A 10-minute talk built from a lab"),
-          "teaching": ("0e8a16", "A student session built from a lab")}
+          "teaching": ("0e8a16", "A student session built from a lab"),
+          "build": ("c2e0c6", "Build-and-teach topic: the lab builds something useful and proves it works")}
 # AWS container projects: releases feed the radar, issues feed the problem finder.
 WATCH = ["aws/containers-roadmap", "aws/karpenter-provider-aws", "aws/amazon-vpc-cni-k8s",
          "kubernetes-sigs/aws-load-balancer-controller", "kubernetes-sigs/aws-ebs-csi-driver",
@@ -49,6 +50,26 @@ GitHub Actions job (about 60 minutes of wall time, under 1 USD per run).
   EventBridge, Application Auto Scaling, SSM parameters (read). Not available: RDS, S3 buckets, Lambda, Route 53, KMS.
 - IAM: only roles named hero-lab-* that carry the permissions boundary. EKS Pod Identity and IRSA both work.
 - Tools in the lab sandbox: terraform, aws CLI v2, kubectl, helm, jq, curl, git, openssl (no docker)."""
+# Official docs for things readers love to build on AWS containers. Build topics may cite them (more than once);
+# each is checked live before the panel sees it.
+DOCS = [
+    ("KEDA: scale on Amazon SQS queue length", "https://keda.sh/docs/latest/scalers/aws-sqs/"),
+    ("OpenTelemetry Operator for Kubernetes", "https://opentelemetry.io/docs/platforms/kubernetes/operator/"),
+    ("OpenTelemetry Operator: zero-code auto-instrumentation",
+     "https://opentelemetry.io/docs/platforms/kubernetes/operator/automatic/"),
+    ("EKS Pod Identity", "https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html"),
+    ("AWS Load Balancer Controller", "https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/"),
+    ("Argo CD getting started", "https://argo-cd.readthedocs.io/en/stable/getting_started/"),
+    ("Amazon ECS Service Connect", "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-connect.html"),
+    ("Amazon ECS service auto scaling",
+     "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html"),
+    ("CloudWatch Container Insights",
+     "https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/ContainerInsights.html"),
+    ("Prometheus community Helm charts", "https://prometheus-community.github.io/helm-charts/"),
+    ("External Secrets Operator: AWS Secrets Manager", "https://external-secrets.io/latest/provider/aws-secrets-manager/"),
+    ("Amazon ECS FireLens log routing", "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html"),
+]
+DOCS_URLS = {u for _, u in DOCS}
 # Sources of the deleted issues 9 and 10. Never use them again.
 SKIP_SOURCES = {
     "https://github.com/aws/karpenter-provider-aws/issues/9616",
@@ -277,9 +298,9 @@ def ensure_label(label):
             raise
         gh("POST", f"/repos/{REPO}/labels", {"name": label, "color": color, "description": desc})
 
-def post_issue(title, body, label):
+def post_issue(title, body, label, extra_labels=()):
     assert_safe(title); assert_safe(body)
-    iss = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": body, "labels": [label]})
+    iss = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": body, "labels": [label, *extra_labels]})
     print(f"opened #{iss['number']}: {title}")
     return iss
 
@@ -331,7 +352,7 @@ def propose_all(system, prompt, schema):
             llm.warn(f"{who} could not propose: {str(e)[:400]}")
     return out
 
-def post_topics(proposals, items, existing, used, label, render, limit):
+def post_topics(proposals, items, existing, used, label, render, limit, question=None, extra_labels=()):
     """proposals: [(who, topic)] from propose_all. Pool them (same title or shared source = one topic), let all
     three vote, open the topics with 2+ yes as issues, and mark the best one `replicate`.
     render(topic, sources) returns the top text of the issue, or None to skip the topic."""
@@ -342,7 +363,7 @@ def post_topics(proposals, items, existing, used, label, render, limit):
     for who, t in proposals:
         title = neutralize(t.get("title")).strip()[:100]
         srcs = [u for u in (t.get("sources") or []) if isinstance(u, str) and u in allowed]
-        if not title or norm(title) in have or not srcs or any(u in used for u in srcs):
+        if not title or norm(title) in have or not srcs or any(u in used and u not in DOCS_URLS for u in srcs):
             print(f"skip ({who}) duplicate, empty, unsourced or already covered: {title}"); continue
         same = next((c for c in cands if norm(c["title"]) == norm(title) or set(srcs) & set(c["srcs"])), None)
         if same:
@@ -358,7 +379,7 @@ def post_topics(proposals, items, existing, used, label, render, limit):
     view = [{"id": c["id"], "title": c["title"], "details": c["top"], "replicability_1_to_10": c["score"],
              "audience_1_to_10": c["audience"],
              "proposed_by": [llm.NAMES[w] for w in c["by"]]} for c in cands]
-    votes = llm.panel_votes(view, PANEL_QUESTION, f"LAB LIMITS:\n{LAB_LIMITS}\n\nEXISTING TOPICS:\n"
+    votes = llm.panel_votes(view, question or PANEL_QUESTION, f"LAB LIMITS:\n{LAB_LIMITS}\n\nEXISTING TOPICS:\n"
                             f"{json.dumps(existing[:150])}\n\nWHAT HAS WORKED SO FAR (analytics panel):\n"
                             f"{insights or 'no posts measured yet'}")
     for c in cands:
@@ -370,7 +391,8 @@ def post_topics(proposals, items, existing, used, label, render, limit):
     if ranked and not best:
         print("no accepted topic scored 7+ for replicability and 6+ for audience; nothing marked replicate")
     if ranked and not DRY:
-        ensure_label(label)
+        for l in (label, *extra_labels):
+            ensure_label(l)
     made = 0
     for c in ranked:
         body = (f"{c['top']}\n\n{panel_line(c, votes[c['id']])}\n\n{sources_block(c['srcs'])}\n\n"
@@ -383,7 +405,7 @@ def post_topics(proposals, items, existing, used, label, render, limit):
         used.update(c["srcs"])
         if DRY:
             print(f"[dry run] would open{' + replicate' if c is best else ''}: {c['title']}\n{body}\n"); continue
-        iss = post_issue(c["title"], body, label)
+        iss = post_issue(c["title"], body, label, extra_labels)
         made += 1
         if c is best:
             add_label(iss["number"], "replicate")
@@ -435,43 +457,71 @@ def collect():
     except Exception as e:
         print(f"warn: AWS What's New: {e}")
     hn.sort(key=lambda i: -i["points"])
-    return news[:30] + rels + hn[:25]
+    docs = []
+    for title, url in DOCS:
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=20) as r:
+                if r.status == 200:
+                    docs.append({"src": "docs", "title": title, "url": url})
+        except Exception as e:
+            print(f"warn: docs {url}: {e}")
+    return news[:30] + rels + hn[:25] + docs
 
 AUDIENCE = {"type": "integer", "description": "1-10: how many ECS/EKS engineers would recognise this pain from a "
              "symptom they've hit or fear (errors, stuck rollouts, wrong dashboards, surprise bills) and click"}
-TOPIC_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics": {"type": "array", "items": {
-    "type": "object", "required": ["title", "why", "lab", "replicability", "audience", "sources"], "properties": {
-        "audience": AUDIENCE,
-        "title": {"type": "string", "description": "max 80 chars"},
-        "why": {"type": "string", "description": "2 sentences: why this matters to AWS container users now"},
-        "lab": {"type": "string", "description": "1-2 sentences: what the lab builds and shows"},
-        "replicability": {"type": "integer", "description": "1-10: how well this can be reproduced within LAB LIMITS"},
+BUILD_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics": {"type": "array", "items": {
+    "type": "object", "required": ["title", "payoff", "proof", "lab", "replicability", "audience", "sources"],
+    "properties": {
+        "title": {"type": "string", "description": "max 75 chars: the outcome the reader gets, e.g. 'Monitor any app "
+                  "on EKS with zero code changes'"},
+        "payoff": {"type": "string", "description": "2 sentences: what the reader has running at the end and why "
+                   "they'd want it at work"},
+        "proof": {"type": "string", "description": "1 sentence: the output that proves it works (traces arriving, "
+                  "pods scaling from 0 to 5, a dashboard filling up)"},
+        "lab": {"type": "string", "description": "1-2 sentences: BEFORE (the starting point) and BUILD (what gets "
+                "installed or configured)"},
+        "replicability": {"type": "integer", "description": "1-10: how reliably this can be built within LAB LIMITS"},
+        "audience": {"type": "integer", "description": "1-10: how many ECS/EKS engineers would read the title and "
+                     "think 'I want to deploy this'"},
         "sources": {"type": "array", "items": {"type": "string"}, "description": "URLs copied exactly from ITEMS"}}}}}}
 
+BUILD_QUESTION = ("Should this become a build-and-teach post on Abhimanyu's blog? Readers: working engineers and "
+                  "students on AWS containers. The posts that do best for him teach people to BUILD something they "
+                  "want at work, with a big but true promise (his best post: a universal metrics integration guide, "
+                  "'monitor any application with zero code'). Vote yes only if a busy ECS/EKS engineer would read "
+                  "the title and think 'I want to deploy this', the lab can prove it works within the LAB LIMITS, "
+                  "and it doesn't repeat an existing topic. Vote no for news recaps, niche flags or metrics, and "
+                  "anything whose payoff can't be shown in real output.")
+
 def ask_panel(items, existing):
+    author = (pathlib.Path(__file__).with_name("author.md").read_text()
+              if pathlib.Path(__file__).with_name("author.md").exists() else "")
     return propose_all(
-        "You pick topics for Abhimanyu's hands-on blog about AWS containers. Every post replicates something "
-        "real in a disposable AWS lab and shows the result.",
-        f"From the ITEMS below (AWS What's New entries, releases of AWS container projects, and Hacker News "
-        f"stories), choose up to {MAX_ISSUES + 2} topics that would make a strong hands-on post right now: a new "
-        "feature or behaviour change that people will actually trip over in their work (something breaks, "
-        "costs more, or quietly misleads them), demonstrated in a lab. Skip announcements whose only story is "
-        "'there is a new metric/flag'; pick the ones with a symptom people will search for. Prefer EKS, ECS, Fargate, "
-        f"ECR and Karpenter. Do not repeat anything in EXISTING. {NO_REFS}\n\nLAB LIMITS:\n{LAB_LIMITS}\n\n"
+        "You pick build-and-teach topics for Abhimanyu's hands-on blog about AWS containers. Every post builds "
+        "something useful in a disposable AWS lab, proves it works with real output, and teaches readers to do the "
+        "same in their own account.",
+        f"Choose up to {MAX_ISSUES + 2} things to BUILD that would make readers say 'I want to deploy this': a "
+        "concrete outcome they want at work (zero-code observability, autoscaling from a queue, secrets without "
+        "hard-coding, safe deploys, cost cuts they can measure), done step by step in under an hour. Use ITEMS as "
+        "sources: AWS What's New and releases for something new to build with, docs for proven building blocks, "
+        "Hacker News for what people care about. Play to the AUTHOR's strengths (observability, OpenTelemetry, "
+        "auto-instrumentation, Kubernetes) when they fit. The title states the outcome, not the tool's feature "
+        f"name. Do not repeat anything in EXISTING. {NO_REFS}\n\nAUTHOR:\n{author}\n\nLAB LIMITS:\n{LAB_LIMITS}\n\n"
         f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",
-        TOPIC_SCHEMA)
+        BUILD_SCHEMA)
 
 def main():
     existing, used = existing_issues()
-    items = [i for i in collect() if i["url"] not in used and i["url"] not in SKIP_SOURCES]
+    items = [i for i in collect() if (i["url"] not in used or i["url"] in DOCS_URLS) and i["url"] not in SKIP_SOURCES]
     print(f"collected {len(items)} new items ({len(used)} source URLs already used)")
     if not items:
         print("done: nothing new"); return
     topics = ask_panel(items, existing)
     post_topics(topics, items, existing, used, LABEL,
-                lambda t, srcs: f"**Why now:** {neutralize(t.get('why'))}\n\n**Lab idea:** {neutralize(t.get('lab'))}",
-                MAX_ISSUES)
+                lambda t, srcs: (f"**What you'll build:** {neutralize(t.get('payoff'))}\n\n**Proof it works:** "
+                                 f"{neutralize(t.get('proof'))}\n\n**Lab:** {neutralize(t.get('lab'))}"),
+                MAX_ISSUES, question=BUILD_QUESTION, extra_labels=("build",))
 
 if __name__ == "__main__":
     main()
