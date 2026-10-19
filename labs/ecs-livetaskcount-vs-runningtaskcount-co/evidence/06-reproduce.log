@@ -1,0 +1,31 @@
+$ bash reproduce.sh
+# exit 0 after 264s
+
+== Cluster=ecs-livetaskcount-vs-run-981521-cluster Service=ecs-livetaskcount-vs-run-981521-svc
+Initial: 4	4  (desired running)
+Waiting 90s so CloudWatch gets baseline datapoints with 4 tasks...
+== Scale in: desiredCount 4 -> 1 (target group deregistration delay is 120s)
+14:30:02 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:30:16 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:30:30 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:30:43 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:30:57 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:31:10 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:31:24 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:31:38 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:31:52 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:32:06 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:32:20 API: service desired/running=[1	1] tasks by lastStatus: DEACTIVATING=3 RUNNING=1
+14:32:33 API: service desired/running=[1	1] tasks by lastStatus: RUNNING=1 STOPPING=3
+Max tasks seen in DEACTIVATING (draining): 3
+-- attempt 1: 11 datapoints, minutes where Live > Running: 4
+== LiveTaskCount namespace: AWS/ECS   RunningTaskCount namespace: ECS/ContainerInsights
+== Per-minute averages (UTC)
+2026-10-19T14:27:00+00:00  LiveTaskCount=1.0  RunningTaskCount=0.0
+2026-10-19T14:28:00+00:00  LiveTaskCount=4.0  RunningTaskCount=3.0
+2026-10-19T14:29:00+00:00  LiveTaskCount=4.0  RunningTaskCount=4.0
+2026-10-19T14:30:00+00:00  LiveTaskCount=4.0  RunningTaskCount=1.0
+2026-10-19T14:31:00+00:00  LiveTaskCount=4.0  RunningTaskCount=1.0
+Observation: while tasks were DEACTIVATING, LiveTaskCount stayed higher than RunningTaskCount - the two metrics disagree during scale-in.
+HERO_RESULT: reproduced
+
