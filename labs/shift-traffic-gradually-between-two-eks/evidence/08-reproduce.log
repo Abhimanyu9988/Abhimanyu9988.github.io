@@ -1,0 +1,54 @@
+$ bash reproduce.sh
+# exit 0 after 30s
+
+== Waiting for worker nodes to join
+E1019 17:37:03.314042      38 reflector.go:227] "Failed to watch" err="Get \"https://799583FB3DCB6C9A36A86BC2A11379C9.gr7.eu-central-1.eks.amazonaws.com/api/v1/nodes?allowWatchBookmarks=true&fieldSelector=metadata.name%3Dip-10-20-0-23.eu-central-1.compute.internal&resourceVersion=1269&timeoutSeconds=514&watch=true\": context canceled" reflector="k8s.io/client-go/tools/watch/informerwatcher.go:162" type="*unstructured.Unstructured"
+node/ip-10-20-0-23.eu-central-1.compute.internal condition met
+E1019 17:37:03.715996      38 reflector.go:227] "Failed to watch" err="Get \"https://799583FB3DCB6C9A36A86BC2A11379C9.gr7.eu-central-1.eks.amazonaws.com/api/v1/nodes?allowWatchBookmarks=true&fieldSelector=metadata.name%3Dip-10-20-1-84.eu-central-1.compute.internal&resourceVersion=1269&timeoutSeconds=333&watch=true\": context canceled" reflector="k8s.io/client-go/tools/watch/informerwatcher.go:162" type="*unstructured.Unstructured"
+node/ip-10-20-1-84.eu-central-1.compute.internal condition met
+deployment "coredns" successfully rolled out
+daemon set "eks-pod-identity-agent" successfully rolled out
+NAME                                          STATUS   ROLES    AGE   VERSION                INTERNAL-IP   EXTERNAL-IP      OS-IMAGE                        KERNEL-VERSION                    CONTAINER-RUNTIME
+ip-10-20-0-23.eu-central-1.compute.internal   Ready    <none>   34s   v1.31.14-eks-b9510e3   10.20.0.23    63.184.221.209   Amazon Linux 2023.12.20261012   6.1.188-233.393.amzn2023.x86_64   containerd://2.3.5+unknown
+ip-10-20-1-84.eu-central-1.compute.internal   Ready    <none>   35s   v1.31.14-eks-b9510e3   10.20.1.84    3.73.56.0        Amazon Linux 2023.12.20261012   6.1.188-233.393.amzn2023.x86_64   containerd://2.3.5+unknown
+
+== Deploying app v1 (3 pods) and app v2 (1 pod)
+namespace/demo created
+deployment.apps/app-v1 created
+deployment.apps/app-v2 created
+service/app-v1 created
+service/app-v2 created
+service/app created
+pod/tester created
+deployment "app-v1" successfully rolled out
+deployment "app-v2" successfully rolled out
+E1019 17:37:19.729079     144 reflector.go:227] "Failed to watch" err="Get \"https://799583FB3DCB6C9A36A86BC2A11379C9.gr7.eu-central-1.eks.amazonaws.com/api/v1/namespaces/demo/pods?allowWatchBookmarks=true&fieldSelector=metadata.name%3Dtester&resourceVersion=1417&timeoutSeconds=528&watch=true\": context canceled" reflector="k8s.io/client-go/tools/watch/informerwatcher.go:162" type="*unstructured.Unstructured"
+pod/tester condition met
+NAME                     READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                                         SELECTOR
+deployment.apps/app-v1   3/3     3            3           8s    web          public.ecr.aws/docker/library/busybox:1.36.1   app=demo,version=v1
+deployment.apps/app-v2   1/1     1            1           8s    web          public.ecr.aws/docker/library/busybox:1.36.1   app=demo,version=v2
+
+NAME             TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE   SELECTOR
+service/app      ClusterIP   172.20.168.189   <none>        80/TCP    8s    app=demo
+service/app-v1   ClusterIP   172.20.78.100    <none>        80/TCP    8s    app=demo,version=v1
+service/app-v2   ClusterIP   172.20.108.129   <none>        80/TCP    8s    app=demo,version=v2
+
+NAME                          READY   STATUS    RESTARTS   AGE   IP            NODE                                          NOMINATED NODE   READINESS GATES
+pod/app-v1-5b8cd854d6-2k7kl   1/1     Running   0          9s    10.20.0.50    ip-10-20-0-23.eu-central-1.compute.internal   <none>           <none>
+pod/app-v1-5b8cd854d6-6m5vm   1/1     Running   0          9s    10.20.0.6     ip-10-20-0-23.eu-central-1.compute.internal   <none>           <none>
+pod/app-v1-5b8cd854d6-krvvr   1/1     Running   0          9s    10.20.1.224   ip-10-20-1-84.eu-central-1.compute.internal   <none>           <none>
+pod/app-v2-649d75bcd8-dd555   1/1     Running   0          9s    10.20.1.17    ip-10-20-1-84.eu-central-1.compute.internal   <none>           <none>
+pod/tester                    1/1     Running   0          7s    10.20.0.134   ip-10-20-0-23.eu-central-1.compute.internal   <none>           <none>
+
+== Before: how is traffic split between v1 and v2? (40 in-cluster requests to Service 'app')
+     34 version-v1
+      6 version-v2
+v1=34 v2=6  (ratio follows the pod count 3:1; to get 10% you would need 9 v1 pods per v2 pod)
+
+== Before: is there any weighted entry point or load balancer?
+kubectl get ingress -A -> No resources found
+Services of type LoadBalancer: 0
+Error from server (NotFound): deployments.apps "aws-load-balancer-controller" not found
+Rolling back v2 today means scaling/redeploying pods; there is no weight to set to zero.
+HERO_RESULT: reproduced
+
