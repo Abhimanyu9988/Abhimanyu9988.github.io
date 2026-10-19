@@ -1,0 +1,26 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 54s
+
+aws_iam_instance_profile.node: Creating...
+aws_iam_instance_profile.node: Creation complete after 6s [id=hero-lab-shift-traffic-gradually-713185-node]
+aws_instance.node[1]: Creating...
+aws_instance.node[0]: Creating...
+aws_instance.node[1]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Still creating... [00m10s elapsed]
+aws_instance.node[1]: Creation complete after 15s [id=i-07e90a2f8379ea5bc]
+aws_instance.node[0]: Creation complete after 15s [id=i-05f35faef4b990dbf]
+aws_eks_addon.pod_identity_agent: Creating...
+aws_eks_addon.pod_identity_agent: Still creating... [00m10s elapsed]
+aws_eks_addon.pod_identity_agent: Still creating... [00m20s elapsed]
+aws_eks_addon.pod_identity_agent: Creation complete after 26s [id=shift-traffic-gradually-713185-eks:eks-pod-identity-agent]
+aws_eks_pod_identity_association.lbc: Creating...
+aws_eks_pod_identity_association.lbc: Creation complete after 1s [id=a-tdp6e0ovxnxudtscn]
+
+Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "shift-traffic-gradually-713185-eks"
+lbc_role_arn = "arn:aws:iam::<account-id>:role/hero-lab-shift-traffic-gradually-713185-lbc"
+vpc_id = "vpc-03c2a0425ca6709c8"
+
