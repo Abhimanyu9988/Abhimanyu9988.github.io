@@ -1,0 +1,156 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 277s
+
+[... earlier output cut ...]
+lic-0"
+          - "hero-lab" = "ecs-livetaskcount-vs-run-981521"
+        } -> null
+      - vpc_id                                         = "vpc-0c75e355260ea702f" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_subnet.public[1] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0c6c62a8dfa1561f9" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1b" -> null
+      - availability_zone_id                           = "euc1-az3" -> null
+      - cidr_block                                     = "10.60.1.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0c6c62a8dfa1561f9" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "ecs-livetaskcount-vs-run-981521-public-1"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "ecs-livetaskcount-vs-run-981521-public-1"
+          - "hero-lab" = "ecs-livetaskcount-vs-run-981521"
+        } -> null
+      - vpc_id                                         = "vpc-0c75e355260ea702f" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_vpc.this will be destroyed
+  - resource "aws_vpc" "this" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-0c75e355260ea702f" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.60.0.0/16" -> null
+      - default_network_acl_id               = "acl-0ee665c1e0aeac177" -> null
+      - default_route_table_id               = "rtb-0d817b323b3c7138d" -> null
+      - default_security_group_id            = "sg-04ccdd38a056e177f" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-0c75e355260ea702f" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-0d817b323b3c7138d" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "ecs-livetaskcount-vs-run-981521-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "ecs-livetaskcount-vs-run-981521-vpc"
+          - "hero-lab" = "ecs-livetaskcount-vs-run-981521"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 15 to destroy.
+
+Changes to Outputs:
+  - alb_dns_name = "hl-9044b320cc-alb-412759208.eu-central-1.elb.amazonaws.com" -> null
+  - cluster_name = "ecs-livetaskcount-vs-run-981521-cluster" -> null
+  - service_name = "ecs-livetaskcount-vs-run-981521-svc" -> null
+aws_route_table_association.public[0]: Destroying... [id=rtbassoc-0805ce3272dfd3fb5]
+aws_route_table_association.public[1]: Destroying... [id=rtbassoc-0fc2bbefe604930ec]
+aws_ecs_service.web: Destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:service/ecs-livetaskcount-vs-run-981521-cluster/ecs-livetaskcount-vs-run-981521-svc]
+aws_route_table_association.public[0]: Destruction complete after 1s
+aws_route_table_association.public[1]: Destruction complete after 1s
+aws_route_table.public: Destroying... [id=rtb-0f3a51d7aa828cf0f]
+aws_route_table.public: Destruction complete after 1s
+aws_internet_gateway.this: Destroying... [id=igw-08b74bd97be51828a]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 00m10s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 00m10s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 00m20s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 00m20s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 00m30s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 00m30s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 00m40s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 00m40s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 00m50s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 00m50s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 01m00s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 01m00s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 01m10s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 01m10s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 01m20s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 01m20s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 01m30s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 01m30s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 01m40s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 01m40s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 01m50s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 01m50s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 02m00s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 02m00s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 02m10s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 02m10s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 02m20s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 02m20s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 02m30s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 02m30s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 02m40s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 02m40s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 02m50s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 02m50s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 03m00s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 03m00s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 03m10s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 03m10s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 03m20s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 03m20s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 03m30s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 03m30s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 03m40s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 03m40s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 03m50s elapsed]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 03m50s elapsed]
+aws_ecs_service.web: Still destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:s...er/ecs-livetaskcount-vs-run-981521-svc, 04m00s elapsed]
+aws_ecs_service.web: Destruction complete after 4m1s
+aws_ecs_cluster.this: Destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:cluster/ecs-livetaskcount-vs-run-981521-cluster]
+aws_security_group.task: Destroying... [id=sg-037ce796e31535389]
+aws_ecs_task_definition.web: Destroying... [id=ecs-livetaskcount-vs-run-981521-web]
+aws_lb_listener.http: Destroying... [id=arn:aws:elasticloadbalancing:eu-central-1:<account-id>:listener/app/hl-9044b320cc-alb/38e39499b36f7eb2/796b60a22f360052]
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 04m00s elapsed]
+aws_ecs_task_definition.web: Destruction complete after 1s
+aws_ecs_cluster.this: Destruction complete after 1s
+aws_lb_listener.http: Destruction complete after 1s
+aws_lb_target_group.this: Destroying... [id=arn:aws:elasticloadbalancing:eu-central-1:<account-id>:targetgroup/hl-9044b320cc-tg/55cd4e199f9c0784]
+aws_lb.this: Destroying... [id=arn:aws:elasticloadbalancing:eu-central-1:<account-id>:loadbalancer/app/hl-9044b320cc-alb/38e39499b36f7eb2]
+aws_lb_target_group.this: Destruction complete after 0s
+aws_security_group.task: Destruction complete after 2s
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 04m10s elapsed]
+aws_lb.this: Still destroying... [id=arn:aws:elasticloadbalancing:eu-central...app/hl-9044b320cc-alb/38e39499b36f7eb2, 00m10s elapsed]
+aws_lb.this: Destruction complete after 18s
+aws_subnet.public[1]: Destroying... [id=subnet-0c6c62a8dfa1561f9]
+aws_security_group.alb: Destroying... [id=sg-03532c044f3cd2bd0]
+aws_subnet.public[0]: Destroying... [id=subnet-044fbf3a59c959404]
+aws_subnet.public[0]: Destruction complete after 1s
+aws_subnet.public[1]: Destruction complete after 1s
+aws_security_group.alb: Destruction complete after 1s
+aws_internet_gateway.this: Still destroying... [id=igw-08b74bd97be51828a, 04m20s elapsed]
+aws_internet_gateway.this: Destruction complete after 4m25s
+aws_vpc.this: Destroying... [id=vpc-0c75e355260ea702f]
+aws_vpc.this: Destruction complete after 1s
+
+Destroy complete! Resources: 15 destroyed.
+
