@@ -1,0 +1,53 @@
+name: linkedin
+# `/medium <story link>` or `/linkedin` from you on a publish report: opens the LinkedIn draft in your profile repo
+# (dev.to + Medium links, cover image), where `/post` publishes it. The Medium link is saved to publish-state.
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+concurrency: { group: publish, cancel-in-progress: false }
+jobs:
+  linkedin:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      github.event.comment.user.login == 'Abhimanyu9988' && !github.event.issue.pull_request &&
+      startsWith(github.event.issue.title, 'Publish report') &&
+      (startsWith(github.event.comment.body, '/medium') || startsWith(github.event.comment.body, '/linkedin'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/checkout@v4
+        with: { ref: publish-state, path: state }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r pipeline/requirements.txt
+      # One bot token for both repos: comment on the report here, open the draft issue in the profile repo.
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          owner: Abhimanyu9988
+          repositories: |
+            Abhimanyu9988.github.io
+            Abhimanyu9988
+          permission-issues: write
+      - run: python pipeline/share.py
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ steps.bot.outputs.token }}
+          REPO: ${{ github.repository }}
+      - working-directory: state
+        run: |
+          git config user.name hero-pipeline-bot
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add publish-state.json
+          git diff --cached --quiet || (git commit -m "publish state: medium link" && git push)

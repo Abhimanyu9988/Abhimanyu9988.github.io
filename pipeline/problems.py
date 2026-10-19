@@ -3,7 +3,7 @@
 the winners as issues. The best one gets `replicate`. GitHub access and text safety live in radar.py."""
 import gzip, html, json, os, re, time, urllib.parse, urllib.request
 from radar import (WATCH, SKIP_SOURCES, NO_REFS, LAB_LIMITS, gh, neutralize, existing_issues, post_topics,
-                   propose_all, load_insights)
+                   propose_all, load_insights, AUDIENCE)
 
 MAX_ISSUES, LABEL, UA, DAYS = 3, "problem", "hero-problems/1.0", 30
 SO_TAGS = ["amazon-eks", "amazon-ecs", "aws-fargate", "eksctl", "karpenter", "aws-load-balancer-controller",
@@ -105,7 +105,8 @@ def collect():
             for x in so(t, since):
                 if x.get("score", 0) >= 1:
                     add({"src": "stackoverflow", "title": html.unescape(x["title"]), "url": x["link"],
-                         "score": x["score"], "qid": x["question_id"], "answer_count": x.get("answer_count", 0)})
+                         "score": x["score"], "views": x.get("view_count", 0), "qid": x["question_id"],
+                         "answer_count": x.get("answer_count", 0)})
         except Exception as e:
             print(f"warn: SO {t}: {e}")
     sos = [i for i in items if i["src"] == "stackoverflow"]
@@ -145,8 +146,10 @@ def judge(t, srcs, by_url):
     return ("confirmed" if ev else "unconfirmed"), ev
 
 TOPIC_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics": {"type": "array", "items": {
-    "type": "object", "required": ["title", "problem", "cause", "lab", "replicability", "sources", "per_source"],
+    "type": "object", "required": ["title", "problem", "cause", "lab", "replicability", "audience", "sources",
+    "per_source"],
     "properties": {
+        "audience": AUDIENCE,
         "title": {"type": "string", "description": "max 80 chars"},
         "problem": {"type": "string", "description": "2 sentences"},
         "cause": {"type": "string", "description": "1 sentence: the cause you claim"},
@@ -163,7 +166,8 @@ def ask_panel(items, existing):
         "problem in a disposable AWS lab, then investigates or fixes it.",
         "From the ITEMS below (GitHub issues from AWS container projects and Stack Overflow questions), choose up "
         f"to {MAX_ISSUES + 2} problems that many people hit and that make a strong replicate-then-fix post. Prefer "
-        "problems students and newcomers to EKS/ECS hit. Do not repeat anything in EXISTING.\n"
+        "problems with a symptom people search for (high votes/views, many +1s), that students and working "
+        "engineers on EKS/ECS hit. Do not repeat anything in EXISTING.\n"
         "How to judge: for GitHub items, 'reporter_says' is the reporter's own theory and may be wrong; "
         "'comments' lists the human comments in order, each with an id and 'by' (maintainer or other). "
         "For Stack Overflow items, 'answers' lists answers with id, accepted and score. For each topic, "

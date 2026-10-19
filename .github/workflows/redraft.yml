@@ -1,0 +1,70 @@
+name: redraft
+# `/redraft <what to change>` from you on a draft PR: the panel rewrites the post from the same lab run (no AWS),
+# with your notes, opens a new draft PR and closes the old one.
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+concurrency: { group: "redraft-${{ github.event.issue.number }}", cancel-in-progress: false }
+jobs:
+  redraft:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && github.event.issue.pull_request &&
+      github.event.comment.user.login == 'Abhimanyu9988' && startsWith(github.event.comment.body, '/redraft')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - id: pr
+        name: find the lab run and topic
+        run: |
+          python3 - <<'PY'
+          import os, re
+          body = os.environ["PR_BODY"] or ""
+          run = re.search(r"workflow run (\d+)", body)
+          issue = re.search(r"Closes #(\d+)\s*\Z", body.strip()) or re.search(r"\*\*Topic:\*\* issue no\. (\d+)", body)
+          if not (run and issue):
+              raise SystemExit("this PR isn't a draft post from the pipeline")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"run={run.group(1)}\nissue={issue.group(1)}\n")
+          PY
+        env: { PR_BODY: "${{ github.event.issue.body }}" }
+      - uses: actions/download-artifact@v4
+        with:
+          name: lab
+          path: out
+          run-id: ${{ steps.pr.outputs.run }}
+          github-token: ${{ github.token }}
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+      - run: pip install matplotlib==3.10.7
+      - name: draft
+        run: python3 pipeline/draft.py
+        env:
+          ISSUE: ${{ steps.pr.outputs.issue }}
+          OLD_PR: ${{ github.event.issue.number }}
+          REDRAFT_NOTES: ${{ github.event.comment.body }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}

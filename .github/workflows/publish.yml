@@ -41,25 +41,6 @@ jobs:
           HASHNODE_PUB_ID: ${{ secrets.HASHNODE_PUB_ID }}
           HASHNODE_API_URL: ${{ vars.HASHNODE_API_URL }}
           MEDIUM_TOKEN: ${{ secrets.MEDIUM_TOKEN }}
-      # LinkedIn: open a linkedin-draft issue in the profile repo, where `/post` publishes it.
-      # Needs the hero bot app installed on that repo; if it isn't, the report still has the LinkedIn link.
-      - uses: actions/create-github-app-token@v2
-        id: bot
-        if: always() && hashFiles('share.json') != ''
-        continue-on-error: true
-        with:
-          app-id: ${{ vars.BOT_APP_ID }}
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          owner: Abhimanyu9988
-          repositories: Abhimanyu9988
-          permission-issues: write
-      - if: always() && steps.bot.outputs.token != ''
-        run: python pipeline/share.py
-        env:
-          HERO_PUBLISH: "1"
-          BOT_TOKEN: ${{ steps.bot.outputs.token }}
-          GH_READ_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
       - if: always()
         working-directory: state
         run: |

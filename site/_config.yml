@@ -5,3 +5,4 @@ baseurl: ""
 permalink: /posts/:slug/
 theme: minima
 defaults: [{ scope: { path: "" }, values: { layout: post } }]
+plugins: [jekyll-seo-tag]          # og:image from each post's cover, so link previews show it

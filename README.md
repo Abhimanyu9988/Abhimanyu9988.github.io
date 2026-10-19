@@ -10,17 +10,23 @@ Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit eve
 
 1. **Choose (Mon radar, Thu problems).** Each AI reads the week's sources and proposes its own picks: AWS What's
    New, releases and issues of AWS container projects, and Stack Overflow. It also sees what has performed well so
-   far. Then all three vote on the pooled list. Topics with 2 of 3 votes open as issues showing who proposed them
+   far. Each pick is scored for audience (would ECS/EKS engineers recognise the pain?) as well as replicability.
+   Then all three vote on the pooled list. Topics with 2 of 3 votes open as issues showing who proposed them
    and how each AI voted. The best one gets `replicate`.
 2. **Replicate (I approve the `aws-lab` deployment).** Claude writes the Terraform and scripts, ChatGPT reviews them
    and Gemini settles disputes. The lab runs: plan → plan check → apply → reproduce → fix. Destroy always runs.
 3. **Confirm.** All three read the real output and say whether it genuinely replicated the problem. 2 of 3 is
    needed to write.
-4. **Write.** ChatGPT writes the article, story-first and in my voice, with every command to replicate it by hand,
-   plus a LinkedIn post. Claude checks the technical details against the real output and Gemini settles disputes.
-   The bot opens a PR that shows the post itself.
-5. **Publish (when I merge).** The site and dev.to are automatic, and Hashnode is too once a token is saved. A
-   report issue gives a one-tap Medium import and a LinkedIn link that opens the post box already filled in.
+4. **Write.** The three pick a title that names the reader's symptom. ChatGPT writes a short, problem-first article
+   in my voice (about 800 words: symptom, cause, fix, one block that runs the whole lab), plus a "problem I solved"
+   LinkedIn post. Claude checks the technical details against the real output and Gemini settles disputes. Posts
+   that run long are cut to length. A cover image is drawn from the lab's real output (every line and number is
+   checked against the logs). The bot opens a PR that shows the cover and the post. `/redraft <notes>` on the PR
+   rewrites it from the same lab run.
+5. **Publish (when I merge).** The site and dev.to (with the cover) are automatic, and Hashnode is too once a token
+   is saved. A report issue gives the Medium import link. After importing, I comment `/medium <story link>` (or
+   `/linkedin`) on it, and my LinkedIn draft opens in my profile repo with the dev.to and Medium links and the cover;
+   `/post` there publishes it.
 6. **Measure (weekly).** dev.to numbers come in automatically; LinkedIn and Medium numbers via a `/stats` comment.
    Everything goes into a dated, append-only ledger (`analytics/ledger.csv` on the `analytics` branch). The three
    AIs write what's working (`analytics/insights.md`), and the next topic choice reads it.
