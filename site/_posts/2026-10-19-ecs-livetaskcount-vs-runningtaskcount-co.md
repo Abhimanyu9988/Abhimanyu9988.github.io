@@ -60,17 +60,7 @@ What is only likely: the exact number of minutes where the metrics disagree depe
 
 Do not treat `RunningTaskCount` as “all live tasks.” For capacity and drain visibility, graph `LiveTaskCount`, then add metric math for the difference.
 
-This is the metric math shape from `fix.sh`:
-
-```json
-[
-  {"Id":"draining","Label":"DrainingTasks (Live - Running)","Expression":"live - running","ReturnData":true},
-  {"Id":"live","Label":"LiveTaskCount","ReturnData":false},
-  {"Id":"running","Label":"RunningTaskCount","ReturnData":false}
-]
-```
-
-The lab writes the full metric definitions to `/tmp/hero-alarm-metrics.json`, then creates the alarm with the real metric query file:
+`fix.sh` builds a metric-math query with three entries: `live` (LiveTaskCount), `running` (RunningTaskCount) and `draining`, whose expression is `live - running`. It writes that query to `/tmp/hero-alarm-metrics.json` and creates the alarm on it:
 
 ```bash
 aws cloudwatch put-metric-alarm --alarm-name "${LAB}-draining-tasks" \
@@ -88,7 +78,6 @@ dashboard ecs-livetaskcount-vs-run-981521-tasks created
 Max DrainingTasks (Live - Running) over the last hour: 3.0
 Alarm exists: 1
 Lesson: LiveTaskCount includes DEACTIVATING (draining) tasks; RunningTaskCount does not. Use Live for capacity/cost views, and Live-Running to see drain.
-HERO_RESULT: fixed
 ```
 
 Caveat: an alarm on `GreaterThanThreshold 0` can also trip during startup or scale-out, so use more evaluation periods or a higher threshold if that would be noisy for your service.
@@ -98,12 +87,12 @@ Caveat: an alarm on `GreaterThanThreshold 0` can also trip during startup or sca
 ```bash
 git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git
 cd Abhimanyu9988.github.io/labs/ecs-livetaskcount-vs-runningtaskcount-co
-export LAB_NAME=<name>
+export LAB_NAME=ecs-drain-demo      # names the alarm and dashboard the scripts create
 export AWS_REGION=eu-central-1
-terraform init && terraform apply -var lab_name=<name> -var region=eu-central-1 -var permissions_boundary=null
+terraform init && terraform apply -var lab_name="$LAB_NAME"
 ./reproduce.sh      # shows the problem
 ./fix.sh            # applies the fix and checks it
-./cleanup.sh && terraform destroy
+./cleanup.sh && terraform destroy -var lab_name="$LAB_NAME"
 ```
 
 My run took `18.8` minutes, and the lab README estimates it costs a few cents.
