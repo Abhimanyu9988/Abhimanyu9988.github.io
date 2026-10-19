@@ -507,6 +507,9 @@ check("share: the draft carries the cover image for /post and passes the link-sa
       "](https://abhimanyu9988.github.io/assets/posts/x/cover.png)" in lb and not raises_unsafe(lb))
 meta = {"image": "/assets/posts/x/cover.png"}
 body = "![c](https://abhimanyu9988.github.io/assets/posts/x/cover.png)\n\nHello"
+import medium_pages
+check("medium: tables become aligned text (Medium has no tables)",
+      medium_pages.tables_as_text("x\n\n| A | B |\n| --- | --- |\n| `a1` | b |\n\ny") == "x\n\n```text\nA   B\na1  b\n```\n\ny")
 check("publish: dev.to gets the cover as main_image and not twice in the body",
       publish.without_cover(body, meta) == "Hello" and publish.cover_url(meta).endswith("/assets/posts/x/cover.png")
       and publish.without_cover(body, {}) == body)
