@@ -206,6 +206,10 @@ def _linkedin_draft(b):
         raise Blocked("profile repo: only issues labelled exactly linkedin-draft")
     _issue(b)
 
+def _close_pull(b):
+    if b != {"state": "closed"}:
+        raise Blocked("draft PRs may only be closed, nothing else")
+
 def _pull(b):
     if b.get("base") != "main" or not re.fullmatch(r"draft/[a-z0-9][a-z0-9-]{0,80}", str(b.get("head", ""))):
         raise Blocked("PRs must go from draft/<slug> into main")
@@ -218,9 +222,10 @@ WRITE_RULES = [
     ("POST", rf"{_H}/issues/\d+/comments", lambda b: assert_safe(b.get("body", ""))),
     ("POST", rf"{_H}/issues/\d+/labels", _labels),
     ("POST", rf"{_H}/git/refs", _ref),
-    ("PUT", rf"{_H}/contents/(?:site/_posts|labs)/[\w.-]+(?:/[\w.-]+){{0,3}}", _contents),
+    ("PUT", rf"{_H}/contents/(?:site/_posts|site/assets/posts|labs)/[\w.-]+(?:/[\w.-]+){{0,3}}", _contents),
     ("PUT", rf"{_H}/contents/analytics/[\w.-]+", _analytics),
     ("POST", rf"{_H}/pulls", _pull),
+    ("PATCH", rf"{_H}/pulls/\d+", _close_pull),
     ("POST", rf"{re.escape(f'/repos/{PROFILE_REPO}')}/issues", _linkedin_draft),
 ]
 
@@ -297,9 +302,12 @@ def panel_line(c, d):
 
 PANEL_QUESTION = ("Should this become a post on Abhimanyu's blog? The niche: take a real problem AWS container users "
                   "hit (EKS, ECS, Fargate, ECR, Karpenter), REPLICATE it in a disposable AWS lab, then show the fix. "
-                  "Readers: students learning AWS containers and working engineers. The goal is content strong "
-                  "enough to support an AWS Container Hero nomination. Vote no if it cannot be reproduced within the "
-                  "LAB LIMITS, has no clear lesson, is vendor drama or opinion, or repeats an existing topic.")
+                  "Readers: working engineers and students on AWS containers, who find posts through a symptom they "
+                  "hit (an error, a stuck deployment, a wrong number on a dashboard, a surprise bill). The goal is "
+                  "content strong enough to support an AWS Container Hero nomination, so it must be something many "
+                  "people actually run into or search for. Vote no if most ECS/EKS engineers would scroll past it "
+                  "(a niche metric or API nuance with no felt pain), if it cannot be reproduced within the LAB LIMITS, "
+                  "has no clear lesson, is vendor drama or opinion, or repeats an existing topic.")
 
 def load_insights():
     """What the analytics panel learned so far (analytics branch), or "" before there is any."""
@@ -345,9 +353,10 @@ def post_topics(proposals, items, existing, used, label, render, limit):
         if top is None:
             continue
         cands.append({"id": f"t{len(cands) + 1}", "title": title, "top": top, "srcs": srcs, "by": [who],
-                      "score": int(t.get("replicability") or 0)})
+                      "score": int(t.get("replicability") or 0), "audience": int(t.get("audience") or 0)})
     insights = load_insights()
     view = [{"id": c["id"], "title": c["title"], "details": c["top"], "replicability_1_to_10": c["score"],
+             "audience_1_to_10": c["audience"],
              "proposed_by": [llm.NAMES[w] for w in c["by"]]} for c in cands]
     votes = llm.panel_votes(view, PANEL_QUESTION, f"LAB LIMITS:\n{LAB_LIMITS}\n\nEXISTING TOPICS:\n"
                             f"{json.dumps(existing[:150])}\n\nWHAT HAS WORKED SO FAR (analytics panel):\n"
@@ -356,10 +365,10 @@ def post_topics(proposals, items, existing, used, label, render, limit):
         d = votes[c["id"]]
         print(f"{'ACCEPT' if d['accepted'] else 'reject'} {d['yes']}/3 by={c['by']}: {c['title']}")
     ranked = sorted((c for c in cands if votes[c["id"]]["accepted"]),
-                    key=lambda c: (votes[c["id"]]["yes"], len(c["by"]), c["score"]), reverse=True)[:limit]
-    best = next((c for c in ranked if c["score"] >= 7), None)
+                    key=lambda c: (votes[c["id"]]["yes"], c["audience"], len(c["by"]), c["score"]), reverse=True)[:limit]
+    best = next((c for c in ranked if c["score"] >= 7 and c["audience"] >= 6), None)
     if ranked and not best:
-        print("no accepted topic scored 7+ for replicability; nothing marked replicate")
+        print("no accepted topic scored 7+ for replicability and 6+ for audience; nothing marked replicate")
     if ranked and not DRY:
         ensure_label(label)
     made = 0
@@ -428,8 +437,11 @@ def collect():
     hn.sort(key=lambda i: -i["points"])
     return news[:30] + rels + hn[:25]
 
+AUDIENCE = {"type": "integer", "description": "1-10: how many ECS/EKS engineers would recognise this pain from a "
+             "symptom they've hit or fear (errors, stuck rollouts, wrong dashboards, surprise bills) and click"}
 TOPIC_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics": {"type": "array", "items": {
-    "type": "object", "required": ["title", "why", "lab", "replicability", "sources"], "properties": {
+    "type": "object", "required": ["title", "why", "lab", "replicability", "audience", "sources"], "properties": {
+        "audience": AUDIENCE,
         "title": {"type": "string", "description": "max 80 chars"},
         "why": {"type": "string", "description": "2 sentences: why this matters to AWS container users now"},
         "lab": {"type": "string", "description": "1-2 sentences: what the lab builds and shows"},
@@ -442,7 +454,9 @@ def ask_panel(items, existing):
         "real in a disposable AWS lab and shows the result.",
         f"From the ITEMS below (AWS What's New entries, releases of AWS container projects, and Hacker News "
         f"stories), choose up to {MAX_ISSUES + 2} topics that would make a strong hands-on post right now: a new "
-        "feature or behaviour change that people will trip over, demonstrated in a lab. Prefer EKS, ECS, Fargate, "
+        "feature or behaviour change that people will actually trip over in their work (something breaks, "
+        "costs more, or quietly misleads them), demonstrated in a lab. Skip announcements whose only story is "
+        "'there is a new metric/flag'; pick the ones with a symptom people will search for. Prefer EKS, ECS, Fargate, "
         f"ECR and Karpenter. Do not repeat anything in EXISTING. {NO_REFS}\n\nLAB LIMITS:\n{LAB_LIMITS}\n\n"
         f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",

@@ -7,11 +7,12 @@
      technical accuracy against the evidence; Gemini rules on anything they disagree about.
   3. The bot opens a PR from draft/<slug> showing the post itself at the top, with the lab and raw output.
      Abhimanyu edits and merges; publish.yml then publishes and hands him Medium and LinkedIn links.
-REDRAFT=1 redrafts from an earlier lab run's attachment (no new AWS run).
+Redrafts reuse an earlier lab run's attachment (no new AWS run): `/redraft <notes>` on a draft PR (redraft.yml)
+passes your notes to the writer and closes the old PR once the new one is open.
 """
 import base64, datetime, json, os, pathlib, re
 from radar import HOME_REPO, gh, safe_text, assert_safe, comment, add_label, Unsafe
-import llm
+import llm, cover
 
 OUT = pathlib.Path("out")
 SITE_URL = "https://abhimanyu9988.github.io"
@@ -23,76 +24,72 @@ if the fix only "worked" because of a shortcut, or if the result would mislead a
 EVIDENCE."""
 
 ARTICLE_RULES = """You are writing as Abhimanyu (Abhi), in the first person. AUTHOR lists true facts about him; he
-reproduced this problem himself in a disposable AWS lab. Write the way he'd explain it to a teammate or a student
-over coffee: warm, plain, specific. Readers: students learning AWS containers, and working engineers who just hit this.
+reproduced this problem himself in a disposable AWS lab. Readers: working engineers who just hit this, and students
+learning AWS containers. They found the post because of a SYMPTOM, so every part of it serves one question: "what is
+going on, and how do I fix it?" Write it the way he'd explain it to a teammate: warm, plain, specific, and short.
 
-Make it human:
-- Use the chosen TITLE (polish the wording only if it truly reads better) and open with the chosen HOOK: keep its
-  substance and its first line. Then the person who hit this and the moment it hurts (from the sources: what they
-  were trying to do, what they saw, why it was confusing). Two or three short paragraphs, no heading.
-- Add one or two personal lines that connect it to Abhi's own work, using ONLY facts in AUTHOR. Never invent
-  anecdotes, numbers, customers or employers.
-- STYLE SIGNALS show titles, openings and section headings that are doing well right now. Borrow what makes them
-  work (a concrete symptom up front, a clear promise, scannable headings); never copy their wording.
-- Then a short **TL;DR**: problem, cause, fix, in three lines.
-- Short paragraphs. Plain words. Explain jargon the first time. Use "you" and "I".
-- Banned: "In today's...", "delve", "landscape", "robust", "seamless", "game-changer", "leverage", "Let's dive in",
-  "unlock", "journey", emojis in headings, exclamation marks.
+LENGTH IS A HARD RULE: 600 to 900 words of prose, about 1,200 words in total with code. At most 6 code blocks, and no
+output block longer than 10 lines (cut with "..." and keep the lines that prove the point). If something isn't
+needed to understand or fix the problem, leave it out; the lab folder has the rest.
 
-Sections after the TL;DR (markdown, no front matter, no H1):
-  "## What you'll see": the real symptom and error/status, copied from EVIDENCE.
-  "## Why it happens": the cause. Say clearly what the sources and the lab confirm, and what is only likely.
-  "## Replicate it yourself, step by step": numbered steps covering EVERY command, in the order they run:
-     1. get the lab: `git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git` and
-        `cd Abhimanyu9988.github.io/labs/LAB_SLUG` (mention providers.tf: set permissions_boundary to null).
-     2. `terraform init` and `terraform apply`, and what it creates.
-     3. every aws/kubectl/helm/terraform command that reproduce.sh runs, each in its own code block with one line
-        saying what it does, followed by the real output from EVIDENCE (loops may be shown once with a note).
-     4. the same for fix.sh (and fix.tf if there is one), with the real verification output.
-     5. cleanup: every command in cleanup.sh, then `terraform destroy`.
-     Readers must be able to follow this section by hand without running the scripts.
-  "## What I didn't test": honest limits.
-  "## Cost and time": the run's real minutes and resource counts; region eu-central-1.
-  "## The takeaway": one or two sentences of practical advice in Abhi's voice.
-  "## Sources": each source as a markdown link with a readable title, e.g.
-     "- [Stack Overflow: ECS Fargate SQS autoscaling with min capacity 0](https://...)", never a bare URL.
+Structure (markdown, no front matter, no H1):
+- Open with the chosen HOOK (keep its substance and first line): the moment it hurts, in two or three short
+  paragraphs, no heading. One personal line at most, using ONLY facts in AUTHOR. Never invent anecdotes, numbers,
+  customers or employers.
+- **TL;DR**: problem, cause, fix, in three short lines.
+- "## What you'll see": the symptom, with ONE trimmed output block from EVIDENCE.
+- "## Why it happens": the cause in plain words. Say what the sources and the lab confirm and what is only likely.
+- "## The fix": the one to three commands or config lines that ARE the fix, then the trimmed output that shows it
+  working. Mention any caveat in one sentence.
+- "## Try it yourself": ONE code block that runs the whole lab, using the lab's real file names, e.g.
+     git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git
+     cd Abhimanyu9988.github.io/labs/LAB_SLUG
+     terraform init && terraform apply
+     ./reproduce.sh      # shows the problem
+     ./fix.sh            # applies the fix and checks it
+     ./cleanup.sh && terraform destroy
+  (match the lab: if the fix is fix.tf, say how it's applied; leave out scripts that don't exist). Then one line:
+  the run's real minutes and that it costs a few cents (only if LAB or EVIDENCE supports it), and one line that every
+  command is in those short scripts and the raw output of my run is in the lab's evidence folder.
+- "## What I didn't test": two or three bullets.
+- "## Sources": each source as a markdown link with a readable title, never a bare URL.
 Then a line with only "---", then this exact line, on ONE line:
 _I reproduced this in a disposable AWS lab. The lab code and raw output are in the repo. Drafted with AI assistance and reviewed by me._
 
-Write the steps for a READER, not about the pipeline: plain `terraform init` and `terraform apply` (the lab's
-providers.tf already sets the region), never the pipeline's own S3 backend settings, -backend-config, plan files,
--no-color or HERO_RESULT lines. Introduce each command with what it does and why, in plain words, the way you'd walk
-a colleague through it; don't narrate script mechanics ("the script loops over...", "formatted output of the
-helper commands"). Group closely related commands in one block. Shell variables the scripts set from Terraform
-outputs should be shown once, near the start.
+Voice: short paragraphs, plain words, explain jargon once, "you" and "I". STYLE SIGNALS show what works on dev.to
+right now: borrow the shape (a concrete symptom up front, a clear promise, scannable headings), never the wording.
+Banned: "In today's...", "delve", "landscape", "robust", "seamless", "game-changer", "leverage", "Let's dive in",
+"unlock", "journey", emojis in headings, exclamation marks. Never mention the pipeline (S3 backends, plan files,
+-no-color, HERO_RESULT, "the script loops over").
 Hard rules: every command, output, error message, version or number must appear in LAB or EVIDENCE (trim with
-"..."). Never invent output. Keep <account-id> placeholders. 1200 to 2600 words.
+"..."). Never invent output. Keep <account-id> placeholders.
 Tags: at most 4, lowercase letters and digits only (for example aws, ecs, kubernetes, devops).
 
-LinkedIn post (field "linkedin"), plain text, no markdown, 120 to 220 words:
-- First line: a specific, human hook about the problem (no clickbait, no "I'm excited to share").
-- Who hits it and why it hurts, what I found in the lab (cause + fix) in two or three short lines.
-- One question that invites people to share their experience.
-- Then the line: "Full write-up, every command and the lab: {POST_URL}"
-- Then 3 to 5 hashtags. At most two emojis in the whole post. No @mentions (Abhi tags people himself).
+LinkedIn post (field "linkedin"), plain text, no markdown, 70 to 140 words, written as "a problem I solved":
+- First line: the symptom as the reader would say it (no clickbait, no "I'm excited to share").
+- Two or three short lines: what was really going on, and the fix, in plain words.
+- One line: I reproduced it in a throwaway AWS lab and wrote up the fix with every command.
+- Then a line containing only {LINKS} (the dev.to and Medium links are filled in there).
+- Then 3 or 4 hashtags. At most one emoji. No @mentions (Abhi tags people himself). No other URLs.
 
 Source replies (field "source_replies"): for EACH source URL, a short reply Abhi could post on that thread himself,
-60 to 120 words, first person, helpful on its own (what I reproduced, what fixed it, one caveat), ending with
-"I wrote up the full replication here: {POST_URL}". No greeting fluff, no self-promotion beyond that one link.
+50 to 100 words, first person, helpful on its own (what I reproduced, what fixed it, one caveat), ending with
+"I wrote up the full replication here: {POST_URL}". No greeting fluff.
 Stack Overflow does not allow AI-written answers, so these are drafts Abhi rewrites in his own words."""
 
 ARTICLE_RUBRIC = """You are the technical checker. Blocking: any personal claim about Abhi that is not in AUTHOR; any
-command, output, error text, version or number that is not in EVIDENCE or LAB; a command in the step-by-step section that differs from the lab files, or a command the
-scripts run that is missing from it; a claim about the cause stronger than the sources and evidence support; a
-missing reproduction or fix verification; anything in the LinkedIn post that the article does not support; anything
-that would mislead a beginner. Minor: tone that reads robotic or like an AI, clarity, structure, title, length."""
+command, output, error text, version or number that is not in EVIDENCE or LAB; a command or file name that differs
+from the lab files; a claim about the cause stronger than the sources and evidence support; a missing reproduction
+or fix verification; anything in the LinkedIn post that the article does not support; anything that would mislead a
+beginner; over 900 words of prose or an output block over 10 lines. Minor: tone that reads robotic or like an AI,
+clarity, a title that doesn't name the reader's symptom, anything a busy reader could skip."""
 
 POST_SCHEMA = {"type": "object", "required": ["title", "description", "tags", "body", "linkedin", "source_replies"], "properties": {
-    "title": {"type": "string", "description": "max 90 characters, specific and human, no clickbait"},
+    "title": {"type": "string", "description": "max 80 characters; names the symptom the reader hit, no clickbait"},
     "description": {"type": "string", "description": "one or two sentences for previews"},
     "tags": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
     "body": {"type": "string", "description": "the article in markdown"},
-    "linkedin": {"type": "string", "description": "the LinkedIn post, plain text, with {POST_URL} placeholder"},
+    "linkedin": {"type": "string", "description": "the LinkedIn post, plain text, with a {LINKS} line"},
     "source_replies": {"type": "array", "items": {"type": "object", "required": ["url", "text"], "properties": {
         "url": {"type": "string"}, "text": {"type": "string"}}}}}}
 
@@ -129,9 +126,27 @@ def verdict_md(v):
     lines = [f"- {llm.NAMES[w]} {mark(a)} _{safe_text(r)}_" for w, (a, r) in v["votes"].items()]
     return f"**Replication check:** {v['yes']} of 3 say the lab genuinely replicated it\n" + "\n".join(lines)
 
-def put(branch, path, text, msg):
+def put(branch, path, data, msg):
+    raw = data if isinstance(data, bytes) else data.encode()
     gh("PUT", f"/repos/{HOME_REPO}/contents/{path}",
-       {"message": msg, "branch": branch, "content": base64.b64encode(text.encode()).decode()})
+       {"message": msg, "branch": branch, "content": base64.b64encode(raw).decode()})
+
+def make_cover(post, tags, out):
+    """Claude picks the evidence to show; cover.verify drops anything not in the logs; then it's drawn."""
+    ev = {p.name: p.read_text() for p in sorted((OUT / "evidence").glob("*.log"))}
+    fig = None
+    try:
+        pick = llm.ask("claude", "You choose the cover image for a hands-on AWS post.",
+                       f"{cover.PICK}\n\nTITLE: {post['title']}\n\nPOST:\n{post['body'][:15000]}\n\nEVIDENCE:\n"
+                       f"{json.dumps({k: v[-12000:] for k, v in ev.items()})[:60000]}", cover.FIGURE_SCHEMA,
+                       tool="submit_figure")
+        fig = cover.verify(pick, "\n".join(ev.values()))
+        if not fig:
+            llm.warn("cover: the picked evidence didn't match the logs; using the title-only card")
+    except Exception as e:
+        llm.warn(f"cover: {str(e)[:200]}")
+    cover.render(post["title"], fig, tags, out)
+    return fig
 
 def branch_free(name):
     try:
@@ -189,8 +204,14 @@ def style_signals():
             "\n\nHow the top ones open and section themselves:\n" + "\n".join(shapes) +
             f"\n\nWhat has worked on Abhi's own posts:\n{own or 'nothing measured yet'}")
 
+TITLE_RULES = """A good title names the SYMPTOM the reader saw, in their words, with the service name early (ECS, EKS,
+Fargate...), so it stops the right person scrolling and matches what they'd search. A metric or API name belongs in
+it only if that's what they'd type. A small surprise or contrast is good; clickbait and promises the lab doesn't back
+are not. Under 75 characters. Shapes that work: "ECS shows 1 running task while 3 are still draining", "Fargate worker stuck at 0 tasks? The scaling guard never runs", "EKS pods stuck in ContainerCreating after
+an upgrade". The opening puts the reader in that moment in the first sentence."""
+
 HEADLINE_SCHEMA = {"type": "object", "required": ["title", "hook"], "properties": {
-    "title": {"type": "string", "description": "max 90 characters, specific and true to the evidence"},
+    "title": {"type": "string", "description": "max 75 characters: the reader's symptom, true to the evidence"},
     "hook": {"type": "string", "description": "the first two or three sentences of the post"}}}
 
 def headline_round(context, signals, author):
@@ -199,10 +220,9 @@ def headline_round(context, signals, author):
     for who in llm.PANEL:
         try:
             h = llm.ask(who, "You write headlines and openings for Abhimanyu's hands-on AWS container posts.",
-                        "Propose ONE title and ONE opening (two or three sentences) for this post. It must make an "
-                        "engineer who has this problem stop scrolling, and it must be true to the evidence: no "
-                        "clickbait, no promises the lab doesn't back. Use STYLE SIGNALS for what works now and AUTHOR "
-                        f"for any personal angle.\n\nSTYLE SIGNALS:\n{signals}\n\nAUTHOR:\n{author}\n\n"
+                        f"Propose ONE title and ONE opening (two or three sentences) for this post.\n{TITLE_RULES}\n"
+                        "Use STYLE SIGNALS for what works now and AUTHOR for any personal angle.\n\nSTYLE SIGNALS:\n"
+                        f"{signals}\n\nAUTHOR:\n{author}\n\n"
                         f"{context[:40000]}", HEADLINE_SCHEMA, tool="submit_headline")
             if h.get("title") and h.get("hook"):
                 props.append({"id": f"h{len(props) + 1}", "by": llm.NAMES[who], "title": str(h["title"])[:120],
@@ -211,15 +231,68 @@ def headline_round(context, signals, author):
             llm.warn(f"{who} proposed no headline: {str(e)[:200]}")
     if not props:
         return None
-    votes = llm.panel_votes(props, "Which title and opening would make an AWS or Kubernetes engineer click AND keep "
-                            "reading, while staying accurate to the lab? Vote yes only for ones you would publish.",
+    votes = llm.panel_votes(props, "You are a busy ECS/EKS engineer scrolling dev.to or LinkedIn. Which of these would "
+                            "you click, because it names a problem you've had or fear, AND would the post deliver it? "
+                            f"Vote yes only for ones you would publish.\n{TITLE_RULES}",
                             f"STYLE SIGNALS:\n{signals}", tier="write")
     best = max(props, key=lambda p: votes[p["id"]]["yes"])
     best["yes"] = votes[best["id"]]["yes"]
     best["others"] = [f"{p['by']}: {p['title']} ({votes[p['id']]['yes']}/3)" for p in props if p is not best]
     return best
 
+CODE_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", re.S)
+LIMITS = {"prose": 950, "blocks": 7, "longest": 12}       # the rules say 900 / 6 / 10; a little slack before cutting
+
+def measure(md):
+    blocks = CODE_BLOCK.findall(md)
+    prose = re.sub(r"!\[[^\]]*\]\([^)]*\)|\]\([^)]*\)", " ", CODE_BLOCK.sub(" ", md))
+    return {"prose": len(re.findall(r"[A-Za-z0-9][\w'\u2019.-]*", prose)), "blocks": len(blocks),
+            "longest": max((len(b.strip("\n").splitlines()) for b in blocks), default=0)}
+
+def over(m):
+    return [k for k, v in LIMITS.items() if m[k] > v]
+
+def _code_lines(md):
+    return {re.sub(r"\s+", " ", l).strip() for b in CODE_BLOCK.findall(md) for l in b.splitlines()}
+
+def only_cuts(old, new):
+    """Every code line in the shorter version was already in the reviewed one (apart from '...' markers and the
+    try-it block's comments), so cutting can't sneak in a command or output nobody checked."""
+    had = _code_lines(old)
+    for l in _code_lines(new) - had:
+        if l and l.strip(". \u2026") and not re.sub(r"\s+#.*$", "", l) in {re.sub(r"\s+#.*$", "", h) for h in had}:
+            return False
+    return True
+
+def tighten(post):
+    """The reviewed post, cut to length if it runs long. Returns (post, note for the PR)."""
+    m0 = m = measure(post.get("body", ""))
+    for _ in range(2):
+        if not over(m):
+            break
+        try:
+            cut = llm.ask("chatgpt", "You edit hands-on posts down to length without changing what they say.",
+                          f"This post is too long: {m['prose']} words of prose (limit 900), {m['blocks']} code blocks "
+                          f"(limit 6), longest block {m['longest']} lines (limit 10). Cut it to fit. REMOVE, don't "
+                          "rewrite: keep the title, the opening, the section structure, every fact and the voice. "
+                          "Trim output blocks with '...' and keep the lines that prove the point. Drop repetition, "
+                          "background a reader can skip, and detail that lives in the lab scripts. Never add a command, "
+                          f"output or claim. Return every field.\n\nRULES:\n{ARTICLE_RULES}\n\nPOST:\n{json.dumps(post)}",
+                          POST_SCHEMA, tool="revise")
+        except Exception as e:
+            llm.warn(f"tighten: {str(e)[:200]}"); break
+        if not cut.get("body") or not only_cuts(post["body"], cut["body"]):
+            llm.warn("tighten: the shorter version changed code or output; kept the reviewed one"); break
+        post = {**post, **{k: v for k, v in cut.items() if v}}
+        m = measure(post["body"])
+    note = (f"cut from {m0['prose']} to {m['prose']} words of prose" if m is not m0 else "")
+    return post, note
+
 def write_post(context):
+    notes = os.environ.get("REDRAFT_NOTES", "").strip()[:2000]
+    if notes:                                      # Abhi's `/redraft` comment on the previous draft
+        context = (f"ABHI'S NOTES ON THE PREVIOUS DRAFT (follow them; they override style choices, never the hard "
+                   f"rules):\n{notes}\n\n{context}")
     author = AUTHOR_FILE.read_text() if AUTHOR_FILE.exists() else ""
     signals = style_signals()
     head = headline_round(context, signals, author)
@@ -231,6 +304,7 @@ def write_post(context):
     post, log = llm.refine("blog article and LinkedIn post", post, ARTICLE_RUBRIC, f"RULES:\n{ARTICLE_RULES}\n\n{context}",
                            POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
     log["headline"] = head
+    post, log["tightened"] = tighten(post)
     return post, log
 
 def on_main(path):
@@ -266,10 +340,16 @@ def open_pr(issue_no, res, topic):
     replies = [{"url": str(r["url"]), "text": re.sub(r"@(?=\w)", "", str(r.get("text", "")).strip())}
                for r in post.get("source_replies") or []
                if isinstance(r, dict) and r.get("text") and (not srcs or r.get("url") in srcs)]
+    png = OUT / "cover.png"
+    fig = make_cover(post, tags, png)
+    img_path = f"/assets/posts/{slug}/cover.png"
+    alt = re.sub(r"[\[\]\n]", " ", (fig or {}).get("alt") or f"Cover: {post['title']}")[:300]
+    body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + fix_output_tabs(post["body"]).strip() + "\n"
     front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
+                       f"image: {img_path}", f"image_alt: {j(alt)}",
                        f"tags: {json.dumps(tags)}", "channels: [\"devto\", \"hashnode\"]", f"lab: labs/{slug}",
                        f"linkedin: {j(linkedin)}", f"replies: {j(replies)}", "---", ""])
-    files = {f"site/_posts/{today}-{slug}.md": front + fix_output_tabs(post["body"]).strip() + "\n"}
+    files = {f"site/_posts/{today}-{slug}.md": front + body_md, f"site{img_path}": png.read_bytes()}
     for name, text in lab.items():
         files[f"labs/{slug}/{name}"] = text
     files[f"labs/{slug}/providers.tf"] = (
@@ -284,27 +364,32 @@ def open_pr(issue_no, res, topic):
     warn = "" if res.get("destroyed") else ("\n\n\u26a0\ufe0f **The lab may not have been fully destroyed.** The next lab run "
                                              "retries automatically; check the AWS console if you're worried.")
     preview = safe_text(post["body"], "[preview left out: failed the link-safety check; read the post file]")
-    li_preview = safe_text(linkedin.replace("{POST_URL}", "(link to the post)"), "[left out]")
+    li_preview = safe_text(linkedin.replace("{LINKS}", "(dev.to and Medium links go here)")
+                           .replace("{POST_URL}", "(link to the post)"), "[left out]")
+    m = measure(post["body"])
+    words = len(re.findall(r"\S+", post["body"]))
+    raw_cover = f"https://raw.githubusercontent.com/{HOME_REPO}/refs/heads/{branch}/site{img_path}"
+    shown = ("a chart of the lab's real numbers" if (fig or {}).get("kind") == "chart" else
+             "real lines from the lab's output" if fig else "the title (no evidence picture passed the check)")
+    cut = f" The panel {log['tightened']}." if log.get("tightened") else ""
     body = (f"## {safe_text(post['title'])}\n\n_{safe_text(post['description'])}_\n\n"
-            "This is the post as it will appear (GitHub links show as plain text in this preview only). Edit the post "
-            f"file `site/_posts/{today}-{slug}.md` in this PR to change it.\n\n"
+            f"![cover]({raw_cover})\n\n"
+            f"**Length:** about {words:,} words, {max(1, round(words / 230))} min read ({m['prose']:,} words of prose)."
+            f"{cut} **Cover:** {shown}; used on your site, dev.to, Medium and LinkedIn.\n\n"
             f"<details open><summary><b>Read the post</b></summary>\n\n{preview}\n\n</details>\n\n"
-            f"<details><summary><b>LinkedIn draft</b> (you'll get a one-tap link after publishing)</summary>\n\n"
-            f"{li_preview}\n\n</details>\n\n"
+            f"<details><summary><b>LinkedIn post</b></summary>\n\n{li_preview}\n\n</details>\n\n"
             + "".join(f"<details><summary><b>Reply for the source thread</b> ({safe_text(r['url'], 'a source')})"
                       "</summary>\n\n" + safe_text(r["text"].replace("{POST_URL}", "(link to the post)"), "[left out]")
                       + "\n\n</details>\n\n" for r in replies)
-            + "---\n\n"
+            + "<details><summary><b>How the panel checked it</b></summary>\n\n"
             f"**Topic:** issue no. {issue_no}. **Lab:** {safe_text(res.get('summary'))}\n\n"
             f"**Run:** reproduced and fixed in attempt {res.get('attempts')}, {res.get('minutes')} min total "
-            f"(workflow run {res['run_id']}).{warn}\n\n{verdict_md(v)}\n\n"
+            f"(workflow run {res['run_id']}).\n\n{verdict_md(v)}\n\n"
             f"{headline_md(log.get('headline'))}"
             f"{review_md('Lab review', res.get('review'))}\n\n{review_md('Article review', log)}\n\n"
-            f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n"
-            "**Before you merge** (merging publishes to your site and dev.to; you then get Medium and LinkedIn links):\n"
-            "- [ ] It reads like you (edit `pipeline/author.md` to change what the panel knows about you)\n"
-            "- [ ] Every output in the post matches a file in the lab's evidence folder\n"
-            "- [ ] The cause is stated no more strongly than the sources support\n")
+            f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n</details>{warn}\n\n"
+            "**Merge** to publish on your site and dev.to; you then get the Medium link and your LinkedIn draft. "
+            f"To change anything, edit `site/_posts/{today}-{slug}.md` in this PR, or comment `/redraft <what to change>`.\n")
     title = safe_text("Draft: " + post["title"], "Draft post")[:120]
     if len(body) > 60000:
         body = body.replace(preview, "[preview too long for the PR description; read the post file]")
@@ -316,6 +401,10 @@ def open_pr(issue_no, res, topic):
     pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": title, "head": branch, "base": "main",
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
+    old = os.environ.get("OLD_PR", "")
+    if old.isdigit():                              # a `/redraft`: retire the draft it replaces
+        comment(int(old), f"Replaced by the redraft in pull request no. {pr['number']}.")
+        gh("PATCH", f"/repos/{HOME_REPO}/pulls/{old}", {"state": "closed"})
     comment(issue_no, f"\u2705 Replicated and fixed, and the panel confirmed it ({v['yes']} of 3). The draft post is "
                       f"ready for your review in pull request no. {pr['number']}.{warn}")
     add_label(issue_no, "drafted")

