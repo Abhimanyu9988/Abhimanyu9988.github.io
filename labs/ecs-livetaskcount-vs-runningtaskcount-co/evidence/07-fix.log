@@ -1,0 +1,10 @@
+$ bash fix.sh
+# exit 0 after 9s
+
+alarm ecs-livetaskcount-vs-run-981521-draining-tasks created
+dashboard ecs-livetaskcount-vs-run-981521-tasks created
+Max DrainingTasks (Live - Running) over the last hour: 3.0
+Alarm exists: 1
+Lesson: LiveTaskCount includes DEACTIVATING (draining) tasks; RunningTaskCount does not. Use Live for capacity/cost views, and Live-Running to see drain.
+HERO_RESULT: fixed
+
