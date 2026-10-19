@@ -213,7 +213,7 @@ def put(branch, path, data, msg):
     gh("PUT", f"/repos/{HOME_REPO}/contents/{path}",
        {"message": msg, "branch": branch, "content": base64.b64encode(raw).decode()})
 
-def make_cover(post, tags, out):
+def make_cover(post, tags, out, kind="problem"):
     """Claude picks the evidence to show; cover.verify drops anything not in the logs; then it's drawn."""
     ev = {p.name: p.read_text() for p in sorted((OUT / "evidence").glob("*.log"))}
     fig = None
@@ -227,7 +227,7 @@ def make_cover(post, tags, out):
             llm.warn("cover: the picked evidence didn't match the logs; using the title-only card")
     except Exception as e:
         llm.warn(f"cover: {str(e)[:200]}")
-    cover.render(post["title"], fig, tags, out)
+    cover.render(post["title"], fig, tags, out, kind)
     return fig
 
 def branch_free(name):
@@ -439,7 +439,7 @@ def open_pr(issue_no, res, topic):
                for r in post.get("source_replies") or []
                if isinstance(r, dict) and r.get("text") and (not srcs or r.get("url") in srcs)]
     png = OUT / "cover.png"
-    fig = make_cover(post, tags, png)
+    fig = make_cover(post, tags, png, kind)
     img_path = f"/assets/posts/{slug}/cover.png"
     alt = re.sub(r"[\[\]\n]", " ", (fig or {}).get("alt") or f"Cover: {post['title']}")[:300]
     body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + post["body"].strip() + "\n"
