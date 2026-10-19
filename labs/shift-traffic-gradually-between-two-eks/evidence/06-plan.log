@@ -1,0 +1,256 @@
+$ terraform plan -input=false -no-color -out=tfplan
+# exit 0 after 9s
+
+[... earlier output cut ...]
+tandard/recommended/image_id]
+aws_internet_gateway.this: Refreshing state... [id=igw-0d7270207cc0b513c]
+aws_subnet.public[0]: Refreshing state... [id=subnet-0d5c0809f7994553a]
+aws_subnet.public[1]: Refreshing state... [id=subnet-02efe7ffc929a4f84]
+aws_route_table.public: Refreshing state... [id=rtb-06ceff1a6cad98f0b]
+aws_eks_cluster.this: Refreshing state... [id=shift-traffic-gradually-713185-eks]
+aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-08784ecaf6ff1ae17]
+aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-029e9c7d475c6fbd2]
+aws_security_group_rule.vpc_to_nodes: Refreshing state... [id=sgrule-2388281192]
+aws_eks_access_entry.node: Refreshing state... [id=shift-traffic-gradually-713185-eks:arn:aws:iam::<account-id>:role/hero-lab-shift-traffic-gradually-713185-node]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_eks_addon.pod_identity_agent will be created
+  + resource "aws_eks_addon" "pod_identity_agent" {
+      + addon_name           = "eks-pod-identity-agent"
+      + addon_version        = (known after apply)
+      + arn                  = (known after apply)
+      + cluster_name         = "shift-traffic-gradually-713185-eks"
+      + configuration_values = (known after apply)
+      + created_at           = (known after apply)
+      + id                   = (known after apply)
+      + modified_at          = (known after apply)
+      + tags_all             = {
+          + "hero-lab" = "shift-traffic-gradually-713185"
+        }
+    }
+
+  # aws_eks_pod_identity_association.lbc will be created
+  + resource "aws_eks_pod_identity_association" "lbc" {
+      + association_arn = (known after apply)
+      + association_id  = (known after apply)
+      + cluster_name    = "shift-traffic-gradually-713185-eks"
+      + id              = (known after apply)
+      + namespace       = "kube-system"
+      + role_arn        = "arn:aws:iam::<account-id>:role/hero-lab-shift-traffic-gradually-713185-lbc"
+      + service_account = "aws-load-balancer-controller"
+      + tags_all        = {
+          + "hero-lab" = "shift-traffic-gradually-713185"
+        }
+    }
+
+  # aws_iam_instance_profile.node will be created
+  + resource "aws_iam_instance_profile" "node" {
+      + arn         = (known after apply)
+      + create_date = (known after apply)
+      + id          = (known after apply)
+      + name        = "hero-lab-shift-traffic-gradually-713185-node"
+      + name_prefix = (known after apply)
+      + path        = "/"
+      + role        = "hero-lab-shift-traffic-gradually-713185-node"
+      + tags_all    = {
+          + "hero-lab" = "shift-traffic-gradually-713185"
+        }
+      + unique_id   = (known after apply)
+    }
+
+  # aws_instance.node[0] will be created
+  + resource "aws_instance" "node" {
+      + ami                                  = (sensitive value)
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = true
+      + availability_zone                    = (known after apply)
+      + cpu_core_count                       = (known after apply)
+      + cpu_threads_per_core                 = (known after apply)
+      + disable_api_stop                     = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = "hero-lab-shift-traffic-gradually-713185-node"
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.medium"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = "subnet-0d5c0809f7994553a"
+      + tags                                 = {
+          + "Name" = "shift-traffic-gradually-713185-node-0"
+        }
+      + tags_all                             = {
+          + "Name"     = "shift-traffic-gradually-713185-node-0"
+          + "hero-lab" = "shift-traffic-gradually-713185"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = "d4a38e3934f5fb2c1d7d552b2cd49d404c442f86"
+      + user_data_base64                     = (known after apply)
+      + user_data_replace_on_change          = true
+      + vpc_security_group_ids               = [
+          + "sg-08ee5cc0b8012ba4f",
+        ]
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options {
+          + http_endpoint               = "enabled"
+          + http_protocol_ipv6          = "disabled"
+          + http_put_response_hop_limit = 2
+          + http_tokens                 = "required"
+          + instance_metadata_tags      = (known after apply)
+        }
+
+      + network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device {
+          + delete_on_termination = true
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags_all              = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = 30
+          + volume_type           = "gp3"
+        }
+    }
+
+  # aws_instance.node[1] will be created
+  + resource "aws_instance" "node" {
+      + ami                                  = (sensitive value)
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = true
+      + availability_zone                    = (known after apply)
+      + cpu_core_count                       = (known after apply)
+      + cpu_threads_per_core                 = (known after apply)
+      + disable_api_stop                     = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = "hero-lab-shift-traffic-gradually-713185-node"
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.medium"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = "subnet-02efe7ffc929a4f84"
+      + tags                                 = {
+          + "Name" = "shift-traffic-gradually-713185-node-1"
+        }
+      + tags_all                             = {
+          + "Name"     = "shift-traffic-gradually-713185-node-1"
+          + "hero-lab" = "shift-traffic-gradually-713185"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = "d4a38e3934f5fb2c1d7d552b2cd49d404c442f86"
+      + user_data_base64                     = (known after apply)
+      + user_data_replace_on_change          = true
+      + vpc_security_group_ids               = [
+          + "sg-08ee5cc0b8012ba4f",
+        ]
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options {
+          + http_endpoint               = "enabled"
+          + http_protocol_ipv6          = "disabled"
+          + http_put_response_hop_limit = 2
+          + http_tokens                 = "required"
+          + instance_metadata_tags      = (known after apply)
+        }
+
+      + network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device {
+          + delete_on_termination = true
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags_all              = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = 30
+          + volume_type           = "gp3"
+        }
+    }
+
+Plan: 5 to add, 0 to change, 0 to destroy.
+Releasing state lock. This may take a few moments...
+
