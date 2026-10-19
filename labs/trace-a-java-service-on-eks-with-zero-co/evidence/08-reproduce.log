@@ -1,0 +1,43 @@
+$ bash reproduce.sh
+# exit 0 after 70s
+
+== Waiting for the two nodeadm-joined worker nodes
+node/ip-10-20-0-110.eu-central-1.compute.internal condition met
+node/ip-10-20-1-38.eu-central-1.compute.internal condition met
+NAME                                           STATUS   ROLES    AGE   VERSION                INTERNAL-IP   EXTERNAL-IP      OS-IMAGE                        KERNEL-VERSION                    CONTAINER-RUNTIME
+ip-10-20-0-110.eu-central-1.compute.internal   Ready    <none>   17s   v1.32.13-eks-b9510e3   10.20.0.110   63.184.130.119   Amazon Linux 2023.12.20261012   6.1.188-233.393.amzn2023.x86_64   containerd://2.3.5+unknown
+ip-10-20-1-38.eu-central-1.compute.internal    Ready    <none>   14s   v1.32.13-eks-b9510e3   10.20.1.38    3.121.224.99     Amazon Linux 2023.12.20261012   6.1.188-233.393.amzn2023.x86_64   containerd://2.3.5+unknown
+deployment "coredns" successfully rolled out
+
+== Deploying the sample Java service (plain eclipse-temurin:17.0.13_11-jdk image, no agent, no OTel config)
+namespace/demo created
+configmap/orders-java-src created
+deployment.apps/orders-java created
+service/orders-java created
+deployment.apps/loadgen created
+Waiting for deployment "orders-java" rollout to finish: 0 of 1 updated replicas are available...
+deployment "orders-java" successfully rolled out
+deployment "loadgen" successfully rolled out
+
+== Service is serving traffic (app log + load generator log)
+orders-java listening on 8080
+handled 5 requests, last=/inventory
+handled 10 requests, last=/orders
+handled 15 requests, last=/inventory
+GET /orders -> 200
+GET /orders -> 200
+GET /orders -> 200
+
+== Evidence of the gap
+-- Tracing-related env vars in the app container (JAVA_TOOL_OPTIONS / OTEL_*):
+(none)
+-- Init containers on the pod:
+(none)
+-- Java agent mentions in app logs:
+count=0
+-- OpenTelemetry CRDs / collector in the cluster:
+opentelemetry CRDs installed: 0
+Error from server (NotFound): namespaces "observability" not found
+=> requests are served, but no spans exist anywhere and nothing could receive them.
+HERO_RESULT: reproduced
+
