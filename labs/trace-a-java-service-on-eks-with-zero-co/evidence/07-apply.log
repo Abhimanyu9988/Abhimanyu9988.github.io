@@ -1,0 +1,19 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 27s
+
+aws_iam_instance_profile.node: Creating...
+aws_iam_instance_profile.node: Creation complete after 6s [id=hero-lab-trace-a-java-service-on-787610-node]
+aws_instance.node[0]: Creating...
+aws_instance.node[1]: Creating...
+aws_instance.node[0]: Still creating... [00m10s elapsed]
+aws_instance.node[1]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Creation complete after 17s [id=i-06c500d0b611be43e]
+aws_instance.node[1]: Creation complete after 17s [id=i-003c9a92e560f2871]
+
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_endpoint = "https://7AD8F96974074602577E8CDEDD792954.gr7.eu-central-1.eks.amazonaws.com"
+cluster_name = "trace-a-java-service-on-787610"
+
