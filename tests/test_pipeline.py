@@ -11,6 +11,10 @@ def raises_unsafe(text):
     try: r.assert_safe(text); return False
     except r.Unsafe: return True
 
+def raises_unsafe_own(text):
+    try: r.assert_safe(text, own_links=True); return False
+    except r.Unsafe: return True
+
 def check(name, ok):
     global fails
     print(("PASS " if ok else "FAIL ") + name); fails += not ok
@@ -507,6 +511,12 @@ check("share: the draft carries the cover image for /post and passes the link-sa
       "](https://abhimanyu9988.github.io/assets/posts/x/cover.png)" in lb and not raises_unsafe(lb))
 meta = {"image": "/assets/posts/x/cover.png"}
 body = "![c](https://abhimanyu9988.github.io/assets/posts/x/cover.png)\n\nHello"
+own = "**[Open your LinkedIn draft](https://github.com/Abhimanyu9988/Abhimanyu9988/issues/4)**, comment /post there."
+check("own links: a link to an issue in his own repos is allowed only where asked for",
+      not raises_unsafe_own(own) and raises_unsafe(own))
+for bad in ("https://github.com/aws/karpenter/issues/4", "https://github.com/Abhimanyu9988/Abhimanyu9988/issues/4/x",
+            "https://github.com/Abhimanyu9988/Abhimanyu9988/issues/4 and @bob", "see aws/x#5 https://github.com/Abhimanyu9988/Abhimanyu9988/issues/4"):
+    check(f"own links: still refused: {bad[:50]!r}", raises_unsafe_own(bad))
 import medium_pages
 check("medium: tables become aligned text (Medium has no tables)",
       medium_pages.tables_as_text("x\n\n| A | B |\n| --- | --- |\n| `a1` | b |\n\ny") == "x\n\n```text\nA   B\na1  b\n```\n\ny")

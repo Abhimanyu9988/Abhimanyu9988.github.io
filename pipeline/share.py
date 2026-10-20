@@ -148,12 +148,14 @@ def main():
                        f"({safe_text(str(e))[:200]})")
         sys.exit(1)
     links = "dev.to and Medium links" if medium and devto else ("Medium link" if medium else "dev.to link")
+    url = f"https://github.com/{PROFILE_REPO}/issues/{int(number)}"
     if new:
-        comment(issue, f"✅ Your LinkedIn draft is open in your profile repo (issue no. {number} there), with the "
-                       f"{links}{' and the cover image' if item['image'] else ''}. Check it and comment `/post` on it.")
+        comment(issue, f"✅ Your LinkedIn draft is ready, with the {links}"
+                       f"{' and the cover image' if item['image'] else ''}.\n\n**[Open your LinkedIn draft]({url})**, "
+                       "check it, and comment `/post` there.", own_links=True)
     else:
-        comment(issue, f"A LinkedIn draft for this post is already open in your profile repo (issue no. {number} "
-                       "there). Close it and comment here again if you want a fresh one with new links.")
+        comment(issue, f"A LinkedIn draft for this post is already open: **[open it]({url})**. Close it and comment "
+                       "here again if you want a fresh one with new links.", own_links=True)
 
 if __name__ == "__main__":
     main()

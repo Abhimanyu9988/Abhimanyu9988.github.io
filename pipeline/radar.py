@@ -143,9 +143,16 @@ def safe_text(text, fallback="[left out: failed the link-safety check]"):
     except Unsafe:
         return fallback
 
-def assert_safe(text):
+# Links to an issue in Abhi's own two repos (e.g. the LinkedIn draft in his profile repo). Only bot comments in his
+# own repo may carry them: a link between his own repos pings nobody else.
+OWN_LINK = re.compile(r"https://github\.com/Abhimanyu9988/(?:Abhimanyu9988|Abhimanyu9988\.github\.io)/issues/\d+"
+                      r"(?![\w/.#?%&=@-])")
+
+def assert_safe(text, own_links=False):
     """Final check on the complete text, URLs included. Raises Unsafe."""
     for v in _views(str(text or "")):
+        if own_links:
+            v = OWN_LINK.sub("", v)
         if re.search(r"github\s*\.\s*com", ZW.sub("", v), re.I):
             raise Unsafe("contains a github.com link")
         for rx, what in CHECKS:
@@ -240,7 +247,7 @@ def _pull(b):
 WRITE_RULES = [
     ("POST", rf"{_H}/issues", _issue),
     ("POST", rf"{_H}/labels", lambda b: None),
-    ("POST", rf"{_H}/issues/\d+/comments", lambda b: assert_safe(b.get("body", ""))),
+    ("POST", rf"{_H}/issues/\d+/comments", lambda b: assert_safe(b.get("body", ""), own_links=True)),
     ("POST", rf"{_H}/issues/\d+/labels", _labels),
     ("POST", rf"{_H}/git/refs", _ref),
     ("PUT", rf"{_H}/contents/(?:site/_posts|site/assets/posts|labs)/[\w.-]+(?:/[\w.-]+){{0,3}}", _contents),
@@ -308,8 +315,8 @@ def add_label(number, label):
     ensure_label(label)
     gh("POST", f"/repos/{REPO}/issues/{int(number)}/labels", {"labels": [label]})
 
-def comment(number, body):
-    assert_safe(body)
+def comment(number, body, own_links=False):
+    assert_safe(body, own_links)
     gh("POST", f"/repos/{REPO}/issues/{int(number)}/comments", {"body": body})
 
 def panel_line(c, d):
