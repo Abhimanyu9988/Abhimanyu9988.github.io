@@ -1,15 +1,15 @@
 ---
 title: "Trace a Java service on EKS with one annotation, zero code changes"
 description: "Build an EKS lab where the OpenTelemetry Operator injects the Java agent into a running service. The proof is Java HTTP client spans reaching the Collector debug exporter without changing source code or rebuilding the image."
-image: /assets/posts/trace-a-java-service-on-eks-with-zero-co/cover.png
+image: /assets/posts/eks-java-tracing-zero-code/cover.png
 image_alt: "Terminal output showing zero OpenTelemetry CRDs before, then after one annotation an 85-second rollout, the injected Java agent, and 4 spans received."
 tags: ["aws", "eks", "opentelemetry", "kubernetes"]
 channels: ["devto", "hashnode"]
-lab: labs/trace-a-java-service-on-eks-with-zero-co
-linkedin: "Java tracing often starts with a request to the app team:\n\nAdd dependencies.\nChange startup flags.\nRebuild the image.\nShip a new version.\n\nI built a small EKS lab to test the other path: OpenTelemetry Java auto-instrumentation by annotation.\n\nNo source edit.\nNo image rebuild.\nNo tracing dependency added to the app.\n\nWhat happens:\n→ EKS runs a plain Java service called orders-java.\n→ The OpenTelemetry Operator watches for one pod annotation.\n→ The next pod gets the Java agent and OTEL env vars injected.\n→ The Collector receives Java HTTP client spans over OTLP and prints them with the debug exporter.\n\nProof from the run:\nBefore: 0 OpenTelemetry CRDs, no init container, no JAVA_TOOL_OPTIONS.\nAfter: agent image autoinstrumentation-java:1.33.5 injected.\nRollout after annotation: 85 seconds.\nCollector summary: 4 GET client spans with service.name=orders-java.\n\nThis is not proof of a full multi-service trace. It is proof that the Java agent was injected and spans reached the Collector without touching the app image or source.\n\nI wrote up the full build here:\n{LINKS}\n\nWould you let platform teams add auto-instrumentation by annotation, or do you require app teams to own every tracing change?\n\n#aws #eks #opentelemetry #kubernetes"
+lab: labs/eks-java-tracing-zero-code
+linkedin: "Getting traces out of a Java service usually means a ticket to the app team.\nI did it with one annotation. No code change, no image rebuild.\n\nThe usual path:\nAdd dependencies.\nChange startup flags.\nRebuild the image.\nShip a new version.\n\nI built a small EKS lab to test the other path: OpenTelemetry Java auto-instrumentation by annotation.\n\nWhat happens:\n→ EKS runs a plain Java service called orders-java.\n→ The OpenTelemetry Operator watches for one pod annotation.\n→ The next pod gets the Java agent and OTEL env vars injected.\n→ The Collector receives Java HTTP client spans over OTLP and prints them with the debug exporter.\n\nProof from the run:\nBefore: 0 OpenTelemetry CRDs, no init container, no JAVA_TOOL_OPTIONS.\nAfter: agent image autoinstrumentation-java:1.33.5 injected.\nRollout after annotation: 85 seconds.\nCollector summary: 4 GET client spans with service.name=orders-java.\n\nThis is not proof of a full multi-service trace. It is proof that the Java agent was injected and spans reached the Collector without touching the app image or source.\n\nI wrote up the full build here:\n{LINKS}\n\nWould you let platform teams add auto-instrumentation by annotation, or do you require app teams to own every tracing change?\n\n#aws #eks #opentelemetry #kubernetes"
 replies: []
 ---
-![Terminal output showing zero OpenTelemetry CRDs before, then after one annotation an 85-second rollout, the injected Java agent, and 4 spans received.](https://abhimanyu9988.github.io/assets/posts/trace-a-java-service-on-eks-with-zero-co/cover.png)
+![Terminal output showing zero OpenTelemetry CRDs before, then after one annotation an 85-second rollout, the injected Java agent, and 4 spans received.](https://abhimanyu9988.github.io/assets/posts/eks-java-tracing-zero-code/cover.png)
 
 You can get trace spans out of a Java service on EKS without asking its team to add tracing code, rebuild the image, or change a line of source.
 
@@ -81,7 +81,7 @@ You need Terraform, the AWS CLI, `kubectl`, and Helm available locally. Start fr
 
 ```bash
 git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git
-cd Abhimanyu9988.github.io/labs/trace-a-java-service-on-eks-with-zero-co
+cd Abhimanyu9988.github.io/labs/eks-java-tracing-zero-code
 export LAB_NAME=otel-java
 export TF_VAR_lab_name="$LAB_NAME"
 terraform init && terraform apply -auto-approve
