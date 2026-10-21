@@ -2,9 +2,31 @@ name: publish
 on:
   push: { branches: [main], paths: ["site/**"] }
   workflow_dispatch:
+    inputs:
+      preview:
+        description: "Send the ready-to-post email for this post (its slug) again, without publishing anything"
+        required: false
+        type: string
 concurrency: { group: publish, cancel-in-progress: false }
 jobs:
+  preview:
+    if: inputs.preview != ''
+    runs-on: ubuntu-latest
+    permissions: { contents: read, issues: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/checkout@v4
+        with: { ref: publish-state, path: state, persist-credentials: false }
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r pipeline/requirements.txt
+      - run: python pipeline/publish.py --preview "$SLUG"
+        env: { SLUG: "${{ inputs.preview }}" }
+      - run: gh issue create --title "$(cat publish-title.txt)" --body-file publish-report.md
+        env: { GH_TOKEN: "${{ github.token }}" }
   deploy-site:
+    if: inputs.preview == ''
     runs-on: ubuntu-latest
     permissions: { contents: read, pages: write, id-token: write }
     environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }

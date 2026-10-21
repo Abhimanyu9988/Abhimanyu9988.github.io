@@ -199,5 +199,22 @@ def main(paths):
         safe_text("Ready to post: " + "; ".join(titles), "Ready to post")[:200] if titles else "Publish problems")
     sys.exit(1 if failed else 0)
 
+def preview(slug):
+    """The ready-to-post email for a post that is already out, without publishing anything (to see the format)."""
+    state = json.loads(STATE.read_text()) if STATE.exists() else {}
+    path = next((p for p in sorted(pathlib.Path("site/_posts").glob("*.md")) if p.stem.split("-", 3)[3] == slug), None)
+    if not path:
+        sys.exit(f"no post called {slug}")
+    post = frontmatter.load(path)
+    canonical = canonical_url(str(path), post.metadata)
+    lines = ["_Preview: this post is already out; nothing was published again._", ""]
+    lines += share_block(post, canonical, state.get(canonical, {}), slug)
+    pathlib.Path("publish-report.md").write_text("\n".join(lines))
+    pathlib.Path("publish-title.txt").write_text(safe_text("Ready to post (preview): " + str(post.get("title")),
+                                                           "Ready to post (preview)")[:200])
+
 if __name__ == "__main__":
-    main(sys.argv[1:] or changed_posts())
+    if len(sys.argv) == 3 and sys.argv[1] == "--preview":
+        preview(sys.argv[2])
+    else:
+        main(sys.argv[1:] or changed_posts())
