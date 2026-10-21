@@ -179,7 +179,7 @@ def main(paths):
             if ch not in CHANNELS:
                 report.append(f"- {ch}: not automated yet"); continue
             if not os.environ.get(NEEDS[ch]):
-                if ch != "medium":
+                if ch not in ("medium", "hashnode"):         # optional channels: silent when not set up
                     report.append(f"- {ch}: skipped (no {NEEDS[ch]} saved)")
                 continue
             try:
