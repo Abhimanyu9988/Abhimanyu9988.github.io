@@ -125,7 +125,7 @@ def share_block(post, canonical, done, slug):
         lines += [f"**Medium:** {'live' if med.get('manual') else 'draft ready'}: {med['url']}", ""]
     else:
         ready = f"{BLOG}/medium/{slug}/"
-        lines += ["### 1. Medium (2 minutes)",
+        lines += ["### Medium (2 minutes)",
                   f"- **Fastest:** open https://medium.com/p/import, paste `{ready}` and tap Import.",
                   f"- **Or copy and paste:** open {ready}, select all, copy, and paste into a new Medium story "
                   "(code blocks stay code blocks). The full article is also at the bottom of this email.",
@@ -134,7 +134,7 @@ def share_block(post, canonical, done, slug):
     if li:
         from share import linkedin_text
         text = linkedin_text(li, canonical, devto, med.get("url") if med.get("manual") else None)
-        lines += ["### 2. LinkedIn (1 minute)",
+        lines += ["### LinkedIn (1 minute)",
                   "Copy the text, paste it into a new LinkedIn post, add the picture below (press and hold to save "
                   "it), and post.", "", "```text", safe_code(text), "```", ""]
         if post.get("image"):
@@ -145,7 +145,7 @@ def share_block(post, canonical, done, slug):
         text = str(r.get("text", "")).replace("{POST_URL}", devto or canonical)
         where = str(r.get("url", ""))
         so = "stackoverflow.com" in where
-        lines += [f"### 3. Reply on the source thread ({safe_text(where, 'the source thread')})",
+        lines += [f"### Reply on the source thread ({safe_text(where, 'the source thread')})",
                   ("_Stack Overflow doesn't allow AI-written answers: rewrite this in your own words before you "
                    "post it._" if so else "_Post it yourself if it helps the thread; the bot never does._"),
                   "", "```text", safe_code(text), "```", ""]
