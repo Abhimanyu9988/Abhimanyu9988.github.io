@@ -5,6 +5,9 @@ PIPE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline"
 os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", ISSUE="4", RUN_ID="123456789")
 sys.path.insert(0, PIPE)
 import radar as r, llm, lab, draft, check_plan
+def _no_network(*a, **k):
+    raise RuntimeError("tests must not reach GitHub: mock radar._send in the test")
+r._send = _no_network                          # default for every test; each section installs its own fake
 
 fails = 0
 def raises_unsafe(text):
@@ -143,6 +146,7 @@ real_post_issue = r.post_issue
 r.ensure_label = lambda l: None
 r.post_issue = lambda t, b, label, extra=(): (sent_issue.append((label, tuple(extra))) or {"number": 1})
 r.add_label = lambda n, l: None
+real_comment = r.comment; r.comment = lambda n, b, own_links=False: None
 r.post_topics(props, items, [], set(), "radar", lambda t, srcs: "x", 3, question=r.BUILD_QUESTION, extra_labels=("build",))
 check("build topics: issues carry radar + build labels, and the vote uses the build question",
       sent_issue and all(x == ("radar", ("build",)) for x in sent_issue))
@@ -150,7 +154,7 @@ docs = sorted(r.DOCS_URLS)[0]
 used = {docs}
 check("build topics: official docs may be cited again (not 'already used')",
       not any(u in used and u not in r.DOCS_URLS for u in [docs]))
-r.post_issue = real_post_issue
+r.post_issue = real_post_issue; r.comment = real_comment
 llm.panel_votes = real_pv; r.DRY = False
 
 # ---------- publish links and /stats ----------
