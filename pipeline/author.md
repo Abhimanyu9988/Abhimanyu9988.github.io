@@ -13,3 +13,7 @@ Edit this file whenever you like; the next draft picks it up.
 - My best-performing post so far was a hands-on build guide: a universal Prometheus-to-APM integration that lets you
   monitor any application with zero code changes. Most of its readers found it through Google or a link someone
   shared directly. Readers come for posts that teach them to build something they can use at work.
+
+DISCLOSURE (only for posts that feature Splunk products; the writer copies it verbatim as the line just before
+the AI note, and never mentions the employer anywhere else in a post; edit the wording here):
+Disclosure: I work at Splunk, part of Cisco. This is my personal blog; the post isn't sponsored or reviewed by my employer.

@@ -1,7 +1,6 @@
 name: problems
 on:
-  schedule:
-    - cron: "0 6 * * 4"
+  # No schedule: Monday and Thursday are both deploy-and-monitor topics (radar.yml). Run by hand if wanted.
   workflow_dispatch:
     inputs:
       dry_run:

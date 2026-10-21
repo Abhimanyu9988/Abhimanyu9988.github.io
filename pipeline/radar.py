@@ -49,7 +49,16 @@ GitHub Actions job (about 60 minutes of wall time, under 1 USD per run).
 - Services the lab can use: EKS, EC2, ECS (incl. Fargate in public subnets), ECR, ELB, CloudWatch, Logs, SQS,
   EventBridge, Application Auto Scaling, SSM parameters (read). Not available: RDS, S3 buckets, Lambda, Route 53, KMS.
 - IAM: only roles named hero-lab-* that carry the permissions boundary. EKS Pod Identity and IRSA both work.
-- Tools in the lab sandbox: terraform, aws CLI v2, kubectl, helm, jq, curl, git, openssl (no docker)."""
+- Tools in the lab sandbox: terraform, aws CLI v2, kubectl, helm, jq, curl, git, openssl (no docker).
+- Splunk Observability Cloud is available. The realm is in $SPLUNK_REALM, an ingest token (send data only) in
+  $SPLUNK_ACCESS_TOKEN and a read-only API token in $SPLUNK_API_TOKEN. Install the Splunk Distribution of the
+  OpenTelemetry Collector with its Helm chart (repo https://signalfx.github.io/splunk-otel-collector-chart, chart
+  splunk-otel-collector, pinned version) with clusterName set to $LAB_NAME, so the lab's data is easy to find.
+  Data shows up within a few minutes. Prove it with the API, for example
+  https://api.$SPLUNK_REALM.signalfx.com/v2/metrictimeseries?query=k8s.cluster.name:$LAB_NAME with the header
+  X-SF-Token: $SPLUNK_API_TOKEN. Never print a token.
+- Public Git and Helm repositories are reachable, for example Argo CD syncing from
+  https://github.com/argoproj/argocd-example-apps."""
 # Official docs for things readers love to build on AWS containers. Build topics may cite them (more than once);
 # each is checked live before the panel sees it.
 DOCS = [
@@ -68,6 +77,15 @@ DOCS = [
     ("Prometheus community Helm charts", "https://prometheus-community.github.io/helm-charts/"),
     ("External Secrets Operator: AWS Secrets Manager", "https://external-secrets.io/latest/provider/aws-secrets-manager/"),
     ("Amazon ECS FireLens log routing", "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html"),
+    ("Splunk Observability Cloud: Collector for Kubernetes",
+     "https://help.splunk.com/en/splunk-observability-cloud/manage-data/splunk-distribution-of-the-opentelemetry-collector/"
+     "get-started-with-the-splunk-distribution-of-the-opentelemetry-collector/collector-for-kubernetes"),
+    ("Splunk Observability Cloud: collect Kubernetes data",
+     "https://help.splunk.com/en/splunk-observability-cloud/manage-data/collect-infrastructure-metrics-and-logs/"
+     "collect-infrastructure-metrics-and-logs/collect-kubernetes-data"),
+    ("Argo CD automated sync, self-heal and prune", "https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/"),
+    ("KEDA: scale on Splunk Observability Cloud metrics", "https://keda.sh/docs/latest/scalers/splunk-observability/"),
+    ("Helm: getting started", "https://helm.sh/docs/intro/quickstart/"),
 ]
 DOCS_URLS = {u for _, u in DOCS}
 # Sources of the deleted issues 9 and 10. Never use them again.
@@ -260,7 +278,7 @@ WRITE_RULES = [
 def gh(method, path, body=None):
     """Reads use GH_READ_TOKEN. Writes need HERO_PUBLISH=1, a WRITE_RULES match and BOT_TOKEN."""
     method = method.upper()
-    if not path.startswith("/") or ".." in path or "%" in path.split("?")[0]:
+    if not path.startswith("/") or ".." in path.split("?")[0] or "%" in path.split("?")[0]:
         raise Blocked(f"bad path {path!r}")
     if method == "GET":
         token = os.environ["GH_READ_TOKEN"]
@@ -492,28 +510,34 @@ BUILD_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics
                      "think 'I want to deploy this'"},
         "sources": {"type": "array", "items": {"type": "string"}, "description": "URLs copied exactly from ITEMS"}}}}}}
 
-BUILD_QUESTION = ("Should this become a build-and-teach post on Abhimanyu's blog? Readers: working engineers and "
-                  "students on AWS containers. The posts that do best for him teach people to BUILD something they "
-                  "want at work, with a big but true promise (his best post: a universal metrics integration guide, "
-                  "'monitor any application with zero code'). Vote yes only if a busy ECS/EKS engineer would read "
-                  "the title and think 'I want to deploy this', the lab can prove it works within the LAB LIMITS, "
-                  "and it doesn't repeat an existing topic. Vote no for news recaps, niche flags or metrics, and "
-                  "anything whose payoff can't be shown in real output.")
+BUILD_QUESTION = ("Should this become a deploy-and-monitor how-to on Abhimanyu's blog? Every post DEPLOYS something "
+                  "on AWS containers with a cross-tech tool (Argo CD, Helm, KEDA, the OpenTelemetry Operator, "
+                  "Terraform...) and then MONITORS it with Splunk Observability Cloud. The posts that do best for "
+                  "him teach people to build something they want at work, with a big but true promise (his best "
+                  "post: a universal metrics integration guide, 'monitor any application with zero code'). Vote yes "
+                  "only if a busy ECS/EKS engineer would read the title and think 'I want to set this up', the lab "
+                  "can prove both the deploy and the data arriving in Splunk within the LAB LIMITS, and it doesn't "
+                  "repeat an existing topic. Vote no for news recaps, niche flags, and anything whose payoff can't "
+                  "be shown in real output.")
 
 def ask_panel(items, existing):
     author = (pathlib.Path(__file__).with_name("author.md").read_text()
               if pathlib.Path(__file__).with_name("author.md").exists() else "")
     return propose_all(
-        "You pick build-and-teach topics for Abhimanyu's hands-on blog about AWS containers. Every post builds "
-        "something useful in a disposable AWS lab, proves it works with real output, and teaches readers to do the "
-        "same in their own account.",
-        f"Choose up to {MAX_ISSUES + 2} things to BUILD that would make readers say 'I want to deploy this': a "
-        "concrete outcome they want at work (zero-code observability, autoscaling from a queue, secrets without "
-        "hard-coding, safe deploys, cost cuts they can measure), done step by step in under an hour. Use ITEMS as "
-        "sources: AWS What's New and releases for something new to build with, docs for proven building blocks, "
-        "Hacker News for what people care about. Play to the AUTHOR's strengths (observability, OpenTelemetry, "
-        "auto-instrumentation, Kubernetes) when they fit. The title states the outcome, not the tool's feature "
-        f"name. Do not repeat anything in EXISTING. {NO_REFS}\n\nAUTHOR:\n{author}\n\nLAB LIMITS:\n{LAB_LIMITS}\n\n"
+        "You pick how-to topics for Abhimanyu's hands-on blog about AWS containers. Every post DEPLOYS something "
+        "on AWS with a cross-tech tool and then MONITORS it with Splunk Observability Cloud, in a disposable lab, "
+        "proving both with real output, so readers can do the same in their own account.",
+        f"Choose up to {MAX_ISSUES + 2} how-tos of the shape 'deploy X on EKS or ECS with Y, then monitor it with "
+        "Splunk Observability Cloud'. Examples of the shape (don't just copy them): 'Monitor EKS with Splunk "
+        "Observability Cloud in 15 minutes'; 'Deploy to EKS with Argo CD, turn on self-heal, and watch "
+        "reconciliation fix drift'; 'Auto-instrument a Java service on EKS and see its traces in Splunk APM'; "
+        "'Scale EKS workloads on a Splunk Observability metric with KEDA'. Each needs a concrete outcome "
+        "engineers want at work, done step by step in under an hour, and real proof: the deploy working AND the "
+        "data arriving in Splunk. Mix the cross-tech tools from week to week. Use ITEMS as sources: docs for the "
+        "building blocks, AWS What's New and releases for something new, Hacker News for what people care about. "
+        "Play to the AUTHOR's strengths (OpenTelemetry, Splunk Observability, Kubernetes, auto-instrumentation). The "
+        f"title states the outcome. Do not repeat anything in EXISTING. {NO_REFS}\n\nAUTHOR:\n{author}\n\n"
+        f"LAB LIMITS:\n{LAB_LIMITS}\n\n"
         f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",
         BUILD_SCHEMA)

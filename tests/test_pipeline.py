@@ -649,4 +649,56 @@ check("build topic: the lab is told to show the before-state and prove the build
 LAB_PROMPTS.clear()
 res, d = simulate([True], ["reproduced"], ["fixed"])
 check("problem topic: no build rules", res["_topic"]["kind"] == "problem" and "BUILD TOPIC" not in LAB_PROMPTS[0])
+# ---------- monthly open-source summary ----------
+import monthly
+tmp = tempfile.mkdtemp(); os.chdir(tmp); monthly.OUT = pathlib.Path("out")
+msent = []
+def m_send(m, u, b=None, h=None, timeout=30):
+    path = u.replace("https://api.github.com", "")
+    if m != "GET":
+        msent.append((m, path, b)); return {"number": 50}
+    if path.startswith("/search/issues"):
+        q = urllib.parse.unquote(path)
+        if "is:open" in q: return {"items": []}
+        if "is:pr" in q:   # GitHub's quirk: issues only
+            return {"items": [{"number": 7, "repository_url": "https://api.github.com/repos/open-telemetry/x"}]}
+        return {"items": [{"number": 4158, "repository_url": "https://api.github.com/repos/open-telemetry/semantic-conventions",
+                           "pull_request": {}}, {"number": 7, "repository_url": "https://api.github.com/repos/open-telemetry/x"}]}
+    if "/pulls/4158" in path:
+        return {"number": 4158, "title": "[k8s] Add Pod level memory limit and request metrics", "merged_at": "2026-10-20T10:00:00Z",
+                "html_url": "https://github.com/open-telemetry/semantic-conventions/pull/4158", "body": "Fixes #3990",
+                "additions": 120, "deletions": 4, "changed_files": 6}
+    if path.endswith("/issues/3990"):
+        return {"title": "Add memory limit metrics", "html_url": "https://github.com/open-telemetry/semantic-conventions/issues/3990",
+                "reactions": {"+1": 12}, "comments": 9}
+    if "/releases" in path:
+        return [{"name": "v1.39.0", "tag_name": "v1.39.0", "published_at": "2026-10-25T00:00:00Z", "body": "- add pod memory (#4158)",
+                 "html_url": "https://github.com/open-telemetry/semantic-conventions/releases/tag/v1.39.0"}]
+    if path.endswith("/git/ref/heads/main"): return {"object": {"sha": "abc"}}
+    if "/git/ref/heads/draft/" in path: raise RuntimeError("HTTP 404")
+    return {"description": "Semantic conventions", "stargazers_count": 400}
+import urllib.parse
+r._send = m_send
+os.environ["MONTH"] = "2026-10"
+prs, rev = monthly.collect(*monthly.month_range())
+check("monthly: finds merged PRs even when GitHub answers is:pr with issues; keeps PRs only",
+      [p["number"] for p in prs] == [4158] and prs[0]["closes"][0]["thumbs_up"] == 12)
+check("monthly: finds the release that ships the PR", prs[0]["released_in"]["name"] == "v1.39.0")
+real_ask2 = llm.ask
+llm.ask = lambda *a, **k: {"title": "October 2026: Kubernetes memory metrics land in OTel", "description": "d",
+                           "tags": ["opensource", "opentelemetry"], "body": "Opening.\n\n> **TL;DR**\n> - x",
+                           "linkedin": "Hook\n{LINKS}\n#opentelemetry", "source_replies": []}
+real_ref = llm.refine
+llm.refine = lambda kind, d, *a, **k: (d, {"approved": True, "reviewer": "Claude", "points": []})
+real_lr = draft.linkedin_round; draft.linkedin_round = lambda p, k: (p, None)
+monthly.main()
+llm.ask, llm.refine, draft.linkedin_round = real_ask2, real_ref, real_lr
+mpr = next((b for m, p_, b in msent if p_.endswith("/pulls")), None)
+mputs = [p_ for m, p_, b in msent if m == "PUT"]
+check("monthly: draft PR with the post, a cover, the PR list and a redraft marker",
+      mpr and "<!-- monthly: 2026-10 -->" in mpr["body"] and "released in v1.39.0" in mpr["body"]
+      and any(p_.endswith("open-source-summary-2026-10.md") for p_ in mputs)
+      and any(p_.endswith("/open-source-summary-2026-10/cover.png") for p_ in mputs)
+      and "Closes" not in mpr["body"])
+os.environ.pop("MONTH"); os.chdir("/"); shutil.rmtree(tmp)
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)

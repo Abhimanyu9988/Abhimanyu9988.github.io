@@ -61,6 +61,7 @@ Structure (markdown, no front matter, no H1):
   command is in those short scripts and the raw output of my run is in the lab's evidence folder.
 - "## What I didn't test": two or three bullets.
 - "## Sources": each source as a markdown link with a readable title, never a bare URL.
+If the post features a Splunk product, the line before that "---" is AUTHOR's DISCLOSURE line, copied verbatim.
 Then a line with only "---", then this exact line, on ONE line:
 _I reproduced this in a disposable AWS lab. The lab code and raw output are in the repo. Drafted with AI assistance and reviewed by me._
 
@@ -131,6 +132,7 @@ Structure (markdown, no front matter, no H1):
 - A "## Clean up (...)" section: the cleanup and destroy commands in one block.
 - "## What I didn't test": two or three bullets.
 - "## Sources": each source as a markdown link with a readable title, never a bare URL.
+If the post features a Splunk product, the line before that "---" is AUTHOR's DISCLOSURE line, copied verbatim.
 Then a line with only "---", then this exact line, on ONE line:
 _I built this in a disposable AWS lab. The lab code and raw output are in the repo. Drafted with AI assistance and reviewed by me._
 
@@ -189,7 +191,8 @@ def linkedin_round(post, kind):
     """The writer's LinkedIn post plus one each from the other two; all three vote on which would stop the scroll;
     Claude checks the winner against the article (falling back to the runner-up). Returns (post, log)."""
     who_wrote = {"chatgpt": post.get("linkedin", "")}
-    angle = "something I built" if kind == "build" else "a problem I solved"
+    angle = {"build": "something I built", "monthly": "what I shipped in open source this month"}.get(
+        kind, "a problem I solved")
     for who in ("claude", "gemini"):
         try:
             got = llm.ask(who, "You write LinkedIn posts for Abhimanyu, an AWS containers engineer, from his own articles.",

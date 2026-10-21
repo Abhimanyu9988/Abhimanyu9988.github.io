@@ -17,7 +17,7 @@ jobs:
     permissions:
       contents: read
       issues: read
-      pull-requests: read
+      pull-requests: read     # also lets the monthly summary's search see PRs
       actions: read
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +28,11 @@ jobs:
           python3 - <<'PY'
           import os, re
           body = os.environ["PR_BODY"] or ""
+          monthly = re.search(r"<!-- monthly: (\d{4}-\d{2}) -->", body)
+          if monthly:
+              with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                  f.write(f"month={monthly.group(1)}\n")
+              raise SystemExit(0)
           run = re.search(r"workflow run (\d+)", body)
           issue = re.search(r"Closes #(\d+)\s*\Z", body.strip()) or re.search(r"\*\*Topic:\*\* issue no\. (\d+)", body)
           if not (run and issue):
@@ -37,6 +42,7 @@ jobs:
           PY
         env: { PR_BODY: "${{ github.event.issue.body }}" }
       - uses: actions/download-artifact@v4
+        if: steps.pr.outputs.month == ''
         with:
           name: lab
           path: out
@@ -52,10 +58,11 @@ jobs:
           permission-pull-requests: write
       - run: pip install matplotlib==3.10.7
       - name: draft
-        run: python3 pipeline/draft.py
+        run: python3 pipeline/${{ steps.pr.outputs.month != '' && 'monthly' || 'draft' }}.py
         env:
           ISSUE: ${{ steps.pr.outputs.issue }}
           OLD_PR: ${{ github.event.issue.number }}
+          MONTH: ${{ steps.pr.outputs.month }}
           REDRAFT_NOTES: ${{ github.event.comment.body }}
           HERO_PUBLISH: "1"
           BOT_TOKEN: ${{ steps.bot.outputs.token }}

@@ -32,7 +32,9 @@ HARD_END = START + 106 * 60     # nothing runs past this (the workflow step is k
 MAX_ATTEMPTS, MAX_SWEEP = 3, 2
 HIDE = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GH_READ_TOKEN", "BOT_TOKEN", "GITHUB_TOKEN",
         "ACTIONS_RUNTIME_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL")
-SECRET_VARS = HIDE + ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
+SPLUNK_VARS = ("SPLUNK_REALM", "SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN")    # passed into the sandbox by name
+SECRET_VARS = HIDE + ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+                      "SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN")
 AWS_VARS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
 MAINTAINERS = {"OWNER", "MEMBER", "COLLABORATOR"}
 EVIDENCE = []
@@ -74,7 +76,15 @@ BUILD_RULES = """THIS IS A BUILD TOPIC: the lab builds something useful and prov
   would want to see (traces or metrics arriving with real names, pods or tasks scaling from N to M with timings, a
   rollout finishing, a request succeeding). "Installed successfully" is not proof. End with `HERO_RESULT: fixed`
   only when the proof is printed.
-- Keep it copy-paste friendly: pinned chart and image versions, a small sample app, readable script steps."""
+- Keep it copy-paste friendly: pinned chart and image versions, a small sample app, readable script steps.
+- When the topic monitors with Splunk Observability Cloud (see LAB LIMITS): install the Splunk Distribution of the
+  OpenTelemetry Collector with its Helm chart, passing the realm and the ingest token from the environment
+  (--set splunkObservability.realm="$SPLUNK_REALM" --set splunkObservability.accessToken="$SPLUNK_ACCESS_TOKEN"
+  --set clusterName="$LAB_NAME"), never writing a token to a file or printing it. The proof must include the Splunk
+  API showing the lab's data (metric time series for k8s.cluster.name=$LAB_NAME, and for apps the service's
+  metrics or traces), retried for up to 8 minutes while data arrives, printed as a short readable summary (names
+  and counts, a few values). cleanup.sh uninstalls the Helm releases. A reader runs the same scripts with their own
+  realm and tokens exported, so the README says which ones to set."""
 
 LAB_RUBRIC = """Blocking problems: the lab would fail to apply (breaks a LAB LIMIT or a file rule, IAM naming or
 boundary missing, invalid Terraform or provider usage), would not actually reproduce the problem described in the
@@ -129,7 +139,7 @@ def run(step, cmd, timeout, cwd=None, env=None, record=True, sandbox=False):
                 "-v", f"{cwd.resolve()}:/lab", "-v", f"{TFCACHE.resolve()}:/tfcache", "-w", "/lab",
                 "-e", "HOME=/lab/.home", "-e", "TF_IN_AUTOMATION=1", "-e", "TF_PLUGIN_CACHE_DIR=/tfcache",
                 "-e", f"AWS_REGION={REGION}", "-e", f"AWS_DEFAULT_REGION={REGION}"]
-        full += [x for k in AWS_VARS if k in os.environ for x in ("-e", k)]     # value inherited, not on argv
+        full += [x for k in AWS_VARS + SPLUNK_VARS if k in os.environ for x in ("-e", k)]   # inherited, not on argv
         full += [x for k, v in (env or {}).items() for x in ("-e", f"{k}={v}")]
         full += [IMAGE, *cmd]
     else:
@@ -515,6 +525,10 @@ def main():
             raise RuntimeError("that issue is not a radar/problem topic")
         slug = slugify(issue["title"])
         kind = "build" if "build" in labels else "problem"
+        if re.search(r"(?i)splunk", f"{issue['title']} {issue.get('body')}") and not all(
+                os.environ.get(k) for k in SPLUNK_VARS):
+            raise RuntimeError("this topic monitors with Splunk Observability Cloud, but SPLUNK_REALM, "
+                               "SPLUNK_ACCESS_TOKEN and SPLUNK_API_TOKEN are not all saved for the aws-lab environment")
         rules = LAB_RULES + ("\n\n" + BUILD_RULES if kind == "build" else "")
         goal = ("build something useful on AWS and prove it works with real output" if kind == "build" else
                 "reproduce a real problem on AWS and then fix it")
