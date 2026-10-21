@@ -14,6 +14,7 @@ import xml.etree.ElementTree as ET
 
 HOME_REPO = "Abhimanyu9988/Abhimanyu9988.github.io"
 PROFILE_REPO = "Abhimanyu9988/Abhimanyu9988"     # his own profile repo: LinkedIn drafts only
+OWNER = "Abhimanyu9988"
 REPO = os.environ["REPO"]
 if REPO != HOME_REPO:
     raise SystemExit(f"refusing to run: REPO is {REPO!r}, not {HOME_REPO}")
@@ -330,7 +331,10 @@ def ensure_label(label):
 
 def post_issue(title, body, label, extra_labels=()):
     assert_safe(title); assert_safe(body)
-    iss = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": body, "labels": [label, *extra_labels]})
+    # Assigned to Abhi so GitHub emails it to him (bots' new issues only reach people watching the repo), and
+    # replying "approve" to that email works.
+    iss = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": body, "labels": [label, *extra_labels],
+                                               "assignees": [OWNER]})
     print(f"opened #{iss['number']}: {title}")
     return iss
 

@@ -23,7 +23,7 @@ jobs:
       - run: pip install -r pipeline/requirements.txt
       - run: python pipeline/publish.py --preview "$SLUG"
         env: { SLUG: "${{ inputs.preview }}" }
-      - run: gh issue create --title "$(cat publish-title.txt)" --body-file publish-report.md
+      - run: gh issue create --title "$(cat publish-title.txt)" --body-file publish-report.md --assignee Abhimanyu9988
         env: { GH_TOKEN: "${{ github.token }}" }
   deploy-site:
     if: inputs.preview == ''
@@ -74,7 +74,7 @@ jobs:
       - if: always() && hashFiles('publish-report.md') != ''
         run: |
           if [ -s publish-report.md ]; then
-            gh issue create --title "$(cat publish-title.txt)" --body-file publish-report.md
+            gh issue create --title "$(cat publish-title.txt)" --body-file publish-report.md --assignee Abhimanyu9988
           else
             echo "Only updates to posts that are already out; no email."
           fi
