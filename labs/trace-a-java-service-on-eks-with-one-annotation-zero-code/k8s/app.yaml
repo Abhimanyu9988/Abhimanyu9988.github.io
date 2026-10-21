@@ -1,0 +1,141 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-java-src
+  namespace: demo
+data:
+  Main.java: |
+    import com.sun.net.httpserver.HttpExchange;
+    import com.sun.net.httpserver.HttpServer;
+    import java.io.IOException;
+    import java.net.InetSocketAddress;
+    import java.net.URI;
+    import java.net.http.HttpClient;
+    import java.net.http.HttpRequest;
+    import java.net.http.HttpResponse;
+    import java.nio.charset.StandardCharsets;
+    import java.util.concurrent.Executors;
+    import java.util.concurrent.atomic.AtomicInteger;
+
+    public class Main {
+      static final AtomicInteger COUNT = new AtomicInteger();
+
+      public static void main(String[] args) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        server.setExecutor(Executors.newFixedThreadPool(4));
+        HttpClient client = HttpClient.newHttpClient();
+
+        server.createContext("/inventory", ex -> respond(ex, "{\"sku\":\"A-1\",\"stock\":42}"));
+
+        server.createContext("/orders", ex -> {
+          String body;
+          try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create("http://localhost:8080/inventory")).build();
+            HttpResponse<String> r = client.send(req, HttpResponse.BodyHandlers.ofString());
+            body = "{\"order\":1001,\"inventory\":" + r.body() + "}";
+          } catch (Exception e) {
+            body = "{\"error\":\"" + e + "\"}";
+          }
+          respond(ex, body);
+        });
+
+        server.start();
+        System.out.println("orders-java listening on 8080");
+      }
+
+      static void respond(HttpExchange ex, String body) throws IOException {
+        byte[] b = body.getBytes(StandardCharsets.UTF_8);
+        ex.getResponseHeaders().add("Content-Type", "application/json");
+        ex.sendResponseHeaders(200, b.length);
+        ex.getResponseBody().write(b);
+        ex.close();
+        int n = COUNT.incrementAndGet();
+        if (n % 5 == 0) {
+          System.out.println("handled " + n + " requests, last=" + ex.getRequestURI());
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-java
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orders-java
+  template:
+    metadata:
+      labels:
+        app: orders-java
+    spec:
+      containers:
+        - name: app
+          image: eclipse-temurin:17.0.13_11-jdk
+          command: ["java", "-Xmx256m", "/app/Main.java"]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 384Mi
+            limits:
+              memory: 768Mi
+          volumeMounts:
+            - name: src
+              mountPath: /app
+      volumes:
+        - name: src
+          configMap:
+            name: orders-java-src
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-java
+  namespace: demo
+spec:
+  selector:
+    app: orders-java
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loadgen
+  template:
+    metadata:
+      labels:
+        app: loadgen
+    spec:
+      containers:
+        - name: curl
+          image: curlimages/curl:8.10.1
+          command:
+            - sh
+            - -c
+            - 'while true; do curl -s -o /dev/null -w "GET /orders -> %{http_code}\n" http://orders-java:8080/orders; sleep 2; done'
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
