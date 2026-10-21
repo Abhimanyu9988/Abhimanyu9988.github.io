@@ -1,6 +1,11 @@
 name: publish
 on:
   push: { branches: [main], paths: ["site/**"] }
+  # Backup trigger: GitHub once skipped the push event for a merged draft, so a merged draft PR also starts it.
+  # Runs from main (pull_request_target), so nothing from the PR branch executes here.
+  pull_request_target:
+    types: [closed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       preview:
@@ -26,12 +31,15 @@ jobs:
       - run: gh issue create --title "$(cat publish-title.txt)" --body-file publish-report.md --assignee Abhimanyu9988
         env: { GH_TOKEN: "${{ github.token }}" }
   deploy-site:
-    if: inputs.preview == ''
+    if: >-
+      inputs.preview == '' && (github.event_name != 'pull_request_target' ||
+      (github.event.pull_request.merged && startsWith(github.event.pull_request.head.ref, 'draft/')))
     runs-on: ubuntu-latest
     permissions: { contents: read, pages: write, id-token: write }
     environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
     steps:
       - uses: actions/checkout@v4
+        with: { ref: main }
       # Medium-ready copies (plain HTML Medium's importer understands), built into the site before Jekyll runs.
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
@@ -49,7 +57,7 @@ jobs:
     permissions: { contents: write, issues: write }
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with: { ref: main, fetch-depth: 0 }
       - uses: actions/checkout@v4
         with: { ref: publish-state, path: state }
       - uses: actions/setup-python@v5
