@@ -134,3 +134,41 @@ def render(title, fig, tags, out_path, kind="problem"):
     f.savefig(out_path, dpi=DPI, facecolor=BG)
     plt.close(f)
     return out_path
+
+SHOT_SCHEMA = {"type": "object", "required": ["images"], "properties": {"images": {"type": "array", "maxItems": 3,
+    "items": {"type": "object", "required": ["after_heading", "lines", "caption"], "properties": {
+        "after_heading": {"type": "string", "description": "the exact text of the ## or ### heading whose section "
+                          "this picture belongs to"},
+        "lines": {"type": "array", "maxItems": 14, "items": {"type": "string"},
+                  "description": "3 to 14 lines copied exactly from EVIDENCE"},
+        "caption": {"type": "string", "description": "short title bar text, e.g. 'kubectl get pods after the annotation'"},
+        "highlight": {"type": "array", "items": {"type": "integer"}}}}}}}
+
+SHOTS = """Pick up to 3 moments in the lab's real output that a reader would want to SEE while following the post (the
+before state, the key step working, the proof). For each: the heading of the post section it belongs to, 3 to 14
+lines copied exactly from EVIDENCE (whole lines, no edits, nothing secret), a short caption, and the 1 or 2 lines to
+highlight. These become pictures of the terminal output; every line is checked against EVIDENCE and anything not
+found is dropped. Don't repeat what the cover already shows."""
+
+def render_shot(lines, caption, out_path, highlight=()):
+    """A picture of real terminal output: a window with a caption in the title bar and the lines in monospace."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import FancyBboxPatch
+    h_px = 110 + 34 * len(lines)
+    f = plt.figure(figsize=(W, h_px / DPI), dpi=DPI, facecolor=BG)
+    hf = lambda px: px / h_px                     # pixels from the top -> figure fraction from the bottom
+    box = FancyBboxPatch((0.02, hf(18)), 0.96, 1 - hf(36), boxstyle="round,pad=0,rounding_size=0.01",
+                         transform=f.transFigure, facecolor=PANEL, edgecolor="#1e293b", linewidth=1.2)
+    f.patches.append(box)
+    for k, c in enumerate(("#ef4444", "#f59e0b", "#22c55e")):
+        f.text(0.04 + k * 0.018, 1 - hf(48), "●", color=c, fontsize=10, va="center")
+    f.text(0.5, 1 - hf(48), caption[:80], color=MUTED, fontsize=12, va="center", ha="center")
+    for i, line in enumerate(lines):
+        txt = line if len(line) <= 108 else line[:107] + "…"
+        f.text(0.04, 1 - hf(92 + i * 34), txt, family="monospace", fontsize=12.5,
+               color=ACCENT if i in highlight else TEXT, fontweight="bold" if i in highlight else "normal", va="center")
+    f.savefig(out_path, dpi=DPI, facecolor=BG)
+    plt.close(f)
+    return out_path

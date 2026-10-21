@@ -340,6 +340,8 @@ def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
         return {"linkedin": f"{who} linkedin: rollback took 16 seconds\n{{LINKS}}\n#aws"}
     if tool == "submit_check":
         return {"ok": "gemini" not in prompt.split("ARTICLE:")[0], "problems": ["made-up number"]}
+    if tool == "submit_shots":
+        return {"images": []}
     if tool == "submit_figure":
         return {"kind": "terminal", "alt": "Lab output [x]", "lines": ["Error: pods are stuck", "invented line", "3 pods Pending", "HERO_RESULT: reproduced"]}
     if tool == "submit_votes":
@@ -366,17 +368,17 @@ except Exception as e:
 check("draft: success path runs entirely inside the allowlist", ok)
 puts = [p for m, p, b in sent if m == "PUT"]
 check("draft: post + lab + providers.tf + evidence written",
-      any(p.endswith("-debugging-ecs-pending.md") for p in puts) and any(p.endswith("/labs/debugging-ecs-pending/providers.tf") for p in puts)
+      any(p.endswith("-why-ecs-tasks-stay-pending.md") for p in puts) and any(p.endswith("/labs/why-ecs-tasks-stay-pending/providers.tf") for p in puts)
       and any("/evidence/05-reproduce.log" in p for p in puts) and any(p.endswith("/k8s/app.yaml") for p in puts))
 post = next(b for m, p, b in sent if m == "PUT" and p.endswith(".md") and "_posts" in p)
 import base64
 text = base64.b64decode(post["content"]).decode()
-_cover = next((b for m, p_, b in sent if m == "PUT" and p_.endswith("/contents/site/assets/posts/debugging-ecs-pending/cover.png")), None)
+_cover = next((b for m, p_, b in sent if m == "PUT" and p_.endswith("/contents/site/assets/posts/why-ecs-tasks-stay-pending/cover.png")), None)
 check("draft: cover PNG written next to the post (allowed path, draft branch)",
       _cover is not None and base64.b64decode(_cover["content"])[:8] == b"\x89PNG\r\n\x1a\n")
 check("draft: front matter has the cover; body opens with it on the site URL",
-      "image: /assets/posts/debugging-ecs-pending/cover.png" in text and "image_alt: " in text
-      and "\n---\n![Lab output  x ](https://abhimanyu9988.github.io/assets/posts/debugging-ecs-pending/cover.png)" in text)
+      "image: /assets/posts/why-ecs-tasks-stay-pending/cover.png" in text and "image_alt: " in text
+      and "\n---\n![Lab output  x ](https://abhimanyu9988.github.io/assets/posts/why-ecs-tasks-stay-pending/cover.png)" in text)
 check("draft: front matter has channels and cleaned tags", 'tags: ["aws", "ecs", "fargate", "devops"]' in text and "channels:" in text)
 check("draft: ChatGPT writes, Claude reviews, Gemini judges", writer_calls == ["chatgpt"] and roles == [("chatgpt", "claude", "gemini")])
 writer_prompt = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
@@ -392,7 +394,7 @@ check("headline round shown in the PR", "Headline round:** the panel picked Chat
 check("checklist no longer asks Abhi to write his own line", "add a line from your own experience" not in _pr["body"])
 check("draft: LinkedIn text stored in front matter", "linkedin: " in text and "{POST_URL}" in text)
 check("draft: PR shows the cover from the draft branch, length, and keeps panel details folded",
-      "raw.githubusercontent.com/" + HOME + "/refs/heads/draft/debugging-ecs-pending/site/assets/posts/" in pr_body_first
+      "raw.githubusercontent.com/" + HOME + "/refs/heads/draft/why-ecs-tasks-stay-pending/site/assets/posts/" in pr_body_first
       and "min read" in pr_body_first and "<summary><b>How the panel checked it</b></summary>" in pr_body_first
       and "real lines from the lab's output" in pr_body_first)
 check("draft: source replies kept only for real sources, stored in front matter", "replies: " in text
@@ -408,14 +410,14 @@ check("draft: branch created only after the PR text passed the checks", order.in
 check("draft: comment + drafted label", any(p.endswith("/issues/4/comments") for m, p, b in sent)
       and any(p.endswith("/issues/4/labels") and b == {"labels": ["drafted"]} for m, p, b in sent))
 
-sent.clear(); TAKEN.add("draft/debugging-ecs-pending")
+sent.clear(); TAKEN.add("draft/why-ecs-tasks-stay-pending")
 draft.main()
 refs = [b["ref"] for m, p, b in sent if p.endswith("/git/refs")]
 puts = [p for m, p, b in sent if m == "PUT"]
 check("redraft: new branch -v2, but the post and lab keep their clean names",
-      refs == ["refs/heads/draft/debugging-ecs-pending-v2"] and any(p.endswith("-debugging-ecs-pending.md") for p in puts)
-      and any("/labs/debugging-ecs-pending/main.tf" in p for p in puts))
-sent.clear(); TAKEN.add("draft/debugging-ecs-pending-v2"); prompts_seen.clear()
+      refs == ["refs/heads/draft/why-ecs-tasks-stay-pending-v2"] and any(p.endswith("-why-ecs-tasks-stay-pending.md") for p in puts)
+      and any("/labs/why-ecs-tasks-stay-pending/main.tf" in p for p in puts))
+sent.clear(); TAKEN.add("draft/why-ecs-tasks-stay-pending-v2"); prompts_seen.clear()
 os.environ.update(REDRAFT_NOTES="/redraft make the title about the stuck queue", OLD_PR="31")
 draft.main()
 os.environ.pop("REDRAFT_NOTES"); os.environ.pop("OLD_PR")
@@ -439,10 +441,10 @@ check("build draft: build rules, build verdict, build check in the PR",
       "This is a teaching post" in wp and "## Build it" in wp and vq and "BUILD topic" in vq[0]
       and "Build check:** 3 of 3 say the lab built it and proved it works" in pr_b["body"])
 (draft.OUT / "topic.json").write_text(json.dumps({"sources": [{"url": "https://stackoverflow.com/questions/1/a"}]}))
-sent.clear(); TAKEN.clear(); PUBLISHED.add("labs/debugging-ecs-pending")
+sent.clear(); TAKEN.clear(); PUBLISHED.add("labs/why-ecs-tasks-stay-pending")
 draft.main()
 puts = [p for m, p, b in sent if m == "PUT"]
-check("draft: a name already published on main gets the run suffix", any("/labs/debugging-ecs-pending-456789/" in p for p in puts))
+check("draft: a name already published on main gets the run suffix", any("/labs/why-ecs-tasks-stay-pending-456789/" in p for p in puts))
 PUBLISHED.clear()
 sent.clear(); writer_calls.clear()
 VERDICT.update(chatgpt="no", gemini="no")
@@ -659,6 +661,28 @@ check("build topic: the lab is told to show the before-state and prove the build
 LAB_PROMPTS.clear()
 res, d = simulate([True], ["reproduced"], ["fixed"])
 check("problem topic: no build rules", res["_topic"]["kind"] == "problem" and "BUILD TOPIC" not in LAB_PROMPTS[0])
+# ---------- screenshots, file list, slugs ----------
+check("slug: from the title, cut at a word", draft.title_slug("Trace a Java service on EKS with one annotation, zero code changes")
+      == "trace-a-java-service-on-eks-with-one-annotation-zero-code")
+tmp = tempfile.mkdtemp(); os.chdir(tmp); draft.OUT = pathlib.Path("out"); (draft.OUT / "evidence").mkdir(parents=True)
+(draft.OUT / "evidence" / "09-fix.log").write_text("pod/orders   1/1   Running\nspans received so far: 4\nservice.name: orders\ntoken=abc\n")
+_ask = llm.ask
+llm.ask = lambda *a, **k: {"images": [
+    {"after_heading": "The proof: spans arrive", "caption": "Collector output", "highlight": [1],
+     "lines": ["pod/orders 1/1 Running", "spans received so far: 4", "service.name: orders", "made up", "token=abc"]},
+    {"after_heading": "Not a heading in the post", "caption": "x", "lines": ["pod/orders 1/1 Running"] * 3}]}
+ps = {"body": "Intro.\n\n## The proof: spans arrive\n\nText.\n\n## Sources\n\n- x\n"}
+shots = draft.add_shots(ps, "my-post")
+llm.ask = _ask
+check("screenshots: real lines only, placed at the end of their section, unknown headings skipped",
+      list(shots) == ["step-1.png"] and shots["step-1.png"][:8] == b"\x89PNG\r\n\x1a\n"
+      and "Text.\n\n![Collector output](https://abhimanyu9988.github.io/assets/posts/my-post/step-1.png)\n\n## Sources" in ps["body"])
+fb = draft.add_files_section(ps["body"], "my-post", ["main.tf", "k8s/app.yaml", "providers.tf"])
+check("file list: every lab file linked, before Sources",
+      "- [`k8s/app.yaml`](https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/blob/main/labs/my-post/k8s/app.yaml)" in fb
+      and fb.index("## Every file in this lab") < fb.index("## Sources"))
+os.chdir("/"); shutil.rmtree(tmp)
+
 # ---------- monthly open-source summary ----------
 import monthly
 tmp = tempfile.mkdtemp(); os.chdir(tmp); monthly.OUT = pathlib.Path("out")
