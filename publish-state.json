@@ -5,7 +5,8 @@
       "url": "https://dev.to/abhimanyu9988/fargate-sqs-worker-stuck-at-0-tasks-the-ifrunning-0-guard-never-gets-to-run-19n4",
       "hash": "5e9dcbdc27aaddd8e8830bcbd03cda4fc13496d8dee089e8dbe1e1996e7c9b3c"
     },
-    "linkedin_draft": true
+    "linkedin_draft": true,
+    "announced": true
   },
   "https://abhimanyu9988.github.io/posts/eks-canary-releases-alb/": {
     "devto": {
@@ -16,6 +17,15 @@
     "medium": {
       "url": "https://medium.com/p/7e9d9512271e",
       "manual": true
-    }
+    },
+    "announced": true
+  },
+  "https://abhimanyu9988.github.io/posts/trace-a-java-service-on-eks-with-one-annotation-zero-code/": {
+    "devto": {
+      "id": 4891229,
+      "url": "https://dev.to/abhimanyu9988/trace-a-java-service-on-eks-with-one-annotation-zero-code-changes-3314",
+      "hash": "5ebbf6475875398330823e8cb427efce5f6b62c90f4c69798a813ced570a4b2b"
+    },
+    "announced": true
   }
 }
