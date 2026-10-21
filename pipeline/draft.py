@@ -126,6 +126,8 @@ Structure (markdown, no front matter, no H1):
   region and permissions_boundary; never pass -var for them; if the scripts read an environment variable such as
   LAB_NAME, export it once with a concrete example value and pass the same value to Terraform with TF_VAR_lab_name).
   Show the commands that teach the idea rather than every polling loop, and say which script runs the rest.
+  Show the files a reader writes themselves (Kubernetes manifests, Helm values, Instrumentation or Application
+  resources) in FULL when they are under 40 lines, each with a one-line note on what to change for their own setup.
 - A "## The proof: ..." section with the real numbers: a small table when there are stages, plus one or two short
   output blocks.
 - A "## Use it for ..." section: two or three bold-led bullets on adapting it to a real service.
@@ -487,13 +489,65 @@ def on_main(path):
             return False
         raise
 
+def title_slug(title):
+    """A clean web address from the post title: lowercase words, cut at a word boundary, at most 60 characters."""
+    words, out = re.sub(r"[^a-z0-9]+", " ", str(title).lower()).split(), ""
+    for w in words:
+        if len(out) + len(w) + 1 > 60:
+            break
+        out = f"{out}-{w}" if out else w
+    return out
+
+def add_shots(post, slug):
+    """Claude picks up to 3 moments of real output; each line is checked against the evidence; the pictures go at the
+    end of the section they illustrate. Returns {file name: PNG bytes}."""
+    ev = "\n".join(p.read_text() for p in sorted((OUT / "evidence").glob("*.log")))
+    blob = "\n".join(re.sub(r"\s+", " ", l).strip() for l in ev.splitlines())
+    try:
+        got = llm.ask("claude", "You choose pictures of real terminal output for a hands-on post.",
+                      f"{cover.SHOTS}\n\nPOST:\n{post['body'][:20000]}\n\nEVIDENCE:\n{ev[-40000:]}",
+                      cover.SHOT_SCHEMA, tool="submit_shots")
+    except Exception as e:
+        llm.warn(f"screenshots: {str(e)[:200]}"); return {}
+    out, n = {}, 0
+    for im in (got.get("images") or [])[:3]:
+        lines = [str(l).replace("\t", "    ").rstrip() for l in im.get("lines") or []]
+        lines = [l for l in lines if l.strip() and re.sub(r"\s+", " ", l).strip() in blob
+                 and not re.search(r"(?i)(secret|token|password|AKIA|ASIA|HERO_RESULT)", l)]
+        head = str(im.get("after_heading") or "").strip().lstrip("#").strip()
+        m = re.search(rf"^#{{2,3}} +{re.escape(head)}\s*$", post["body"], re.M) if head else None
+        if len(lines) < 3 or not m:
+            continue
+        n += 1
+        name = f"step-{n}.png"
+        path = OUT / name
+        cover.render_shot(lines[:14], str(im.get("caption") or ""), path, [i for i in im.get("highlight") or [] if isinstance(i, int)])
+        out[name] = path.read_bytes()
+        nxt = re.search(r"^#{2,3} ", post["body"][m.end():], re.M)
+        at = m.end() + (nxt.start() if nxt else len(post["body"]) - m.end())
+        cap = re.sub(r"[\[\]\n]", " ", str(im.get("caption") or "terminal output"))[:120]
+        post["body"] = (post["body"][:at].rstrip() + f"\n\n![{cap}]({SITE_URL}/assets/posts/{slug}/{name})\n\n"
+                        + post["body"][at:])
+    return out
+
+def add_files_section(body, slug, names):
+    """A list of every lab file, linked, so a reader can copy exactly what ran (before Sources)."""
+    base = f"{REPO_WEB}/blob/main/labs/{slug}"
+    lines = ["## Every file in this lab", "",
+             "Everything above runs from these files. Open any of them to copy it, or clone the repo as shown:", ""]
+    lines += [f"- [`{n}`]({base}/{n})" for n in sorted(set(names)) if not n.startswith("evidence/")]
+    lines += [f"- [`evidence/`]({REPO_WEB}/tree/main/labs/{slug}/evidence): the raw output of my run", ""]
+    block = "\n".join(lines) + "\n"
+    m = re.search(r"^## Sources\s*$", body, re.M)
+    if m:
+        return body[:m.start()] + block + body[m.start():]
+    tail = body.rfind("\n---\n")
+    return (body[:tail] + "\n\n" + block + body[tail:]) if tail > 0 else body + "\n\n" + block
+
 def open_pr(issue_no, res, topic):
     slug = res["slug"][:60].strip("-")
     if on_main(f"labs/{slug}"):                    # already published: the new post needs its own name
         slug = f"{slug[:50].strip('-')}-{res['run_id'][-6:]}"
-    branch, n = f"draft/{slug}", 2
-    while not branch_free(branch):                 # a redraft: new branch, same post and lab names
-        branch, n = f"draft/{slug[:70]}-v{n}", n + 1
     lab, context = gather(res, topic, slug)
     kind = topic.get("kind") if topic.get("kind") in KINDS else "problem"
     v = llm.verdict(KINDS[kind]["verdict"], context)
@@ -505,6 +559,15 @@ def open_pr(issue_no, res, topic):
         return
     post, log = write_post(context, kind)
     post["body"] = drop_pipeline_lines(fix_output_tabs(post["body"]))
+    nice = title_slug(post["title"])               # the web address follows the post's title, not the topic's
+    if nice and nice != slug:
+        if on_main(f"labs/{nice}"):
+            nice = f"{nice[:50].strip('-')}-{res['run_id'][-6:]}"
+        post["body"] = post["body"].replace(f"labs/{slug}", f"labs/{nice}")
+        slug = nice
+    branch, n = f"draft/{slug}", 2
+    while not branch_free(branch):                 # a redraft: new branch, same post and lab names
+        branch, n = f"draft/{slug[:70]}-v{n}", n + 1
     tags = [t for t in (re.sub(r"[^a-z0-9]", "", str(t).lower()) for t in post.get("tags", [])) if t][:4]
     today = datetime.date.today().isoformat()
     j = lambda v: json.dumps(v, ensure_ascii=False)
@@ -516,6 +579,8 @@ def open_pr(issue_no, res, topic):
     png = OUT / "cover.png"
     fig = make_cover(post, tags, png, kind)
     img_path = f"/assets/posts/{slug}/cover.png"
+    shots = add_shots(post, slug)                  # pictures of the real output, placed in their sections
+    post["body"] = add_files_section(post["body"], slug, list(lab) + ["providers.tf"])
     alt = re.sub(r"[\[\]\n]", " ", (fig or {}).get("alt") or f"Cover: {post['title']}")[:300]
     body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + post["body"].strip() + "\n"
     front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
@@ -523,6 +588,8 @@ def open_pr(issue_no, res, topic):
                        f"tags: {json.dumps(tags)}", "channels: [\"devto\", \"hashnode\"]", f"lab: labs/{slug}",
                        f"linkedin: {j(linkedin)}", f"replies: {j(replies)}", "---", ""])
     files = {f"site/_posts/{today}-{slug}.md": front + body_md, f"site{img_path}": png.read_bytes()}
+    for name, data in shots.items():
+        files[f"site/assets/posts/{slug}/{name}"] = data
     for name, text in lab.items():
         files[f"labs/{slug}/{name}"] = text
     files[f"labs/{slug}/providers.tf"] = (
@@ -536,7 +603,9 @@ def open_pr(issue_no, res, topic):
 
     warn = "" if res.get("destroyed") else ("\n\n\u26a0\ufe0f **The lab may not have been fully destroyed.** The next lab run "
                                              "retries automatically; check the AWS console if you're worried.")
-    preview = safe_text(post["body"], "[preview left out: failed the link-safety check; read the post file]")
+    raw_assets = f"https://raw.githubusercontent.com/{HOME_REPO}/refs/heads/{branch}/site/assets/posts/{slug}/"
+    preview = safe_text(post["body"].replace(f"{SITE_URL}/assets/posts/{slug}/", raw_assets),
+                        "[preview left out: failed the link-safety check; read the post file]")
     li_preview = safe_text(linkedin.replace("{LINKS}", "(dev.to and Medium links go here)")
                            .replace("{POST_URL}", "(link to the post)"), "[left out]")
     m = measure(post["body"])
