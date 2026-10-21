@@ -82,7 +82,8 @@ def render(title, fig, tags, out_path, kind="problem"):
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyBboxPatch
     f = plt.figure(figsize=(W, H), dpi=DPI, facecolor=BG)
-    label = ("BUILT AND TESTED IN A REAL AWS LAB" if kind == "build" else "REPRODUCED IN A REAL AWS LAB") + ("  \u00b7  " + "  ".join(t.upper() for t in tags[:3]) if tags else "")
+    label = {"build": "BUILT AND TESTED IN A REAL AWS LAB", "monthly": "MONTHLY OPEN-SOURCE SUMMARY"}.get(
+        kind, "REPRODUCED IN A REAL AWS LAB") + ("  \u00b7  " + "  ".join(t.upper() for t in tags[:3]) if tags else "")
     size, width = (30, 38) if len(title) <= 76 else (26, 46)   # fits DejaVu, the runner's font
     tl = textwrap.wrap(title, width)[:3]
     title_h = len(tl) * (size * 1.15 / (H * 72))

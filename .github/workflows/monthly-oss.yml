@@ -1,0 +1,49 @@
+name: monthly-oss
+# 1st of the month: a draft post summarising every PR you got merged last month (what it does, how it's used
+# today, what it changes next). Merging it publishes like any other post.
+on:
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Month to summarise, YYYY-MM (default: last month)"
+        required: false
+        type: string
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read     # without it, GitHub search leaves PRs out of the results
+concurrency: monthly-oss
+jobs:
+  monthly:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - run: pip install matplotlib==3.10.7
+      # The bot may only create draft/* branches, post files and covers, and PRs into main.
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+      - name: monthly summary
+        run: python3 pipeline/monthly.py
+        env:
+          MONTH: ${{ inputs.month }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}

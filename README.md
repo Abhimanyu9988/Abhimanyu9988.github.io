@@ -8,12 +8,11 @@ Real problems on AWS containers, **replicated in a disposable AWS lab** and expl
 
 Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit every post before it goes out.
 
-1. **Choose.** Monday is **build and teach**: each AI proposes something readers would want running at work (zero-code
-   observability, autoscaling from a queue, secrets without hard-coding...), from AWS What's New, project releases,
-   Hacker News and official docs, scored on "would an ECS/EKS engineer think *I want to deploy this*?". Thursday is
-   **fix a real problem** from issues and Stack Overflow, scored on whether engineers would recognise the pain. Both
-   also see what has performed well so far. All three vote on the pooled list; topics with 2 of 3 votes open as
-   issues, and the best one gets `replicate`.
+1. **Choose (Monday and Thursday).** Each AI proposes a how-to of the shape *deploy X on EKS or ECS with Y, then
+   monitor it with Splunk Observability Cloud* (Argo CD with self-heal, Helm, KEDA, the OpenTelemetry Operator...),
+   from official docs, AWS What's New, project releases and Hacker News, scored on "would an ECS/EKS engineer think
+   *I want to set this up*?". All three vote on the pooled list; topics with 2 of 3 votes open as issues, and the
+   best one gets `replicate`. (The old "fix a real problem" finder still exists; run problems.yml by hand.)
 2. **Lab (I approve the `aws-lab` deployment).** For a build topic the lab shows the "before", builds the thing and
    proves it works with real output; for a problem it reproduces the problem and fixes it. Claude writes the
    Terraform and scripts, ChatGPT reviews them
@@ -30,7 +29,11 @@ Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit eve
    is saved. A report issue gives the Medium import link. After importing, I comment `/medium <story link>` (or
    `/linkedin`) on it, and my LinkedIn draft opens in my profile repo with the dev.to and Medium links and the cover;
    `/post` there publishes it.
-6. **Measure (weekly).** dev.to numbers come in automatically; LinkedIn and Medium numbers via a `/stats` comment.
+6. **Monthly open-source summary (1st of the month).** Every PR I got merged last month, outside my own repos:
+   what it changed, how it's used today (the release that ships it, how many people asked for it) and what it
+   changes next. ChatGPT writes it from the PR data only, Claude fact-checks, Gemini settles disputes, and it
+   opens as a draft post like the others.
+7. **Measure (weekly).** dev.to numbers come in automatically; LinkedIn and Medium numbers via a `/stats` comment.
    Everything goes into a dated, append-only ledger (`analytics/ledger.csv` on the `analytics` branch). The three
    AIs write what's working (`analytics/insights.md`), and the next topic choice reads it.
 
