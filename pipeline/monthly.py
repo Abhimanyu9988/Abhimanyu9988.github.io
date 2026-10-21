@@ -169,7 +169,8 @@ def open_pr(prs, in_review, start, post, log):
                f"<details><summary><b>The PRs it covers, and how the panel checked it</b></summary>\n\n{listing}\n\n"
                f"{draft.linkedin_md(log.get('linkedin'))}{draft.review_md('Fact check', log)}\n\n"
                f"**Model usage:** {llm.usage_summary()}\n\n</details>\n\n"
-               "**Merge** to publish on your site and dev.to; you then get the Medium link and your LinkedIn draft. "
+               "**To publish: approve this PR** (GitHub app: Files changed, Review, Approve). It merges itself, goes live on "
+               "your site and dev.to, and you get the ready-to-post email for Medium and LinkedIn. "
                f"To change anything, edit the post file in this PR, or comment `/redraft <what to change>`.\n\n"
                f"<!-- monthly: {start:%Y-%m} -->")
     title = safe_text(f"Draft: {post['title']}", "Draft: monthly open-source summary")[:120]

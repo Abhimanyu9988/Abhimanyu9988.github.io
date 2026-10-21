@@ -48,7 +48,12 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add publish-state.json
           git diff --cached --quiet || (git commit -m "publish state" && git push)
-      - if: always()
+      # The "ready to post" email: GitHub emails you every new issue in your repo. Only for new posts.
+      - if: always() && hashFiles('publish-report.md') != ''
         run: |
-          gh issue create --title "Publish report: $(date +%F)" --body-file publish-report.md
+          if [ -s publish-report.md ]; then
+            gh issue create --title "$(cat publish-title.txt)" --body-file publish-report.md
+          else
+            echo "Only updates to posts that are already out; no email."
+          fi
         env: { GH_TOKEN: "${{ github.token }}" }

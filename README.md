@@ -13,7 +13,8 @@ Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit eve
    from official docs, AWS What's New, project releases and Hacker News, scored on "would an ECS/EKS engineer think
    *I want to set this up*?". All three vote on the pooled list; topics with 2 of 3 votes open as issues, and the
    best one gets `replicate`. (The old "fix a real problem" finder still exists; run problems.yml by hand.)
-2. **Lab (I approve the `aws-lab` deployment).** For a build topic the lab shows the "before", builds the thing and
+2. **Lab (I reply "approve" to the topic's email).** The bot marks the panel's pick; nothing runs until I reply
+   **approve** to the issue email (or comment it). Then For a build topic the lab shows the "before", builds the thing and
    proves it works with real output; for a problem it reproduces the problem and fixes it. Claude writes the
    Terraform and scripts, ChatGPT reviews them
    and Gemini settles disputes. The lab runs: plan → plan check → apply → reproduce → fix. Destroy always runs.
@@ -25,7 +26,8 @@ Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit eve
    that run long are cut to length. A cover image is drawn from the lab's real output (every line and number is
    checked against the logs). The bot opens a PR that shows the cover and the post. `/redraft <notes>` on the PR
    rewrites it from the same lab run.
-5. **Publish (when I merge).** The site and dev.to (with the cover) are automatic, and Hashnode is too once a token
+5. **Publish (when I approve the draft PR; it merges itself).** A "Ready to post" email then has the LinkedIn text
+   to copy, the picture, the Medium import link and the full article for copy-paste. The site and dev.to (with the cover) are automatic, and Hashnode is too once a token
    is saved. A report issue gives the Medium import link. After importing, I comment `/medium <story link>` (or
    `/linkedin`) on it, and my LinkedIn draft opens in my profile repo with the dev.to and Medium links and the cover;
    `/post` there publishes it.

@@ -5,6 +5,9 @@ PIPE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline"
 os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", ISSUE="4", RUN_ID="123456789")
 sys.path.insert(0, PIPE)
 import radar as r, llm, lab, draft, check_plan
+def _no_network(*a, **k):
+    raise RuntimeError("tests must not reach GitHub: mock radar._send in the test")
+r._send = _no_network                          # default for every test; each section installs its own fake
 
 fails = 0
 def raises_unsafe(text):
@@ -143,6 +146,7 @@ real_post_issue = r.post_issue
 r.ensure_label = lambda l: None
 r.post_issue = lambda t, b, label, extra=(): (sent_issue.append((label, tuple(extra))) or {"number": 1})
 r.add_label = lambda n, l: None
+real_comment = r.comment; r.comment = lambda n, b, own_links=False: None
 r.post_topics(props, items, [], set(), "radar", lambda t, srcs: "x", 3, question=r.BUILD_QUESTION, extra_labels=("build",))
 check("build topics: issues carry radar + build labels, and the vote uses the build question",
       sent_issue and all(x == ("radar", ("build",)) for x in sent_issue))
@@ -150,7 +154,7 @@ docs = sorted(r.DOCS_URLS)[0]
 used = {docs}
 check("build topics: official docs may be cited again (not 'already used')",
       not any(u in used and u not in r.DOCS_URLS for u in [docs]))
-r.post_issue = real_post_issue
+r.post_issue = real_post_issue; r.comment = real_comment
 llm.panel_votes = real_pv; r.DRY = False
 
 # ---------- publish links and /stats ----------
@@ -161,9 +165,15 @@ sys.modules["yaml"].safe_load = lambda f: {"url": "https://abhimanyu9988.github.
 import publish
 block = "\n".join(publish.share_block(post_meta, "https://abhimanyu9988.github.io/posts/why-ecs/",
                                        {"devto": {"url": "https://dev.to/abhi/why-ecs"}}, "why-ecs"))
-check("publish: LinkedIn step asks for /medium (or /linkedin), no long text or compose link in the report",
-      "`/medium <your Medium story link>`" in block and "`/linkedin`" in block and "shareActive" not in block
-      and "Queue full" not in block)
+check("ready-to-post email: LinkedIn text ready to copy with the dev.to link filled in, plus the optional bot route",
+      "```text\nQueue full, zero tasks. Seen it? AWS\nFull write-up: https://dev.to/abhi/why-ecs\n```" in block
+      and "`/medium <your Medium story link>`" in block and "shareActive" not in block)
+mpost = {"title": "T", "linkedin": "x", "content": "Clone it:\n\n```bash\ngit clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git\n```\nSee https://github.com/aws/x/issues/5 <account-id>"}
+mblock = "\n".join(publish.share_block(mpost, "https://abhimanyu9988.github.io/posts/t/", {}, "t"))
+check("ready-to-post email: Medium import + copy-paste, full article with own-repo links kept and others neutralized",
+      "medium.com/p/import" in mblock and "Full article for Medium copy-paste" in mblock
+      and "git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git" in mblock
+      and "github.com/aws" not in mblock and "<account-id>" in mblock and not raises_unsafe_own(mblock))
 check("publish: Medium import and dev.to link listed", "medium.com/p/import" in block and "dev.to/abhi/why-ecs" in block)
 check("publish: report text has no live @mention", "@AWS" not in block)
 check("publish: report carries the post marker for /stats", "<!-- post: why-ecs -->" in block)
