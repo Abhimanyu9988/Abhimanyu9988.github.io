@@ -1,0 +1,21 @@
+name: splunk-check
+# Run by hand: checks the saved Splunk Observability realm and tokens (prints only HTTP status codes, never a token).
+on: { workflow_dispatch: {} }
+permissions: { contents: read }
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          REALM: ${{ vars.SPLUNK_REALM }}
+          INGEST: ${{ secrets.SPLUNK_ACCESS_TOKEN }}
+          API: ${{ secrets.SPLUNK_API_TOKEN }}
+        run: |
+          [ -n "$REALM" ] && [ -n "$INGEST" ] && [ -n "$API" ] || { echo "::error::realm or a token is missing"; exit 1; }
+          api=$(curl -s -o /dev/null -w '%{http_code}' -H "X-SF-Token: $API" "https://api.$REALM.signalfx.com/v2/metric?limit=1")
+          ingest=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "X-SF-Token: $INGEST" -H "Content-Type: application/json" \
+            -d '{"gauge":[{"metric":"hero.pipeline.check","value":1,"dimensions":{"source":"hero-blog-check"}}]}' \
+            "https://ingest.$REALM.signalfx.com/v2/datapoint")
+          echo "::notice title=Splunk check::realm=$REALM api=$api ingest=$ingest (200 means OK)"
+          [ "$api" = 200 ] && [ "$ingest" = 200 ]
