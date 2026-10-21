@@ -22,7 +22,7 @@ DRY = os.environ.get("DRY_RUN", "").lower() == "true"
 MAX_ISSUES, LABEL, UA = 3, "radar", "hero-radar/1.0"
 LABELS = {"radar": ("0e8a16", "Topic idea from the radar"),
           "problem": ("d93f0b", "Problem idea from the problem finder"),
-          "replicate": ("5319e7", "Replicate this on the AWS lab account (needs your deployment approval)"),
+          "replicate": ("5319e7", "The panel's pick: reply approve to its email (or comment approve) to run the lab"),
           "drafted": ("1d76db", "Replicated; a draft post PR is open"),
           "not-reproduced": ("cccccc", "The lab could not reproduce this"),
           "replication-disputed": ("fbca04", "The lab ran, but the panel did not confirm the replication"),
@@ -128,10 +128,15 @@ def _describe(m):
 
 REL_PATH = re.compile(r"(?<![\w.:/-])/([\w.-]+)/([\w.-]+)/(issues|pull|pulls|discussions|commit)/(\w+)", re.I)
 
-def neutralize(s):
+def neutralize(s, own_links=False):
     """Turn GitHub links and references into plain text, and break @mentions. Works on the decoded
     text (the same forms assert_safe checks), so encoded tricks can't survive it."""
     s = _views(str(s or ""))[-1]
+    if own_links:                                  # keep links to Abhi's own two repos working
+        kept = []
+        s = OWN_LINK.sub(lambda m: kept.append(m.group(0)) or f"\x00{len(kept) - 1}\x00", s)
+        out = neutralize(s)
+        return re.sub("\x00(\\d+)\x00", lambda m: kept[int(m.group(1))], out)
     s = re.sub(r"github\s*\.\s*com", "github.com", ZW.sub("", s), flags=re.I)
     s = s.replace("<", "\u2039").replace(">", "\u203a")
     s = GH_URL.sub(_describe, s)
@@ -152,19 +157,19 @@ def _views(text):
         out.append(t)
     return out
 
-def safe_text(text, fallback="[left out: failed the link-safety check]"):
+def safe_text(text, fallback="[left out: failed the link-safety check]", own_links=False):
     """neutralize(), and if anything still fails assert_safe, a fixed placeholder instead."""
-    t = neutralize(text)
+    t = neutralize(text, own_links)
     try:
-        assert_safe(t)
+        assert_safe(t, own_links)
         return t
     except Unsafe:
         return fallback
 
 # Links to an issue in Abhi's own two repos (e.g. the LinkedIn draft in his profile repo). Only bot comments in his
 # own repo may carry them: a link between his own repos pings nobody else.
-OWN_LINK = re.compile(r"https://github\.com/Abhimanyu9988/(?:Abhimanyu9988|Abhimanyu9988\.github\.io)/issues/\d+"
-                      r"(?![\w/.#?%&=@-])")
+OWN_LINK = re.compile(r"https://github\.com/Abhimanyu9988/(?:Abhimanyu9988|Abhimanyu9988\.github\.io)"
+                      r"(?:\.git|/issues/\d+|/(?:tree|blob)/[\w.-]+(?:/[\w.-]+)*)?(?![\w/.#?%&=@-])")
 
 def assert_safe(text, own_links=False):
     """Final check on the complete text, URLs included. Raises Unsafe."""
@@ -421,8 +426,8 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
     made = 0
     for c in ranked:
         body = (f"{c['top']}\n\n{panel_line(c, votes[c['id']])}\n\n{sources_block(c['srcs'])}\n\n"
-                f"_Found by the {label} bot. Add the `replicate` label to run it on the AWS lab; close it if "
-                f"you're not interested._\n\n{src_marker(c['srcs'])}")
+                "**To run this lab:** reply to this email with **approve** (or comment `approve` here). Close the "
+                f"issue if you're not interested.\n\n{src_marker(c['srcs'])}")
         try:
             assert_safe(c["title"]); assert_safe(body)
         except Unsafe as e:
@@ -434,7 +439,9 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
         made += 1
         if c is best:
             add_label(iss["number"], "replicate")
-            print(f"marked #{iss['number']} replicate")
+            comment(iss["number"], "\u2b50 This is the panel's pick. Reply to this email with **approve** to run its "
+                                   "lab (about 30 to 60 minutes, under 1 USD); the draft post comes back by email.")
+            print(f"marked #{iss['number']} as the pick")
     print(f"done: {made} issue(s) opened. {llm.usage_summary()}")
 
 # ---------- radar ----------
@@ -520,6 +527,11 @@ BUILD_QUESTION = ("Should this become a deploy-and-monitor how-to on Abhimanyu's
                   "repeat an existing topic. Vote no for news recaps, niche flags, and anything whose payoff can't "
                   "be shown in real output.")
 
+SPLUNK_READY = os.environ.get("SPLUNK_READY", "").lower() == "true"
+NO_SPLUNK = ("Splunk Observability Cloud is NOT set up for the lab yet, so for now monitor with open-source tools "
+             "the lab can prove (the OpenTelemetry Collector with Prometheus and Grafana, or CloudWatch Container "
+             "Insights) instead of Splunk, keeping the same deploy-and-monitor shape.")
+
 def ask_panel(items, existing):
     author = (pathlib.Path(__file__).with_name("author.md").read_text()
               if pathlib.Path(__file__).with_name("author.md").exists() else "")
@@ -536,7 +548,8 @@ def ask_panel(items, existing):
         "data arriving in Splunk. Mix the cross-tech tools from week to week. Use ITEMS as sources: docs for the "
         "building blocks, AWS What's New and releases for something new, Hacker News for what people care about. "
         "Play to the AUTHOR's strengths (OpenTelemetry, Splunk Observability, Kubernetes, auto-instrumentation). The "
-        f"title states the outcome. Do not repeat anything in EXISTING. {NO_REFS}\n\nAUTHOR:\n{author}\n\n"
+        f"title states the outcome. Do not repeat anything in EXISTING. {'' if SPLUNK_READY else NO_SPLUNK} "
+        f"{NO_REFS}\n\nAUTHOR:\n{author}\n\n"
         f"LAB LIMITS:\n{LAB_LIMITS}\n\n"
         f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",
@@ -552,7 +565,7 @@ def main():
     post_topics(topics, items, existing, used, LABEL,
                 lambda t, srcs: (f"**What you'll build:** {neutralize(t.get('payoff'))}\n\n**Proof it works:** "
                                  f"{neutralize(t.get('proof'))}\n\n**Lab:** {neutralize(t.get('lab'))}"),
-                MAX_ISSUES, question=BUILD_QUESTION, extra_labels=("build",))
+                MAX_ISSUES, question=BUILD_QUESTION + ("" if SPLUNK_READY else " " + NO_SPLUNK), extra_labels=("build",))
 
 if __name__ == "__main__":
     main()

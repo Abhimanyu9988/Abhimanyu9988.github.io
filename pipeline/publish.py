@@ -14,11 +14,6 @@ import frontmatter, yaml
 os.environ.setdefault("REPO", "Abhimanyu9988/Abhimanyu9988.github.io")
 from radar import safe_text          # the report is a GitHub issue: same link/mention safety as the bot
 
-def safe_code(text):
-    """For text inside a ```text fence: same link/mention neutralizing, but keep < and > so it copies cleanly
-    (GitHub doesn't render HTML inside fences)."""
-    return safe_text(text, "[left out: failed the link-safety check]").replace("\u2039", "<").replace("\u203a", ">")
-
 SITE = yaml.safe_load(open("site/_config.yml"))
 BLOG = SITE["url"] + (SITE.get("baseurl") or "")
 STATE = pathlib.Path("state/publish-state.json")
@@ -114,44 +109,58 @@ def medium(meta, body, canonical, prev_id):
 CHANNELS = {"devto": devto, "hashnode": hashnode, "medium": medium}
 NEEDS = {"devto": "DEVTO_API_KEY", "hashnode": "HASHNODE_TOKEN", "medium": "MEDIUM_TOKEN"}
 
+def safe_code(text):
+    """For text inside a ```text fence: link/mention neutralizing (links to Abhi's own repos kept), with < and >
+    kept so it copies cleanly (GitHub doesn't render HTML inside fences)."""
+    return (safe_text(text, "[left out: failed the link-safety check]", own_links=True)
+            .replace("\u2039", "<").replace("\u203a", ">"))
+
 def share_block(post, canonical, done, slug):
-    """What you do by hand: Medium (if no token), LinkedIn, and replies on the source threads."""
-    lines = [f"\n### {safe_text(post.get('title'))}", f"- Your site (the original): {canonical}"]
-    if done.get("devto", {}).get("url"):
-        lines.append(f"- dev.to (live): {done['devto']['url']}")
-    if done.get("hashnode", {}).get("url"):
-        lines.append(f"- Hashnode (live): {done['hashnode']['url']}")
+    """The "ready to post" email: everything for Medium and LinkedIn, ready to copy on a phone."""
+    devto = done.get("devto", {}).get("url")
+    lines = [f"## {safe_text(post.get('title'))}", "",
+             f"**Live now:** [your site]({canonical})" + (f" · [dev.to]({devto})" if devto else ""), ""]
     med = done.get("medium", {})
-    if med.get("url") and med.get("manual"):
-        lines.append(f"- Medium (live): {med['url']}")
-    elif med.get("url"):
-        lines.append(f"- **Medium:** your draft is ready, with code blocks and your site as the original: "
-                     f"{med['url']}. Open it, check it, press Publish.")
-    elif not post.get("canonical_url"):
-        lines.append(f"- **1. Medium:** at https://medium.com/p/import paste {BLOG}/medium/{slug}/ and import. Before "
-                     f"publishing, set the canonical link to {canonical} (story settings, Advanced settings).")
-    if post.get("linkedin"):
-        lines.append("- **2. LinkedIn:** comment `/medium <your Medium story link>` here (or `/linkedin` to skip "
-                     "Medium). Your LinkedIn draft opens in your profile repo with the dev.to and Medium links"
-                     f"{' and the cover image' if post.get('image') else ''}; comment `/post` there.")
+    if med.get("url"):
+        lines += [f"**Medium:** {'live' if med.get('manual') else 'draft ready'}: {med['url']}", ""]
+    else:
+        ready = f"{BLOG}/medium/{slug}/"
+        lines += ["### 1. Medium (2 minutes)",
+                  f"- **Fastest:** open https://medium.com/p/import, paste `{ready}` and tap Import.",
+                  f"- **Or copy and paste:** open {ready}, select all, copy, and paste into a new Medium story "
+                  "(code blocks stay code blocks). The full article is also at the bottom of this email.",
+                  f"- **Before you publish:** story settings, Advanced settings, canonical link: `{canonical}`", ""]
+    li = str(post.get("linkedin") or "").strip()
+    if li:
+        from share import linkedin_text
+        text = linkedin_text(li, canonical, devto, med.get("url") if med.get("manual") else None)
+        lines += ["### 2. LinkedIn (1 minute)",
+                  "Copy the text, paste it into a new LinkedIn post, add the picture below (press and hold to save "
+                  "it), and post.", "", "```text", safe_code(text), "```", ""]
+        if post.get("image"):
+            lines += [f"![picture for the LinkedIn post]({BLOG}{post['image']})", ""]
+        lines += ["_Rather have it posted for you? Comment `/medium <your Medium story link>` (or `/linkedin`) here "
+                  "and use the LinkedIn draft link it replies with._", ""]
     for r in post.get("replies") or []:
-        text = str(r.get("text", "")).replace("{POST_URL}", done.get("devto", {}).get("url") or canonical)
+        text = str(r.get("text", "")).replace("{POST_URL}", devto or canonical)
         where = str(r.get("url", ""))
         so = "stackoverflow.com" in where
-        lines += ["", f"<details><summary><b>3. Reply for the source thread</b> ({safe_text(where, 'the source thread')})"
-                  "</summary>", "",
+        lines += [f"### 3. Reply on the source thread ({safe_text(where, 'the source thread')})",
                   ("_Stack Overflow doesn't allow AI-written answers: rewrite this in your own words before you "
                    "post it._" if so else "_Post it yourself if it helps the thread; the bot never does._"),
-                  "", "```text", safe_code(text), "```", "", "</details>"]
-    lines += ["", "<details><summary>Later: record LinkedIn and Medium numbers</summary>", "",
-              "A few days after posting, comment for example `/stats linkedin impressions=1200 reactions=40 "
-              "comments=6 reposts=2` or `/stats medium views=300 reads=120 claps=50`.", "", "</details>",
-              f"<!-- post: {slug} -->"]
+                  "", "```text", safe_code(text), "```", ""]
+    lines += ["**Later:** a few days after posting, reply with numbers, e.g. `/stats linkedin impressions=1200 "
+              "reactions=40 comments=6` or `/stats medium views=300 reads=120 claps=50`.", ""]
+    body = safe_code(getattr(post, "content", None) or post.get("content", ""))[:40000]
+    if body.strip() and not med.get("url"):
+        lines += ["<details><summary><b>Full article for Medium copy-paste</b></summary>", "",
+                  f"# {safe_text(post.get('title'))}", "", body, "", "</details>"]
+    lines += [f"<!-- post: {slug} -->", ""]
     return lines
 
 def main(paths):
     state = json.loads(STATE.read_text()) if STATE.exists() else {}
-    report, failed = [], False
+    report, failed, titles = [], False, []
     for path in paths:
         post = frontmatter.load(path)
         canonical = canonical_url(path, post.metadata)
@@ -161,6 +170,8 @@ def main(paths):
             report.append(f"- {path}: SKIPPED, {e}"); failed = True; continue
         digest = hashlib.sha256(frontmatter.dumps(post).encode()).hexdigest()
         done = state.setdefault(canonical, {})
+        if done.get("devto", {}).get("url"):       # already out before this run: an update, not a new post
+            done.setdefault("announced", True)
         for ch in list(post.get("channels", [])) + ["medium"]:
             prev = done.get(ch, {})
             if prev.get("hash") == digest or (ch == "medium" and prev.get("id")):
@@ -178,9 +189,14 @@ def main(paths):
             except Exception as e:
                 report.append(f"- {ch}: FAILED {safe_text(str(e))[:300]}"); failed = True
         slug = slug_of(path, post.metadata)
-        report += share_block(post, canonical, done, slug)
+        if not done.get("announced"):              # the "ready to post" email goes out once per post
+            report += share_block(post, canonical, done, slug)
+            titles.append(str(post.get("title") or slug))
+            done["announced"] = True
         STATE.write_text(json.dumps(state, indent=2))
-    pathlib.Path("publish-report.md").write_text("\n".join(report) or "Nothing to publish.")
+    pathlib.Path("publish-report.md").write_text("\n".join(report) if titles or failed else "")
+    pathlib.Path("publish-title.txt").write_text(
+        safe_text("Ready to post: " + "; ".join(titles), "Ready to post")[:200] if titles else "Publish problems")
     sys.exit(1 if failed else 0)
 
 if __name__ == "__main__":

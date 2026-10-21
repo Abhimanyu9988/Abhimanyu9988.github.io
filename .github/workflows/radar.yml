@@ -34,6 +34,7 @@ jobs:
         env:
           HERO_PUBLISH: "1"
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          SPLUNK_READY: ${{ vars.SPLUNK_REALM != '' && secrets.SPLUNK_ACCESS_TOKEN != '' && secrets.SPLUNK_API_TOKEN != '' }}
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}

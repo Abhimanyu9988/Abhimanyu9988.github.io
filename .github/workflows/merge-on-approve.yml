@@ -1,0 +1,39 @@
+name: merge-on-approve
+# Approve a draft post PR (GitHub mobile app: Files changed -> Review -> Approve, or the web) and it merges right
+# away, which publishes the site and dev.to and sends you the "ready to post" email.
+on:
+  pull_request_review:
+    types: [submitted]
+permissions:
+  contents: read
+jobs:
+  merge:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      github.event.review.state == 'approved' && github.event.review.user.login == 'Abhimanyu9988' &&
+      startsWith(github.event.pull_request.head.ref, 'draft/') && github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The app token (not GITHUB_TOKEN) so the merge's push starts the publish workflow.
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+      - env:
+          GH_TOKEN: ${{ steps.bot.outputs.token }}
+          N: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if gh api -X PUT "repos/$GITHUB_REPOSITORY/pulls/$N/merge" -f merge_method=squash -f sha="$SHA" --jq .message; then
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$N/comments" \
+              -f body="Approved and merged. Your site and dev.to update in a few minutes, then the ready-to-post email for Medium and LinkedIn arrives."
+          else
+            gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$N/comments" \
+              -f body="Approved, but GitHub refused the merge (see the merge-on-approve run). Merge it from the PR page."
+            exit 1
+          fi

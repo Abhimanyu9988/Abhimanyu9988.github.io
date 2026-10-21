@@ -1,7 +1,10 @@
 name: replicate
-# Adding the `replicate` label to a topic issue (by the bot or by you) runs that topic on the AWS lab
-# account. GitHub asks you to approve the aws-lab deployment first: that tap is the cost/safety gate.
+# You start a lab: reply "approve" to the topic issue's email (or comment "approve" on it, or add the
+# `replicate` label yourself). That reply is the cost/safety gate: the bot's own `replicate` label only marks the
+# panel's pick and never starts anything.
 on:
+  issue_comment:
+    types: [created]
   issues:
     types: [labeled]
   workflow_dispatch:
@@ -24,13 +27,21 @@ permissions:
 concurrency:
   # One lab at a time. Other label events (radar, drafted, ...) get their own group so they never
   # cancel a queued lab.
-  group: ${{ (github.event_name == 'workflow_dispatch' || github.event.label.name == 'replicate') && 'replicate' || format('skip-{0}', github.run_id) }}
+  group: >-
+    ${{ (github.event_name == 'workflow_dispatch' ||
+         (github.event_name == 'issue_comment' && github.event.comment.user.login == 'Abhimanyu9988' &&
+          !github.event.issue.pull_request &&
+          (startsWith(github.event.comment.body, 'approve') || startsWith(github.event.comment.body, '/approve'))) ||
+         (github.event.label.name == 'replicate' && github.event.sender.login == 'Abhimanyu9988'))
+        && 'replicate' || format('skip-{0}', github.run_id) }}
   cancel-in-progress: false
 jobs:
   # GitHub sometimes delivers the same `replicate` label event twice. The copy would sit waiting for your
   # aws-lab approval and hold the one-lab-at-a-time queue, blocking every later lab and redraft.
   gate:
-    if: github.event_name == 'issues' && github.event.label.name == 'replicate'
+    if: >-
+      github.event_name == 'issues' && github.event.label.name == 'replicate' &&
+      github.event.sender.login == 'Abhimanyu9988'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: { actions: read }
@@ -53,6 +64,21 @@ jobs:
           done
           echo "duplicate=$([ "$dup" -gt 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
           [ "$dup" -gt 0 ] && echo "::notice::Same replicate event delivered twice; this copy does nothing." || true
+  # A quick reply on the topic issue (it reaches your email) so you know the lab started.
+  ack:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
+      github.event_name == 'issue_comment' && github.event.comment.user.login == 'Abhimanyu9988' &&
+      !github.event.issue.pull_request &&
+      (startsWith(github.event.comment.body, 'approve') || startsWith(github.event.comment.body, '/approve')) &&
+      (contains(github.event.issue.labels.*.name, 'radar') || contains(github.event.issue.labels.*.name, 'problem'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { issues: write }
+    steps:
+      - env: { GH_TOKEN: "${{ github.token }}", N: "${{ github.event.issue.number }}" }
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$N/comments" -f body="Approved. The lab is starting now; the draft post usually arrives in 30 to 60 minutes."
   lab:
     needs: gate
     if: >-
@@ -60,8 +86,11 @@ jobs:
       github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
       !inputs.from_run &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event.label.name == 'replicate' &&
-        (github.event.sender.login == 'Abhimanyu9988' || github.event.sender.login == 'hero-bot-abhimanyu9988[bot]')))
+       (github.event_name == 'issue_comment' && github.event.comment.user.login == 'Abhimanyu9988' &&
+        !github.event.issue.pull_request &&
+        (startsWith(github.event.comment.body, 'approve') || startsWith(github.event.comment.body, '/approve')) &&
+        (contains(github.event.issue.labels.*.name, 'radar') || contains(github.event.issue.labels.*.name, 'problem'))) ||
+       (github.event.label.name == 'replicate' && github.event.sender.login == 'Abhimanyu9988'))
     runs-on: ubuntu-latest
     environment: aws-lab
     timeout-minutes: 150

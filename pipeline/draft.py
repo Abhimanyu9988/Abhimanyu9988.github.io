@@ -561,7 +561,8 @@ def open_pr(issue_no, res, topic):
             f"{headline_md(log.get('headline'))}{linkedin_md(log.get('linkedin'))}"
             f"{review_md('Lab review', res.get('review'))}\n\n{review_md('Article review', log)}\n\n"
             f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n</details>{warn}\n\n"
-            "**Merge** to publish on your site and dev.to; you then get the Medium link and your LinkedIn draft. "
+            "**To publish: approve this PR** (GitHub app: Files changed, Review, Approve). It merges itself, goes live on "
+               "your site and dev.to, and you get the ready-to-post email for Medium and LinkedIn. "
             f"To change anything, edit `site/_posts/{today}-{slug}.md` in this PR, or comment `/redraft <what to change>`.\n")
     title = safe_text("Draft: " + post["title"], "Draft post")[:120]
     if len(body) > 60000:
@@ -579,7 +580,7 @@ def open_pr(issue_no, res, topic):
         comment(int(old), f"Replaced by the redraft in pull request no. {pr['number']}.")
         gh("PATCH", f"/repos/{HOME_REPO}/pulls/{old}", {"state": "closed"})
     comment(issue_no, f"\u2705 {'Built and proven' if kind == 'build' else 'Replicated and fixed'}, and the panel confirmed it ({v['yes']} of 3). The draft post is "
-                      f"ready for your review in pull request no. {pr['number']}.{warn}")
+                      f"ready for your review in pull request no. {pr['number']}: approve it to publish.{warn}")
     add_label(issue_no, "drafted")
 
 def main():
