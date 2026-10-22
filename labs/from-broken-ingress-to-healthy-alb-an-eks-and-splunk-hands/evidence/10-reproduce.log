@@ -1,0 +1,43 @@
+$ bash reproduce.sh
+# exit 0 after 48s
+
+== Waiting for the two worker nodes to be Ready (max 300s)
+node/ip-10-20-0-157.eu-central-1.compute.internal condition met
+node/ip-10-20-1-130.eu-central-1.compute.internal condition met
+NAME                                           STATUS   ROLES    AGE     VERSION                INTERNAL-IP   EXTERNAL-IP      OS-IMAGE                        KERNEL-VERSION                    CONTAINER-RUNTIME
+ip-10-20-0-157.eu-central-1.compute.internal   Ready    <none>   4m43s   v1.32.13-eks-117f323   10.20.0.157   51.102.184.159   Amazon Linux 2023.12.20261016   6.1.188-233.393.amzn2023.x86_64   containerd://2.3.5+unknown
+ip-10-20-1-130.eu-central-1.compute.internal   Ready    <none>   4m6s    v1.32.13-eks-117f323   10.20.1.130   35.158.58.191    Amazon Linux 2023.12.20261016   6.1.188-233.393.amzn2023.x86_64   containerd://2.3.5+unknown
+
+== Deploying the sample web app and an Ingress (ingressClassName: alb)
+namespace/demo unchanged
+configmap/web-nginx unchanged
+deployment.apps/web unchanged
+service/web unchanged
+ingress.networking.k8s.io/web created
+deployment "web" successfully rolled out
+NAME                   READY   STATUS    RESTARTS   AGE     IP            NODE                                           NOMINATED NODE   READINESS GATES
+web-7ccf95689c-2g7ww   1/1     Running   0          4m10s   10.20.0.53    ip-10-20-0-157.eu-central-1.compute.internal   <none>           <none>
+web-7ccf95689c-kxmzr   1/1     Running   0          4m10s   10.20.0.106   ip-10-20-0-157.eu-central-1.compute.internal   <none>           <none>
+
+== Giving the Ingress 30s to get a load balancer
+== Ingress status (ADDRESS should be empty: nothing reconciles it)
+NAME   CLASS   HOSTS   ADDRESS   PORTS   AGE
+web    alb     *                 80      34s
+Ingress hostname: ''
+
+== Ingress events
+Events:       <none>
+
+== IngressClass objects and controller pods
+No resources found
+aws-load-balancer-controller deployments: 0
+
+== ALBs in this account tagged for this cluster
+ALBs created for the cluster: 0
+
+== Splunk Observability Cloud: time series for k8s.cluster.name=put-an-eks-app-behind-an-527731
+cluster MTS count: 0
+
+Gap shown: the Ingress exists, but no controller, no ALB, no address and no telemetry.
+HERO_RESULT: reproduced
+
