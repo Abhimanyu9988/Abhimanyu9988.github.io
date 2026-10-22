@@ -1,0 +1,69 @@
+$ bash fix.sh
+# exit 0 after 148s
+
+== 1. Install AWS Load Balancer Controller 1.13.0 (IAM through EKS Pod Identity)
+kube-system	aws-load-balancer-controller
+Release "aws-load-balancer-controller" does not exist. Installing it now.
+NAME: aws-load-balancer-controller
+LAST DEPLOYED: Thu Oct 22 09:50:34 2026
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+AWS Load Balancer controller installed!
+deployment "aws-load-balancer-controller" successfully rolled out
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+aws-load-balancer-controller   1/1     1            1           17s
+NAME   CONTROLLER            PARAMETERS   AGE
+alb    ingress.k8s.aws/alb   <none>       19s
+Pod Identity credentials injected into the controller pod (variable names only):
+
+== 2. Install Splunk OpenTelemetry Collector 0.116.0 (cluster put-an-eks-app-behind-an-527731) --skip-schema-validation
+NAME                                                          READY   STATUS              RESTARTS   AGE
+splunk-otel-collector-agent-ckrcx                             0/1     ContainerCreating   0          1s
+splunk-otel-collector-agent-xv6xm                             0/1     ContainerCreating   0          1s
+splunk-otel-collector-k8s-cluster-receiver-7854cf8487-8mcxw   0/1     ContainerCreating   0          1s
+
+== 3. Apply the Ingress and wait for the ALB
+ingress.networking.k8s.io/web unchanged
+deployment "web" successfully rolled out
+NAME   CLASS   HOSTS   ADDRESS                                                           PORTS   AGE
+web    alb     *       k8s-demo-web-70bb130243-28212986.eu-central-1.elb.amazonaws.com   80      85s
+k8s-demo-web-70bb130243	internet-facing	application	active
+
+== 4. ALB target health (target-type ip, one target per pod)
+10.20.0.106	80	healthy
+10.20.0.53	80	healthy
+healthy targets: 2/2
+NAME                      SERVICE-NAME   SERVICE-PORT   TARGET-TYPE   AGE
+k8s-demo-web-f26d64a1b9   web            80             ip            101s
+
+== 5. curl through the load balancer: http://k8s-demo-web-70bb130243-28212986.eu-central-1.elb.amazonaws.com/
+HTTP status: 200
+      3 hello from pod web-7ccf95689c-2g7ww behind the ALB
+      3 hello from pod web-7ccf95689c-kxmzr behind the ALB
+
+== 6. Controller log lines showing reconciliation
+{"level":"info","ts":"2026-10-22T09:51:01Z","logger":"controllers.ingress","msg":"creating targetGroup","stackID":"demo/web","resourceID":"demo/web-web:80"}
+{"level":"info","ts":"2026-10-22T09:51:01Z","logger":"controllers.ingress","msg":"created targetGroup","stackID":"demo/web","resourceID":"demo/web-web:80","arn":"arn:aws:elasticloadbalancing:eu-central-1:<account-id>:targetgroup/k
+{"level":"info","ts":"2026-10-22T09:51:01Z","logger":"controllers.ingress","msg":"creating loadBalancer","stackID":"demo/web","resourceID":"LoadBalancer"}
+{"level":"info","ts":"2026-10-22T09:51:02Z","logger":"controllers.ingress","msg":"created loadBalancer","stackID":"demo/web","resourceID":"LoadBalancer","arn":"arn:aws:elasticloadbalancing:eu-central-1:<account-id>:loadbalancer/ap
+{"level":"info","ts":"2026-10-22T09:51:02Z","logger":"controllers.ingress","msg":"creating targetGroupBinding","stackID":"demo/web","resourceID":"demo/web-web:80"}
+{"level":"info","ts":"2026-10-22T09:51:02Z","logger":"controllers.ingress","msg":"created targetGroupBinding","stackID":"demo/web","resourceID":"demo/web-web:80","targetGroupBinding":{"name":"k8s-demo-web-f26d64a1b9","namespace":"
+{"level":"info","ts":"2026-10-22T09:51:02Z","logger":"controllers.ingress","msg":"successfully deployed model","ingressGroup":"demo/web"}
+{"level":"info","ts":"2026-10-22T09:51:03Z","msg":"registering targets","arn":"arn:aws:elasticloadbalancing:eu-central-1:<account-id>:targetgroup/k8s-demo-web-f26d64a1b9/dc37538e55c037db","targets":[{"Id":"10.20.0.106","Availabili
+successful reconciliations: 1, reconciler errors: 0
+
+== 7. Splunk Observability Cloud (realm eu1), retrying until data arrives (max 8 min, bounded by the script deadline)
+attempt 1: cluster=1968 controller-pods=1621 app-pods=34
+-- metric names for the controller pod:
+
+-- metric names for the web pods:
+
+-- controller Prometheus metrics (best effort):
+controller_runtime_reconcile_total series: 12
+
+Proof: curl 200 via k8s-demo-web-70bb130243-28212986.eu-central-1.elb.amazonaws.com, 2/2 targets healthy, controller reconciled, Splunk has cluster/controller/app series.
+HERO_RESULT: fixed
+
