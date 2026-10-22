@@ -1,0 +1,39 @@
+$ terraform plan -input=false -no-color -out=tfplan
+# exit 0 after 10s
+
+data.http.lbc_policy: Reading...
+data.http.lbc_policy: Read complete after 0s [id=https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.13.0/docs/install/iam_policy.json]
+data.aws_ssm_parameter.eks_ami: Reading...
+data.aws_availability_zones.available: Reading...
+aws_iam_role.lbc: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-lbc]
+aws_iam_role.node: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-node]
+aws_vpc.this: Refreshing state... [id=vpc-068f0387f9fbee968]
+aws_iam_role.cluster: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-cluster]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-node-20261022093522909500000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-node-20261022093522854900000001]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-node-20261022093522930400000003]
+aws_iam_instance_profile.node: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-node]
+aws_iam_role_policy_attachment.cluster: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-cluster-20261022093522971000000004]
+aws_iam_role_policy.lbc: Refreshing state... [id=hero-lab-put-an-eks-app-behind-an-527731-lbc:aws-load-balancer-controller]
+data.aws_ssm_parameter.eks_ami: Read complete after 0s [id=/aws/service/eks/optimized-ami/1.32/amazon-linux-2023/x86_64/standard/recommended/image_id]
+data.aws_availability_zones.available: Read complete after 0s [id=eu-central-1]
+aws_internet_gateway.this: Refreshing state... [id=igw-0f06f7cf323c5332b]
+aws_subnet.public[0]: Refreshing state... [id=subnet-0719fd313c6fe0d6f]
+aws_subnet.public[1]: Refreshing state... [id=subnet-070dd761ffe8424ef]
+aws_route_table.public: Refreshing state... [id=rtb-03233ee2adc1bf55d]
+aws_eks_cluster.this: Refreshing state... [id=put-an-eks-app-behind-an-527731]
+aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-039fac57ff53cacd7]
+aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-02f85c5dda94ef843]
+aws_eks_access_entry.node: Refreshing state... [id=put-an-eks-app-behind-an-527731:arn:aws:iam::<account-id>:role/hero-lab-put-an-eks-app-behind-an-527731-node]
+aws_vpc_security_group_ingress_rule.alb_to_pods: Refreshing state... [id=sgr-09599e6d8d871b8d5]
+aws_instance.node[0]: Refreshing state... [id=i-05be1d70f1edaa6f0]
+aws_instance.node[1]: Refreshing state... [id=i-0954e4db3a4060068]
+aws_eks_addon.pod_identity: Refreshing state... [id=put-an-eks-app-behind-an-527731:eks-pod-identity-agent]
+aws_eks_pod_identity_association.lbc: Refreshing state... [id=a-dpdhtp7evyldcd5m4]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+Releasing state lock. This may take a few moments...
+
