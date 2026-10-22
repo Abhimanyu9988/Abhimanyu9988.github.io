@@ -27,5 +27,13 @@
       "hash": "5ebbf6475875398330823e8cb427efce5f6b62c90f4c69798a813ced570a4b2b"
     },
     "announced": true
+  },
+  "https://abhimanyu9988.github.io/posts/from-broken-ingress-to-healthy-alb-an-eks-and-splunk-hands/": {
+    "devto": {
+      "id": 4896565,
+      "url": "https://dev.to/abhimanyu9988/from-broken-ingress-to-healthy-alb-an-eks-and-splunk-hands-on-lab-4n5h",
+      "hash": "c54c22e74875814a19bdc046e7923b779b8f9c07b361dc90e65d7dcddbd80307"
+    },
+    "announced": true
   }
 }
