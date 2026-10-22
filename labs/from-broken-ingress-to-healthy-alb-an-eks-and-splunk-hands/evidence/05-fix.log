@@ -1,0 +1,33 @@
+$ bash fix.sh
+# exit 0 after 49s
+
+== 1. Install AWS Load Balancer Controller 1.13.0 (IAM through EKS Pod Identity)
+kube-system	aws-load-balancer-controller
+Release "aws-load-balancer-controller" does not exist. Installing it now.
+NAME: aws-load-balancer-controller
+LAST DEPLOYED: Thu Oct 22 09:46:30 2026
+NAMESPACE: kube-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+AWS Load Balancer controller installed!
+deployment "aws-load-balancer-controller" successfully rolled out
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+aws-load-balancer-controller   1/1     1            1           30s
+NAME   CONTROLLER            PARAMETERS   AGE
+alb    ingress.k8s.aws/alb   <none>       30s
+Pod Identity credentials injected into the controller pod (variable names only):
+
+== 2. Install Splunk OpenTelemetry Collector 0.116.0 (cluster put-an-eks-app-behind-an-527731)
+Error: values don't meet the specifications of the schema(s) in the following chart(s):
+splunk-otel-collector:
+"file:///values.schema.json#" is not valid against metaschema: jsonschema validation failed with 'https://json-schema.org/draft/2020-12/schema#'
+- at '': 'allOf' failed
+  - at '/properties/image': 'allOf' failed
+    - at '/properties/image/properties/fluentd': 'allOf' failed
+      - at '/properties/image/properties/fluentd/properties/initContainer': 'allOf' failed
+        - at '/properties/image/properties/fluentd/properties/initContainer/deprecated': got string, want boolean
+FAILED: helm install of the Splunk collector
+HERO_RESULT: not_fixed
+
