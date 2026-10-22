@@ -1,0 +1,13 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 4s
+
+
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "put-an-eks-app-behind-an-527731"
+lbc_role_arn = "arn:aws:iam::<account-id>:role/hero-lab-put-an-eks-app-behind-an-527731-lbc"
+region = "eu-central-1"
+vpc_id = "vpc-068f0387f9fbee968"
+
