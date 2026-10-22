@@ -354,8 +354,12 @@ def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
     prompts_seen.append((who, tool, prompt))
     if tool == "submit_verdict":
         return {"vote": VERDICT.get(who, "yes"), "reason": "the evidence shows it, see @bob and aws/x#5"}
-    if tool == "submit_headline":
-        return {"title": f"{who} title", "hook": f"{who} hook: the queue fills and nothing starts."}
+    if tool == "submit_headlines":
+        return {"pick": 0, "options": [{"title": "Overpromise title", "hook": "h0"},
+                                       {"title": "From stuck queue to running tasks", "hook": "hook: the queue fills and nothing starts."},
+                                       {"title": "Third title", "hook": "h2"}]}
+    if tool == "submit_check" and "OPTIONS:" in prompt:
+        return {"untrue": [0]}
     if tool == "submit_linkedin":
         return {"linkedin": f"{who} linkedin: rollback took 16 seconds\n{{LINKS}}\n#aws"}
     if tool == "submit_check":
@@ -402,15 +406,17 @@ check("draft: front matter has the cover; body opens with it on the site URL",
 check("draft: front matter has channels and cleaned tags", 'tags: ["aws", "ecs", "fargate", "devops"]' in text and "channels:" in text)
 check("draft: ChatGPT writes, Claude reviews, Gemini judges", writer_calls == ["chatgpt"] and roles == [("chatgpt", "claude", "gemini")])
 writer_prompt = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
-check("headline round: all three propose, the 2-of-3 winner goes to the writer with AUTHOR facts and STYLE SIGNALS",
-      sum(1 for w, t, p in prompts_seen if t == "submit_headline") == 3 and "TITLE: chatgpt title" in writer_prompt
+check("headline round: ChatGPT writes five, Claude vetoes the untrue pick, the next best goes to the writer",
+      [w for w, t, p in prompts_seen if t == "submit_headlines"] == ["chatgpt"]
+      and "TITLE: From stuck queue to running tasks" in writer_prompt
       and "AUTHOR:" in writer_prompt and "observability agents" in writer_prompt and "412 reactions" in writer_prompt)
 _pr = next(b for m, p_, b in sent if p_.endswith("/pulls"))
 pr_body_first = _pr["body"]
 check("LinkedIn round: all three write, the top-voted post that fails the fact check is skipped for the next",
       "gemini linkedin" not in text and "LinkedIn round:** the panel picked ChatGPT" in _pr["body"]
       and "Gemini (3/3)" in _pr["body"])
-check("headline round shown in the PR", "Headline round:** the panel picked ChatGPT" in _pr["body"])
+check("headline round shown in the PR, with the other options and the veto",
+      "Headline round:** ChatGPT wrote five titles" in _pr["body"] and "Overpromise title (vetoed" in _pr["body"])
 check("checklist no longer asks Abhi to write his own line", "add a line from your own experience" not in _pr["body"])
 check("draft: LinkedIn text stored in front matter", "linkedin: " in text and "{POST_URL}" in text)
 check("draft: PR shows the cover from the draft branch, length, and keeps panel details folded",

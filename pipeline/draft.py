@@ -165,9 +165,11 @@ Minor: tone that reads robotic or like an AI, clarity, a title that doesn't stat
 BUILD_TITLE_RULES = """A good title states the OUTCOME the reader gets, with a big but true promise and the service name
 early, so an ECS/EKS engineer reads it and thinks "I want that running". Name the result, not the tool's feature;
 a scope word ("any app", "zero code changes", "from 0 to 10") or a time ("in 20 minutes") only if EVIDENCE backs it.
-Under 75 characters. Shapes that work: "Monitor any app on EKS with zero code changes", "Scale ECS workers from SQS
-queue depth, from 0 to 5 in a minute", "Ship EKS secrets without hard-coding a single one". The opening shows the
-payoff in the first sentence."""
+Name every tool the reader will learn (EKS, the ALB controller, Argo CD, Splunk Observability...) when it fits.
+Under 90 characters. Catchy beats plain: a journey ("From X to Y"), a contrast, or a bold, true result. Shapes that
+work: "From Broken Ingress to Healthy ALB: An EKS and Splunk Hands-On Lab", "Monitor any app on EKS with zero code
+changes", "Scale ECS workers from SQS queue depth, from 0 to 5 in a minute". Never generic ("Expose an app and prove
+health"). The opening shows the payoff in the first sentence."""
 
 LINKEDIN_RULES = """A LinkedIn post that stops the scroll, in Abhi's first person, plain text, no markdown, 120 to 220 words.
 - Lines 1 and 2 are all most people see before "...see more" (under 150 characters together). Make them a contrast
@@ -274,8 +276,8 @@ def headline_md(h):
     if not h:
         return ""
     others = "".join(f"\n- {safe_text(o)}" for o in h.get("others", []))
-    return (f"**Headline round:** the panel picked {h['by']}'s title and opening ({h['yes']} of 3 votes), shaped by "
-            f"what's getting the most reactions on dev.to right now.{others}\n\n")
+    return (f"**Headline round:** ChatGPT wrote five titles and picked this one; Claude checked them against the lab. "
+            f"Other options (put one in a `/redraft` comment to use it):{others}\n\n")
 
 def verdict_md(v, kind="problem"):
     mark = lambda x: "\u2705" if x == "yes" else "\u274c"
@@ -380,31 +382,47 @@ HEADLINE_SCHEMA = {"type": "object", "required": ["title", "hook"], "properties"
     "title": {"type": "string", "description": "max 75 characters: the reader's symptom, true to the evidence"},
     "hook": {"type": "string", "description": "the first two or three sentences of the post"}}}
 
+HEADLINES_SCHEMA = {"type": "object", "required": ["options", "pick"], "properties": {
+    "options": {"type": "array", "minItems": 3, "maxItems": 6, "items": HEADLINE_SCHEMA},
+    "pick": {"type": "integer", "description": "index (0-based) of the option you would publish"}}}
+CHECK_SCHEMA = {"type": "object", "required": ["untrue"], "properties": {
+    "untrue": {"type": "array", "items": {"type": "integer"},
+               "description": "0-based indexes of options that promise more than the evidence shows"}}}
+
 def headline_round(context, signals, author, kind="problem"):
+    """ChatGPT writes the titles: five catchy options and its pick. Claude only vetoes options that promise more than
+    the lab proved; ChatGPT's pick wins unless vetoed, then its next best."""
     K = KINDS[kind]
-    """Each of the three proposes a title and opening; all three vote; 2 of 3 or the most votes wins."""
-    props = []
-    for who in llm.PANEL:
-        try:
-            h = llm.ask(who, "You write headlines and openings for Abhimanyu's hands-on AWS container posts.",
-                        f"Propose ONE title and ONE opening (two or three sentences) for this post.\n{K['titles']}\n"
-                        "Use STYLE SIGNALS for what works now and AUTHOR for any personal angle.\n\nSTYLE SIGNALS:\n"
-                        f"{signals}\n\nAUTHOR:\n{author}\n\n"
-                        f"{context[:40000]}", HEADLINE_SCHEMA, tool="submit_headline")
-            if h.get("title") and h.get("hook"):
-                props.append({"id": f"h{len(props) + 1}", "by": llm.NAMES[who], "title": str(h["title"])[:120],
-                              "hook": str(h["hook"])[:800]})
-        except Exception as e:
-            llm.warn(f"{who} proposed no headline: {str(e)[:200]}")
-    if not props:
+    try:
+        got = llm.ask("chatgpt", "You are a headline writer for hands-on tech posts that people actually click.",
+                      "Write FIVE different title + opening pairs for this post (different angles: a journey "
+                      "'From X to Y', a contrast, a bold true result, a question the reader has, the tools they'll "
+                      "learn), then pick the one you would publish.\n"
+                      f"{K['titles']}\nUse STYLE SIGNALS for what gets clicks now and AUTHOR for any personal angle."
+                      f"\n\nSTYLE SIGNALS:\n{signals}\n\nAUTHOR:\n{author}\n\n{context[:40000]}",
+                      HEADLINES_SCHEMA, tool="submit_headlines")
+    except Exception as e:
+        llm.warn(f"headlines: {str(e)[:200]}"); return None
+    opts = [o for o in (got.get("options") or []) if isinstance(o, dict) and o.get("title") and o.get("hook")]
+    if not opts:
         return None
-    votes = llm.panel_votes(props, "You are a busy ECS/EKS engineer scrolling dev.to or LinkedIn. Which of these would "
-                            f"you click, {K['vote']}, AND would the post deliver it? "
-                            f"Vote yes only for ones you would publish.\n{K['titles']}",
-                            f"STYLE SIGNALS:\n{signals}", tier="write")
-    best = max(props, key=lambda p: votes[p["id"]]["yes"])
-    best["yes"] = votes[best["id"]]["yes"]
-    best["others"] = [f"{p['by']}: {p['title']} ({votes[p['id']]['yes']}/3)" for p in props if p is not best]
+    try:
+        veto = llm.ask("claude", "You check headlines against the lab's real evidence.",
+                       "Which of these titles or openings promise more than the lab actually showed (a claim, number, "
+                       f"tool or result not in the evidence)? Catchy is fine; untrue is not.\n\nOPTIONS:\n"
+                       f"{json.dumps([{'i': i, **o} for i, o in enumerate(opts)])}\n\n{context[:40000]}",
+                       CHECK_SCHEMA, tool="submit_check")
+        bad = {i for i in veto.get("untrue") or [] if isinstance(i, int)}
+    except Exception as e:
+        llm.warn(f"headline check: {str(e)[:200]}"); bad = set()
+    pick = got.get("pick") if isinstance(got.get("pick"), int) and 0 <= got.get("pick") < len(opts) else 0
+    order = [pick] + [i for i in range(len(opts)) if i != pick]
+    chosen = next((i for i in order if i not in bad), None)
+    if chosen is None:
+        return None
+    best = {"by": "ChatGPT", "title": str(opts[chosen]["title"])[:120], "hook": str(opts[chosen]["hook"])[:800],
+            "yes": 1, "others": [f"{o['title']}" + (" (vetoed: promises more than the lab showed)" if i in bad else "")
+                                 for i, o in enumerate(opts) if i != chosen]}
     return best
 
 CODE_BLOCK = re.compile(r"```[^\n]*\n(.*?)```", re.S)
