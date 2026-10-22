@@ -42,6 +42,26 @@ except RuntimeError as e: ok = "cut off" in str(e)
 check("claude_json: truncation is reported", ok)
 llm._claude_stream = real_stream
 
+class _FakeResp:
+    def __init__(self, lines): self.lines = lines
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def __iter__(self): return iter(l.encode() for l in self.lines)
+import urllib.request as _ur
+_real_urlopen = _ur.urlopen
+_start = 'data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","name":"submit"}}'
+_part = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"a\\": 1, \\"b\\""}}'
+os.environ.setdefault("ANTHROPIC_API_KEY", "test")
+_ur.urlopen = lambda *a, **k: _FakeResp([_start, _part])                # cut off: no message_stop
+try: llm._claude_stream({}); ok = False
+except ConnectionError: ok = True
+check("claude stream: a dropped connection is a retryable error, not a JSON crash", ok)
+_ur.urlopen = lambda *a, **k: _FakeResp([_start, _part, 'data: {"type":"message_stop"}'])
+try: llm._claude_stream({}); ok = False
+except ConnectionError: ok = True
+check("claude stream: broken tool JSON is retryable too", ok)
+_ur.urlopen = _real_urlopen
+
 # ---------- Gemini model choice ----------
 llm._models.pop("gemini", None)
 real_call = llm.call
