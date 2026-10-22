@@ -1,0 +1,14 @@
+$ bash cleanup.sh
+# exit 0 after 37s
+
+== Deleting Ingresses and LoadBalancer Services (controller removes the ALB)
+ingress.networking.k8s.io "web" deleted from demo namespace
+== Waiting for ALBs of put-an-eks-app-behind-an-527731 to disappear (controller cleanup)
+== Uninstalling Helm releases
+release "splunk-otel-collector" uninstalled
+release "aws-load-balancer-controller" uninstalled
+== Waiting until tagged load balancers are really gone
+== Deleting leftover target groups (retry while ALB teardown finishes)
+== Deleting controller-managed security groups (retry on DependencyViolation)
+cleanup finished
+
