@@ -103,7 +103,7 @@ def _claude_stream(body):
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", json.dumps({**body, "stream": True}).encode(),
                                  {**_anthropic_headers(), "Content-Type": "application/json", "User-Agent": "hero-pipeline/1.0"},
                                  method="POST")
-    blocks, stop, usage = {}, None, {}
+    blocks, stop, usage, done = {}, None, {}, False
     try:
         with urllib.request.urlopen(req, timeout=300) as r:          # 300 s without a byte = dead
             for raw in r:
@@ -126,16 +126,23 @@ def _claude_stream(body):
                 elif t == "message_delta":
                     stop = ev["delta"].get("stop_reason") or stop
                     usage.update(ev.get("usage") or {})
+                elif t == "message_stop":
+                    done = True
                 elif t == "error":
                     raise RuntimeError(f"Claude stream error: {ev.get('error')}")
     except urllib.error.HTTPError as e:
         raise RuntimeError(f"POST api.anthropic.com/v1/messages -> HTTP {e.code}: "
                            f"{e.read()[:400].decode('utf-8', 'replace')}") from None
+    if not done:                                     # the connection dropped mid-answer: retry the call
+        raise ConnectionError("Claude's stream ended before the answer was complete")
     tools, text = {}, []
     for _, b in sorted(blocks.items(), key=lambda kv: kv[0] if isinstance(kv[0], int) else -1):
         if b["type"] == "tool_use":
             raw = "".join(b["parts"])
-            tools[b.get("name")] = json.loads(raw) if raw.strip() else {}
+            try:
+                tools[b.get("name")] = json.loads(raw) if raw.strip() else {}
+            except ValueError as e:                 # a broken tool answer: also worth one more try
+                raise ConnectionError(f"Claude's tool answer was not valid JSON ({e})") from None
         elif b["type"] == "text":
             text.append("".join(b["parts"]))
     return tools, "".join(text), stop, usage

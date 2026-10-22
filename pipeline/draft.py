@@ -682,7 +682,7 @@ def main():
         msg = (f"{nice} {res.get('attempts')} attempt(s), {res.get('minutes')} min, workflow run {res['run_id']}."
                f"{warn}\n\n**Last failure:** {safe_text(lf.get('step') or 'before the lab ran')}\n```\n{out}\n```\n\n"
                f"{_cleanup_md(res)}**Lab:** {safe_text(res.get('summary') or 'not written')}\n\nThe lab files and raw output are in the run's `lab` "
-               f"attachment. Remove and re-add the `replicate` label to retry.\n\n**Model usage:** {res.get('usage')}")
+               f"attachment. Reply **approve** to this email to try again.\n\n**Model usage:** {res.get('usage')}")
         if res["status"] == "not_reproduced":
             add_label(issue_no, "not-reproduced")
     try:
