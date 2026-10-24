@@ -179,6 +179,21 @@ llm.panel_votes = real_pv; r.DRY = False
 
 # ---------- publish links and /stats ----------
 import analytics
+_seen = {}
+def _fake_gc(method, url, body=None, headers=None, timeout=30):
+    _seen["url"], _seen["auth"] = url, (headers or {}).get("Authorization")
+    return {"hits": [{"path": "/posts/why-ecs/", "count": 40}, {"path": "/", "count": 10},
+                     {"path": "/posts/why-ecs", "count": 2}]}
+_real_call = analytics.call; analytics.call = _fake_gc
+os.environ.pop("GOATCOUNTER_TOKEN", None)
+check("site analytics: skipped quietly when GoatCounter isn't set up", analytics.site_rows({}) == [])
+os.environ["GOATCOUNTER_TOKEN"] = "gc-test"
+gc = analytics.site_rows({"why-ecs": {"site": "https://abhimanyu9988.github.io/posts/why-ecs/"}})
+check("site analytics: per-post views and a whole-site total from GoatCounter",
+      {(x["post"], x["value"]) for x in gc} == {("why-ecs", 42), ("_whole-site", 52)}
+      and all(x["platform"] == "site" and x["metric"] == "views" for x in gc)
+      and _seen["auth"] == "Bearer gc-test" and "abhimanyu9988.goatcounter.com/api/v0/stats/hits" in _seen["url"])
+os.environ.pop("GOATCOUNTER_TOKEN", None); analytics.call = _real_call
 post_meta = {"title": "Why ECS stays at zero", "linkedin": "Queue full, zero tasks. Seen it? @AWS\nFull write-up: {POST_URL}"}
 sys.modules.setdefault("frontmatter", type(sys)("frontmatter")); sys.modules.setdefault("yaml", type(sys)("yaml"))
 sys.modules["yaml"].safe_load = lambda f: {"url": "https://abhimanyu9988.github.io", "permalink": "/posts/:slug/"}

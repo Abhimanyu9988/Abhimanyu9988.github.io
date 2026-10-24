@@ -45,6 +45,8 @@ jobs:
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           DEVTO_API_KEY: ${{ secrets.DEVTO_API_KEY }}
+          GOATCOUNTER_TOKEN: ${{ secrets.GOATCOUNTER_TOKEN }}
+          GOATCOUNTER_CODE: ${{ vars.GOATCOUNTER_CODE }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
