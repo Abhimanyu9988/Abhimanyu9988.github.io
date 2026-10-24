@@ -1,0 +1,7 @@
+{%- comment -%}
+  Minima includes this file in production builds when site.google_analytics is set. We use it for GoatCounter
+  (free, no cookies, no personal data): page views per post, kept as dated evidence in analytics/ledger.csv.
+{%- endcomment -%}
+{%- if site.goatcounter -%}
+<script data-goatcounter="https://{{ site.goatcounter }}.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+{%- endif -%}

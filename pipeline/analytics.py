@@ -90,6 +90,30 @@ def devto_rows(posts):
                                  "value": int(a[field]), "source": "api", "url": url})
     return rows
 
+def site_rows(posts):
+    """Page views on Abhi's own site per post, all time, from GoatCounter (no cookies, no personal data)."""
+    token, code = os.environ.get("GOATCOUNTER_TOKEN", ""), os.environ.get("GOATCOUNTER_CODE") or "abhimanyu9988"
+    if not token:
+        return []
+    url = (f"https://{code}.goatcounter.com/api/v0/stats/hits?start=2026-10-01T00:00:00Z"
+           f"&end={TODAY}T23:59:59Z&limit=100")
+    try:
+        got = call("GET", url, headers={"Authorization": f"Bearer {token}"}) or {}
+    except Exception as e:
+        print(f"warn: GoatCounter: {str(e)[:200]}"); return []
+    by_slug = {}
+    for h in got.get("hits") or []:
+        m = re.search(r"/posts/([^/]+)/?$", str(h.get("path") or ""))
+        n = h.get("count") if h.get("count") is not None else h.get("count_unique")
+        if m and n is not None:
+            by_slug[m[1]] = by_slug.get(m[1], 0) + int(n)
+    rows = [{"date_utc": TODAY, "post": slug, "platform": "site", "metric": "views", "value": n, "source": "api",
+             "url": posts.get(slug, {}).get("site", "")} for slug, n in sorted(by_slug.items())]
+    total = sum(int(h.get("count") or 0) for h in got.get("hits") or [])
+    rows.append({"date_utc": TODAY, "post": "_whole-site", "platform": "site", "metric": "views", "value": total,
+                 "source": "api", "url": f"https://{code}.goatcounter.com"})
+    return rows
+
 # ---------- what the three think ----------
 def latest(rows):
     """Latest value per (post, platform, metric), plus the change since the previous snapshot."""
@@ -152,7 +176,7 @@ def collect():
     import llm
     posts = published_posts()
     print(f"{len(posts)} published post(s)")
-    new = devto_rows(posts)
+    new = devto_rows(posts) + site_rows(posts)
     append_rows(new, f"analytics: {len(new)} api row(s) for {TODAY}")
     rows, _ = load_ledger()
     if not rows:

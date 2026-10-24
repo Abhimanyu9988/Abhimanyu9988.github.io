@@ -12,7 +12,7 @@ jobs:
     if: >-
       github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' &&
       github.event.comment.user.login == 'Abhimanyu9988' && !github.event.issue.pull_request &&
-      startsWith(github.event.issue.title, 'Publish report') &&
+      (startsWith(github.event.issue.title, 'Publish report') || startsWith(github.event.issue.title, 'Ready to post')) &&
       (startsWith(github.event.comment.body, '/medium') || startsWith(github.event.comment.body, '/linkedin'))
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -6,3 +6,6 @@ permalink: /posts/:slug/
 theme: minima
 defaults: [{ scope: { path: "" }, values: { layout: post } }]
 plugins: [jekyll-seo-tag]          # og:image from each post's cover, so link previews show it
+# Site analytics: GoatCounter (no cookies). minima loads _includes/google-analytics.html when this is set.
+google_analytics: goatcounter
+goatcounter: abhimanyu9988
