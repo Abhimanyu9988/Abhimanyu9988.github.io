@@ -1,0 +1,82 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 1 after 407s
+
+aws_vpc.main: Creating...
+aws_iam_role.node: Creating...
+aws_iam_role.cluster: Creating...
+aws_iam_role.cluster: Creation complete after 1s [id=hero-lab-scale-an-eks-app-on-requ-041971-cluster]
+aws_iam_role_policy_attachment.cluster: Creating...
+aws_iam_role.node: Creation complete after 1s [id=hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Creating...
+aws_iam_instance_profile.node: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Creating...
+aws_iam_role_policy_attachment.cluster: Creation complete after 0s [id=hero-lab-scale-an-eks-app-on-requ-041971-cluster-20261027082254704900000001]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Creation complete after 0s [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254730300000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Creation complete after 0s [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254792400000003]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Creation complete after 0s [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254817300000004]
+aws_vpc.main: Still creating... [00m10s elapsed]
+aws_vpc.main: Creation complete after 13s [id=vpc-09645994a5d2957be]
+aws_internet_gateway.main: Creating...
+aws_subnet.public[1]: Creating...
+aws_subnet.public[0]: Creating...
+aws_internet_gateway.main: Creation complete after 1s [id=igw-0368185a3cc3b248a]
+aws_route_table.public: Creating...
+aws_route_table.public: Creation complete after 2s [id=rtb-0e78c3b34a4358c98]
+aws_subnet.public[0]: Still creating... [00m10s elapsed]
+aws_subnet.public[1]: Still creating... [00m10s elapsed]
+aws_subnet.public[0]: Creation complete after 12s [id=subnet-0f35f5feea1288a52]
+aws_subnet.public[1]: Creation complete after 13s [id=subnet-087a930f5067d0996]
+aws_route_table_association.public[0]: Creating...
+aws_route_table_association.public[1]: Creating...
+aws_eks_cluster.main: Creating...
+aws_route_table_association.public[1]: Creation complete after 0s [id=rtbassoc-0856b4c60e2e0d688]
+aws_route_table_association.public[0]: Creation complete after 0s [id=rtbassoc-0bed1e775f5f44c82]
+aws_eks_cluster.main: Still creating... [00m10s elapsed]
+aws_eks_cluster.main: Still creating... [00m20s elapsed]
+aws_eks_cluster.main: Still creating... [00m30s elapsed]
+aws_eks_cluster.main: Still creating... [00m40s elapsed]
+aws_eks_cluster.main: Still creating... [00m50s elapsed]
+aws_eks_cluster.main: Still creating... [01m00s elapsed]
+aws_eks_cluster.main: Still creating... [01m10s elapsed]
+aws_eks_cluster.main: Still creating... [01m20s elapsed]
+aws_eks_cluster.main: Still creating... [01m30s elapsed]
+aws_eks_cluster.main: Still creating... [01m40s elapsed]
+aws_eks_cluster.main: Still creating... [01m50s elapsed]
+aws_eks_cluster.main: Still creating... [02m00s elapsed]
+aws_eks_cluster.main: Still creating... [02m10s elapsed]
+aws_eks_cluster.main: Still creating... [02m20s elapsed]
+aws_eks_cluster.main: Still creating... [02m30s elapsed]
+aws_eks_cluster.main: Still creating... [02m40s elapsed]
+aws_eks_cluster.main: Still creating... [02m50s elapsed]
+aws_eks_cluster.main: Still creating... [03m00s elapsed]
+aws_eks_cluster.main: Still creating... [03m10s elapsed]
+aws_eks_cluster.main: Still creating... [03m20s elapsed]
+aws_eks_cluster.main: Still creating... [03m30s elapsed]
+aws_eks_cluster.main: Still creating... [03m40s elapsed]
+aws_eks_cluster.main: Still creating... [03m50s elapsed]
+aws_eks_cluster.main: Still creating... [04m00s elapsed]
+aws_eks_cluster.main: Still creating... [04m10s elapsed]
+aws_eks_cluster.main: Still creating... [04m20s elapsed]
+aws_eks_cluster.main: Still creating... [04m30s elapsed]
+aws_eks_cluster.main: Still creating... [04m40s elapsed]
+aws_eks_cluster.main: Still creating... [04m50s elapsed]
+aws_eks_cluster.main: Still creating... [05m00s elapsed]
+aws_eks_cluster.main: Still creating... [05m10s elapsed]
+aws_eks_cluster.main: Still creating... [05m20s elapsed]
+aws_eks_cluster.main: Still creating... [05m30s elapsed]
+aws_eks_cluster.main: Still creating... [05m40s elapsed]
+aws_eks_cluster.main: Still creating... [05m50s elapsed]
+aws_eks_cluster.main: Still creating... [06m00s elapsed]
+aws_eks_cluster.main: Still creating... [06m10s elapsed]
+aws_eks_cluster.main: Creation complete after 6m15s [id=scale-an-eks-app-on-requ-041971]
+aws_eks_access_entry.node: Creating...
+aws_eks_access_entry.node: Creation complete after 1s [id=scale-an-eks-app-on-requ-041971:arn:aws:iam::<account-id>:role/hero-lab-scale-an-eks-app-on-requ-041971-node]
+
+Error: creating IAM Instance Profile (scale-an-eks-app-on-requ-041971-node): operation error IAM: CreateInstanceProfile, https response error StatusCode: 403, RequestID: 96e46007-03da-4c7a-8e6a-fb351ba3abee, api error AccessDenied: User: arn:aws:sts::<account-id>:assumed-role/hero-pipeline-lab/replicate-40472041971 is not authorized to perform: iam:CreateInstanceProfile on resource: arn:aws:iam::<account-id>:instance-profile/scale-an-eks-app-on-requ-041971-node because no identity-based policy allows the iam:CreateInstanceProfile action. Go to https://us-east-1.console.aws.amazon.com/iam/home?region=us-east-1#/authorization-details/20fz9w001p6lv3gkq5admtxa6 for complete details, or call the GetRequestAuthorizationDetails API with the following authorization id: 20fz9w001p6lv3gkq5admtxa6
+
+  with aws_iam_instance_profile.node,
+  on main.tf line 102, in resource "aws_iam_instance_profile" "node":
+ 102: resource "aws_iam_instance_profile" "node" {
+
+
