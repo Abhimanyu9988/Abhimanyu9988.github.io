@@ -16,7 +16,7 @@ files or GitHub tokens. The model keys stay in this orchestrator process.
 Everything the draft job needs is written to out/.  `lab.py --destroy-only` is the safety-net step.
 """
 import html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time
-from radar import HOME_REPO, LAB_LIMITS, gh, used_sources
+from radar import HOME_REPO, LAB_LIMITS, call, gh, used_sources
 import check_plan, llm
 
 OUT, WORK, GOOD = pathlib.Path("out"), pathlib.Path("work/lab"), pathlib.Path("work/good")
@@ -85,6 +85,40 @@ BUILD_RULES = """THIS IS A BUILD TOPIC: the lab builds something useful and prov
   metrics or traces), retried for up to 8 minutes while data arrives, printed as a short readable summary (names
   and counts, a few values). cleanup.sh uninstalls the Helm releases. A reader runs the same scripts with their own
   realm and tokens exported, so the README says which ones to set."""
+
+# Newest release of the charts labs use most, looked up live: models remember older versions, and a lab that
+# installs KEDA 2.16 can't use a scaler added in 2.18 ("no scaler found for type ...").
+CHART_SOURCES = [   # (how a reader installs it, GitHub repo with its releases, tag prefix)
+    ("KEDA (helm chart kedacore/keda; the chart version equals the KEDA version)", "kedacore/keda", "v"),
+    ("Splunk OTel Collector (helm chart splunk-otel-collector-chart/splunk-otel-collector)",
+     "signalfx/splunk-otel-collector-chart", "splunk-otel-collector-"),
+    ("Argo CD (helm chart argo/argo-cd)", "argoproj/argo-helm", "argo-cd-"),
+    ("OpenTelemetry Operator (helm chart open-telemetry/opentelemetry-operator)",
+     "open-telemetry/opentelemetry-helm-charts", "opentelemetry-operator-"),
+    ("OpenTelemetry Collector (helm chart open-telemetry/opentelemetry-collector)",
+     "open-telemetry/opentelemetry-helm-charts", "opentelemetry-collector-")]
+
+def current_versions():
+    """'- name: 1.2.3' lines for the newest stable release of each chart; anything that can't be looked up is left out."""
+    tok = os.environ.get("GH_READ_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    hdr = {"Authorization": f"Bearer {tok}"} if tok else {}
+    out, seen = [], {}
+    for name, repo, prefix in CHART_SOURCES:
+        try:
+            if repo not in seen:
+                seen[repo] = call("GET", f"https://api.github.com/repos/{repo}/releases?per_page=100", headers=hdr) or []
+            tag = next((r["tag_name"] for r in seen[repo] if not r.get("prerelease") and not r.get("draft")
+                        and str(r.get("tag_name", "")).startswith(prefix)
+                        and re.fullmatch(r"\d+\.\d+\.\d+", r["tag_name"][len(prefix):])), None)
+            if tag:
+                out.append(f"- {name}: {tag[len(prefix):]}")
+        except Exception as e:
+            print(f"::warning title=versions::{repo}: {str(e)[:150]}")
+    return out
+
+VERSIONS_RULE = """CURRENT VERSIONS (looked up live today): pin these versions (or newer), never an older one from memory.
+A feature the SOURCES mark as "Availability: vX+" (or "added in vX") needs at least vX; check it before you pin.
+fix.sh prints the installed version of each chart it installs (for example with helm list) so the post can say it."""
 
 LAB_RUBRIC = """Blocking problems: the lab would fail to apply (breaks a LAB LIMIT or a file rule, IAM naming or
 boundary missing, invalid Terraform or provider usage), would not actually reproduce the problem described in the
@@ -533,12 +567,15 @@ def main():
         goal = ("build something useful on AWS and prove it works with real output" if kind == "build" else
                 "reproduce a real problem on AWS and then fix it")
         lab_id = f"{slug[:24].strip('-')}-{RUN_ID[-6:]}"
-        result.update(title=issue["title"], slug=slug, lab_id=lab_id)
+        result.update(title=issue["title"], slug=slug, lab_id=lab_id, kind=kind)
         sources = fetch_sources(used_sources(issue.get("body") or ""))
         (OUT / "topic.json").write_text(json.dumps({"title": issue["title"], "body": issue.get("body"), "sources": sources,
                                                      "kind": kind}))
         context = (f"TOPIC ISSUE TITLE: {issue['title']}\n\nTOPIC ISSUE BODY:\n{issue.get('body')}\n\n"
                    f"SOURCES:\n{json.dumps(sources)}")
+        versions = current_versions()
+        if versions:
+            context += f"\n\n{VERSIONS_RULE}\n" + "\n".join(versions)
         lab = llm.claude_json("You are an AWS container engineer. You write small, reliable, disposable labs that "
                               f"{goal}.",
                               f"Write the lab for this topic.\n\nLAB RULES:\n{rules}\n\n{context}",
