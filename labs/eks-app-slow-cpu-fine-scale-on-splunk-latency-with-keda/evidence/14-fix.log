@@ -1,0 +1,78 @@
+$ bash fix.sh
+# exit 0 after 254s
+
+== 1. Install the Splunk OTel Collector (0.163.1) and KEDA (2.21.0)
+daemon set "splunk-otel-collector-agent" successfully rolled out
+
+Installed charts:
+NAME                 	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART                        	APP VERSION
+keda                 	keda     	1       	2026-10-27 08:39:00.304702882 +0000 UTC	deployed	keda-2.21.0                  	2.21.0     
+splunk-otel-collector	splunk   	1       	2026-10-27 08:38:54.335267171 +0000 UTC	deployed	splunk-otel-collector-0.163.1	0.163.1    
+
+== 2. Prove the data reaches Splunk Observability Cloud (retry up to 480s, 8 min max)
+  t+2s: cluster time series=1609, app latency time series=1
+k8s.cluster.name=scale-an-eks-app-on-requ-041971: 1609 metric time series, distinct metric names: 74
+sample metric names:
+  - apiserver_longrunning_requests
+  - apiserver_request_duration_seconds
+  - apiserver_request_total
+  - apiserver_requested_deprecated_apis
+  - apiserver_response_sizes
+  - apiserver_storage_objects
+  - apiserver_storage_size_bytes
+  - app_request_latency_ms
+app metric app_request_latency_ms: 1 time series; dimensions of one series:
+{"app":"latency-app","k8s.cluster.name":"scale-an-eks-app-on-requ-041971","k8s.namespace.name":"demo","k8s.node.name":"ip-10-0-1-45.eu-central-1.compute.internal","k8s.pod.name":"latency-app-75bcdf84b5-79rwd"}
+
+== 3. KEDA: read-only API token as TriggerAuthentication + ScaledObject on the latency query
+triggerauthentication.keda.sh/splunk-observability-auth created
+Warning: PollingInterval is configured but is not relevant for scaling. It only affects scaling when minReplicaCount = 0, idleReplicaCount is set, or useCachedMetrics is enabled, but it still controls how often KEDA refreshes the ScaledObject status conditions and events
+Warning: CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount is set
+scaledobject.keda.sh/latency-app created
+E1027 08:39:57.661012     176 reflector.go:227] "Failed to watch" err="Get \"https://E304E940E21A6476E6F60F1CC5217FCD.gr7.eu-central-1.eks.amazonaws.com/apis/keda.sh/v1alpha1/namespaces/demo/scaledobjects?allowWatchBookmarks=true&fieldSelector=metadata.name%3Dlatency-app&resourceVersion=2879&timeoutSeconds=517&watch=true\": context canceled" reflector="k8s.io/client-go/tools/watch/informerwatcher.go:162" type="*unstructured.Unstructured"
+scaledobject.keda.sh/latency-app condition met
+waiting for KEDA to read the Splunk metric (idle value expected ~0)
+HPA current metric from Splunk: '0' (target 400)
+NAME                               SCALETARGETKIND      SCALETARGETNAME   MIN   MAX   READY   ACTIVE   FALLBACK   PAUSED   TRIGGERS               AUTHENTICATIONS             AGE
+scaledobject.keda.sh/latency-app   apps/v1.Deployment   latency-app       1     5     True    False    False      False    splunk-observability   splunk-observability-auth   61s
+
+NAME                                                       REFERENCE                TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/keda-hpa-latency-app   Deployment/latency-app   0/400     1         5         1          60s
+
+== 4. Push load: 60 concurrent clients
+Waiting for deployment "loadgen" rollout to finish: 0 of 1 updated replicas are available...
+deployment "loadgen" successfully rolled out
+T+  7s  replicas desired=1 ready=1  splunk_latency_ms(max)=0
+T+ 21s  replicas desired=1 ready=1  splunk_latency_ms(max)=0
+T+ 34s  replicas desired=1 ready=1  splunk_latency_ms(max)=0
+T+ 48s  replicas desired=5 ready=5  splunk_latency_ms(max)=3008
+
+== Splunk's own view of the latency series (last 5 min, 10s resolution)
+datapoints=0 max_ms=0 min_ms=0
+Scale-up: 1 -> 5 ready replicas in 48s after load started
+
+== 5. Stop load; replicas should return to 1
+T+  4s  replicas desired=5 running=5  splunk_latency_ms(max)=3008
+T+ 17s  replicas desired=5 running=5  splunk_latency_ms(max)=3008
+T+ 31s  replicas desired=5 running=5  splunk_latency_ms(max)=3008
+T+ 45s  replicas desired=5 running=5  splunk_latency_ms(max)=3008
+T+ 58s  replicas desired=5 running=5  splunk_latency_ms(max)=3008
+T+ 72s  replicas desired=1 running=1  splunk_latency_ms(max)=0
+
+NAME                               SCALETARGETKIND      SCALETARGETNAME   MIN   MAX   READY   ACTIVE   FALLBACK   PAUSED   TRIGGERS               AUTHENTICATIONS             AGE
+scaledobject.keda.sh/latency-app   apps/v1.Deployment   latency-app       1     5     True    True     False      False    splunk-observability   splunk-observability-auth   3m4s
+
+NAME                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/latency-app   1/1     1            1           5m47s
+NAME                               SCALETARGETKIND      SCALETARGETNAME   MIN   MAX   READY   ACTIVE   FALLBACK   PAUSED   TRIGGERS               AUTHENTICATIONS             AGE
+scaledobject.keda.sh/latency-app   apps/v1.Deployment   latency-app       1     5     True    True     False      False    splunk-observability   splunk-observability-auth   3m6s
+
+NAME                                                       REFERENCE                TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+horizontalpodautoscaler.autoscaling/keda-hpa-latency-app   Deployment/latency-app   0/400     1         5         5          3m5s
+NAME                 	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART                        	APP VERSION
+keda                 	keda     	1       	2026-10-27 08:39:00.304702882 +0000 UTC	deployed	keda-2.21.0                  	2.21.0     
+splunk-otel-collector	splunk   	1       	2026-10-27 08:38:54.335267171 +0000 UTC	deployed	splunk-otel-collector-0.163.1	0.163.1    
+
+Summary: 1 -> 5 replicas in 48s under load; back to 1 in 72s after load stopped (driven by Splunk latency, not CPU).
+HERO_RESULT: fixed
+
