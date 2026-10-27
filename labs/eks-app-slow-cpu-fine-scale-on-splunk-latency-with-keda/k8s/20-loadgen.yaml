@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loadgen-code
+  namespace: demo
+data:
+  load.py: |
+    import os
+    import threading
+    import time
+    import urllib.request
+
+    URL = os.environ["URL"]
+    N = int(os.environ.get("CONCURRENCY", "60"))
+
+
+    def run():
+        # closed loop: each client sends the next request when the last one returns,
+        # always on a fresh connection so the Service spreads load over all pods
+        while True:
+            try:
+                urllib.request.urlopen(URL, timeout=60).read()
+            except Exception:
+                time.sleep(0.5)
+
+
+    for _ in range(N):
+        threading.Thread(target=run, daemon=True).start()
+    while True:
+        time.sleep(60)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadgen
+  namespace: demo
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: loadgen
+  template:
+    metadata:
+      labels:
+        app: loadgen
+    spec:
+      terminationGracePeriodSeconds: 2
+      containers:
+        - name: load
+          image: public.ecr.aws/docker/library/python:3.12.11-slim
+          command: ["python", "-u", "/app/load.py"]
+          env:
+            - name: URL
+              value: http://latency-app.demo.svc:8080/work
+            - name: CONCURRENCY
+              value: "60"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          volumeMounts:
+            - name: code
+              mountPath: /app
+      volumes:
+        - name: code
+          configMap:
+            name: loadgen-code
