@@ -323,6 +323,15 @@ os.environ.update(AWS_ACCESS_KEY_ID="test-access-key-id", AWS_SECRET_ACCESS_KEY=
                   ACTIONS_ID_TOKEN_REQUEST_TOKEN="oidc-request-token")
 tmpw = pathlib.Path(tempfile.mkdtemp())
 lab.TFCACHE = tmpw / ".tfcache"
+_rel = {"kedacore/keda": [{"tag_name": "v2.19.0-rc1", "prerelease": True}, {"tag_name": "v2.18.2"}],
+        "argoproj/argo-helm": [{"tag_name": "argo-rollouts-2.40.0"}, {"tag_name": "argo-cd-9.1.0"}]}
+_real_lab_call = lab.call
+lab.call = lambda m, url, body=None, headers=None, timeout=30: _rel.get(url.split("/repos/")[1].split("/releases")[0], [])
+_vers = lab.current_versions()
+check("lab: newest stable chart versions looked up live (no pre-releases, right chart from a multi-chart repo)",
+      any(v.endswith(": 2.18.2") and "KEDA" in v for v in _vers) and any("argo-cd" in v and v.endswith(": 9.1.0") for v in _vers)
+      and not any("rc1" in v or "2.40.0" in v for v in _vers))
+lab.call = _real_lab_call
 lab.run("t", ["bash", "fix.sh"], 60, cwd=tmpw, env={"LAB_NAME": "x"}, sandbox=True)
 argv, env = " ".join(captured["args"]), captured["env"]
 check("sandbox: runs in docker as the runner's uid", captured["args"][:3] == ["docker", "run", "--rm"] and "--user" in captured["args"])

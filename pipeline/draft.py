@@ -694,8 +694,11 @@ def main():
         lf = res.get("last_failure") or {}
         out = safe_text(lf.get("output") or res.get("error") or "", "[output left out: failed the link-safety check]")[-1500:]
         out = out.replace("```", "'''")
-        nice = {"not_reproduced": "\U0001f50e The lab ran but could not reproduce the problem.",
-                "reproduced_fix_failed": "\U0001f9ea The lab reproduced the problem, but the fix did not work.",
+        build = res.get("kind") == "build"
+        nice = {"not_reproduced": ("\U0001f50e The lab could not set up the starting point." if build else
+                                   "\U0001f50e The lab ran but could not reproduce the problem."),
+                "reproduced_fix_failed": ("\U0001f9ea The starting point was set up, but the build did not work." if build
+                                          else "\U0001f9ea The lab reproduced the problem, but the fix did not work."),
                 "failed": "❌ The lab did not get to a result."}.get(res["status"], res["status"])
         msg = (f"{nice} {res.get('attempts')} attempt(s), {res.get('minutes')} min, workflow run {res['run_id']}."
                f"{warn}\n\n**Last failure:** {safe_text(lf.get('step') or 'before the lab ran')}\n```\n{out}\n```\n\n"
