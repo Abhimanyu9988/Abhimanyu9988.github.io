@@ -35,5 +35,13 @@
       "hash": "c54c22e74875814a19bdc046e7923b779b8f9c07b361dc90e65d7dcddbd80307"
     },
     "announced": true
+  },
+  "https://abhimanyu9988.github.io/posts/eks-app-slow-cpu-fine-scale-on-splunk-latency-with-keda/": {
+    "devto": {
+      "id": 4927903,
+      "url": "https://dev.to/abhimanyu9988/eks-app-slow-cpu-fine-scale-on-splunk-latency-with-keda-1aa",
+      "hash": "17465c6afdacb7447e7d1f93253270d0db7f4ded3ec89bc514eb2c9849b256f5"
+    },
+    "announced": true
   }
 }
