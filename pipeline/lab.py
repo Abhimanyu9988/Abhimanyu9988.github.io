@@ -29,7 +29,7 @@ BUCKET = os.environ.get("TF_STATE_BUCKET", "")
 START = time.time()
 WORK_END = START + 60 * 60      # no new attempt or step starts after this
 HARD_END = START + 106 * 60     # nothing runs past this (the workflow step is killed at 112 minutes)
-MAX_ATTEMPTS, MAX_SWEEP = 3, 2
+MAX_ATTEMPTS, MAX_SWEEP = 4, 2      # the work deadline still stops attempts in time for cleanup
 HIDE = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GH_READ_TOKEN", "BOT_TOKEN", "GITHUB_TOKEN",
         "ACTIONS_RUNTIME_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL")
 SPLUNK_VARS = ("SPLUNK_REALM", "SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN")    # passed into the sandbox by name
@@ -116,8 +116,27 @@ def current_versions():
             print(f"::warning title=versions::{repo}: {str(e)[:150]}")
     return out
 
+def last_failure(issue_no):
+    """The failure our bot reported for the previous run of this topic (empty if none), so a re-run starts from it."""
+    try:
+        cs = gh("GET", f"/repos/{HOME_REPO}/issues/{issue_no}/comments?per_page=100") or []
+    except Exception:
+        return ""
+    for c in reversed(cs if isinstance(cs, list) else []):
+        if not isinstance(c, dict):
+            continue
+        body = c.get("body") or ""
+        if (c.get("user") or {}).get("login", "").startswith("hero-bot") and "**Last failure:**" in body:
+            m = re.search(r"\*\*Last failure:\*\*(.*?)```\n(.*?)```", body, re.S)
+            fix = re.search(r"\*\*Lab:\*\*(.*?)\n\n", body, re.S)
+            if m:
+                return (f"step: {m[1].strip()}\n{m[2].strip()[-1500:]}"
+                        + (f"\nLab at that point: {fix[1].strip()[:800]}" if fix else ""))
+    return ""
+
 VERSIONS_RULE = """CURRENT VERSIONS (looked up live today): pin these versions (or newer), never an older one from memory.
 A feature the SOURCES mark as "Availability: vX+" (or "added in vX") needs at least vX; check it before you pin.
+When a doc's example and its parameter reference disagree, follow the reference (required parameters by name).
 fix.sh prints the installed version of each chart it installs (for example with helm list) so the post can say it."""
 
 LAB_RUBRIC = """Blocking problems: the lab would fail to apply (breaks a LAB LIMIT or a file rule, IAM naming or
@@ -573,6 +592,10 @@ def main():
                                                      "kind": kind}))
         context = (f"TOPIC ISSUE TITLE: {issue['title']}\n\nTOPIC ISSUE BODY:\n{issue.get('body')}\n\n"
                    f"SOURCES:\n{json.dumps(sources)}")
+        prev = last_failure(issue_no)
+        if prev:
+            context += ("\n\nTHE PREVIOUS RUN OF THIS TOPIC FAILED LIKE THIS (fix the cause up front; don't repeat it):\n"
+                        + prev)
         versions = current_versions()
         if versions:
             context += f"\n\n{VERSIONS_RULE}\n" + "\n".join(versions)
