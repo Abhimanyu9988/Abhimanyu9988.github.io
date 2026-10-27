@@ -353,6 +353,16 @@ check("lab: newest stable chart versions looked up live (no pre-releases, right 
       any(v.endswith(": 2.18.2") and "KEDA" in v for v in _vers) and any("argo-cd" in v and v.endswith(": 9.1.0") for v in _vers)
       and not any("rc1" in v or "2.40.0" in v for v in _vers))
 lab.call = _real_lab_call
+_real_lab_gh = lab.gh
+lab.gh = lambda m, path, *a, **k: [
+    {"user": {"login": "Abhimanyu9988"}, "body": "approve"},
+    {"user": {"login": "hero-bot-abhimanyu9988[bot]"}, "body": "x\n\n**Last failure:** fix (the fix did not work)\n```\n"
+     "error: missing required parameter \"activationTargetValue\"\nHERO_RESULT: not_fixed\n```\n\n**Lab:** Builds KEDA.\n\nmore"}]
+_lf = lab.last_failure(72)
+check("lab: a re-run starts from the previous run's failure (bot comments only)",
+      'missing required parameter "activationTargetValue"' in _lf and "fix (the fix did not work)" in _lf
+      and "Builds KEDA." in _lf)
+lab.gh = _real_lab_gh
 lab.run("t", ["bash", "fix.sh"], 60, cwd=tmpw, env={"LAB_NAME": "x"}, sandbox=True)
 argv, env = " ".join(captured["args"]), captured["env"]
 check("sandbox: runs in docker as the runner's uid", captured["args"][:3] == ["docker", "run", "--rm"] and "--user" in captured["args"])
