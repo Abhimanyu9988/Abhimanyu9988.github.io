@@ -60,7 +60,12 @@ _ur.urlopen = lambda *a, **k: _FakeResp([_start, _part, 'data: {"type":"message_
 try: llm._claude_stream({}); ok = False
 except ConnectionError: ok = True
 check("claude stream: broken tool JSON is retryable too", ok)
+_q = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"a\\": \\"echo \\"hi\\" ok\\", \\"b\\": 2}"}}'
+_ur.urlopen = lambda *a, **k: _FakeResp([_start, _q, 'data: {"type":"message_stop"}'])
+check("claude stream: unescaped quotes inside a tool string are repaired, not retried",
+      llm._claude_stream({})[0] == {"submit": {"a": 'echo "hi" ok', "b": 2}})
 _plain_calls = []
+_ur.urlopen = lambda *a, **k: _FakeResp([_start, _part, 'data: {"type":"message_stop"}'])
 _real_call_llm = llm.call
 def _fake_plain(method, url, body=None, headers=None, timeout=30):
     _plain_calls.append((url, "stream" in (body or {})))
