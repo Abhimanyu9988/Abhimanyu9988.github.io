@@ -112,6 +112,22 @@ def _claude_plain(body):
             text.append(b.get("text") or "")
     return tools, "".join(text), r.get("stop_reason"), r.get("usage") or {}
 
+def _repair_json(raw, tries=5000):
+    """Parse a tool answer whose strings contain unescaped double quotes (e.g. a shell script's `echo "hi"`):
+    at each "Expecting ',' delimiter" error, the string really ended later, so escape the quote that closed it."""
+    s = raw
+    for _ in range(tries):
+        try:
+            return json.loads(s, strict=False)
+        except json.JSONDecodeError as e:
+            if e.msg not in ("Expecting ',' delimiter", "Expecting ':' delimiter"):
+                raise
+            q = s.rfind('"', 0, e.pos)
+            if q <= 0:
+                raise
+            s = s[:q] + "\\" + s[q:]
+    raise ValueError("tool answer could not be repaired")
+
 def _claude_once(body):
     try:
         return _claude_stream(body)
@@ -163,8 +179,13 @@ def _claude_stream(body):
             raw = "".join(b["parts"])
             try:
                 tools[b.get("name")] = json.loads(raw, strict=False) if raw.strip() else {}   # raw newlines are OK
-            except ValueError as e:                 # a broken streamed answer: ask again without streaming
-                raise BadToolJSON(f"Claude's tool answer was not valid JSON ({e})") from None
+            except json.JSONDecodeError as e:
+                near = raw[max(0, e.pos - 80):e.pos + 40]
+                try:
+                    tools[b.get("name")] = _repair_json(raw)
+                    warn(f"repaired Claude's tool answer (unescaped quotes), first break near: {near!r}")
+                except ValueError:                  # still broken: ask again without streaming
+                    raise BadToolJSON(f"Claude's tool answer was not valid JSON ({e}); near: {near!r}") from None
         elif b["type"] == "text":
             text.append("".join(b["parts"]))
     return tools, "".join(text), stop, usage
