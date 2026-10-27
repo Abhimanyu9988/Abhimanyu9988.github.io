@@ -1,0 +1,206 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 126s
+
+[... earlier output cut ...]
+        - volume_id             = "vol-05cd645fc87603fc0" -> null
+          - volume_size           = 30 -> null
+          - volume_type           = "gp3" -> null
+            # (1 unchanged attribute hidden)
+        }
+    }
+
+  # aws_internet_gateway.main will be destroyed
+  - resource "aws_internet_gateway" "main" {
+      - arn      = "arn:aws:ec2:eu-central-1:<account-id>:internet-gateway/igw-0368185a3cc3b248a" -> null
+      - id       = "igw-0368185a3cc3b248a" -> null
+      - owner_id = "<account-id>" -> null
+      - tags     = {
+          - "Name" = "scale-an-eks-app-on-requ-041971-igw"
+        } -> null
+      - tags_all = {
+          - "Name"     = "scale-an-eks-app-on-requ-041971-igw"
+          - "hero-lab" = "scale-an-eks-app-on-requ-041971"
+        } -> null
+      - vpc_id   = "vpc-09645994a5d2957be" -> null
+    }
+
+  # aws_route_table.public will be destroyed
+  - resource "aws_route_table" "public" {
+      - arn              = "arn:aws:ec2:eu-central-1:<account-id>:route-table/rtb-0e78c3b34a4358c98" -> null
+      - id               = "rtb-0e78c3b34a4358c98" -> null
+      - owner_id         = "<account-id>" -> null
+      - propagating_vgws = [] -> null
+      - route            = [
+          - {
+              - cidr_block                 = "0.0.0.0/0"
+              - gateway_id                 = "igw-0368185a3cc3b248a"
+                # (11 unchanged attributes hidden)
+            },
+        ] -> null
+      - tags             = {
+          - "Name" = "scale-an-eks-app-on-requ-041971-public"
+        } -> null
+      - tags_all         = {
+          - "Name"     = "scale-an-eks-app-on-requ-041971-public"
+          - "hero-lab" = "scale-an-eks-app-on-requ-041971"
+        } -> null
+      - vpc_id           = "vpc-09645994a5d2957be" -> null
+    }
+
+  # aws_route_table_association.public[0] will be destroyed
+  - resource "aws_route_table_association" "public" {
+      - id             = "rtbassoc-0bed1e775f5f44c82" -> null
+      - route_table_id = "rtb-0e78c3b34a4358c98" -> null
+      - subnet_id      = "subnet-0f35f5feea1288a52" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_route_table_association.public[1] will be destroyed
+  - resource "aws_route_table_association" "public" {
+      - id             = "rtbassoc-0856b4c60e2e0d688" -> null
+      - route_table_id = "rtb-0e78c3b34a4358c98" -> null
+      - subnet_id      = "subnet-087a930f5067d0996" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_subnet.public[0] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0f35f5feea1288a52" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1a" -> null
+      - availability_zone_id                           = "euc1-az2" -> null
+      - cidr_block                                     = "10.0.0.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0f35f5feea1288a52" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "scale-an-eks-app-on-requ-041971-public-0"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "scale-an-eks-app-on-requ-041971-public-0"
+          - "hero-lab" = "scale-an-eks-app-on-requ-041971"
+        } -> null
+      - vpc_id                                         = "vpc-09645994a5d2957be" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_subnet.public[1] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-087a930f5067d0996" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1b" -> null
+      - availability_zone_id                           = "euc1-az3" -> null
+      - cidr_block                                     = "10.0.1.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-087a930f5067d0996" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "scale-an-eks-app-on-requ-041971-public-1"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "scale-an-eks-app-on-requ-041971-public-1"
+          - "hero-lab" = "scale-an-eks-app-on-requ-041971"
+        } -> null
+      - vpc_id                                         = "vpc-09645994a5d2957be" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_vpc.main will be destroyed
+  - resource "aws_vpc" "main" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-09645994a5d2957be" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.0.0.0/16" -> null
+      - default_network_acl_id               = "acl-05ce6feb6a828fea1" -> null
+      - default_route_table_id               = "rtb-0f7c218ec6fcd33b9" -> null
+      - default_security_group_id            = "sg-0d8bf06991b9c9134" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-09645994a5d2957be" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-0f7c218ec6fcd33b9" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "scale-an-eks-app-on-requ-041971-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "scale-an-eks-app-on-requ-041971-vpc"
+          - "hero-lab" = "scale-an-eks-app-on-requ-041971"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 18 to destroy.
+
+Changes to Outputs:
+  - cluster_name = "scale-an-eks-app-on-requ-041971" -> null
+aws_route_table_association.public[0]: Destroying... [id=rtbassoc-0bed1e775f5f44c82]
+aws_route_table_association.public[1]: Destroying... [id=rtbassoc-0856b4c60e2e0d688]
+aws_instance.node[0]: Destroying... [id=i-06dea9b91bfa4406b]
+aws_instance.node[1]: Destroying... [id=i-00b37943c599fb60e]
+aws_route_table_association.public[0]: Destruction complete after 1s
+aws_route_table_association.public[1]: Destruction complete after 1s
+aws_route_table.public: Destroying... [id=rtb-0e78c3b34a4358c98]
+aws_route_table.public: Destruction complete after 1s
+aws_internet_gateway.main: Destroying... [id=igw-0368185a3cc3b248a]
+aws_instance.node[0]: Still destroying... [id=i-06dea9b91bfa4406b, 00m10s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-00b37943c599fb60e, 00m10s elapsed]
+aws_internet_gateway.main: Still destroying... [id=igw-0368185a3cc3b248a, 00m10s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-00b37943c599fb60e, 00m20s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-06dea9b91bfa4406b, 00m20s elapsed]
+aws_internet_gateway.main: Still destroying... [id=igw-0368185a3cc3b248a, 00m20s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-06dea9b91bfa4406b, 00m30s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-00b37943c599fb60e, 00m30s elapsed]
+aws_internet_gateway.main: Destruction complete after 30s
+aws_instance.node[0]: Destruction complete after 32s
+aws_instance.node[1]: Destruction complete after 32s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destroying... [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254792400000003]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destroying... [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254817300000004]
+aws_eks_access_entry.node: Destroying... [id=scale-an-eks-app-on-requ-041971:arn:aws:iam::<account-id>:role/hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_iam_instance_profile.node: Destroying... [id=hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destroying... [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254730300000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destruction complete after 0s
+aws_iam_instance_profile.node: Destruction complete after 0s
+aws_eks_access_entry.node: Destruction complete after 1s
+aws_iam_role.node: Destroying... [id=hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_eks_cluster.main: Destroying... [id=scale-an-eks-app-on-requ-041971]
+aws_iam_role.node: Destruction complete after 0s
+aws_eks_cluster.main: Still destroying... [id=scale-an-eks-app-on-requ-041971, 00m10s elapsed]
+aws_eks_cluster.main: Still destroying... [id=scale-an-eks-app-on-requ-041971, 00m20s elapsed]
+aws_eks_cluster.main: Still destroying... [id=scale-an-eks-app-on-requ-041971, 00m30s elapsed]
+aws_eks_cluster.main: Still destroying... [id=scale-an-eks-app-on-requ-041971, 00m40s elapsed]
+aws_eks_cluster.main: Still destroying... [id=scale-an-eks-app-on-requ-041971, 00m50s elapsed]
+aws_eks_cluster.main: Still destroying... [id=scale-an-eks-app-on-requ-041971, 01m00s elapsed]
+aws_eks_cluster.main: Still destroying... [id=scale-an-eks-app-on-requ-041971, 01m10s elapsed]
+aws_eks_cluster.main: Destruction complete after 1m20s
+aws_iam_role_policy_attachment.cluster: Destroying... [id=hero-lab-scale-an-eks-app-on-requ-041971-cluster-20261027082254704900000001]
+aws_subnet.public[0]: Destroying... [id=subnet-0f35f5feea1288a52]
+aws_subnet.public[1]: Destroying... [id=subnet-087a930f5067d0996]
+aws_iam_role_policy_attachment.cluster: Destruction complete after 0s
+aws_iam_role.cluster: Destroying... [id=hero-lab-scale-an-eks-app-on-requ-041971-cluster]
+aws_iam_role.cluster: Destruction complete after 1s
+aws_subnet.public[0]: Destruction complete after 1s
+aws_subnet.public[1]: Destruction complete after 1s
+aws_vpc.main: Destroying... [id=vpc-09645994a5d2957be]
+aws_vpc.main: Destruction complete after 1s
+
+Destroy complete! Resources: 18 destroyed.
+

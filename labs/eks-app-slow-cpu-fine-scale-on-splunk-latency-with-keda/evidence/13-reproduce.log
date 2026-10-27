@@ -1,0 +1,40 @@
+$ bash reproduce.sh
+# exit 0 after 104s
+
+== Waiting for 2 worker nodes to join (up to 5 min)
+NAME                                          STATUS   ROLES    AGE     VERSION                INTERNAL-IP   EXTERNAL-IP    OS-IMAGE                        KERNEL-VERSION                     CONTAINER-RUNTIME
+ip-10-0-0-154.eu-central-1.compute.internal   Ready    <none>   5m12s   v1.33.13-eks-39aca56   10.0.0.154    3.71.195.65    Amazon Linux 2023.12.20261021   6.12.111-136.204.amzn2023.x86_64   containerd://2.3.5+unknown
+ip-10-0-1-45.eu-central-1.compute.internal    Ready    <none>   4m48s   v1.33.13-eks-39aca56   10.0.1.45     3.67.137.214   Amazon Linux 2023.12.20261021   6.12.111-136.204.amzn2023.x86_64   containerd://2.3.5+unknown
+deployment "coredns" successfully rolled out
+== Deploying the sample service (1 replica, no autoscaler) and the load generator (0 replicas)
+namespace/demo created
+configmap/latency-app-code created
+deployment.apps/latency-app created
+service/latency-app created
+configmap/loadgen-code created
+deployment.apps/loadgen created
+Waiting for deployment "latency-app" rollout to finish: 0 of 1 updated replicas are available...
+deployment "latency-app" successfully rolled out
+
+== Autoscaling objects in the namespace:
+No resources found in demo namespace.
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+latency-app   1/1     1            1           7s
+
+== Idle baseline
+{"pod":"latency-app-75bcdf84b5-79rwd","avg_latency_ms":0.0,"cpu_seconds":0.57167979,"requests_total":0}
+
+== Starting 60 concurrent clients
+Waiting for deployment "loadgen" rollout to finish: 0 of 1 updated replicas are available...
+deployment "loadgen" successfully rolled out
+t= 10s  replicas=1  avg_latency=  3011.1 ms  cpu=2.4% of one core
+t= 20s  replicas=1  avg_latency=  3049.2 ms  cpu=2.4% of one core
+t= 30s  replicas=1  avg_latency=  2996.7 ms  cpu=2.4% of one core
+t= 40s  replicas=1  avg_latency=  3010.7 ms  cpu=2.7% of one core
+t= 50s  replicas=1  avg_latency=  3010.1 ms  cpu=2.5% of one core
+t= 60s  replicas=1  avg_latency=  3018.8 ms  cpu=2.8% of one core
+
+== Summary: peak latency 3049.2 ms, peak CPU 2.8% of one core, replicas still 1
+   Users feel multi-second latency, CPU stays low, nothing scales.
+HERO_RESULT: reproduced
+

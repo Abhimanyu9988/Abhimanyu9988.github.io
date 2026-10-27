@@ -1,0 +1,10 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 4s
+
+
+Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "scale-an-eks-app-on-requ-041971"
+

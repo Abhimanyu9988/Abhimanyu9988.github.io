@@ -1,0 +1,20 @@
+$ terraform init -input=false -no-color -reconfigure -backend-config=bucket=hero-pipeline-tfstate-<account-id> -backend-config=key=labs/scale-an-eks-app-on-requ-041971/terraform.tfstate -backend-config=region=eu-central-1 -backend-config=use_lockfile=true
+# exit 0 after 8s
+
+Initializing the backend...
+
+Successfully configured the backend "s3"! Terraform will automatically
+use this backend unless the backend configuration changes.
+
+Initializing provider plugins...
+- Finding hashicorp/aws versions matching "~> 5.80"...
+- Installing hashicorp/aws v5.100.0...
+- Installed hashicorp/aws v5.100.0 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+

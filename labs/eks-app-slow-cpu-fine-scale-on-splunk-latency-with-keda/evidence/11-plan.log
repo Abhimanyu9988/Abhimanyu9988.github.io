@@ -1,0 +1,32 @@
+$ terraform plan -input=false -no-color -out=tfplan
+# exit 0 after 11s
+
+data.aws_ssm_parameter.ami: Reading...
+data.aws_availability_zones.available: Reading...
+aws_iam_role.cluster: Refreshing state... [id=hero-lab-scale-an-eks-app-on-requ-041971-cluster]
+aws_iam_role.node: Refreshing state... [id=hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_vpc.main: Refreshing state... [id=vpc-09645994a5d2957be]
+aws_iam_role_policy_attachment.cluster: Refreshing state... [id=hero-lab-scale-an-eks-app-on-requ-041971-cluster-20261027082254704900000001]
+aws_iam_instance_profile.node: Refreshing state... [id=hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Refreshing state... [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254730300000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Refreshing state... [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254792400000003]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Refreshing state... [id=hero-lab-scale-an-eks-app-on-requ-041971-node-20261027082254817300000004]
+data.aws_ssm_parameter.ami: Read complete after 0s [id=/aws/service/eks/optimized-ami/1.33/amazon-linux-2023/x86_64/standard/recommended/image_id]
+data.aws_availability_zones.available: Read complete after 0s [id=eu-central-1]
+aws_internet_gateway.main: Refreshing state... [id=igw-0368185a3cc3b248a]
+aws_subnet.public[0]: Refreshing state... [id=subnet-0f35f5feea1288a52]
+aws_subnet.public[1]: Refreshing state... [id=subnet-087a930f5067d0996]
+aws_route_table.public: Refreshing state... [id=rtb-0e78c3b34a4358c98]
+aws_eks_cluster.main: Refreshing state... [id=scale-an-eks-app-on-requ-041971]
+aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-0bed1e775f5f44c82]
+aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-0856b4c60e2e0d688]
+aws_eks_access_entry.node: Refreshing state... [id=scale-an-eks-app-on-requ-041971:arn:aws:iam::<account-id>:role/hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_instance.node[1]: Refreshing state... [id=i-00b37943c599fb60e]
+aws_instance.node[0]: Refreshing state... [id=i-06dea9b91bfa4406b]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+Releasing state lock. This may take a few moments...
+
