@@ -1,0 +1,19 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 35s
+
+aws_iam_instance_profile.node: Creating...
+aws_iam_instance_profile.node: Creation complete after 6s [id=hero-lab-scale-an-eks-app-on-requ-041971-node]
+aws_instance.node[1]: Creating...
+aws_instance.node[0]: Creating...
+aws_instance.node[0]: Still creating... [00m10s elapsed]
+aws_instance.node[1]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Creation complete after 15s [id=i-06dea9b91bfa4406b]
+aws_instance.node[1]: Still creating... [00m20s elapsed]
+aws_instance.node[1]: Creation complete after 25s [id=i-00b37943c599fb60e]
+
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "scale-an-eks-app-on-requ-041971"
+
