@@ -97,6 +97,28 @@ def gemini_models():
 def _anthropic_headers():
     return {"x-api-key": _key("ANTHROPIC_API_KEY"), "anthropic-version": "2023-06-01"}
 
+class BadToolJSON(ConnectionError):
+    """The streamed tool answer didn't parse; the non-streamed call returns it already parsed by the API."""
+
+def _claude_plain(body):
+    """Non-streamed Messages call: the API hands back the tool input as parsed JSON."""
+    r = call("POST", "https://api.anthropic.com/v1/messages", {k: v for k, v in body.items() if k != "stream"},
+             {**_anthropic_headers(), "User-Agent": "hero-pipeline/1.0"}, timeout=900)
+    tools, text = {}, []
+    for b in r.get("content") or []:
+        if b.get("type") == "tool_use":
+            tools[b.get("name")] = b.get("input") if isinstance(b.get("input"), dict) else {}
+        elif b.get("type") == "text":
+            text.append(b.get("text") or "")
+    return tools, "".join(text), r.get("stop_reason"), r.get("usage") or {}
+
+def _claude_once(body):
+    try:
+        return _claude_stream(body)
+    except BadToolJSON as e:
+        warn(f"{e}; asking again without streaming")
+        return _claude_plain(body)
+
 def _claude_stream(body):
     """Streamed Messages call (long tool inputs would otherwise risk idle timeouts).
     Returns (tool inputs by name, text, stop_reason, usage)."""
@@ -140,9 +162,9 @@ def _claude_stream(body):
         if b["type"] == "tool_use":
             raw = "".join(b["parts"])
             try:
-                tools[b.get("name")] = json.loads(raw) if raw.strip() else {}
-            except ValueError as e:                 # a broken tool answer: also worth one more try
-                raise ConnectionError(f"Claude's tool answer was not valid JSON ({e})") from None
+                tools[b.get("name")] = json.loads(raw, strict=False) if raw.strip() else {}   # raw newlines are OK
+            except ValueError as e:                 # a broken streamed answer: ask again without streaming
+                raise BadToolJSON(f"Claude's tool answer was not valid JSON ({e})") from None
         elif b["type"] == "text":
             text.append("".join(b["parts"]))
     return tools, "".join(text), stop, usage
@@ -159,7 +181,7 @@ def claude_json(system, prompt, schema, tool="submit", tier="write", max_tokens=
         body = {"model": model, "max_tokens": max_tokens, "system": sysmsg, "messages": messages,
                 "tools": [{"name": tool, "description": "Submit your answer.", "input_schema": schema}],
                 "tool_choice": {"type": "auto"}}
-        tools, text, stop, u = _retry(lambda: _claude_stream(body))
+        tools, text, stop, u = _retry(lambda: _claude_once(body))
         LEDGER.append({"who": "claude", "model": model, "in": u.get("input_tokens", 0), "out": u.get("output_tokens", 0)})
         if stop == "max_tokens":
             raise RuntimeError(f"Claude ({model}) reply was cut off (max_tokens)")

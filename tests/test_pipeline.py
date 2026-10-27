@@ -60,6 +60,20 @@ _ur.urlopen = lambda *a, **k: _FakeResp([_start, _part, 'data: {"type":"message_
 try: llm._claude_stream({}); ok = False
 except ConnectionError: ok = True
 check("claude stream: broken tool JSON is retryable too", ok)
+_plain_calls = []
+_real_call_llm = llm.call
+def _fake_plain(method, url, body=None, headers=None, timeout=30):
+    _plain_calls.append((url, "stream" in (body or {})))
+    return {"content": [{"type": "tool_use", "name": "submit", "input": {"a": 1, "b": 2}}], "stop_reason": "tool_use",
+            "usage": {"input_tokens": 3, "output_tokens": 4}}
+llm.call = _fake_plain
+got = llm._claude_once({"model": "m"})
+check("claude: broken streamed tool JSON falls back to one non-streamed call with the parsed answer",
+      got[0] == {"submit": {"a": 1, "b": 2}} and _plain_calls == [("https://api.anthropic.com/v1/messages", False)])
+llm.call = _real_call_llm
+_nl = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"a\\": \\"x\\ny\\"}"}}'
+_ur.urlopen = lambda *a, **k: _FakeResp([_start, _nl, 'data: {"type":"message_stop"}'])
+check("claude stream: a raw newline inside a tool string is accepted", llm._claude_stream({})[0] == {"submit": {"a": "x\ny"}})
 _ur.urlopen = _real_urlopen
 
 # ---------- Gemini model choice ----------
