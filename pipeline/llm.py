@@ -97,6 +97,10 @@ def gemini_models():
 def _anthropic_headers():
     return {"x-api-key": _key("ANTHROPIC_API_KEY"), "anthropic-version": "2023-06-01"}
 
+class CutOff(RuntimeError):
+    """The reply hit max_tokens. Newer Claude models think first by default, and thinking counts toward max_tokens,
+    so a long tool answer (a whole lab) can be cut off after a few hundred characters."""
+
 class BadToolJSON(ConnectionError):
     """The streamed tool answer didn't parse; the non-streamed call returns it already parsed by the API."""
 
@@ -110,6 +114,8 @@ def _claude_plain(body):
             tools[b.get("name")] = b.get("input") if isinstance(b.get("input"), dict) else {}
         elif b.get("type") == "text":
             text.append(b.get("text") or "")
+    if r.get("stop_reason") == "max_tokens":
+        raise CutOff(f"reply was cut off (max_tokens={body.get('max_tokens')})")
     return tools, "".join(text), r.get("stop_reason"), r.get("usage") or {}
 
 def _repair_json(raw, tries=5000):
@@ -173,6 +179,8 @@ def _claude_stream(body):
                            f"{e.read()[:400].decode('utf-8', 'replace')}") from None
     if not done:                                     # the connection dropped mid-answer: retry the call
         raise ConnectionError("Claude's stream ended before the answer was complete")
+    if stop == "max_tokens":                         # not broken JSON: the answer simply ran out of room
+        raise CutOff(f"reply was cut off (max_tokens={body.get('max_tokens')}, {usage.get('output_tokens')} out)")
     tools, text = {}, []
     for _, b in sorted(blocks.items(), key=lambda kv: kv[0] if isinstance(kv[0], int) else -1):
         if b["type"] == "tool_use":
@@ -190,7 +198,9 @@ def _claude_stream(body):
             text.append("".join(b["parts"]))
     return tools, "".join(text), stop, usage
 
-def claude_json(system, prompt, schema, tool="submit", tier="write", max_tokens=32000):
+ROOMY = 128000   # Claude 5.x output limit; older models reject it with HTTP 400, then we stay at max_tokens
+
+def claude_json(system, prompt, schema, tool="submit", tier="write", max_tokens=64000):
     """Claude answers by calling the `tool` tool, so the reply is schema-shaped JSON. tool_choice stays
     "auto" because some models refuse a forced tool; if Claude answers in text instead, we parse JSON from
     it, and failing that ask once more."""
@@ -202,7 +212,20 @@ def claude_json(system, prompt, schema, tool="submit", tier="write", max_tokens=
         body = {"model": model, "max_tokens": max_tokens, "system": sysmsg, "messages": messages,
                 "tools": [{"name": tool, "description": "Submit your answer.", "input_schema": schema}],
                 "tool_choice": {"type": "auto"}}
-        tools, text, stop, u = _retry(lambda: _claude_once(body))
+        try:
+            tools, text, stop, u = _retry(lambda: _claude_once(body))
+        except CutOff as e:                          # thinking used up the room: once more with the model's maximum
+            if body["max_tokens"] >= ROOMY:
+                raise RuntimeError(f"Claude ({model}) {e}") from None
+            warn(f"Claude ({model}) {e}; asking again with max_tokens={ROOMY}")
+            try:
+                tools, text, stop, u = _retry(lambda: _claude_once({**body, "max_tokens": ROOMY}))
+            except CutOff as e2:
+                raise RuntimeError(f"Claude ({model}) {e2}") from None
+            except RuntimeError as e2:
+                if "HTTP 400" in str(e2) and "max_tokens" in str(e2):
+                    raise RuntimeError(f"Claude ({model}) {e}") from None
+                raise
         LEDGER.append({"who": "claude", "model": model, "in": u.get("input_tokens", 0), "out": u.get("output_tokens", 0)})
         if stop == "max_tokens":
             raise RuntimeError(f"Claude ({model}) reply was cut off (max_tokens)")
