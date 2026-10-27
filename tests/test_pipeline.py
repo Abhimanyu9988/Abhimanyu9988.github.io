@@ -64,6 +64,22 @@ _q = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_
 _ur.urlopen = lambda *a, **k: _FakeResp([_start, _q, 'data: {"type":"message_stop"}'])
 check("claude stream: unescaped quotes inside a tool string are repaired, not retried",
       llm._claude_stream({})[0] == {"submit": {"a": 'echo "hi" ok', "b": 2}})
+_cut = ['data: {"type":"message_delta","delta":{"stop_reason":"max_tokens"},"usage":{"output_tokens":32000}}',
+        'data: {"type":"message_stop"}']
+_ur.urlopen = lambda *a, **k: _FakeResp([_start, _part] + _cut)
+try: llm._claude_stream({"max_tokens": 32000}); ok = False
+except llm.CutOff: ok = True
+check("claude stream: running out of max_tokens (thinking counts) is reported as a cut-off, not broken JSON", ok)
+_sizes, _real_once = [], llm._claude_once
+def _fake_once(body):
+    _sizes.append(body["max_tokens"])
+    if body["max_tokens"] < llm.ROOMY:
+        raise llm.CutOff("reply was cut off")
+    return {"submit_x": {"ok": 1}}, "", "tool_use", {}
+llm._claude_once = _fake_once
+check("claude: a cut-off answer is asked again once with the model's full output room",
+      llm.claude_json("s", "p", {"type": "object"}, tool="submit_x") == {"ok": 1} and _sizes == [64000, llm.ROOMY])
+llm._claude_once = _real_once
 _plain_calls = []
 _ur.urlopen = lambda *a, **k: _FakeResp([_start, _part, 'data: {"type":"message_stop"}'])
 _real_call_llm = llm.call
