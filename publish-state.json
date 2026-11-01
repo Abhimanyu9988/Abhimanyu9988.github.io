@@ -43,5 +43,13 @@
       "hash": "17465c6afdacb7447e7d1f93253270d0db7f4ded3ec89bc514eb2c9849b256f5"
     },
     "announced": true
+  },
+  "https://abhimanyu9988.github.io/posts/open-source-summary-2026-10/": {
+    "devto": {
+      "id": 4956955,
+      "url": "https://dev.to/abhimanyu9988/october-kubernetes-memory-semantics-and-collector-edge-fixes-j5f",
+      "hash": "fa30f14d4230643e09e68bf001a0c9fe705d956424fbae4caacb884e23dfcdaf"
+    },
+    "announced": true
   }
 }
