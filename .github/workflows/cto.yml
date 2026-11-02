@@ -89,7 +89,7 @@ jobs:
   billing:
     if: >-
       github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && vars.BILLING_ROLE_ARN != '' &&
-      (github.event.schedule == '12 7 * * *' || github.event_name == 'workflow_dispatch')
+      (github.event.schedule == '12 7 * * *' || inputs.digest == true)
     environment: live-check
     runs-on: ubuntu-latest
     timeout-minutes: 5
