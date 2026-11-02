@@ -128,7 +128,7 @@
    ],
    "budget": {
     "max_input_tokens": 12000,
-    "max_calls": 3
+    "max_calls": 6
    },
    "display": "CTO",
    "dept": "Engineering"
@@ -209,7 +209,7 @@
    ],
    "budget": {
     "max_input_tokens": 14000,
-    "max_calls": 4
+    "max_calls": 6
    },
    "display": "CEO",
    "dept": "Executive"
@@ -233,7 +233,7 @@
    ],
    "budget": {
     "max_input_tokens": 14000,
-    "max_calls": 4
+    "max_calls": 6
    },
    "display": "CMO",
    "dept": "Marketing"
@@ -257,7 +257,7 @@
    ],
    "budget": {
     "max_input_tokens": 14000,
-    "max_calls": 4
+    "max_calls": 6
    },
    "display": "CFO",
    "dept": "Finance"
@@ -320,10 +320,55 @@
    ],
    "budget": {
     "max_input_tokens": 14000,
-    "max_calls": 3
+    "max_calls": 6
    },
    "display": "OSS Scout",
    "dept": "Community"
+  },
+  "secretary": {
+   "mission": "Take every message Abhi sends without a name, ask the right people, and give him one answer.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "SECRETARY_MODEL",
+   "prompt": "secretary.md",
+   "outputs": [
+    "ctoreply"
+   ],
+   "data_sources": [
+    "goals",
+    "plan",
+    "post_mix",
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 14000,
+    "max_calls": 10
+   },
+   "display": "Secretary",
+   "dept": "Office"
+  },
+  "it": {
+   "mission": "Check the CTO's feature notes against merged pull requests, and close the ones that are finished.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-haiku-5-5",
+   "model_env": "IT_MODEL",
+   "prompt": "it.md",
+   "outputs": [
+    "noteaudit"
+   ],
+   "data_sources": [
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 12000,
+    "max_calls": 3
+   },
+   "display": "IT Support",
+   "dept": "Engineering"
   }
  }
 }

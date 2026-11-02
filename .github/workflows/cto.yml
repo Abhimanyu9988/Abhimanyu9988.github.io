@@ -64,6 +64,8 @@ jobs:
           ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
           MANAGER_MODEL: ${{ vars.MANAGER_MODEL }}
           POLL: ${{ github.event.schedule == '*/10 * * * *' || inputs.poll == true }}
+          SECRETARY_MODEL: ${{ vars.SECRETARY_MODEL }}
+          IT_MODEL: ${{ vars.IT_MODEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
           DIGEST: ${{ inputs.digest }}

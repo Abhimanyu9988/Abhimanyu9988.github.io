@@ -1117,11 +1117,11 @@ check("leaders: a step keeps only confirmed links", "good.example" in cto.steps_
 cto.link_exists = real_le2
 check("leaders: when they need him, the steps are numbered", "What I need from you" in replies[-1] and "1. Open Settings" in replies[-1] and "2. Click Save" in replies[-1])
 for said, want in (("CMO: how did others do it", ("cmo", "how did others do it")), ("cfo, are we ok", ("cfo", "are we ok")), ("@CTO why", ("cto", "why")),
-                   ("my goal is X", ("ceo", "my goal is X")), ("ceofy this", ("ceo", "ceofy this"))):
+                   ("my goal is X", ("secretary", "my goal is X")), ("ceofy this", ("secretary", "ceofy this")), ("Secretary: find it", ("secretary", "find it"))):
     check(f"leaders: routes {said!r}", cto.route(said) == want)
 check("leaders: one message can reach two leaders", cto.split_leaders("CMO: Good topic\nCTO: Waiting for the demo") == [("cmo", "Good topic"), ("cto", "Waiting for the demo")])
 check("leaders: extra lines stay with their leader", cto.split_leaders("CMO: one\ntwo\nCTO: three") == [("cmo", "one\ntwo"), ("cto", "three")])
-check("leaders: a plain message goes to the CEO", cto.split_leaders("hello\nthere") == [("ceo", "hello\nthere")])
+check("leaders: a plain message goes to the Secretary", cto.split_leaders("hello\nthere") == [("secretary", "hello\nthere")])
 old_talk = [{"from": "CTO", "text": "x" * 5000}] * 7 + [{"from": "Topic Scout", "text": "New pick: Prometheus"}, {"from": "Abhi", "text": "Good topic"}]
 kept_talk = cto.recent_talk(old_talk)
 check("leaders: the newest messages always reach the model", kept_talk[-1]["text"] == "Good topic" and kept_talk[-2]["text"].endswith("Prometheus"))
@@ -1157,7 +1157,7 @@ check("ideas: they lead the brief, and research stays", files_b[cto.BRIEF].start
 check("ideas: new research keeps them", "Add-on IAM" in cto.ideas_block(files_b[cto.BRIEF]))
 check("ideas: the Scout runs tomorrow", json.loads(files_b[cto.PENDING])["run"] is True)
 del files_b[cto.BRIEF], files_b[cto.PENDING]
-for leader in ("ceo", "cto", "cmo", "cfo"):
+for leader in ("ceo", "cto", "cmo", "cfo", "secretary"):
     check(f"leaders: {leader} is on the team", roles_mod.get(leader)["status"] == "active" and roles_mod.get(leader)["display"].lower() == leader)
 assistant.add_goal = real_assistant_goal
 check("cto: an unknown role gets no work", any("No ghost role exists" in x for x in replies))
@@ -1305,6 +1305,80 @@ check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / 
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
 check("topics: Thursday looks for real failures", py[True]["schedule"][0]["cron"] == "0 6 * * 4" and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
+
+# ---------- secretary and build notes ----------
+live_board_url = "https://abhimanyu9988.github.io/board/"
+asked, sent = [], []
+real_rask, real_pg, real_post = roles_mod.ask, cto.progress, cto.post
+blank = {"reply": "x", "stance": "agree", "goal": "", "task": {}, "urls": [], "needs_abhi": [], "close_prs": [], "ideas": [], "done_tasks": [], "consult": [], "show_notes": False}
+def fake_ask(role, prompt, out):
+    asked.append((role, "TEAM ANSWERS" in prompt))
+    if role == "secretary" and "TEAM ANSWERS" not in prompt:
+        return {**blank, "consult": ["cto", "oss_scout", "ghost"], "reply": "asking"}
+    return {**blank, "reply": f"from {role}"}
+roles_mod.ask, cto.progress, cto.post = fake_ask, lambda: {"board_url": live_board_url}, lambda t, role="cto": sent.append((role, t))
+real_ar, analytics.read_file = analytics.read_file, lambda p, ref=None: ("", None)
+real_ned, real_brd, cto.needed, cto.board = cto.needed, cto.board, lambda: {}, lambda: ""
+cto.answer("where is my board?", [])
+check("secretary: she asks up to two people, then answers once", [a[0] for a in asked] == ["secretary", "cto", "oss_scout", "secretary"] and asked[-1][1] and len(sent) == 1)
+check("secretary: only her final answer reaches him", sent[0][0] == "secretary" and "asking" not in sent[0][1])
+notes_store = {"tasks": [{"title": "Public board by username", "owner": "cto", "status": "open"}, {"title": "Old", "owner": "cto", "status": "done"}, {"title": "Research", "owner": "cmo", "status": "open"}]}
+real_ctk, cto.tasks = cto.tasks, lambda: (notes_store["tasks"], "sha")
+real_sources, cto.sources.roles = cto.sources.roles, lambda: {"cto": {}}
+real_wpn, cto.write_private = cto.write_private, lambda p, t, s, m: notes_store.update(json.loads(t)) or True
+check("notes: a feature request is saved word for word", cto.add_task({"title": "Add a username box", "owner": "cto"}).startswith("Saved to the CTO's build notes: Add a username box"))
+check("notes: only open CTO notes are listed", "1. Public board by username" in cto.build_notes()[0] and "2. Add a username box" in cto.build_notes()[0] and "Old" not in cto.build_notes()[0] and "Research" not in cto.build_notes()[0])
+check("notes: a long list splits into several messages, and none is lost", (lambda ps: len(ps) > 1 and all(len(x) < 3400 for x in ps) and all(f"{n}. " in "\n".join(ps) for n in range(1, 41)))((lambda: (setattr(cto, "tasks", lambda: ([{"title": "x" * 290, "owner": "cto", "status": "open"}] * 40, "s")), cto.build_notes())[1])()))
+cto.tasks = lambda: (notes_store["tasks"], "sha")
+real_audit, cto.audit_notes = cto.audit_notes, lambda: []
+roles_mod.ask = lambda role, prompt, out: {**blank, "reply": "Here they are.", "show_notes": True}
+sent.clear()
+cto.answer("what did I ask you to build?", [], "cto")
+check("notes: he gets them when he asks", len(sent) == 2 and "Public board by username" in sent[1][1])
+sent.clear()
+roles_mod.ask = lambda role, prompt, out: blank
+cto.answer("Feature requests for claude ui", [])
+check("notes: his own words work even if the model misses them", len(sent) == 2 and "Public board by username" in sent[1][1])
+sent.clear()
+cto.answer("how is it going?", [], "cto")
+check("notes: they stay quiet otherwise", len(sent) == 1)
+cto.audit_notes = real_audit
+audit_rows = [{"title": "Note A", "owner": "cto", "status": "open"}, {"title": "Note B", "owner": "cto", "status": "open"}, {"title": "Note C", "owner": "cto", "status": "open"}, {"title": "Other", "owner": "cmo", "status": "open"}]
+written = []
+cto.tasks, cto.write_private = lambda: (audit_rows, "sha"), lambda p, t, s, m: written.append(t) or True
+real_merged, cto.merged_prs = cto.merged_prs, lambda: [{"title": "A", "url": "https://g/1", "about": "did A"}]
+roles_mod.ask = lambda role, prompt, out: {"done": [{"note": "Note A", "pr": "https://g/1"}, {"note": "Note B", "pr": "https://g/fake"}, {"note": "Made up", "pr": "https://g/1"}, {"note": "Other", "pr": "https://g/1"}]}
+check("IT: closes a note only with a real merged PR", cto.audit_notes() == [("Note A", "https://g/1")] and audit_rows[0]["done_by"] == "https://g/1" and audit_rows[1]["status"] == "open" and audit_rows[3]["status"] == "open" and len(written) == 1)
+cto.merged_prs = lambda: []
+roles_mod.ask = lambda *a: (_ for _ in ()).throw(RuntimeError("no model call without evidence"))
+check("IT: nothing merged means no model call", cto.audit_notes() == [])
+cto.merged_prs = real_merged
+real_gpr, cto.gh = cto.gh, lambda m, p, b=None: [{"title": "New", "html_url": "https://g/1", "body": "b", "head": {"ref": "feat/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Article", "html_url": "https://g/2", "head": {"ref": "draft/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Closed", "html_url": "https://g/3", "head": {"ref": "feat/b"}}]
+check("IT: only merged pipeline PRs count as evidence", [m["url"] for m in cto.merged_prs()] == ["https://g/1"])
+cto.gh = real_gpr
+import datetime as _d2
+files_n = {cto.BRIEF: f"{cto.IDEAS_HEAD}\n- IAM\n- IAM\n- Flow Logs\n{cto.IDEAS_END}\n\nrest", cto.PENDING: '{"run": true}'}
+analytics.read_file = lambda p, ref=None: (files_n.get(p, ""), "s")
+plan = cto.next_run(_d2.date(2026, 11, 2))
+check("tomorrow: he gets the date, time and his topics, once each", plan["date"] == "2026-11-03" and plan["topic_scout_runs"] and plan["starts"] == "07:12 UTC" and plan["his_ideas_go_first"] == ["IAM", "Flow Logs"])
+files_n[cto.PENDING] = '{"run": false}'
+check("tomorrow: after training week, a quiet day says so", cto.next_run(_d2.date(2026, 12, 7))["topic_scout_runs"] is False)
+check("tomorrow: Monday and Thursday have their own run", cto.next_run(_d2.date(2026, 12, 9))["starts"] == "on its weekly schedule")
+analytics.read_file = lambda p, ref=None: (_ for _ in ()).throw(RuntimeError("down"))
+check("tomorrow: a failed read is left out, not guessed", cto.next_run() == {})
+cto.tasks, cto.sources.roles, cto.write_private = real_ctk, real_sources, real_wpn
+check("notes: agents can't build through the API", not (ROOT / "pipeline/engineer.py").exists() and not (ROOT / ".github/workflows/engineer.yml").exists())
+roles_mod.ask, cto.progress, cto.post = real_rask, real_pg, real_post
+analytics.read_file, cto.needed, cto.board = real_ar, real_ned, real_brd
+for leader in ("ceo", "cto", "cmo", "cfo", "secretary"):
+    check(f"leaders: {leader} looks for the answer before saying no", "Never stop at no" in (ROOT / f"pipeline/roles/prompts/{leader}.md").read_text())
+real_gh3, cto.gh = cto.gh, lambda m, path, b=None: [{"title": "Add it", "head": {"ref": "feat/x"}, "state": "open", "html_url": "https://g/1"}, {"title": "Old", "head": {"ref": "fix/y"}, "state": "closed", "merged_at": "2999-01-01T00:00:00Z"}] if "/pulls" in path else {}
+real_spent, cto.budget.spent = cto.budget.spent, lambda: (1.0, {})
+real_lim, cto.budget.limit = cto.budget.limit, lambda: 50
+real_ctasks, cto.tasks = cto.tasks, lambda: ([], None)
+facts_now = cto.progress()
+check("leaders: they can see the board, open PRs and what shipped", facts_now["board_url"].endswith("/board/") and facts_now["open_pipeline_prs"] == [{"title": "Add it", "url": "https://g/1"}] and facts_now["recently_shipped"] == ["Old"])
+cto.gh, cto.budget.spent, cto.budget.limit, cto.tasks = real_gh3, real_spent, real_lim, real_ctasks
 
 # ---------- live board ----------
 import datetime as _dt, live_board

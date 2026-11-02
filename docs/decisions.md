@@ -147,3 +147,15 @@ which are already on the public branch, so the page can be public. It isn't in t
 can't load live data from GitHub, and a GitHub Project needs a new token and can't be tested here. Moves stay in his browser,
 so they don't follow him between devices. Syncing them needs somewhere to save them, such as a Lambda with a passphrase.
 The Slack message now gives counts and a link. `board.json` changes only when a card does, to avoid a commit every 10 minutes.
+
+## 2026-11-02: The Secretary answers, and the CTO keeps build notes
+
+Abhi's unnamed messages now go to a Secretary. She asks up to two people and gives him one answer, so he doesn't chase anyone.
+The CEO told him there was no board link because leaders couldn't see shipped work. They now see the board address, open PRs
+and recent merges, and their prompts tell them to find the way forward. They still can't claim something exists when it doesn't.
+
+New features are built with Abhi in a Claude chat, not by agents or through the API, because that costs less. A coding agent was
+built for this and removed before merging. Leaders save each feature request as a CTO note, and code lists the notes when he asks.
+
+IT Support checks the notes against merged PRs each morning and whenever he asks for them. A model suggests the match, and code
+closes a note only if the PR really merged, so he never has to mark anything done. FACTS also gives leaders tomorrow's real plan.
