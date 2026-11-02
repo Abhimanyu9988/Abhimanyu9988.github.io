@@ -188,7 +188,7 @@ def complete(reports, ai, left=0):
     gaps += [f"{ai['scanner_items_cut']} scanner item(s) were not sent to the reviewer"] if (ai or {}).get("scanner_items_cut") else []
     return gaps + ([] if ai else ["AI review did not run"])
 
-def fit_scanners(rel, limit=20000):
+def fit_scanners(rel, limit=12000):
     """(reports, items cut). Each scanner gets its own share, so one cannot push another out of the prompt."""
     out, cut = {}, 0
     for name, r in rel.items():

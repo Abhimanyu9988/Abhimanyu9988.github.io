@@ -64,13 +64,19 @@ def measurements(logs):
                                                  "file": name, "line": n})
     return out
 
-TYPED = re.compile(r"[~+\-]?\.?\d[\w.,:%]*[;)]*")      # 35, ~35, 1e5, 5m30s: not $v, [0-9]+, <n2> or %.2f
+TYPED = re.compile(r"[~+\-<v]?\.?\d[\w.,:%/\-]*[;)]*")   # 35, ~35, 1e5, 35/s, 3/3: not $v, [0-9]+, <n2>
+PRINTF = re.compile(r"%[-0-9.]*[a-z]")
 
 def constants_in(text):
     """Names given one literal value and never changed. A counter starts at 0 and is computed, not typed."""
-    return {n for n in {m[1] for m in ASSIGNED.finditer(text)}
-            if len(re.findall(rf"(?<![\w$]){n}\+?=(?!=)", text)) == 1
-            and not re.search(rf"\(\(\s*{n}\b|\b(?:for|read|let)\s+{n}\b", text)}
+    out = set()
+    for n in {m[1] for m in ASSIGNED.finditer(text)}:
+        assigned = re.findall(rf"(?:^|[;&|(]|\bdo\b|\bthen\b)\s*(?:(?:export|readonly|local)\s+)?{n}\+?=(?!=)", text, re.M)
+        changed = re.search(rf"\(\([^)\n]*(?:(?:\+\+|--)\s*{n}\b|\b{n}\s*(?:\+\+|--|[-+*/]?=(?!=)))"
+                            rf"|\bread\b[^\n;|<]*\b{n}\b|\bprintf\s+-v\s+{n}\b|\blet\b[^\n]*\b{n}\b|(?:^|[;&|])\s*for\s+{n}\b", text, re.M)
+        if len(assigned) == 1 and not changed:
+            out.add(n)
+    return out
 
 def typed_values(scripts):
     """{measure id: True} for measurements a script types in instead of computing."""
@@ -80,7 +86,7 @@ def typed_values(scripts):
         for m in LITERAL.finditer(text):
             value = m[2].strip()
             name = re.fullmatch(r"\$\{?([A-Za-z_]\w*)\}?", value)
-            if TYPED.fullmatch(value) or (name and name[1] in constants):
+            if (TYPED.fullmatch(value) and not PRINTF.search(value)) or (name and name[1] in constants):
                 typed[m[1]] = True
     return typed
 

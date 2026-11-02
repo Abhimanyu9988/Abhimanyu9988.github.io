@@ -778,13 +778,19 @@ lab_mod.gh = real_gh
 ct9 = [{"id": "cpu_saved", "what": "cpu saved", "unit": "%", "accept": {"op": "present"}, "min_entities": 1}]
 check("title: a % claim can validate", scan.check({"f.log": "cpu saved 30%\nHERO_MEASURE: cpu_saved=30%"}, "30% Lower CPU", ct9, strict=True)["passed"])
 check("title: a list comma does not join numbers", [h["number"] for h in scan.headline_claims("Cut 5, Then 10 Pods", {"a": ""})] == ["5", "10"])
-for typed_num in ("1e5", "~35", "35;", "5m30s", "1_000", "+35"):
+for typed_num in ("1e5", "~35", "35;", "5m30s", "1_000", "+35", "35/s", "3/3", "10-20", "<35", "2026-11-02", "v35"):
     check(f"provenance: {typed_num} is a typed value", scan.typed_values({"f.sh": f'echo "HERO_MEASURE: x={typed_num}"'}) == {"x": True})
 check("provenance: a one-value constant is typed", scan.typed_values({"f.sh": 'V=35\necho "HERO_MEASURE: x=$V"'}) == {"x": True})
+for still_typed in ('x=35\necho "HERO_MEASURE: x=$x"', 'V=35\nD=$((V*2))\necho "HERO_MEASURE: x=$V"', 'V=35\nif (( V > 30 )); then echo hi; fi\necho "HERO_MEASURE: x=$V"',
+                    'V=35\nhelm install --set V=$V\necho "HERO_MEASURE: x=$V"', 'V=35\n# wait for V\necho "HERO_MEASURE: x=$V"'):
+    check("provenance: reading a constant keeps it typed", scan.typed_values({"f.sh": still_typed}) == {"x": True})
 for counter in ('count=0\nfor p in a; do count=$((count+1)); done\necho "HERO_MEASURE: x=$count"',
-                'count=0\n((count++))\necho "HERO_MEASURE: x=$count"', 'total=0\ntotal=$(wc -l < f)\necho "HERO_MEASURE: x=$total"'):
+                'count=0\n((count++))\necho "HERO_MEASURE: x=$count"', 'total=0\ntotal=$(wc -l < f)\necho "HERO_MEASURE: x=$total"',
+                'c=0\n((++c))\necho "HERO_MEASURE: x=$c"', 'c=0\n((a++, c++))\necho "HERO_MEASURE: x=$c"', 'c=0\nread -r c < f\necho "HERO_MEASURE: x=$c"',
+                'c=0\nIFS=, read -r a c < f\necho "HERO_MEASURE: x=$c"', 'c=0\nprintf -v c "%d" 3\necho "HERO_MEASURE: x=$c"', 'c=0\nlet "c++"\necho "HERO_MEASURE: x=$c"',
+                'c=0\nfor c in 1 2; do :; done\necho "HERO_MEASURE: x=$c"', 'c=0\nif a; then c=4; fi\necho "HERO_MEASURE: x=$c"'):
     check("provenance: a computed counter is not typed", scan.typed_values({"f.sh": counter}) == {})
-for s_ok in ('printf "HERO_MEASURE: x={m1}\n"', 'jq -r "HERO_MEASURE: x=\\(.v1)"', 'echo "HERO_MEASURE: x=null"', 'printf "HERO_MEASURE: x=%.2f\n"',
+for s_ok in ('print("HERO_MEASURE: x=0.%03d" % ms)', 'printf "HERO_MEASURE: x=1%d ms\n"', 'printf "HERO_MEASURE: x={m1}\n"', 'jq -r "HERO_MEASURE: x=\\(.v1)"', 'echo "HERO_MEASURE: x=null"', 'printf "HERO_MEASURE: x=%.2f\n"',
              "grep -Eq 'HERO_MEASURE: x=[0-9]+' out.log", 'echo "HERO_MEASURE: x=<n2>"', 'echo "HERO_MEASURE: x=N1"', 'echo "HERO_MEASURE: x=%VAR1%"', 'echo "HERO_MEASURE: x=%(v1)s"'):
     check(f"provenance: {s_ok[:30]} is not a typed value", scan.typed_values({"f.sh": s_ok}) == {})
 check("provenance: a bad contract cannot crash title checks", scan.check({"f": ""}, "3 Tasks", [{"id": ["x"]}, 7])["passed"] is False)
