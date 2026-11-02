@@ -7,6 +7,14 @@ Read this before changing anything. It is the shared map for every AI agent and 
 An automated pipeline that chooses topics, runs disposable AWS labs, and turns real output into posts on a personal
 blog. GitHub Actions runs it. A person approves topics and posts.
 
+## What success means
+
+Excellent articles with minimal effort from Abhi, not the number of agents. Agents discover, research, test, write and
+review on their own, inside set budgets and permissions. Abhi gets one consolidated PR with the article, evidence summary,
+quality verdict and prepared marketing content, and approves or rejects once. Everything after that is automatic where
+permitted. Human approval stays for publishing, credential changes, major infrastructure changes and high-risk actions.
+Do not add approval requests, manual commands or setup steps for routine decisions.
+
 ## Rules that must never break
 
 1. **An agent may propose a claim. An experiment must demonstrate it. The Editor explains why it matters.** A model's

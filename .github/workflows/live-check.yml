@@ -1,13 +1,17 @@
 name: live-check
-# Manual only, from trusted code on main: real API calls that post one comment and change nothing else. Spending is
+# From trusted code on main only: real API calls that post one comment and change nothing else. A merge that changes
+# pipeline/live-check.request starts it with no further step, or start it by hand. Spending is
 # checked between steps against a $3 limit, and each step's size is bounded by its role budget, so a run can pass the
 # limit slightly. Never add a pull_request trigger here: this job holds secrets and runs the code it checks out.
 on:
+  push:
+    branches: [main]
+    paths: [pipeline/live-check.request]
   workflow_dispatch:
     inputs:
       pr:
         description: "Pull request to report on"
-        required: true
+        required: false
         type: string
 permissions:
   contents: read
@@ -33,9 +37,9 @@ jobs:
           permission-issues: write
           permission-pull-requests: write
       - name: live check
-        run: python3 pipeline/live_check.py
+        run: PR_NUMBER="${INPUT_PR:-$(cat pipeline/live-check.request)}" python3 pipeline/live_check.py
         env:
-          PR_NUMBER: ${{ inputs.pr }}
+          INPUT_PR: ${{ inputs.pr }}
           BASE_SHA: HEAD~1
           HEAD_SHA: HEAD
           EDITOR_MODE: shadow

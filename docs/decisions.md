@@ -45,3 +45,13 @@ Git keeps history and needs no new service. The existing bot rule already allows
 ## 2026-11-02: Fixed workflow, no LLM orchestrator
 
 A fixed order is testable, costs nothing per decision, and cannot delegate recursively.
+
+## 2026-11-02: One approval per article
+
+Success means excellent articles with minimal effort from Abhi. Routine decisions stay with agents inside budgets and
+permissions, and each article reaches him as one PR to approve or reject once.
+
+## 2026-11-02: The final live check runs on merge
+
+`live-check` holds keys, so it runs only from `main`. A merge that changes `pipeline/live-check.request` starts it, so the
+check needs no manual command. A push to `main` is trusted code, and a branch cannot start this trigger.

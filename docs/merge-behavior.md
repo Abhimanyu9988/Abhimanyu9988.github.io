@@ -20,7 +20,7 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 | Radar and `problems` runs | No Editor | Up to 2 briefs per run, after issues open, as issue comments | `EDITOR_MODE=off` | `shadow:` tests |
 | Draft job | No record | Writes `analytics/review-<slug>.json` on the analytics branch | `EDITOR_MODE=off` | Pipeline suite in shadow mode |
 | Labs, article prompts, publishing | Unchanged | Unchanged in shadow | Not needed | `shadow: no rule reaches the lab`, `shadow: nothing reaches the writer` |
-| New workflows | None | `tech-head` on pipeline PRs, `assistant` on `/goal`, manual `editor-eval` and `live-check` | Disable the workflow in the Actions tab | Workflow tests |
+| New workflows | None | `tech-head` on pipeline PRs, `assistant` on `/goal`, manual `editor-eval`, and `live-check`, which also runs once on this merge for up to about $3 and posts one comment | Disable the workflow in the Actions tab | Workflow tests |
 | Analytics weekly job | Unchanged | Unchanged, apart from pinned models | Not needed | Pipeline suite |
 
 **Rollback of everything:** set `EDITOR_MODE=off`, `MODEL_AUTO=true`, `GOAL_RANKING=off` and `LINKEDIN_MIN_VOTES=0`, then disable `tech-head` and `assistant`. To remove the code, revert the merge commit. Files on the analytics branch are harmless and can stay.
@@ -68,14 +68,9 @@ Observed from job logs and workflow files on 2 November 2026. Environment secret
 | `push` | The pushed ref | Only for pushes to `main` |
 | `pull_request_review` (`merge-on-approve`) | `refs/pull/N/merge` | **No. The job would be refused and approved posts would stop merging** |
 
-**Phase 1, before PR 89 merges. Nothing existing is touched.**
+**Phase 1, done on 2 November 2026.** `live-check` and `tech-head` are limited to `main`, and GitHub refused both from a test branch. Add no required reviewers to `tech-head`. Until new keys exist, jobs in those environments use the repository keys, so they work on merge.
 
-1. Create `live-check` and `tech-head`, each limited to the selected branch `main`. Add no required reviewers to `tech-head`.
-2. Create new provider keys with spend limits, and a second private key on the GitHub App. Secrets are write-only, so you cannot copy an existing value out of GitHub, and new keys are what gain protection: a value that also sits at repository level stays exposed through that copy.
-3. Add new `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `BOT_PRIVATE_KEY` values to `live-check`. Add new `OPENAI_API_KEY` and `BOT_PRIVATE_KEY` values to `tech-head`. An environment secret takes precedence over a repository secret of the same name.
-4. Leave every repository secret in place.
-
-**Phase 2, after PR 89 merges and passes `live-check`.** Create a `pipeline` environment limited to `main`. Limit `publish` and `aws-lab` to `main` too, because otherwise a branch could still reach keys placed there. Add new model keys to `pipeline`, `publish` and `aws-lab`. Add `environment: pipeline` to `radar`, `problems`, `hero`, `monthly-oss`, `redraft`, `replicate` draft and `assistant`. `analytics` and the lab job cannot name a second environment, and the lab job must keep `aws-lab`, because its AWS role trusts that environment by name. Confirm one successful run of each job, with Splunk checks included, before the next phase.
+**Phase 2, after PR 89 merges and passes `live-check`.** This is one credential change, for Abhi to approve. Create a `pipeline` environment limited to `main`. Limit `publish` and `aws-lab` to `main` too, because otherwise a branch could still reach keys placed there. Create new provider keys with spend limits and a second GitHub App key: secrets are write-only, so an existing value cannot be copied, and a value that also sits at repository level stays exposed through that copy. Add the new model keys to `live-check`, `pipeline`, `publish` and `aws-lab`, the new OpenAI key to `tech-head`, and the new App key to `live-check` and `tech-head`. Add `environment: pipeline` to `radar`, `problems`, `hero`, `monthly-oss`, `redraft`, `replicate` draft and `assistant`. `analytics` and the lab job cannot name a second environment, and the lab job must keep `aws-lab`, because its AWS role trusts that environment by name. Confirm one successful run of each job, with Splunk checks included, before the next phase.
 
 **Phase 3, once every job has passed.** Delete the three repository model keys, confirm scheduled jobs still run, and only then revoke the old keys. Revoking first would stop anything still using them. Keep the old keys somewhere safe until then, because GitHub will not show them again: to roll back, add them back as repository secrets, or use the new keys.
 

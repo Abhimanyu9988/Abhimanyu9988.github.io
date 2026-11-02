@@ -535,7 +535,12 @@ check("Tech Head: a comment naming a risk is not the risk", th.rules("+++ b/.git
 check("Tech Head: a key in a comment is still caught", th.rules(f"+++ b/pipeline/a.py\n@@ -0,0 +1 @@\n+# {FAKE}\n") != [])
 
 lc = (ROOT / ".github/workflows/live-check.yml").read_text()
-check("workflow: the live check can only be started by hand", "pull_request" not in lc.split("jobs:")[0].split("on:", 1)[1])
+lc_on = __import__("yaml").safe_load(lc)[True]
+check("workflow: the live check starts only by hand or from a push to main", set(lc_on) == {"push", "workflow_dispatch"} and lc_on["push"]["branches"] == ["main"])
+check("workflow: only the request file starts the live check", lc_on["push"]["paths"] == ["pipeline/live-check.request"])
+check("workflow: the request names a pull request", (ROOT / "pipeline/live-check.request").read_text().strip().isdigit())
+lc_run = next(s["run"] for s in __import__("yaml").safe_load(lc)["jobs"]["live"]["steps"] if s.get("name") == "live check")
+check("workflow: a typed pull request number reaches the check only through env", "${{" not in lc_run)
 for name in ("live-check", "editor-eval"):
     text = (ROOT / f".github/workflows/{name}.yml").read_text()
     check(f"policy: {name} refuses to run from a branch", "github.ref == 'refs/heads/main'" in text)
