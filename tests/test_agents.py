@@ -1056,7 +1056,14 @@ cto.answer("monitor my azure bill", [])
 check("cto: only confirmed links reach Abhi", "good.example" in replies[-1] and "nope.example" not in replies[-1] and "bad.example" not in replies[-1] and "could not be confirmed" in replies[-1])
 roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "Watch the bill", "owner": "spend_tracker"}, "urls": []}
 cto.answer("track spending", [])
-check("cto: a task reaches an active role", json.loads(files_b[cto.TASKS])["tasks"][0]["owner"] == "spend_tracker" and "Assigned" in replies[-1])
+check("privacy: without the private repo a task is not stored, and he is told", cto.TASKS not in files_b and "not saved" in replies[-1])
+private_tasks = {}
+real_on, real_rp, real_wp = cto.admin_on, cto.admin_read, cto.admin_write
+cto.admin_on, cto.admin_read = (lambda: True), (lambda path: ("", None))
+cto.admin_write = lambda path, text, sha, msg: private_tasks.__setitem__(path, text)
+cto.answer("track spending", [])
+cto.admin_on, cto.admin_read, cto.admin_write = real_on, real_rp, real_wp
+check("cto: a task reaches an active role", json.loads(private_tasks["tasks.json"])["tasks"][0]["owner"] == "spend_tracker" and "Assigned" in replies[-1])
 roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "t", "owner": "ghost"}, "urls": []}
 cto.answer("hire someone", [])
 real_assistant_goal = assistant.add_goal
@@ -1128,6 +1135,9 @@ slack.messages, slack.history, cto.answer = real_msg, real_hist3, real_ans3
 check("slack: replies are capped per run", len(heard2) == cto.MAX_REPLIES)
 slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
 check("slack: an outage never stops the work", slack.say("cto", "hi") is False)
+cursor_before = files_b[cto.CURSOR]
+cto.poll()
+check("slack: a failed read keeps the cursor", files_b[cto.CURSOR] == cursor_before)
 slack.api = real_api
 del os.environ["SLACK_BOT_TOKEN"]
 saved_admin, real_aw = {}, cto.activity
