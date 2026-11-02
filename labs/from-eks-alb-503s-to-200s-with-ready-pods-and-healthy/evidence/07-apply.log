@@ -1,0 +1,26 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 55s
+
+aws_iam_instance_profile.node: Creating...
+aws_iam_instance_profile.node: Creation complete after 5s [id=hero-lab-fix-eks-alb-503s-caused-223292-node]
+aws_instance.node[1]: Creating...
+aws_instance.node[0]: Creating...
+aws_instance.node[0]: Still creating... [00m10s elapsed]
+aws_instance.node[1]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Creation complete after 18s [id=i-0f1d0204419c670a3]
+aws_instance.node[1]: Creation complete after 18s [id=i-0745cf50ead017c97]
+aws_eks_addon.pod_identity: Creating...
+aws_eks_addon.pod_identity: Still creating... [00m10s elapsed]
+aws_eks_addon.pod_identity: Still creating... [00m20s elapsed]
+aws_eks_addon.pod_identity: Creation complete after 26s [id=fix-eks-alb-503s-caused-223292:eks-pod-identity-agent]
+aws_eks_pod_identity_association.lbc: Creating...
+aws_eks_pod_identity_association.lbc: Creation complete after 1s [id=a-a4f0bkgc8focuvpc0]
+
+Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "fix-eks-alb-503s-caused-223292"
+lbc_role_arn = "arn:aws:iam::<account-id>:role/hero-lab-fix-eks-alb-503s-caused-223292-lbc"
+vpc_id = "vpc-0635ecff908e0725f"
+
