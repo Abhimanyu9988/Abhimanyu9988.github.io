@@ -1270,6 +1270,7 @@ check("admin: its token reaches only that repo, and a missing repo fails quietly
 check("privacy: the public status never reads the private page", "tasks" not in cto.public_status.__code__.co_names)
 cyml = (ROOT / ".github/workflows/cto.yml").read_text()
 bj = ctoy["jobs"]["billing"]
+check("billing: a Slack wake-up doesn't read the bill", "workflow_dispatch" not in str(bj["if"]))
 check("billing: no model key and no PR input", "ANTHROPIC" not in str(bj) and "pull_request" not in str(bj) and bj["steps"][0]["with"]["ref"] == "main")
 check("billing: runs only in a main-only environment, with its own role", bj["environment"] == "live-check" and "BILLING_ROLE_ARN" in str(bj))
 billing_sh = (ROOT / "infra/billing-role.sh").read_text()
