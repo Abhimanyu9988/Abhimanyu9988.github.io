@@ -1317,26 +1317,24 @@ def board_gh(m, path, b=None):
                 pr(4, "fix/y", "closed", merged_at="2026-10-31T00:00:00Z"), pr(5, "draft/c", "closed", closed_at="2026-11-01T00:00:00Z"),
                 pr(6, "draft/d", "closed", merged_at="2026-01-01T00:00:00Z"), pr(7, "feat/z", "closed", closed_at="2026-11-01T00:00:00Z")]
     if "status=in_progress" in path:
-        return {"workflow_runs": [{"name": "replicate", "display_title": "Prometheus lab", "html_url": "https://g/r"}, {"name": "cto", "html_url": "https://g/c"}]}
-    if "status=queued" in path:
-        return {"workflow_runs": []}
-    return {"workflow_runs": [{"name": "radar", "event": "schedule", "html_url": "https://g/f2"}, {"name": "radar", "event": "schedule", "html_url": "https://g/f1"},
-                              {"name": "tests", "event": "pull_request", "html_url": "https://g/f3"}]}
+        return {"workflow_runs": [{"name": "replicate", "display_title": "Prometheus lab", "html_url": "https://g/r"}, {"name": "tech-head", "html_url": "https://g/t"}, {"name": "cto", "html_url": "https://g/c"}]}
+    return {"workflow_runs": []}
 real_lgh, live_board.gh = live_board.gh, board_gh
 item = lambda t, u, d="2026-11-01": {"title": t, "url": u, "updated": d}
 wanted = {"assigned_to_him": [item("Flink", "https://g/9")], "review_requested_from_him": [item("Same", "https://g/8")], "mentions": [item("Same", "https://g/8"), item("Ping", "https://g/7"),
           item("Old", "https://g/6", "2026-01-01")], "changes_requested_on_his_prs": "the search failed", "code_owner_team_reviews": [], "pr_mentions": [], "prs_assigned_to_him": []}
-rows = live_board.gather(wanted, [{"title": "<!channel> task", "owner": "cto"}], ["Splunk add-on"], now)
-check("board: drafts ask for approval, other PRs for a merge", "Approve or reject: T1" in rows["needs"][0] and "Merge or close: Draft: T2".replace("Draft: ", "") in rows["needs"][1])
+mine = {"open": [{"title": "Mine", "url": "https://g/o", "closed": ""}], "merged": [{"title": "Upstream", "url": "https://g/m", "closed": "2026-11-02T00:00:00Z"}]}
+rows = live_board.gather(wanted, mine, ["Splunk add-on", "Splunk add-on"], now)
+check("board: articles ask for approval, pipeline PRs stay with the CTO", rows["needs"][0].endswith("|Approve or reject: T1>") and not any("T2" in x for x in rows["needs"]))
 check("board: GitHub's own needs are listed", any("Assigned: Flink" in x for x in rows["needs"]) and any("Review: Same" in x for x in rows["needs"]))
 check("board: a failed search says so, not 'all clear'", any("Could not check changes requested" in x for x in rows["needs"]))
 check("board: a mention is only worth a look, and only once", [("Same" in x) for x in rows["maybe"]] == [False] and "Ping" in rows["maybe"][0])
-check("board: done shows published, shipped and rejected, newest first, this week only", [x.split("|")[1].split(":")[0] for x in rows["done"]] == ["Published", "Rejected", "Shipped"])
-check("board: only the team's own work is in progress", len(rows["working"]) == 1 and "Lab Engineer is running a lab: Prometheus lab" in rows["working"][0])
-check("board: one latest failure per workflow, not PR checks", rows["failed"] == ["<https://g/f2|radar failed>"])
-check("board: task text can't ping the channel", "<!channel>" not in rows["todo"][0])
+check("board: done is articles and upstream merges, newest first, this week only", [x.split("|")[1].rstrip(">") for x in rows["done"]] == ["Merged: Upstream", "Published: T3"])
+check("board: in progress is article work and his own PRs", len(rows["working"]) == 2 and "Lab Engineer is testing an article: Prometheus lab" in rows["working"][0] and "Your PR: Mine" in rows["working"][1])
+check("board: a repeated idea shows once", rows["next"] == ["Topic idea: Splunk add-on"])
+check("board: a failed PR search says so", any("Could not check your merged PRs" in x for x in live_board.gather(wanted, {"open": []}, [], now)["working"]))
 text = live_board.render(rows, 7.5, 50, now)
-check("board: shows spend and every section", "$7.50 of $50" in text and all(w in text for w in ("Needs you", "In progress", "Done in the last 7 days", "Up next", "To do", "Failed in the last day")))
+check("board: shows spend and his sections only", "$7.50 of $50" in text and all(w in text for w in ("Needs you", "In progress", "Done in the last 7 days", "Up next")) and not any(w in text for w in ("To do", "Failed", "Shipped")))
 many = live_board.section("X", [f"r{i}" for i in range(12)])
 check("board: a long list stays short", "r7" in many and "r8" not in many and "and 4 more" in many and "(12)" in many)
 live_board.gh = real_lgh
@@ -1360,7 +1358,7 @@ except RuntimeError:
 check("board: an outage never posts a duplicate", not failed_quietly)
 os.environ["SLACK_BOT_TOKEN"] = "t"
 real_read, real_write, real_say, real_gather = analytics.read_file, analytics.write_file, slack.say, live_board.gather
-live_board.gather = lambda *a: {k: [] for k in ("needs", "maybe", "working", "todo", "next", "done", "failed")}
+live_board.gather = lambda *a: {k: [] for k in ("needs", "maybe", "working", "next", "done")}
 slack.say = lambda r, t: said.append(t) or True
 analytics.write_file = lambda p, t, s, m: wrote.append((p, t))
 analytics.read_file = lambda p, ref=None: ("", None)
@@ -1376,11 +1374,16 @@ def board_boom(*a, **k):
     raise RuntimeError("github down")
 real_ref, live_board.refresh = live_board.refresh, board_boom
 real_need, cto.needed = cto.needed, lambda: {}
-real_tasks, cto.tasks = cto.tasks, lambda: ([], None)
+real_own, cto.own_prs = cto.own_prs, lambda: {}
 real_bread, analytics.read_file = analytics.read_file, lambda p, ref=None: ("", None)
 cto.refresh_board()
 check("board: a failure never stops the leaders' work", True)
-analytics.read_file, cto.tasks, cto.needed, live_board.refresh = real_bread, real_tasks, real_need, real_ref
+analytics.read_file, cto.own_prs, cto.needed, live_board.refresh = real_bread, real_own, real_need, real_ref
+real_ghn2, cto.gh = cto.gh, lambda m, p, b=None: {"items": [{"title": "Mine", "html_url": "https://g/o", "closed_at": None}]}
+check("board: his PRs elsewhere are found", cto.own_prs()["open"] == [{"title": "Mine", "url": "https://g/o", "closed": ""}])
+cto.gh = lambda m, p, b=None: (_ for _ in ()).throw(RuntimeError("limit"))
+check("board: a failed PR search is reported", cto.own_prs()["merged"] == "the search failed")
+cto.gh = real_ghn2
 store = {"tasks": [{"title": "A", "status": "open"}, {"title": "B", "status": "open"}]}
 real_rp, real_wp = cto.read_private, cto.write_private
 cto.read_private = lambda p: (json.dumps(store), "sha")

@@ -305,7 +305,7 @@ def save_ideas(ideas):
     """Queues his topics at the top of the brief the Topic Scout reads, and starts a Scout run the next morning."""
     old, sha = analytics.read_file(BRIEF)
     kept = ideas_block(old)
-    rows = [l for l in kept.splitlines() if l.startswith("- ")] + [f"- {i}" for i in ideas]
+    rows = list(dict.fromkeys([l for l in kept.splitlines() if l.startswith("- ")] + [f"- {i}" for i in ideas]))
     head = "\n".join([IDEAS_HEAD, *rows, IDEAS_END]) + "\n\n"
     analytics.write_file(BRIEF, head + old[len(kept):], sha, "market: Abhi's topic ideas")
     _, psha = analytics.read_file(PENDING)
@@ -340,6 +340,20 @@ def needed():
             out[name] = [{"title": i["title"], "url": i["html_url"], "updated": i["updated_at"][:10]} for i in rows]
         except Exception as e:
             print(f"::warning title=oss::search failed: {' '.join(str(e).split())[:200]}")
+            out[name] = "the search failed"
+    return out
+
+def own_prs(today=None):
+    """His pull requests in other people's projects. They are his work, so they stay out of what OSS Scout says needs him."""
+    since = ((today or datetime.date.today()) - datetime.timedelta(days=7)).isoformat()
+    out = {}
+    for name, query in (("open", f"is:open is:pr author:{ME} -user:{ME} archived:false"),
+                        ("merged", f"is:pr is:merged author:{ME} -user:{ME} merged:>={since}")):
+        try:
+            rows = (gh("GET", f"/search/issues?q={urllib.parse.quote(query)}&sort=updated&order=desc&per_page=12") or {}).get("items", [])
+            out[name] = [{"title": i["title"], "url": i["html_url"], "closed": i.get("closed_at") or ""} for i in rows]
+        except Exception as e:
+            print(f"::warning title=board::search failed: {' '.join(str(e).split())[:200]}")
             out[name] = "the search failed"
     return out
 
@@ -416,7 +430,7 @@ def refresh_board():
     try:
         brief, _ = analytics.read_file(BRIEF)
         ideas = [l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")]
-        live_board.refresh(needed(), [t for t in tasks()[0] if t.get("status") == "open"], ideas, budget.spent()[0], budget.limit())
+        live_board.refresh(needed(), own_prs(), ideas, budget.spent()[0], budget.limit())
     except Exception as e:
         print(f"::warning title=board::not refreshed: {' '.join(str(e).split())[:200]}")
 
