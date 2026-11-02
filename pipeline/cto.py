@@ -309,6 +309,25 @@ def close_drafts(titles):
             closed.append(name)
     return closed
 
+NEEDED_QUERIES = {"review_requested_from_him": "is:open is:pr user-review-requested:Abhimanyu9988",
+                  "code_owner_team_reviews": "is:open is:pr review-requested:Abhimanyu9988 -user-review-requested:Abhimanyu9988",
+                  "assigned_to_him": "is:open assignee:Abhimanyu9988",
+                  "changes_requested_on_his_prs": "is:open is:pr author:Abhimanyu9988 review:changes_requested",
+                  "mentions": "is:open mentions:Abhimanyu9988 -author:Abhimanyu9988"}
+
+def needed():
+    """GitHub's own answer on why he's involved. A failed search is reported, never replaced by a guess."""
+    out = {}
+    for name, query in NEEDED_QUERIES.items():
+        q = urllib.parse.quote(f"{query} archived:false")
+        try:
+            rows = (gh("GET", f"/search/issues?q={q}&sort=updated&order=desc&per_page=12") or {}).get("items", [])
+            out[name] = [{"title": i["title"], "url": i["html_url"], "updated": i["updated_at"][:10]} for i in rows]
+        except Exception as e:
+            print(f"::warning title=oss::search failed: {' '.join(str(e).split())[:200]}")
+            out[name] = "the search failed"
+    return out
+
 def board():
     """His contribution board. It's public, and a missing board only weakens the answer."""
     try:
@@ -325,7 +344,7 @@ def answer(text, talk, role="ceo"):
         return
     p, team = progress(), roles.data("cto")
     brief, _ = analytics.read_file(BRIEF)
-    extra = f"\n\nBOARD:\n{board()}" if role == "oss_scout" else ""
+    extra = f"\n\nGITHUB:\n{json.dumps(needed())[:6000]}\n\nBOARD:\n{board()[:3000]}" if role == "oss_scout" else ""
     got = roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
                            f"{json.dumps({**p, 'team': roster(p)})[:4000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
                           f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
