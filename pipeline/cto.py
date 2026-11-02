@@ -224,7 +224,9 @@ def route(text):
     return (hit[1].lower(), text[hit.end():].strip() or text) if hit else ("ceo", text)
 
 def steps_md(steps):
-    return "*What I need from you:*\n" + "\n".join(f"{i}. {s}" for i, s in enumerate(steps, 1)) if steps else ""
+    """Steps may link to a page, but only to one code has confirmed."""
+    clean = [URL.sub(lambda m: m[0] if link_exists(m[0]) else "[link removed]", str(s)) for s in steps or []]
+    return "*What I need from you:*\n" + "\n".join(f"{i}. {s}" for i, s in enumerate(clean, 1)) if clean else ""
 
 def research():
     """How real people reached the top goal. Only real pages count, and it respects the monthly limit."""

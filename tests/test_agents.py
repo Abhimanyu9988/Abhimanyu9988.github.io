@@ -1083,6 +1083,9 @@ cto.answer("my new goal is AWS community articles", [])
 check("ceo: his own words become the goal, not a model's", goal_calls == ["my new goal is AWS community articles"])
 roles_mod.ask = lambda *a, **k: {"stance": "need_data", "reply": "Blocked.", "goal": "", "task": {"title": "", "owner": ""}, "urls": [], "needs_abhi": ["Open Settings", "Click Save"]}
 cto.answer("why stuck", [], "cmo")
+real_le2, cto.link_exists = cto.link_exists, lambda u: u == "https://good.example/x"
+check("leaders: a step keeps only confirmed links", "good.example" in cto.steps_md(["Open https://good.example/x"]) and "bad.example" not in cto.steps_md(["Open https://bad.example/x"]))
+cto.link_exists = real_le2
 check("leaders: when they need him, the steps are numbered", "What I need from you" in replies[-1] and "1. Open Settings" in replies[-1] and "2. Click Save" in replies[-1])
 for said, want in (("CMO: how did others do it", ("cmo", "how did others do it")), ("cfo, are we ok", ("cfo", "are we ok")), ("@CTO why", ("cto", "why")),
                    ("my goal is X", ("ceo", "my goal is X")), ("ceofy this", ("ceo", "ceofy this"))):
