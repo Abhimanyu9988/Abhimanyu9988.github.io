@@ -21,7 +21,7 @@ RULES = (
      "pull_request_target runs with secrets on pull request events.",
      "Use pull_request, or prove no PR code runs in that job.", ".github/workflows/"),
     ("workflow-injection", "blocker", "security",
-     re.compile(r"^(?!\s*-?\s*(?!run\b)[A-Za-z_][\w-]*:\s*[\"']?\$\{\{)(?!.*\benv:).*\$\{\{\s*github\.(event|head_ref)"),
+     re.compile(r"^(?!\s*-?\s*(?!run\b)[A-Za-z_][\w-]*:\s*[\"']?\$\{\{)(?!.*\b(?:env|concurrency):).*\$\{\{\s*github\.(event|head_ref)"),
      "Event data may be expanded inside a shell script.", "Pass it through env and quote it.", ".github/workflows/"),
     ("write-all", "major", "security", re.compile(r"permissions:\s*write-all"),
      "The workflow grants every write permission.", "List only the permissions the job needs.", ".github/workflows/"),

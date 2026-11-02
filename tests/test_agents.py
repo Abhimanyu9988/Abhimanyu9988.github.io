@@ -180,7 +180,7 @@ D = """diff --git a/pipeline/x.py b/pipeline/x.py
 @@ -1,2 +10,5 @@
  keep
 +subprocess.run(cmd, shell=True)
-+token = "AKIAABCDEFGHIJKLMNOP"
++token = "FAKEKEY"
 +while True:
 +    eval(text)
 diff --git a/.github/workflows/y.yml b/.github/workflows/y.yml
@@ -190,6 +190,8 @@ diff --git a/.github/workflows/y.yml b/.github/workflows/y.yml
 +  pull_request_target:
 +      - run: echo ${{ github.event.comment.body }}
 """
+FAKE = "AKIA" + "ABCDEFGHIJKLMNOP"            # split so this file holds no key-shaped text for the rule to find
+D = D.replace("FAKEKEY", FAKE)
 got = {f["rule"]: f for f in th.rules(D)}
 check("Tech Head: finds a key, shell, eval and a loop", {"hard-secret", "shell-true", "dynamic-exec", "unbounded-loop"} <= set(got))
 check("Tech Head: finds risky workflow triggers", {"pr-target", "workflow-injection"} <= set(got))
@@ -371,7 +373,8 @@ check("Tech Head: a line starting with ++ cannot hide later lines", "shell-true"
 check("Tech Head: the one-line trigger form is caught", "pr-target" in ids)
 check("Tech Head: injection inside a multi-line run is caught", ids.get("workflow-injection", {}).get("line") == 3)
 check("Tech Head: a plain with: value is not injection", len([f for f in th.rules(D2) if f["rule"] == "workflow-injection"]) == 1)
-check("Tech Head: a secret under tests is still caught", th.rules('+++ b/tests/t.py\n@@ -0,0 +1 @@\n+k = "AKIAABCDEFGHIJKLMNOP"\n') != [])
+check("Tech Head: a secret under tests is still caught", th.rules(f'+++ b/tests/t.py\n@@ -0,0 +1 @@\n+k = "{FAKE}"\n') != [])
+check("Tech Head: a concurrency value is not injection", th.rules('+++ b/.github/workflows/a.yml\n@@ -0,0 +1 @@\n+concurrency: { group: "x-${{ github.event.pull_request.number }}" }\n') == [])
 ai2 = {"findings": [{"severity": "blocker", "category": "security", "file": "pipeline/x.py", "line": 1, "problem": "p", "fix": "f"}]}
 fs, dr2, bl2 = th.verdict([], ai2, D2)
 check("Tech Head: a model alone cannot block, a person judges it", not bl2 and "please judge" in th.markdown(fs, ai2, dr2, bl2))
