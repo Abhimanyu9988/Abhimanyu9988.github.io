@@ -40,7 +40,9 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words in
     the CTO desk issue can raise the limit, for that month. No model can change it. Costs are list prices plus lab
     estimates, never invoices, so never present them as billing data.
-14. **Few emails.** Abhi hears about an article once, when its PR is ready. Routine progress belongs in the CTO digest.
+14. **This repo is public, and so is its `analytics` branch and every issue.** Nothing private goes there. Abhi's requests
+    and the admin page live in the private `team-admin` repository, and his conversations belong in Slack.
+15. **Few emails.** Abhi hears about an article once, when its PR is ready. Routine progress belongs in the CTO digest.
 
 ## Map
 
@@ -61,6 +63,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/tech_head.py` | Code review | PR diff, scanners | PR comment |
 | `pipeline/assistant.py` | Goals to team plan | `/goal` comments | `analytics/goals.json`, `plan.json` |
 | `pipeline/cto.py` | Talks to Abhi, digest, tasks, public status | CTO desk issue, spend, PRs | One issue, `analytics/tasks.json`, `status.json` |
+| `Abhimanyu9988/team-admin` | Private admin page and daily log, written by `cto.py` | Spend, runs, ledger | `README.md`, `log-*.md`, `tasks.json` |
 | `pipeline/slack.py` | Team channel, one name per agent | `#general` | Slack messages |
 | `pipeline/budget.py` | Spend record and monthly stop, code only | `analytics/spend-*` | `analytics/spend-*`, `budget.json` |
 | `pipeline/evaluate.py` | Regression checks on saved cases; separate human calibration | `tests/eval/` | Nothing |

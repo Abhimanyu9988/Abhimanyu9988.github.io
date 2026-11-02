@@ -168,6 +168,27 @@
    "outputs": [],
    "display": "Analyst",
    "dept": "Marketing"
+  },
+  "manager": {
+   "mission": "Check each week that effort and spending are producing the results Abhi wants.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "MANAGER_MODEL",
+   "prompt": "manager.md",
+   "outputs": [
+    "managerreview"
+   ],
+   "data_sources": [
+    "goals"
+   ],
+   "budget": {
+    "max_input_tokens": 8000,
+    "max_calls": 2
+   },
+   "display": "Operations Manager",
+   "dept": "Office"
   }
  }
 }

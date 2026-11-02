@@ -40,9 +40,21 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-contents: write
           permission-issues: write
+      # The private admin page. Until that repository exists, this step fails quietly and the page is skipped.
+      - uses: actions/create-github-app-token@v2
+        id: admin
+        continue-on-error: true
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          owner: Abhimanyu9988
+          repositories: team-admin
+          permission-contents: write
       - name: cto
         run: python3 pipeline/cto.py
         env:
+          ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
+          MANAGER_MODEL: ${{ vars.MANAGER_MODEL }}
           POLL: ${{ github.event.schedule == '*/10 * * * *' }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}

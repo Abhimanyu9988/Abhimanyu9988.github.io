@@ -1044,7 +1044,7 @@ ctoy = __import__("yaml").safe_load((ROOT / ".github/workflows/cto.yml").read_te
 cif = ctoy["jobs"]["cto"]["if"]
 check("cto: only Abhi on the desk issue starts it", "comment.user.login == 'Abhimanyu9988'" in cif and "cto-desk" in cif and "issue.pull_request" in cif)
 check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[True] and ctoy["jobs"]["cto"]["steps"][0]["with"]["ref"] == "main")
-check("cto: its comment reaches code only through env", "${{" not in ctoy["jobs"]["cto"]["steps"][2]["run"])
+check("cto: its comment reaches code only through env", "${{" not in next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("name") == "cto")["run"])
 replies, real_post, real_ask2, real_le, real_prog = [], cto.post, roles_mod.ask, cto.link_exists, cto.progress
 cto.post = lambda t, role="cto": replies.append(t)
 cto.progress = lambda: {"spent": 1}
@@ -1130,6 +1130,33 @@ slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
 check("slack: an outage never stops the work", slack.say("cto", "hi") is False)
 slack.api = real_api
 del os.environ["SLACK_BOT_TOKEN"]
+saved_admin, real_aw = {}, cto.activity
+cto.activity = lambda: [("radar", "success", 1)]
+real_res, cto.results = cto.results, lambda: [(12, "post-a", "devto")]
+ap = {"waiting": ["Post A"], "shipped": [], "failed_runs": [], "running": [], "spent": 3.5, "limit": 50, "by_job": {"radar": 3.5}, "tasks": []}
+page = cto.admin_md(ap, "2026-11-02", "**Operations Manager (Office): on track.** ok")
+check("admin: cost, today, articles, readers and team are all on the page", all(x in page for x in ("$3.50 of $50.00", "radar: $3.50", "radar: success (1)", "Post A", "12 views: post-a", "Finance: Spend Tracker", "Operations Manager")))
+check("manager: cost per article is arithmetic", cto.facts({**ap, "shipped": ["a", "b"], "spent": 10})["cost_per_published_article_this_week"] == 5)
+check("manager: no article means no cost figure, not a guess", cto.facts(ap)["cost_per_published_article_this_week"] is None)
+real_mask, roles_mod.ask = roles_mod.ask, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+check("manager: a failed review says so", "did not run" in cto.manager_review(ap))
+roles_mod.ask = lambda *a, **k: {"verdict": "not_enough_data", "summary": "Too early.", "actions": ["Editor: x"]}
+check("manager: its verdict is shown", "not enough data" in cto.manager_review(ap) and "Editor: x" in cto.manager_review(ap))
+roles_mod.ask = real_mask
+cto.admin_read, real_ard = (lambda path: ("", None)), cto.admin_read
+real_awr, cto.admin_write = cto.admin_write, lambda path, text, sha, msg: saved_admin.__setitem__(path, text)
+os.environ["ADMIN_TOKEN"] = "t"
+cto.save_admin(ap)
+add_before = dict(files_b)
+cto.write_private(cto.TASKS, "{}", None, "m")
+del os.environ["ADMIN_TOKEN"]
+check("admin: the page and daily log go to the private repo", "README.md" in saved_admin and any(k.startswith("log-") for k in saved_admin))
+check("privacy: tasks go to the private repo when it exists", "tasks.json" in saved_admin and files_b == add_before)
+cto.admin_write, cto.admin_read, cto.activity, cto.results = real_awr, real_ard, real_aw, real_res
+check("admin: skipped until the private repo exists", cto.save_admin(ap) is None)
+ad = next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("id") == "admin")
+check("admin: its token reaches only that repo, and a missing repo fails quietly", ad["with"]["repositories"] == "team-admin" and ad["continue-on-error"] is True)
+check("privacy: the public status never reads the private page", "tasks" not in cto.public_status.__code__.co_names)
 cyml = (ROOT / ".github/workflows/cto.yml").read_text()
 bj = ctoy["jobs"]["billing"]
 check("billing: no model key and no PR input", "ANTHROPIC" not in str(bj) and "pull_request" not in str(bj) and bj["steps"][0]["with"]["ref"] == "main")

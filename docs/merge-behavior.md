@@ -35,7 +35,7 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 | Shadow briefs | Issue comments | Saved to the analytics branch | Revert `shadow_review` |
 | Weekly numbers | Comment on the Impact log | Saved to `insights.md`, no email | Revert `analytics.py` |
 | CTO | None | One issue, a daily status refresh, and a Monday digest | Disable `cto` |
-| Team page | None | `/team/` shows the roster and articles, not spending or tasks | Delete `site/team.md` |
+| Team page | None | `/team/` shows the roster and articles. The public `analytics` branch still shows spend amounts | Delete `site/team.md` |
 
 Spend is model calls at list prices plus $1 for each lab. Three limits are deliberate. A manual `editor-eval --live` run and Tech Head reviews are not recorded, because neither should hold a token that can write files. The draft after a paid lab still runs past the limit, so a paid lab is never wasted. CTO replies also run past it, so you can always reach the CTO.
 
