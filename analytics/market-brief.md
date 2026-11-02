@@ -1,27 +1,27 @@
 What worked for others:
-- I found no documented case of someone becoming a Splunk MVP mainly by publishing articles. The pages describe MVP as based on consistent participation in community programs, with the first cohort picked from Splunk Answers participation and top Splunk User Group leaders.
-- MVPs are selected automatically and notified. Splunk reviews active, consistent contributors at the end of each year and picks those who stand out for quality and impact. The specific criteria are kept secret to avoid gaming. You can't apply, and I couldn't verify the exact bar.
-- Older SplunkTrust documentation says leaders are also identified through outside efforts such as writing blogs, building internal communities or maintaining resource sites. Blogging is a supplement to Answers, user groups and speaking, not the main route.
-- Splunk Lantern is a visible place to publish. In 2025, 109 different Splunkers and SplunkTrust members contributed articles, and Splunk has run features of SplunkTrust and MVP articles. I found no evidence that Lantern articles led to MVP status.
-- On the AWS side, Ana Jovanovska published a two-part series on builder.aws.com, 'Integrating AWS Logs with Splunk'. It covers the Splunk Add-on for AWS, IAM, CloudTrail, VPC Flow Logs and S3 Access Logs, plus problems the team solved. It's a good content model, but the pages don't show how widely it was shared or whether she is an MVP.
+- The pages show no personal account of anyone becoming a Splunk MVP by publishing two articles a week. They also show no one who built AWS-community visibility that way. Treat any claim of a proven two-a-week route as unsupported.
+- Per the summary of Splunk's official sources, MVPs are members with consistent participation in at least one community area. Examples are answering questions in Splunk Answers, leading a user group, and contributing on Slack. Article volume is not named as the basis.
+- Splunk says the exact MVP criteria are secret and that it invites members who qualify. You can't apply. No page-backed plan guarantees selection.
+- MVP-level writing does appear on Splunk Lantern. Splunk has published Lantern articles written by SplunkTrust and Splunk MVP members. I didn't open the individual articles. The Community Blog also takes posts from Splunk employees and selected expert users, and it has a 'Write for the Community Blog' call.
+- The summary says the AWS track is separate. AWS Heroes write blog posts, articles, books and documentation, and organize events such as user groups and Community Days. Several Heroes are former Community Builders. One Serverless Hero, a Datadog employee, writes often about serverless. I didn't verify what these people published or how far it reached.
 
 Topics to try:
-- Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them
-- CloudTrail into Splunk: what went wrong, what we changed and what we'd do differently
-- VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest
-- Splunk Answers questions on AWS ingestion, turned into a how-to that links back to the answers
-- Is the MVP title possible by January 2027? An honest look at the Splunk community programs, written from your own participation
+- How do you get multi-account AWS logs into Splunk? Cover CloudWatch Logs and Firehose to Splunk HEC. AWS has published on multi-account log ingestion, so this is a topic AWS treats as worth covering.
+- What does Security Lake with OCSF look like when Splunk is the search layer? Write a hands-on walkthrough. Security Lake is among the Splunk-on-AWS topics AWS has covered.
+- What breaks when you stream CloudWatch Metric Streams into Splunk? Write a troubleshooting how-to that names the problems you hit.
+- What can you do with S3 federated search in Splunk, and where does it fall short? Write an honest field report.
+- How do you centralize SaaS audit logs into Splunk with AWS AppFabric? Write a practical guide that goes beyond what AWS's own post covers.
 
 Avoid:
-- Don't plan around article volume. I found no evidence that two a week leads to MVP or gets shared more. Quality and consistent participation are what the pages point to.
-- Don't assume a January 2027 MVP title. The 2026–2027 cohort was already announced, and I couldn't confirm a selection round before that date. Check the official Splunk source before planning.
-- Don't try to self-nominate or game the criteria. There is no application, and the criteria are deliberately secret.
-- Don't claim AWS recognition criteria or share results that the pages don't show. I didn't verify the AWS Community Builders program or any engagement data.
+- Don't plan around a January 2027 MVP. The 2026–2027 cohort is already announced, and nothing found confirms another round. Ask the Splunk community team.
+- Don't treat articles as a substitute for Splunk Answers, user group and Slack participation. Those are what Splunk names as MVP evidence.
+- Don't assume MVP criteria, review timing or an application route. Splunk keeps the criteria secret, and its sources disagree on timing (twice yearly in 2022–2023, year-end in a later guide). Check the official source.
+- Don't copy AWS and Splunk's own published posts. Don't cite reach or follower numbers for anyone, because the pages give none.
 
 Sources:
-- https://community.splunk.com/t5/Community-Blog/re-Introducing-the-Splunk-Community-Champions-2026-2027-Splunk/ba-p/762396
-- https://community.splunk.com:443/t5/Community-Blog/Announcing-Our-Splunk-MVPs/ba-p/633063
+- https://community.splunk.com/t5/Community-Blog/Announcing-Our-New-Splunk-Community-MVPs-Program/ba-p/584369
 - https://www.splunk.com/en_us/blog/learn/splunk-community.html
+- https://community.splunk.com/t5/Community-Blog/re-Introducing-the-Splunk-Community-Champions-2026-2027-Splunk/ba-p/762396
+- https://community.splunk.com/t5/Community-Blog/Introducing-the-2026-2027-SplunkTrust-cohort/ba-p/762394
 - https://community.splunk.com/t5/Community-Blog/Discover-SplunkTrust-and-MVP-Articles-Instant-Translation-and/ba-p/694740
-- https://community.splunk.com/t5/Community-Blog/SplunkTrust-Application-Period-is-Officially-OPEN/ba-p/748146
-- https://community.splunk.com/t5/SplunkTrust/ct-p/splunk-trust
+- https://community.splunk.com:443/t5/Community-Blog/Announcing-Our-Splunk-MVPs/ba-p/633063
