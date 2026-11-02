@@ -37,6 +37,16 @@ the intended design: it stops a pull request editing its own review, and no job 
 
 Before enabling `TECH_HEAD_MODE=blocking`, also make `tech-head` a required check on `main`.
 
+## Manual workflows
+
+`live-check` and `editor-eval` hold model keys and run the code they check out, so both refuse any ref except `main`, check
+out `main` explicitly, and use the `live-check` environment. That stops a mistaken branch run. It does not stop a hostile
+branch, because `workflow_dispatch` reads the workflow file from the selected branch, and that branch can delete the guard.
+
+**To close it:** in Settings, Environments, open `live-check`, set deployment branches to `main` only, and move the keys into
+that environment. Repository-level keys stay readable from any branch. The older manual workflows (`radar`, `problems`,
+`replicate`, `hero`, `monthly-oss`, `analytics`) have the same exposure and predate this PR.
+
 ## Live validation record
 
 Run on 2 November 2026 in GitHub Actions with the repository's real keys. Costs use list prices.

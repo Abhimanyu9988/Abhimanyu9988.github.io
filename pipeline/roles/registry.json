@@ -64,7 +64,7 @@
    ],
    "budget": {
     "max_input_tokens": 45000,
-    "max_calls": 2
+    "max_calls": 8
    }
   },
   "topic_scout": {

@@ -13,11 +13,16 @@ permissions:
   contents: read
 jobs:
   live:
+    # A branch can edit its own copy of this file, so this guard stops mistakes, not a hostile branch. Only credentials
+    # held in the live-check environment, limited to main, close that. See docs/merge-behavior.md.
+    if: github.ref == 'refs/heads/main' && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    environment: live-check
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/create-github-app-token@v2

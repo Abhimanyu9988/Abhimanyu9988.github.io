@@ -12,7 +12,8 @@ Code in the pull request is data here and is never executed. See docs/merge-beha
 """
 import json, os, pathlib, re, subprocess, sys
 
-MAX_DIFF = 100_000
+MAX_DIFF = 100_000                             # one batch
+MAX_BATCHES = 4                                # bounds a single review at about $1 at today's prices
 # Riskiest first, so a size limit cuts tests and fixtures, never workflows or pipeline code.
 ORDER = (".github/", "infra/", "pipeline/", "AGENTS.md", "docs/", "README", "tests/test_")
 SKIP = ("tests/fixtures/", "tests/eval/", "labs/", "site/")
@@ -66,13 +67,29 @@ def added_lines(diff):
                 old_left, n, new_left = int(m[1] or 1), int(m[2]), int(m[3] or 1)
     return out
 
-def prioritise(diff):
-    """(diff to review, characters left out). Files are reordered by risk, and saved data is dropped."""
+def _ordered(diff):
+    """Whole-file diffs, riskiest first, without saved data."""
     parts = re.split(r"(?m)^(?=diff --git )", diff)
     rank = lambda part: next((i for i, o in enumerate(ORDER) if f" b/{o}" in part.split("\n", 1)[0]), len(ORDER))
-    keep = sorted((p for p in parts if p and not any(f" b/{x}" in p.split("\n", 1)[0] for x in SKIP)), key=rank)
-    text = "".join(keep)
-    return text[:MAX_DIFF], max(0, len(text) - MAX_DIFF)
+    return sorted((p for p in parts if p and not any(f" b/{x}" in p.split("\n", 1)[0] for x in SKIP)), key=rank)
+
+def batches(diff):
+    """(bounded batches of the diff, characters left out). Files stay whole unless one is larger than a batch."""
+    out, cur, seen = [], "", 0
+    for part in _ordered(diff):
+        for start in range(0, len(part), MAX_DIFF):
+            piece = part[start:start + MAX_DIFF]
+            if cur and len(cur) + len(piece) > MAX_DIFF:
+                out.append(cur); cur = ""
+            cur += piece
+    out += [cur] if cur else []
+    kept = out[:MAX_BATCHES]
+    return kept, sum(len(b) for b in out[MAX_BATCHES:])
+
+def prioritise(diff):
+    """(the text that will be reviewed, characters left out)."""
+    kept, left = batches(diff)
+    return "".join(kept), left
 
 def files_in(diff):
     return set(re.findall(r"^\+\+\+ b/(.+)$", diff, re.M))
@@ -117,14 +134,31 @@ def complete(reports, ai, left=0):
     """Reasons this review is incomplete. An incomplete review must never read as a clean one."""
     gaps = [f"{n} {r['status']}" for n, r in reports.items() if r["status"] in ("unavailable", "partial")]
     gaps += [f"{left:,} characters of the diff were not reviewed"] if left else []
+    gaps += [f"{ai['failed_batches']} review batch(es) failed"] if (ai or {}).get("failed_batches") else []
     return gaps + ([] if ai else ["AI review did not run"])
 
 def review(diff, reports, agents_md):
+    """One model call per batch. A failed batch keeps earlier findings and counts as unreviewed, never as clean."""
     import roles
-    cut, left = prioritise(diff)
-    note = "" if not left else f"\nThe diff was cut, leaving {left:,} characters unreviewed: say so."
-    return roles.ask("tech_head", f"Review this change.{note}\n\nAGENTS.md:\n{agents_md}\n\nSCANNER REPORTS:\n"
-                                  f"{json.dumps(reports)[:8000]}\n\nDIFF:\n{cut}", "techreview")
+    kept, left = batches(diff)
+    merged = {"summary": "", "findings": [], "failed_batches": 0, "batches": len(kept)}
+    for i, chunk in enumerate(kept, 1):
+        note = f"\nThis is batch {i} of {len(kept)}." + (f" {left:,} characters stay unreviewed: say so." if left else "")
+        scanners = json.dumps(reports)[:8000] if i == 1 else "see batch 1"
+        try:
+            got = roles.ask("tech_head", f"Review this change.{note}\n\nAGENTS.md:\n{agents_md}\n\nSCANNER REPORTS:\n"
+                                         f"{scanners}\n\nDIFF:\n{chunk}", "techreview")
+        except Exception as e:
+            merged["failed_batches"] += 1
+            merged["error"] = str(e)[:200]
+            if i == 1 and len(kept) == 1:
+                raise
+            continue
+        merged["summary"] = " ".join(x for x in (merged["summary"], str(got.get("summary", ""))) if x)[:800]
+        merged["findings"] += got.get("findings") or []
+    if merged["failed_batches"] == len(kept):
+        raise RuntimeError(merged.get("error") or "no batch was reviewed")
+    return merged
 
 def verdict(rule_findings, ai, diff):
     """(findings, dropped count, blocked). The file check stops a model reporting problems in code it never saw.

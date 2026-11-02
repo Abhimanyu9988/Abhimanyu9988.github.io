@@ -485,15 +485,46 @@ big = "".join(f"diff --git a/{f} b/{f}\n+x\n" for f in ("tests/test_a.py", "pipe
 ordered, left = th.prioritise(big)
 check("Tech Head: workflows are reviewed before pipeline code and tests", ordered.index(".github") < ordered.index("pipeline/a.py") < ordered.index("tests/test_a.py"))
 check("Tech Head: saved fixtures are not reviewed", "fixtures" not in ordered and left == 0)
-real_max, th.MAX_DIFF = th.MAX_DIFF, 20
+real_max, real_batches = th.MAX_DIFF, th.MAX_BATCHES
+th.MAX_DIFF, th.MAX_BATCHES = 40, 1
 check("Tech Head: a cut diff reports what was left out", th.prioritise(big)[1] > 0)
+th.MAX_BATCHES = 2
+chunks, _ = th.batches(big)
+check("Tech Head: batches are bounded", len(chunks) <= 2 and all(len(c) <= 40 for c in chunks))
+huge = "diff --git a/pipeline/h.py b/pipeline/h.py\n" + "+x\n" * 100
+check("Tech Head: one huge file is split, not dropped", len(th.batches(huge)[0]) == 2 and th.batches(huge)[1] > 0)
+seen_prompts = []
+real_ra = roles.ask
+def one_fails(role, prompt, out):
+    seen_prompts.append(prompt)
+    if len(seen_prompts) == 2:
+        raise RuntimeError("outage")
+    return {"summary": "s", "findings": []}
+roles.ask = one_fails
+th.MAX_BATCHES = 4
+two = "".join(f"diff --git a/pipeline/{n}.py b/pipeline/{n}.py\n+{n * 30}\n" for n in "ab")
+got_ai = th.review(two, {}, "")
+check("Tech Head: each batch gets its own call", len(seen_prompts) == 2 and "batch 2 of 2" in seen_prompts[1])
+check("Tech Head: a failed batch makes the review incomplete", any("batch" in g for g in th.complete({}, got_ai)))
+roles.ask = lambda *a: (_ for _ in ()).throw(RuntimeError("outage"))
+try: th.review(two, {}, ""); ok = False
+except RuntimeError: ok = True
+check("Tech Head: all batches failing is a failed review", ok)
+roles.ask = real_ra
+th.MAX_DIFF, th.MAX_BATCHES = 20, 1
 check("Tech Head: a cut diff is incomplete", any("not reviewed" in g for g in th.complete({}, {"summary": ""}, 5)))
-th.MAX_DIFF = real_max
+th.MAX_DIFF, th.MAX_BATCHES = real_max, real_batches
 check("Tech Head: a comment naming a risk is not the risk", th.rules("+++ b/.github/workflows/a.yml\n@@ -0,0 +1 @@\n+# pull_request_target is safe here\n") == [])
 check("Tech Head: a key in a comment is still caught", th.rules(f"+++ b/pipeline/a.py\n@@ -0,0 +1 @@\n+# {FAKE}\n") != [])
 
 lc = (ROOT / ".github/workflows/live-check.yml").read_text()
 check("workflow: the live check can only be started by hand", "pull_request" not in lc.split("jobs:")[0].split("on:", 1)[1])
+for name in ("live-check", "editor-eval"):
+    text = (ROOT / f".github/workflows/{name}.yml").read_text()
+    check(f"policy: {name} refuses to run from a branch", "github.ref == 'refs/heads/main'" in text)
+    check(f"policy: {name} checks out main, never the selected ref", "ref: main" in text and "github.sha" not in text and "head.sha" not in text)
+    check(f"policy: {name} uses the protected environment", "environment: live-check" in text)
+    check(f"policy: {name} has no pull request trigger", "pull_request" not in text.split("jobs:")[0])
 check("workflow: a failed scanner install is recorded", "echo 127 > reports/bandit.exit" in wf)
 (rp / "bandit.exit").write_text("127"); (rp / "bandit.json").unlink()
 check("scanner: a failed install is unavailable, not clean", th.read_reports(rp)["bandit"]["status"] == "unavailable")
