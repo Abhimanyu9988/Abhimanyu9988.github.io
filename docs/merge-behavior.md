@@ -30,7 +30,7 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 | A scanner fails silently | Fixed. Reports say clean, findings, partial or unavailable, and blocking mode fails on anything incomplete | None |
 | A secret in the diff reaches a model | Partly fixed. The diff is not sent when a known key pattern fires. Other key formats are missed | Add a real secret scanner later |
 | Unpinned actions and scanner hashes | Open | Pin actions to commit SHAs. Add pip hashes |
-| **Any branch workflow can read repository secrets** | **Open, the main remaining risk** | Move `OPENAI_API_KEY` and `BOT_PRIVATE_KEY` for this job into a `tech-head` environment limited to `main`. Do the same for other keys when convenient. This is a repository setting, so only you can change it |
+| **Any branch workflow can read repository secrets** | **Open, the main remaining risk** | Follow the phased migration below. Never delete a repository secret first |
 
 `pull_request_target` is flagged as a blocker by Tech Head's own code rule whenever it is added. For `tech-head.yml` that is
 the intended design: it stops a pull request editing its own review, and no job runs PR code. Change it only with that in mind.
@@ -39,13 +39,43 @@ the intended design: it stops a pull request editing its own review, and no job 
 
 ## Manual workflows
 
-`live-check` and `editor-eval` hold model keys and run the code they check out, so both refuse any ref except `main`, check
-out `main` explicitly, and use the `live-check` environment. That stops a mistaken branch run. It does not stop a hostile
-branch, because `workflow_dispatch` reads the workflow file from the selected branch, and that branch can delete the guard.
+`live-check` and `editor-eval` hold model keys and run the code they check out, so both refuse any ref except `main`, check out `main` explicitly, and use the `live-check` environment. That stops a mistaken branch run. It does not stop a hostile branch, because `workflow_dispatch` reads the workflow file from the selected branch. Keys that exist only in a main-only environment close that gap.
 
-**To close it:** in Settings, Environments, open `live-check`, set deployment branches to `main` only, and move the keys into
-that environment. Repository-level keys stay readable from any branch. The older manual workflows (`radar`, `problems`,
-`replicate`, `hero`, `monthly-oss`, `analytics`) have the same exposure and predate this PR.
+## Secret inventory and migration
+
+Observed from job logs and workflow files on 2 November 2026. Environment secrets reach only jobs that name that environment, and a job can name only one.
+
+| Secret | Scope today | Used by |
+| --- | --- | --- |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` | Repository | `radar`, `problems`, `hero`, `monthly-oss`, `redraft`, `replicate` lab and draft, `analytics`. After PR 89: `assistant`, `live-check`, `editor-eval` (Anthropic only), `tech-head` (OpenAI only) |
+| `BOT_PRIVATE_KEY` | Repository | All of the above except the lab job, plus `linkedin` and `merge-on-approve`. After PR 89: `assistant`, `live-check`, `tech-head` |
+| `SPLUNK_ACCESS_TOKEN`, `SPLUNK_API_TOKEN` | Repository | `replicate` lab, `splunk-check`, and a presence check in `radar` |
+| `DEVTO_API_KEY` | `publish` environment | `publish` syndicate, `analytics` |
+| `GOATCOUNTER_TOKEN`, `HASHNODE_TOKEN`, `HASHNODE_PUB_ID`, `MEDIUM_TOKEN` | Empty in the last run | `analytics`, `publish` syndicate |
+
+**Do not move repository secrets yet.** Deleting a repository key stops every job that has no environment holding it.
+
+| Trigger | `GITHUB_REF` | Can use a main-only environment |
+| --- | --- | --- |
+| `schedule`, `issue_comment`, `issues`, `pull_request_target` | Default branch | Yes |
+| `workflow_dispatch` | The selected ref | Only from `main` |
+| `push` | The pushed ref | Only for pushes to `main` |
+| `pull_request_review` (`merge-on-approve`) | `refs/pull/N/merge` | **No. The job would be refused and approved posts would stop merging** |
+
+**Phase 1, before PR 89 merges. Nothing existing is touched.**
+
+1. Create `live-check` and `tech-head`, each limited to the selected branch `main`. Add no required reviewers to `tech-head`.
+2. Copy, do not move. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `BOT_PRIVATE_KEY` to `live-check`. Add `OPENAI_API_KEY` and `BOT_PRIVATE_KEY` to `tech-head`.
+3. Prefer new provider keys with spend limits for these environments, and a second private key on the GitHub App. A copied key is equally exposed through its repository copy, so only new keys gain protection here.
+4. Leave every repository secret in place.
+
+**Phase 2, after PR 89 merges and passes `live-check`.** Create a `pipeline` environment limited to `main`, with the three model keys. Add `environment: pipeline` to `radar`, `problems`, `hero`, `monthly-oss`, `redraft`, `replicate` draft and `assistant`. Add the model keys to `publish` and `aws-lab`, because `analytics` and the lab job cannot name a second environment. The lab job must keep `aws-lab`, because its AWS role trusts that environment by name. Confirm one successful run of each job, with Splunk checks included, before the next phase.
+
+**Phase 3, once every job has passed.** Delete the three repository model keys, then rotate them. To roll back at any point, add the repository secrets back.
+
+**`BOT_PRIVATE_KEY` stays at repository level for now.** `merge-on-approve` needs it and cannot use a main-only environment. Allowing `refs/pull/*/merge` would also let any branch's pull request reach the key. Closing this needs a separate design change, such as a narrower app for merges.
+
+`splunk-check` and `radar` read Splunk secrets at repository level, so those stay until they are given an environment too.
 
 ## Live validation record
 

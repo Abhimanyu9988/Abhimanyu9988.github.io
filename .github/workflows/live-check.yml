@@ -39,6 +39,14 @@ jobs:
           BASE_SHA: HEAD~1
           HEAD_SHA: HEAD
           EDITOR_MODE: shadow
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          RADAR_MODEL: ${{ vars.RADAR_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
+          TECH_HEAD_MODEL: ${{ vars.TECH_HEAD_MODEL }}
+          ASSISTANT_MODEL: ${{ vars.ASSISTANT_MODEL }}
+          MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           HERO_PUBLISH: "1"
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}

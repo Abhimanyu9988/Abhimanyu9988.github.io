@@ -83,6 +83,17 @@ def review():
                             "findings": [{k: f.get(k) for k in ("severity", "category", "file", "line", "problem", "fix", "rule")} for f in findings[:15]]}
     return ai, f"{len(findings)} finding(s), {dropped} dropped; {left:,} reviewable characters left out"
 
+def resolved():
+    """What each role will really run, and whether a variable set it. Values are model names, not secrets."""
+    out = {name: {"model": roles.model(name), "variable_set": bool(os.environ.get(r["model_env"], "").strip())}
+           for name, r in roles.registry().items() if r.get("prompt")}
+    out["labs and reviews"] = {"model": llm.claude_model("write"), "variable_set": bool(os.environ.get("CLAUDE_MODEL", "").strip())}
+    out["topic scouting"] = {"model": llm.claude_model("scout"), "variable_set": bool(os.environ.get("RADAR_MODEL", "").strip())}
+    out["writer"] = {"model": llm.openai_model(), "variable_set": bool(os.environ.get("OPENAI_MODEL", "").strip())}
+    out["tiebreaker"] = {"model": llm.gemini_models()[0].split("/")[-1], "variable_set": bool(os.environ.get("GEMINI_MODEL", "").strip())}
+    details["resolved_models"] = out
+    return True, f"MODEL_AUTO={os.environ.get('MODEL_AUTO') or 'unset'}"
+
 def report():
     lines = ["**Live validation, real API calls.** Tokens are as reported by each API. Costs use the list prices in `pipeline/prices.json`.", "",
              "| Step | Result | Seconds | Tokens in | Tokens out | Cost | Models | Note |", "| --- | --- | ---: | ---: | ---: | ---: | --- | --- |"]
@@ -96,6 +107,7 @@ def report():
 
 def main():
     step("Model IDs listed", listed)
+    step("Resolved models", resolved)
     pins = llm.PRICES["defaults"]
     step("Ping Haiku pin", lambda: ping("claude", pins["claude_scout"]))
     step("Ping Sonnet pin", lambda: ping("claude", pins["claude_write"]))

@@ -670,6 +670,8 @@ check("workflow: nothing runs from the PR checkout", not [s for j in steps.value
 check("workflow: no step points Python at PR code", not [s for j in steps.values() for s in j if any("pr/" in str(v) for k, v in (s.get("env") or {}).items() if k != "PR_DIR")])
 check("workflow: the scan job has no secrets or token", "secrets" not in json.dumps(yml["jobs"]["scan"]) and "github.token" not in json.dumps(yml["jobs"]["scan"]))
 check("workflow: every PR checkout holds no credentials", all(s["with"]["persist-credentials"] is False for j in steps.values() for s in j if "checkout" in str(s.get("uses"))))
+check("workflow: the review job uses the tech-head environment", yml["jobs"]["review"]["environment"] == "tech-head")
+check("workflow: the scan job has no environment", "environment" not in yml["jobs"]["scan"])
 check("workflow: forks are skipped", "head.repo.full_name == github.repository" in yml["jobs"]["scan"]["if"])
 for name in ("live-check", "editor-eval"):
     y = __import__("yaml").safe_load((ROOT / f".github/workflows/{name}.yml").read_text())
