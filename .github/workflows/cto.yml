@@ -1,11 +1,13 @@
 name: cto
-# Your replies on the CTO desk issue, a daily refresh of the public team status, and the Monday digest.
+# Your Slack messages every 10 minutes, your replies on the CTO desk issue, a daily refresh of the public team status,
+# and the Monday digest. Slack needs no server this way, so an answer can take a few minutes.
 # It cannot publish, spend, deploy or start a lab.
 on:
   issue_comment:
     types: [created]
   schedule:
     - cron: "12 7 * * *"
+    - cron: "*/10 * * * *"
   workflow_dispatch:
     inputs:
       digest:
@@ -41,6 +43,8 @@ jobs:
       - name: cto
         run: python3 pipeline/cto.py
         env:
+          POLL: ${{ github.event.schedule == '*/10 * * * *' }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
           DIGEST: ${{ inputs.digest }}
           BUDGET_EXEMPT: "1"
@@ -51,3 +55,40 @@ jobs:
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  # AWS's own month-to-date figure, once a day. It holds no model key, reads no PR, and uses a role that can only read costs.
+  billing:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && vars.BILLING_ROLE_ARN != '' &&
+      (github.event.schedule == '12 7 * * *' || github.event_name == 'workflow_dispatch')
+    environment: live-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.BILLING_ROLE_ARN }}
+          aws-region: us-east-1
+      - name: read costs
+        run: |
+          aws ce get-cost-and-usage --granularity MONTHLY --metrics UnblendedCost \
+            --time-period "Start=$(date -u +%Y-%m-01),End=$(date -u -d tomorrow +%Y-%m-%d)" > cost.json
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+      - name: save
+        run: python3 pipeline/budget.py cost.json
+        env:
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}

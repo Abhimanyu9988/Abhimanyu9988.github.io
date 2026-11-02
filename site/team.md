@@ -21,7 +21,7 @@ fetch("https://raw.githubusercontent.com/Abhimanyu9988/Abhimanyu9988.github.io/a
       rows.forEach(function (t) { var li = document.createElement("li"); li.textContent = t; ul.appendChild(li); });
       root.appendChild(ul);
     }
-    section("Who is on the team", s.team.map(function (m) { return m.role + ": " + m.mission; }));
+    section("Who is on the team", s.team.map(function (m) { return m.dept + ", " + m.role + ": " + m.mission; }));
     section("In review", s.in_review);
     section("Published this week", s.published);
     var p = document.createElement("p"); p.textContent = "Updated " + s.updated + "."; root.appendChild(p);

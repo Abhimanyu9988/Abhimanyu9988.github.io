@@ -217,6 +217,7 @@ jobs:
         run: python3 pipeline/draft.py
         env:
           BUDGET_EXEMPT: "1"                 # the lab is already paid for, so its article still gets written
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           FROM_RUN: ${{ inputs.from_run }}
           HERO_PUBLISH: "1"
           BOT_TOKEN: ${{ steps.bot.outputs.token }}

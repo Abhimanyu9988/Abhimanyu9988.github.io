@@ -73,3 +73,11 @@ the first model call in a job, so a lab stops before it creates anything. With t
 a lab without an approve reply. Topic issues stay unassigned, so an article reaches him once, as its PR.
 
 The public team page shows the roster and articles only. Spending and his requests stay private.
+
+## 2026-11-02: Slack by polling, and a read-only AWS billing role
+
+Abhi chose Slack and the cheapest setup. A free workspace, one bot token and a 10-minute scheduled poll need no server, so
+replies take minutes rather than seconds. Internal apps keep Slack's higher `conversations.history` limits.
+
+He asked for the CTO to log in with his credentials. It uses a new role that can only read costs, through OIDC with no
+stored secret, because a stored personal login would hand an agent the whole account and would stop at MFA.

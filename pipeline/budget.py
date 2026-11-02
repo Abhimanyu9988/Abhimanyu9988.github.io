@@ -13,7 +13,8 @@ LIMIT_USD = 50
 AWS_LAB_USD = 1.0                              # the upper estimate quoted for a lab. Nothing reads AWS billing yet
 LIMITS = "analytics/budget.json"
 SPEND = re.compile(r"spend-(\d{4}-\d{2})-.*-c(\d+)\.json")
-EXTRA = []                                     # dollars this job adds to its own model spend
+EXTRA, EXTRA_AWS = [], []                      # dollars this job adds: models from its lab, and that lab's AWS estimate
+AWS_ACTUAL = re.compile(r"aws-(\d{4}-\d{2})-(\d{2})-c(\d+)\.json")
 _checked = False
 
 class BudgetStop(SystemExit):
@@ -34,17 +35,20 @@ def limit(m=None):
     return got if isinstance(got, (int, float)) and got > 0 else LIMIT_USD
 
 def spent(m=None):
-    """(dollars, {job: dollars}) for the month, from file names alone."""
+    """(dollars, {job: dollars}) for the month, from file names alone. AWS's own figure replaces lab estimates once it exists."""
     from radar import HOME_REPO, gh
-    total, jobs = 0, {}
+    jobs, actual = {}, {}
     for f in gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []:
-        hit = SPEND.fullmatch(f.get("name", ""))
+        hit, aws = SPEND.fullmatch(f.get("name", "")), AWS_ACTUAL.fullmatch(f.get("name", ""))
         if hit and hit[1] == (m or month()):
-            cents = int(hit[2])
-            total += cents
             job = f["name"].split("-")[-2]
-            jobs[job] = jobs.get(job, 0) + cents / 100
-    return total / 100, jobs
+            jobs[job] = jobs.get(job, 0) + int(hit[2])
+        if aws and aws[1] == (m or month()):
+            actual[aws[2]] = int(aws[3])
+    if actual:
+        jobs.pop("aws_estimate", None)
+        jobs["aws"] = actual[max(actual)]
+    return sum(jobs.values()) / 100, {k: v / 100 for k, v in jobs.items()}
 
 def check():
     """Once per job, before its first model call. If the total cannot be read, nothing is spent."""
@@ -74,9 +78,11 @@ def announce(total, cap):
             return
         number = desk()
         analytics.write_file(path, json.dumps({"spent": total, "limit": cap}), None, "budget: limit reached")
-        if number:
-            comment(number, f"**Monthly budget reached: ${total:.2f} of ${cap:.2f}.** New paid work is paused until next "
-                            "month. To continue, reply with `raise budget to` and an amount.")
+        text = (f"Monthly budget reached: ${total:.2f} of ${cap:.2f}. New paid work is paused until next month. "
+                "To continue, reply with raise budget to and an amount.")
+        import slack
+        if not slack.say("spend_tracker", text) and number:
+            comment(number, text)
     except Exception as e:
         print(f"::warning title=budget::stop message failed: {' '.join(str(e).split())[:200]}")
 
@@ -88,7 +94,8 @@ def desk():
 def add_lab(res):
     """The lab job holds no bot token, so the draft job records the lab's spend for it."""
     if os.environ.get("GITHUB_WORKFLOW") == "replicate" and not os.environ.get("FROM_RUN"):
-        EXTRA.append(float(res.get("usd") or 0) + (AWS_LAB_USD if res.get("aws_used") else 0))
+        EXTRA.append(float(res.get("usd") or 0))
+        EXTRA_AWS.extend([AWS_LAB_USD] if res.get("aws_used") else [])
 
 def record():
     """At the end of a job. A lost record is reported, and never fails the job that earned it."""
@@ -96,7 +103,7 @@ def record():
     if not in_pipeline():
         return
     usd = llm.cost_usd()[0] + sum(EXTRA)
-    if usd <= 0:
+    if usd <= 0 and not EXTRA_AWS:
         return
     print(f"::notice title=spend::${usd:.3f}")
     if not os.environ.get("BOT_TOKEN") or os.environ.get("HERO_PUBLISH") != "1":
@@ -106,9 +113,11 @@ def record():
         job = re.sub(r"\W", "_", os.environ.get("GITHUB_JOB", "job"))
         run = f"{os.environ.get('GITHUB_RUN_ID', '0')}-{os.environ.get('GITHUB_RUN_ATTEMPT', '1')}-{os.getpid()}"
         analytics.ensure_branch()
-        analytics.write_file(f"analytics/spend-{month()}-{run}-{job}-c{math.ceil(usd * 100)}.json",
-                             json.dumps({"usd": usd, "workflow": os.environ.get("GITHUB_WORKFLOW"), "job": job}), None,
-                             f"spend: {job}")
+        for name, amount in ((job, usd), ("aws_estimate", sum(EXTRA_AWS))):
+            if amount > 0:
+                analytics.write_file(f"analytics/spend-{month()}-{run}-{name}-c{math.ceil(amount * 100)}.json",
+                                     json.dumps({"usd": amount, "workflow": os.environ.get("GITHUB_WORKFLOW"), "job": name}),
+                                     None, f"spend: {name}")
     except Exception as e:
         print(f"::warning title=budget::spend not recorded: {' '.join(str(e).split())[:200]}")
 
@@ -127,3 +136,15 @@ def set_limit(usd):
     data = json.loads(text) if text.strip() else {}
     data[month()] = usd
     analytics.write_file(LIMITS, json.dumps(data, indent=1), sha, f"budget: {month()} limit {usd}")
+
+def record_aws(path):
+    """Saves AWS's month-to-date figure from a Cost Explorer reply. AWS reports with a delay, so it can trail by a day."""
+    import analytics
+    day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    usd = float(json.load(open(path))["ResultsByTime"][0]["Total"]["UnblendedCost"]["Amount"])
+    analytics.write_file(f"analytics/aws-{day}-c{math.ceil(usd * 100)}.json", json.dumps({"usd": usd, "source": "cost-explorer"}),
+                         None, "spend: AWS actual")
+
+if __name__ == "__main__":
+    import sys
+    record_aws(sys.argv[1])
