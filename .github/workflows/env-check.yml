@@ -1,0 +1,37 @@
+name: env-check
+# Tests environment rules. It runs no repository code and never places a secret in a step: each value below is only
+# the true or false result of "does this secret exist".
+# On a push to this branch, the two environment jobs must be refused. If they run, that environment is not main-only.
+on:
+  push:
+    branches: [chore/env-check]
+  workflow_dispatch:
+permissions: {}
+jobs:
+  repository-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          ANTHROPIC: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          OPENAI: ${{ secrets.OPENAI_API_KEY != '' }}
+          GEMINI: ${{ secrets.GEMINI_API_KEY != '' }}
+          BOT: ${{ secrets.BOT_PRIVATE_KEY != '' }}
+        run: echo "scope=repository ref=$GITHUB_REF anthropic=$ANTHROPIC openai=$OPENAI gemini=$GEMINI bot=$BOT"
+  live-check-env:
+    environment: live-check
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          ANTHROPIC: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          OPENAI: ${{ secrets.OPENAI_API_KEY != '' }}
+          GEMINI: ${{ secrets.GEMINI_API_KEY != '' }}
+          BOT: ${{ secrets.BOT_PRIVATE_KEY != '' }}
+        run: echo "scope=live-check ref=$GITHUB_REF anthropic=$ANTHROPIC openai=$OPENAI gemini=$GEMINI bot=$BOT"
+  tech-head-env:
+    environment: tech-head
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          OPENAI: ${{ secrets.OPENAI_API_KEY != '' }}
+          BOT: ${{ secrets.BOT_PRIVATE_KEY != '' }}
+        run: echo "scope=tech-head ref=$GITHUB_REF openai=$OPENAI bot=$BOT"
