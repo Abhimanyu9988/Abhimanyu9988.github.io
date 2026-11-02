@@ -16,7 +16,7 @@ is true. It catches lost values, typed-in values and unsupported claims. Only a 
 """
 import pathlib, re
 
-MEASURE = re.compile(r"^\s*HERO_MEASURE:\s*([a-z0-9_]+)(?:\[([^\]]+)\])?\s*=\s*(.+?)\s*$")
+MEASURE = re.compile(r"^\s*HERO_MEASURE:\s*([a-z0-9_]+)(?:\[([^\]]+)\])?\s*=(.*)$")
 VALUE = re.compile(r"^(-?\d[\d,]*(?:\.\d+)?)\s*([A-Za-z%/]*)$")
 EMPTY = {"", "null", "none", "n/a", "na", "nan", "unknown", "?", "<no value>", "<nil>"}
 BROKEN = re.compile(r"(?i)\b(error|timed? ?out|not found|no value|failed to|exception)\b")
@@ -47,8 +47,9 @@ def _clean(value):
     return value.strip().strip("\"'`").strip()
 
 NOT_RUN = re.compile(r"-(?:init|plan|apply|destroy|cleanup)\.log$")
-LITERAL = re.compile(r"HERO_MEASURE:\s*([a-z0-9_]+)(?:\[[^\]]*\])?\s*=\s*([^\s\"'`]*)")
-ASSIGNED = re.compile(r"^\s*(?:export\s+|readonly\s+|local\s+)?([A-Za-z_]\w*)=[\"']?(-?\d+(?:\.\d+)?)[\"']?\s*(?:#.*)?$", re.M)
+LITERAL = re.compile(r"HERO_MEASURE:\s*([a-z0-9_]+)(?:\[[^\]]*\])?\s*=\s*[\"']?([^\s\"'`]*)")
+ASSIGNED = re.compile(r"^[ \t]*(?:export[ \t]+|readonly[ \t]+|local[ \t]+)?([A-Za-z_]\w*)=[\"']?(-?\d+(?:\.\d+)?)[\"']?[ \t]*(?:#.*)?$", re.M)
+PRINTF = re.compile(r"%[-0-9.]*[a-z]")
 WINDOW = 40                                    # how far above a measurement its raw output may sit
 
 def measurements(logs):
@@ -60,7 +61,8 @@ def measurements(logs):
         for n, line in enumerate(text.splitlines(), 1):
             m = MEASURE.match(line)
             if m:
-                out.setdefault(m[1], []).append({"entity": m[2] or "", "value": m[3], "file": name, "line": n})
+                out.setdefault(m[1], []).append({"entity": (m[2] or "").strip().lower(), "value": m[3].strip(),
+                                                 "file": name, "line": n})
     return out
 
 def typed_values(scripts):
@@ -71,29 +73,45 @@ def typed_values(scripts):
         for m in LITERAL.finditer(text):
             value = m[2].strip()
             name = re.fullmatch(r"\$\{?([A-Za-z_]\w*)\}?", value)
-            if (value and "$" not in value and "%" not in value) or (name and name[1] in constants):
+            if (value and "$" not in value and not PRINTF.search(value)) or (name and name[1] in constants):
                 typed[m[1]] = True
     return typed
 
-def _printed_by_script(line, scripts):
+def _printed_by_script(line, flat):
     """True when a log line is text a script typed, so it cannot corroborate anything."""
     wanted = re.sub(r"\s+", " ", line).strip()
-    return bool(wanted) and any(wanted in re.sub(r"\s+", " ", t) for t in (scripts or {}).values())
+    return bool(wanted) and any(wanted in t for t in flat)
 
-def _raw_support(row, cid, logs, scripts):
+def _raw_support(row, cid, logs, flat):
     """True when command output above the measurement holds its value next to its entity or measure name.
     Scripts control stdout, so this raises the cost of a false claim. It does not prove the claim."""
     lines = logs[row["file"]].splitlines()[max(0, row["line"] - 1 - WINDOW):row["line"] - 1]
     number = VALUE.fullmatch(_clean(row["value"]))
     value = _plain(number[1]) if number else _clean(row["value"])
-    names = {row["entity"].lower()} if row["entity"] else {w for w in cid.lower().split("_") if len(w) > 2}
+    names = {row["entity"]} if row["entity"] else {w for w in cid.lower().split("_") if len(w) > 2}
     for line in reversed(lines):
         low = _plain(line).lower()
-        if line.lstrip().startswith("HERO_") or line.startswith(("$ ", "# ")) or _printed_by_script(line, scripts):
-            continue
-        if re.search(rf"(?<![\d.\w]){re.escape(value.lower())}(?![\d.\w])", low) and any(n and n in low for n in names):
+        if "HERO_" in line or line.startswith(("$ ", "# ")) or _printed_by_script(line, flat):
+            continue                               # the line itself, xtrace echoes and typed text prove nothing
+        if re.search(rf"(?<![\d.\w]){re.escape(value.lower())}(?![\d.\w])", low) and names and all(n in low for n in names):
             return True
     return False
+
+def bad_measure(c):
+    """Why a contract entry cannot be evaluated, or "". A malformed contract must fail, never crash a draft."""
+    if not isinstance(c, dict) or not isinstance(c.get("id"), str) or not c["id"]:
+        return "no id"
+    accept, needed = c.get("accept") or {"op": "present"}, c.get("min_entities", 1)
+    if not isinstance(accept, dict) or isinstance(needed, bool) or not isinstance(needed, int):
+        return "bad accept or min_entities"
+    op, value = accept.get("op", "present"), accept.get("value")
+    if op == "present":
+        return ""
+    if op not in OPS:
+        return f"unknown op {op}"
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+        return f"op {op} needs a numeric value"
+    return ""
 
 def verify_contract(contract, logs, scripts=None, strict=False):
     """Check the contract and grade each measurement's provenance.
@@ -103,7 +121,13 @@ def verify_contract(contract, logs, scripts=None, strict=False):
                 Neither means proven: the lab script prints both. In strict mode, self_reported fails.
     """
     seen, typed, results = measurements(logs), typed_values(scripts), []
+    flat = [re.sub(r"\s+", " ", t) for t in (scripts or {}).values()]
     for c in contract or []:
+        problem = bad_measure(c)
+        if problem:
+            results.append({"id": str(c.get("id") if isinstance(c, dict) else c), "status": "bad_contract", "values": 0,
+                            "needed": 0, "provenance": "none", "where": problem})
+            continue
         rows, status = seen.get(c["id"], []), "ok"
         real = [r for r in rows if _clean(r["value"]).lower() not in EMPTY and not BROKEN.search(r["value"])]
         needed = int(c.get("min_entities") or 1)
@@ -112,7 +136,7 @@ def verify_contract(contract, logs, scripts=None, strict=False):
         values = {}
         for r in real:
             values.setdefault(r["entity"], set()).add(_clean(r["value"]))
-        backed = [r for r in real if _raw_support(r, c["id"], logs, scripts)]
+        backed = [r for r in real if _raw_support(r, c["id"], logs, flat)]
         provenance = "corroborated" if real and len(backed) == len(real) else "self_reported"
         if not rows:
             status = "missing"
@@ -122,11 +146,14 @@ def verify_contract(contract, logs, scripts=None, strict=False):
             status = "no_value"
         elif len(real) < len(rows):
             status = "bad_value"                  # one lost value cannot hide behind the good ones
-        elif any(len(v) > 1 for k, v in values.items() if k):
-            status = "conflicting"                # one entity, two answers
+        elif any(len(v) > 1 for k, v in values.items() if k or needed == 1):
+            status = "conflicting"                # one thing, two answers
         elif count < needed:
             status = "too_few_entities"
-        elif accept.get("op", "present") != "present":
+        elif accept.get("op", "present") == "present":
+            if not all(re.search(r"\d", r["value"]) for r in real):
+                status = "no_value"               # a measurement is a number, not a word that fills the slot
+        else:
             parsed = [VALUE.fullmatch(_clean(r["value"])) for r in real]
             unit = str(c.get("unit") or "").strip()
             if not all(parsed):
@@ -142,9 +169,11 @@ def verify_contract(contract, logs, scripts=None, strict=False):
     return {"passed": all(r["status"] == "ok" for r in results), "results": results}
 
 WORDS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-         "twelve": 12, "twenty": 20, "fifty": 50, "hundred": 100, "thousand": 1000}
-CLAIM = re.compile(r"(?<![\w.,$])(\$)?(\d[\d,]*(?:\.\d+)?|" + "|".join(WORDS) + r")(?![\w,]*\d)\s*(%|[-\s]*"
-                   r"[A-Za-z][A-Za-z-]*(?:\s+[A-Za-z][A-Za-z-]*){0,2})?", re.I)
+         "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
+         "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
+         "seventy": 70, "eighty": 80, "ninety": 90, "hundred": 100, "thousand": 1000}
+CLAIM = re.compile(r"(?:(\$)|(?<![\w.,$]))(\d[\d,]*(?:\.\d+)?(?![\w,]*\d)|(?:" + "|".join(sorted(WORDS, key=len, reverse=True)) +
+                   r")\b)\s*(%|[-\s]*[A-Za-z][A-Za-z-]*(?:\s+[A-Za-z][A-Za-z-]*){0,2})?", re.I)
 STOP = {"to", "in", "with", "and", "or", "of", "on", "for", "a", "an", "the", "without", "from", "by", "at", "via"}
 NOT_A_COUNT = re.compile(r"(?i)\b(step|attempt|phase|version|line|stage|try)\s*#?$")
 NEAR = 5                                       # the number and noun must sit this close, in tokens, to count together
@@ -153,11 +182,11 @@ def _stem(word):
     w = word.lower()
     return w[:-1] if len(w) > 3 and w.endswith("s") else w
 
-def _noun(phrase):
+def _noun(phrase, attached=False):
     """The counted noun in "3 Splunk Metric Series" is the last word before any joining word.
     In "30-second Cold Start" the hyphen ties the number to its unit, so the noun is the first word."""
-    if phrase and phrase.lstrip(" ").startswith("-"):
-        first = re.findall(r"[A-Za-z]+", phrase)
+    if phrase and (attached or phrase.lstrip(" ").startswith("-")):
+        first = re.findall(r"[A-Za-z]+", phrase)     # "5GB Memory": the unit is attached, so it is what is counted
         return _stem(first[0]) if first else ""
     words = []
     for w in (phrase or "").replace("-", " ").split():
@@ -195,7 +224,7 @@ def headline_claims(title, logs):
     for m in CLAIM.finditer(title or ""):
         seen.add(m.start(2))
         money, raw, rest = m[1], m[2], m[3] or ""
-        noun = "%" if rest.strip() == "%" else _noun(rest)
+        noun = "%" if rest.strip() == "%" else _noun(rest, title[m.end(2):m.end(2) + 1].isalpha())
         numbers = _numbers(raw)
         if noun == "%" or money:
             sign = r"\s*%" if noun == "%" else ""
@@ -264,12 +293,12 @@ def _validate_title(heads, contract, result, logs):
     for h in heads:
         h["basis"], h["validated"] = "heuristic", False
         for c in contract or []:
-            about = f"{c['id']} {c.get('what', '')} {c.get('unit', '')}".lower()
-            if c["id"] in ok and h["noun"] and h["noun"] in about:
+            about = f"{c.get('id')} {c.get('what', '')} {c.get('unit', '')}".lower().replace("_", " ")
+            if c.get("id") in ok and h["noun"] and re.search(rf"\b{re.escape(h['noun'])}s?\b", about):
                 got = {_plain(VALUE.fullmatch(_clean(r["value"]))[1]) for r in seen.get(c["id"], [])
                        if VALUE.fullmatch(_clean(r["value"]))}
                 numbers = _numbers(h["number"])
-                if numbers & got or str(len(seen.get(c["id"], []))) in numbers:
+                if numbers & got:
                     h["basis"], h["validated"] = "measurement", True
     return heads
 
@@ -284,6 +313,8 @@ def check(logs, title="", contract=None, scripts=None, strict=False):
     if strict:
         failures += [f"title claim has no measurement behind it: {h['claim']}" for h in heads
                      if h["supported"] and not h["validated"]]
+    rank = {"high": 0, "medium": 1, "low": 2}       # a cap must never hide the worst flags
+    flags = sorted(flags, key=lambda f: rank.get(f["severity"], 3))
     return {"schema": "scan/1", "flags": flags[:MAX_FLAGS], "headline": heads, "contract": result, "failures": failures,
             "passed": not failures}
 

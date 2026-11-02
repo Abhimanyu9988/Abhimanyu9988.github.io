@@ -652,7 +652,7 @@ def open_pr(issue_no, res, topic):
     brief = editor.parse_brief(topic.get("body"))
     measures = (brief or {}).get("measurements")
     logs = scan.read_logs(OUT / "evidence", first=res.get("attempt_log_from", 1))   # failed attempts prove nothing
-    scripts = {k: v for k, v in lab.items() if k.endswith(".sh")}
+    scripts = {k: v for k, v in lab.items() if not k.endswith(".md")}
     before = scan.check(logs, "", measures, scripts, strict=editor.mode() == "enforce")
     refused = editor.lab_refusal(topic.get("body"))
     if refused:

@@ -92,7 +92,8 @@ def meets_targets(r):
     return (r["headline_detection"] == TARGETS["headline_detection"]
             and (r["trivial_rejection"] or 0) >= TARGETS["trivial_rejection"]
             and (r["strong_false_rejection"] or 0) < TARGETS["strong_false_rejection"]
-            and r["evidence_bypass"] == TARGETS["evidence_bypass"])
+            and r["evidence_bypass"] == TARGETS["evidence_bypass"]
+            and not r["misses"])
 
 def cost_per_worthwhile(total_usd, ratings, worthwhile_from=4):
     """All spend, including rejected topics and failed labs, divided by accepted articles rated worthwhile.

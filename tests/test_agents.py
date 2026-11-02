@@ -5,6 +5,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 os.chdir(ROOT)
 os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", MODEL_AUTO="")
+for leftover in ("EDITOR_MODE", "EDITOR_REVIEW", "GOAL_RANKING", "LINKEDIN_MIN_VOTES", "TECH_HEAD_MODE"):
+    os.environ.pop(leftover, None)             # these tests set their own modes
+import re, tempfile, time
 import contract, editor, evaluate, llm, radar as r, roles, scan, sources, tech_head as th
 import analytics, assistant
 
@@ -168,10 +171,17 @@ check("eval: no strong topic wrongly rejected", res["strong_false_rejection"] ==
 check("eval: no evidence failure bypasses the gate", res["evidence_bypass"] == 0)
 check("eval: sample sizes are reported", res["headline_cases"] >= 3 and res["trivial_cases"] >= 5)
 rows = evaluate.human_comparison()
+ratings_dir = pathlib.Path(tempfile.mkdtemp())       # independent of the ratings Abhi adds to the real file
+rated = json.loads((ROOT / "tests/eval/human-ratings.json").read_text())
+rated["ratings"] = {k: None for k in rated["ratings"]}
+(ratings_dir / "human-ratings.json").write_text(json.dumps(rated))
+real_eval, evaluate.EVAL = evaluate.EVAL, ratings_dir
+rows = evaluate.human_comparison()
 check("human comparison: unrated pieces stay unscored, never guessed", all(x["agrees"] is None for x in rows) and len(rows) == 6)
 check("human comparison: PR 88 fails the code checks", [x for x in rows if x["piece"].startswith("ecs-fargate")][0]["checks_passed"] is False)
 check("cost per worthwhile article counts all spend", evaluate.cost_per_worthwhile(20, [5, 4, 2, None]) == 10)
 check("cost per worthwhile article is empty without ratings", evaluate.cost_per_worthwhile(20, [None]) is None)
+evaluate.EVAL = real_eval
 
 # ---------- Tech Head ----------
 D = """diff --git a/pipeline/x.py b/pipeline/x.py
@@ -241,14 +251,14 @@ check("assistant: a dropped goal stops being active", json.loads(files["analytic
 roles.ask = real_roles_ask
 real_goals = sources.goals
 sources.goals = lambda: [{"id": "aws", "weight": 8}]
-check("topic ranking reads goal weights", r.goal_weights() == {"aws": 8})
+check("topic ranking reads goals", r.goal_weights()["aws"]["weight"] == 8)
 sources.goals = lambda: (_ for _ in ()).throw(RuntimeError("down"))
 check("no goals available means today's ranking", r.goal_weights() == {})
 sources.goals = real_goals
 check("Splunk is no longer mandatory in topic votes", "never force it in" in r.BUILD_QUESTION)
 
 # ---------- regressions from the independent review ----------
-import draft, tempfile, time
+import draft
 L1 = {"a.log": "found 1,000 series\nstep 3: list series\ncold start took 30 seconds"}
 sup = lambda t, logs=L1: [h["supported"] for h in scan.headline_claims(t, logs)]
 check("title: a hyphenated claim is parsed", sup("A 30-second Cold Start") == [True] and sup("A 45-second Cold Start") == [False])
@@ -281,7 +291,9 @@ check("flags: the report is capped", len(scan.check({"05-fix.log": "null\n" * 50
 os.environ["EDITOR_MODE"] = "enforce"
 good = {**b, "gate1": {"passed": True}}
 check("enforce: no brief, no lab", editor.lab_refusal("plain") != "")
-check("enforce: a failed brief, no lab", editor.lab_refusal(editor.marker({**b, "gate1": {"passed": False}})) != "")
+check("enforce: a failed brief, no lab", editor.lab_refusal(editor.marker({**b, "verdict": "no"})) != "")
+check("enforce: a stored pass in issue text proves nothing", editor.lab_refusal(editor.marker({**b, "verdict": "no", "gate1": {"passed": True}})) != "")
+check("enforce: a forged minimal brief is refused", editor.lab_refusal(editor.marker({"gate1": {"passed": True}})) != "")
 check("enforce: a passing brief may run", editor.lab_refusal(editor.marker(good)) == "")
 os.environ["EDITOR_MODE"] = "shadow"
 check("shadow: labs are never refused", editor.lab_refusal("plain") == "")
@@ -378,7 +390,11 @@ check("Tech Head: a concurrency value is not injection", th.rules('+++ b/.github
 ai2 = {"findings": [{"severity": "blocker", "category": "security", "file": "pipeline/x.py", "line": 1, "problem": "p", "fix": "f"}]}
 fs, dr2, bl2 = th.verdict([], ai2, D2)
 check("Tech Head: a model alone cannot block, a person judges it", not bl2 and "please judge" in th.markdown(fs, ai2, dr2, bl2))
-check("field notes: instructions are not read as notes", sources.field_notes() == "")
+notes_dir = pathlib.Path(tempfile.mkdtemp())
+(notes_dir / "field-notes.md").write_text("- a rule line\n\n## Notes\n\n- a real note\n")
+real_here, sources.HERE = sources.HERE, notes_dir
+check("field notes: instructions are not read as notes", sources.field_notes() == "- a real note")
+sources.HERE = real_here
 check("roles: registry data sources reach the role", "field_notes" in roles.data("editor") and "agents_md" in roles.data("tech_head"))
 real_read = sources._analytics_json
 sources._analytics_json = lambda p: {"goals": [{"id": "a", "weight": 1, "until": "2020-01-01"}, {"id": "b", "weight": 1, "until": ""}]}
@@ -445,7 +461,7 @@ tricky = {"fix.sh": 'V=$((30+5))\necho "sidecar cpu $V"\necho "HERO_MEASURE: sid
 check("known limit: a script that computes a fake value still looks corroborated", res1(raw, tricky)["provenance"] == "corroborated")
 check("scan says plainly that it cannot prove a value", "nothing here proves" in scan.__doc__.replace("\n", " "))
 ct = [{"id": "task_count", "what": "running tasks", "unit": "", "accept": {"op": "present"}, "min_entities": 1}]
-lg = {"05-fix.log": "running tasks 3\nHERO_MEASURE: task_count=3"}
+lg = {"05-fix.log": "running task count 3\nHERO_MEASURE: task_count=3"}
 h1 = scan.check(lg, "Run 3 Tasks", ct)["headline"][0]
 check("title: a corroborated measurement validates the claim", h1["validated"] and h1["basis"] == "measurement")
 h2 = scan.check({"05-fix.log": "tasks: 3"}, "Run 3 Tasks")["headline"][0]
@@ -481,17 +497,18 @@ check("workflow: a PR cannot configure zizmor", "--no-config" in scan_job)
 check("workflow: runs from the base branch", "pull_request_target" in wf and "pull_request:" not in wf.split("jobs:")[0].replace("pull_request_target:", ""))
 check("workflow: the reviewer is the base branch copy", "python3 base/pipeline/tech_head.py" in wf and "python3 pr/" not in wf)
 
-big = "".join(f"diff --git a/{f} b/{f}\n+x\n" for f in ("tests/test_a.py", "pipeline/a.py", ".github/workflows/a.yml", "tests/fixtures/a.log"))
+dif = lambda f, body="+x\n": f"diff --git a/{f} b/{f}\n--- a/{f}\n+++ b/{f}\n@@ -0,0 +1 @@\n{body}"
+big = "".join(dif(f) for f in ("tests/test_a.py", "pipeline/a.py", ".github/workflows/a.yml", "tests/fixtures/a.log"))
 ordered, left = th.prioritise(big)
 check("Tech Head: workflows are reviewed before pipeline code and tests", ordered.index(".github") < ordered.index("pipeline/a.py") < ordered.index("tests/test_a.py"))
 check("Tech Head: saved fixtures are not reviewed", "fixtures" not in ordered and left == 0)
 real_max, real_batches = th.MAX_DIFF, th.MAX_BATCHES
-th.MAX_DIFF, th.MAX_BATCHES = 40, 1
+th.MAX_DIFF, th.MAX_BATCHES = 70, 1
 check("Tech Head: a cut diff reports what was left out", th.prioritise(big)[1] > 0)
 th.MAX_BATCHES = 2
 chunks, _ = th.batches(big)
-check("Tech Head: batches are bounded", len(chunks) <= 2 and all(len(c) <= 40 for c in chunks))
-huge = "diff --git a/pipeline/h.py b/pipeline/h.py\n" + "+x\n" * 100
+check("Tech Head: batches are bounded", len(chunks) <= 2 and all(len(c) <= 70 for c in chunks))
+huge = dif("pipeline/h.py", "+x\n" * 100)
 check("Tech Head: one huge file is split, not dropped", len(th.batches(huge)[0]) == 2 and th.batches(huge)[1] > 0)
 seen_prompts = []
 real_ra = roles.ask
@@ -501,8 +518,8 @@ def one_fails(role, prompt, out):
         raise RuntimeError("outage")
     return {"summary": "s", "findings": []}
 roles.ask = one_fails
-th.MAX_DIFF, th.MAX_BATCHES = 100, 4
-two = "".join(f"diff --git a/pipeline/{n}.py b/pipeline/{n}.py\n+{n * 30}\n" for n in "ab")
+th.MAX_DIFF, th.MAX_BATCHES = 160, 4
+two = "".join(dif(f"pipeline/{n}.py", f"+{n * 30}\n") for n in "ab")
 got_ai = th.review(two, {}, "")
 check("Tech Head: each batch gets its own call", len(seen_prompts) == 2 and "batch 2 of 2" in seen_prompts[1])
 check("Tech Head: a failed batch makes the review incomplete", any("batch" in g for g in th.complete({}, got_ai)))
@@ -556,9 +573,11 @@ def pick(goals):
     r._send = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("tests must not reach GitHub"))
     return [x[2]["title"] for x in sent if x[1].endswith("/issues")]
 check("default: with no goals the panel's order is unchanged", pick([]) == ["Panel favourite", "Goal topic"])
-check("change: an active goal outranks the panel", pick([{"id": "aws", "weight": 8}]) == ["Goal topic", "Panel favourite"])
+focus_goal = {"id": "aws", "weight": 8, "focus": ["goal topic"]}
+check("change: an active goal outranks the panel when the title fits", pick([focus_goal]) == ["Goal topic", "Panel favourite"])
+check("adversarial: a proposer claiming a goal earns nothing by itself", pick([{"id": "aws", "weight": 8, "focus": ["kubernetes"]}]) == ["Panel favourite", "Goal topic"])
 os.environ["GOAL_RANKING"] = "off"
-check("rollback: GOAL_RANKING=off restores the panel's order", pick([{"id": "aws", "weight": 8}]) == ["Panel favourite", "Goal topic"])
+check("rollback: GOAL_RANKING=off restores the panel's order", pick([focus_goal]) == ["Panel favourite", "Goal topic"])
 os.environ.pop("GOAL_RANKING")
 pv, la = llm.panel_votes, llm.ask
 llm.panel_votes = lambda cands, *a, **k: {c["id"]: {"yes": 1, "votes": {}} for c in cands}
@@ -573,11 +592,174 @@ check("every rollback variable reaches its workflow", all(n in (ROOT / f".github
        ("redraft", "LINKEDIN_MIN_VOTES"), ("monthly-oss", "LINKEDIN_MIN_VOTES"), ("analytics", "MODEL_AUTO"), ("hero", "MODEL_AUTO"))))
 
 # ---------- PR 89 review: synthetic checks are not human calibration ----------
-hc = evaluate.human_calibration(evaluate.human_comparison())
+hc = evaluate.human_calibration([{"rating": None, "agrees": None}])
 check("eval: with no ratings, nothing is calibrated", hc["rated"] == 0 and hc["calibrated"] is False)
 check("eval: labels declare where they came from", all(c.get("labelled_by") for c in cases.values()))
 check("eval: no case claims a human label yet", not any("human" in c["labelled_by"] for c in cases.values()))
 check("eval: the basis is reported", "synthetic" in evaluate.evidence_basis(list(cases.values())))
+
+# ---------- batch review regressions: evidence ----------
+one = lambda v, **k: scan.verify_contract([{"id": "x", "accept": {"op": "present"}, "min_entities": 1, **k}], {"f.log": v})["results"][0]
+for bad in ("<unknown>", "undefined", "failed", "null ms", "= ms"):
+    check(f"contract check: {bad} is not a measurement", one(f"HERO_MEASURE: x={bad}")["status"] != "ok")
+check("contract check: an empty value counts as lost", scan.verify_contract([{"id": "x", "min_entities": 2}], {"f.log": "HERO_MEASURE: x[a]=1\nHERO_MEASURE: x[b]=\nHERO_MEASURE: x[c]=2"})["results"][0]["status"] == "bad_value")
+for typed in ('echo "HERO_MEASURE: sidecar_cpu=35%"', "echo 'HERO_MEASURE: sidecar_cpu=\"35\"'", 'printf "HERO_MEASURE: sidecar_cpu=35\n"'):
+    check(f"adversarial: typed value caught in {typed[:34]}", res1(bare, {"fix.sh": typed})["status"] == "hardcoded")
+check("provenance: a printf format is not a typed value", res1(raw, {"fix.sh": 'printf "HERO_MEASURE: sidecar_cpu=%s\n" "$V"'})["status"] == "ok")
+xt = {"05-fix.log": "+ echo 'HERO_MEASURE: sidecar_cpu=35'\nHERO_MEASURE: sidecar_cpu=35"}
+check("adversarial: an xtrace echo corroborates nothing", res1(xt)["provenance"] == "self_reported")
+check("adversarial: every word of the id must be present", res1({"05-fix.log": "sidecar memory 35\nHERO_MEASURE: sidecar_cpu=35"})["provenance"] == "self_reported")
+ct3 = [{"id": "failed_tasks", "what": "failed tasks", "unit": "", "accept": {"op": "present"}, "min_entities": 3}]
+lg3 = {"05-fix.log": "".join(f"az{i} failed tasks 0\nHERO_MEASURE: failed_tasks[az{i}]=0\n" for i in "abc")}
+check("title: a row count is not a measured value", not scan.check(lg3, "3 Failed Tasks", ct3)["headline"][0]["validated"])
+check("contract check: unlabelled conflicting values are refused", one("HERO_MEASURE: x=1\nHERO_MEASURE: x=99")["status"] == "conflicting")
+check("contract check: entity case cannot inflate a count", scan.verify_contract([{"id": "x", "min_entities": 2}], {"f.log": "HERO_MEASURE: x[task-a]=1\nHERO_MEASURE: x[TASK-A]=1"})["results"][0]["status"] == "too_few_entities")
+sup2 = lambda t, l: [h["supported"] for h in scan.headline_claims(t, {"a.log": l})]
+check("title: sixty is not six", sup2("Sixty Pods", "6 pods") == [False])
+check("title: eleven is parsed", sup2("Eleven Pods", "1 pods") == [False])
+check("title: US$40 is parsed", sup2("Save US$40 a Month", "saved 30") == [False])
+check("title: 5GB is not 5 MB", sup2("5GB Memory", "memory 5 MB") == [False] and sup2("5GB Memory", "memory 5 GB") == [True])
+check("title: Tenant is not ten", sup2("Tenant Isolation", "x") == [])
+ctp = [{"id": "reported", "what": "reported", "unit": "", "accept": {"op": "present"}, "min_entities": 1}]
+check("title: Ports is not inside reported", not scan.check({"f.log": "reported 35 ports\nHERO_MEASURE: reported=35"}, "35 Ports", ctp)["headline"][0]["validated"])
+start = time.time(); scan.verify_contract(cm, bare, {"fix.sh": "\n" * 40000})
+check("scan: a huge script stays fast", time.time() - start < 2)
+for broken in ({"id": "x", "accept": {"op": "bogus"}}, {"id": "x", "accept": {"op": "lt", "value": "abc"}}, {"accept": {}}, 7, {"id": "x", "accept": {"op": "ge"}}):
+    check(f"contract check: malformed entry fails, never crashes: {str(broken)[:30]}", scan.verify_contract([broken], {"f.log": ""})["results"][0]["status"] == "bad_contract")
+ops = lambda op, value, v: scan.verify_contract([{"id": "x", "accept": {"op": op, "value": value}}], {"f.log": f"HERO_MEASURE: x={v}"})["results"][0]["status"]
+check("contract check: ge, gt, le and eq are enforced", ops("ge", 5, 4) == ops("gt", 5, 5) == ops("le", 5, 6) == ops("eq", 5, 6) == "failed_criterion")
+check("contract check: ge, gt, le and eq pass correctly", ops("ge", 5, 5) == ops("gt", 5, 6) == ops("le", 5, 5) == ops("eq", 5, 5) == "ok")
+check("flags: missing values and timeouts are flagged", {"missing_value", "timed_out"} <= {f["kind"] for f in scan.scan({"05-fix.log": "cpu=null\n[timed out after 30s]"})})
+wide = "0 datapoints\n" * 40 + "null\n"
+check("flags: the cap never hides a high flag", any(f["severity"] == "high" for f in scan.check({"05-fix.log": wide}, "")["flags"]))
+misses = {**evaluate.run(list(cases.values())), "misses": ["x"]}
+check("eval: any miss fails the targets", not evaluate.meets_targets(misses))
+
+# ---------- batch review regressions: Tech Head evasion ----------
+D3 = dif("pipeline/a.py", "+\x0ceval(x)\n+y = 1\n").replace("+1 @@", "+1,2 @@")
+check("Tech Head: a form feed cannot hide code", any(f["rule"] == "dynamic-exec" for f in th.rules(D3)))
+check("Tech Head: a form feed cannot shift line numbers", [(n, t) for _, n, t in th.added_lines(D3)][1] == (2, "y = 1"))
+check("Tech Head: a carriage return cannot hide code", any(f["rule"] == "dynamic-exec" for f in th.rules(dif("pipeline/a.py", "+x=1\reval(y)\n"))))
+check("Tech Head: a carriage return cannot hide code behind a comment", any(f["rule"] == "dynamic-exec" for f in th.rules(dif("pipeline/a.py", "+# note\reval(y)\n"))))
+for call in ("os.system(x)", "pickle.load(f)", "yaml.unsafe_load(x)", "builtins.eval(x)"):
+    check(f"Tech Head: {call} is caught", any(f["rule"] == "dynamic-exec" for f in th.rules(dif("pipeline/a.py", f"+{call}\n"))))
+check("Tech Head: a quoted path still gets rules", th.rules('+++ "b/.github/workflows/e\\303\\251.yml"\n@@ -0,0 +1 @@\n+  pull_request_target:\n') != [])
+check("Tech Head: a path with a space still gets rules", th.rules("+++ b/pipeline/a b.py\t\n@@ -0,0 +1 @@\n+subprocess.run(c, shell=True)\n") != [])
+check("Tech Head: a site folder inside pipeline is not skipped", "evil" in th.prioritise(dif("pipeline/a/site/evil.py"))[0])
+check("Tech Head: a real site file is skipped", th.prioritise(dif("site/x.md"))[0] == "")
+check("Tech Head: this file gets the same rules", th.rules(dif("pipeline/tech_head.py", "+exec(x)\n")) != [])
+check("Tech Head: its own source raises no alarms", not [f for f in th.rules(dif("pipeline/tech_head.py", "".join("+" + l + "\n" for l in (ROOT / "pipeline/tech_head.py").read_text().split("\n")))) if f["rule"] in ("hard-secret", "tls-off", "dynamic-exec")])
+for key in ("github_pat_" + "a" * 30, "AIza" + "b" * 34):
+    check(f"Tech Head: {key[:8]} keys are caught", any(f["rule"] == "hard-secret" for f in th.rules(dif("pipeline/a.py", f'+k = "{key}"\n'))))
+wfd = lambda line: th.rules(dif(".github/workflows/a.yml", f"+{line}\n"))
+check("Tech Head: an env word in a trailing comment does not excuse injection", wfd("    run: echo ${{ github.event.issue.title }} # env: x") != [])
+check("Tech Head: a comment inside a run block still expands", wfd("          # ${{ github.event.issue.title }}") != [])
+check("Tech Head: format() cannot hide event data", wfd("    run: echo ${{ format('{0}', github.event.issue.title) }}") != [])
+check("Tech Head: composite actions are checked", th.rules(dif(".github/actions/a/action.yml", "+    run: echo ${{ github.event.issue.title }}\n")) != [])
+check("Tech Head: spaced eval and shell=1 are caught", th.rules(dif("pipeline/a.py", "+eval (x)\n+run(c, shell=1)\n").replace("+1 @@", "+1,2 @@")) != [] and len(th.rules(dif("pipeline/a.py", "+eval (x)\n+run(c, shell=1)\n").replace("+1 @@", "+1,2 @@"))) == 2)
+fake_rule = {"findings": [{"severity": "blocker", "category": "security", "file": "pipeline/a.py", "line": 1, "problem": "p", "fix": "f", "rule": "x"}]}
+check("Tech Head: a model cannot pose as a code rule", not th.verdict([], fake_rule, dif("pipeline/a.py"))[2])
+reps2 = {"zizmor": {"status": "findings", "items": [{"ident": "x", "desc": "d", "locations": [{"p": ".github/workflows/a.yml"}]}, {"ident": "other", "locations": [{"p": ".github/workflows/old.yml"}]}]}}
+kept = th.relevant(reps2, {".github/workflows/a.yml"})["zizmor"]["items"]
+check("Tech Head: scanners report only on changed files", len(kept) == 1 and kept[0]["id"] == "x")
+yml = __import__("yaml").safe_load((ROOT / ".github/workflows/tech-head.yml").read_text())
+trig = yml[True]["pull_request_target"]
+check("workflow: a retargeted PR is reviewed again", "edited" in trig["types"] and trig["branches"] == ["main"])
+steps = {j: v["steps"] for j, v in yml["jobs"].items()}
+check("workflow: nothing runs from the PR checkout", not [s for j in steps.values() for s in j if "run" in s and re.search(r"(bash|sh|python3?|\./)\s+pr/", s["run"])])
+check("workflow: no step points Python at PR code", not [s for j in steps.values() for s in j if any("pr/" in str(v) for k, v in (s.get("env") or {}).items() if k != "PR_DIR")])
+check("workflow: the scan job has no secrets or token", "secrets" not in json.dumps(yml["jobs"]["scan"]) and "github.token" not in json.dumps(yml["jobs"]["scan"]))
+check("workflow: every PR checkout holds no credentials", all(s["with"]["persist-credentials"] is False for j in steps.values() for s in j if "checkout" in str(s.get("uses"))))
+check("workflow: forks are skipped", "head.repo.full_name == github.repository" in yml["jobs"]["scan"]["if"])
+for name in ("live-check", "editor-eval"):
+    y = __import__("yaml").safe_load((ROOT / f".github/workflows/{name}.yml").read_text())
+    job = next(iter(y["jobs"].values()))
+    check(f"policy: {name} guard is not weakened", job["if"].startswith("github.ref == 'refs/heads/main' &&") and "||" not in job["if"])
+    check(f"policy: {name} checks out literally main", job["steps"][0]["with"]["ref"] == "main")
+
+def run_main(rule_hit, ai_ok=True, mode="blocking"):
+    """tech_head.main end to end, with GitHub and the model replaced."""
+    import radar
+    posted, sent_to_model = [], []
+    diff = dif("pipeline/a.py", '+k = "' + FAKE + '"\n' if rule_hit == "secret" else "+x = 1\n")
+    saved = th.git_diff, th.review, radar.comment
+    th.git_diff = lambda *a: diff
+    def fake_review(d, reports, agents):
+        sent_to_model.append(d)
+        if not ai_ok:
+            raise RuntimeError("outage")
+        return {"summary": "s", "findings": []}
+    th.review, radar.comment = fake_review, lambda n, t: posted.append(t)
+    d = tempfile.mkdtemp()
+    for n, body in (("bandit", '{"results": [], "errors": []}'), ("zizmor", "[]")):
+        pathlib.Path(d, f"{n}.json").write_text(body); pathlib.Path(d, f"{n}.exit").write_text("0")
+    os.environ.update(PR_DIR=".", BASE_SHA="a", HEAD_SHA="b", PR_NUMBER="1", REPORTS_DIR=d, TECH_HEAD_MODE=mode)
+    failed = False
+    try:
+        th.main()
+    except SystemExit:
+        failed = True
+    th.git_diff, th.review, radar.comment = saved
+    os.environ.pop("TECH_HEAD_MODE")
+    return failed, posted, sent_to_model
+f1, p1, s1 = run_main("secret")
+check("Tech Head main: a key is never sent to a model", s1 == [])
+check("Tech Head main: a key blocks in blocking mode", f1)
+check("Tech Head main: a clean change passes", run_main("none")[0] is False)
+check("Tech Head main: an AI outage fails blocking mode", run_main("none", ai_ok=False)[0] is True)
+check("Tech Head main: advisory mode never fails the check", run_main("secret", mode="advisory")[0] is False)
+
+# ---------- batch review regressions: contracts and roles ----------
+check("brief: a marker that breaks the contract is ignored", editor.parse_brief(editor.marker({"measurements": [1]})) is None and editor.parse_brief(editor.marker([1])) is None)
+check("gate 1: an Editor no fails", not editor.gate1({**b, "verdict": "no"})[0])
+check("gate 1: a missing field fails", not editor.gate1({**b, "reader": " "})[0])
+check("gate 1: no contract fails", not editor.gate1({**b, "measurements": []})[0])
+badm = {**b["measurements"][0], "id": "Bad Id"}
+check("gate 1: a bad id fails", not editor.gate1({**b, "measurements": [badm]})[0])
+check("gate 1: an id cannot end in a newline", not editor.gate1({**b, "measurements": [{**b["measurements"][0], "id": "abc\n"}]})[0])
+check("gate 1: a criterion needs a value", not editor.gate1({**b, "measurements": [{**b["measurements"][0], "accept": {"op": "lt"}}]})[0])
+check("gate 1: NaN is not a value", not editor.gate1({**b, "measurements": [{**b["measurements"][0], "accept": {"op": "lt", "value": float("nan")}}]})[0])
+cd = {"scores": {"technical": {"score": 3, "reasons": []}, "editorial": {"score": 5, "reasons": []}, "marketing": {"score": 5, "reasons": []}}, "blocking": [], "flags_addressed": [], "claims": []}
+check("decide: technical below 4 revises", editor.decide(cd, {"passed": True, "flags": []})[0] == "revise")
+cd["scores"]["technical"]["score"] = 5
+cd["blocking"] = [{"dimension": "editorial", "problem": "p", "evidence": "e", "fix": "f"}]
+check("decide: a blocking point revises", editor.decide(cd, {"passed": True, "flags": []})[0] == "revise")
+s2 = {"type": "array", "minItems": 2, "items": {"type": "integer", "minimum": 1}}
+check("contract: items, minItems and minimum are enforced", contract.validate([1], s2) != [] and contract.validate([1, 2], s2) == [] and len(contract.validate([0, 1], s2)) == 1)
+spends = []
+real_spend, roles.spend = roles.spend, lambda role, text: spends.append(text)
+real_lask, llm.ask = llm.ask, lambda *a, **k: {"summary": "ok", "findings": []}
+roles.ask("tech_head", "PROMPT", "techreview")
+check("roles: every call is charged, including its system prompt", len(spends) == 1 and "PROMPT" in spends[0] and "Tech Head" in spends[0])
+roles.spend = real_spend
+def retrying(*a, **k):
+    llm.LEDGER.extend([{"who": "x", "model": "m", "in": 0, "out": 0}] * 3)
+    return {"summary": "ok", "findings": []}
+llm.ask = retrying
+roles._calls.clear()
+roles.ask("tech_head", "p", "techreview")
+check("roles: provider-level retries count against the budget", roles._calls["tech_head"] == 3)
+del llm.LEDGER[-3:]; roles._calls.clear(); llm.ask = real_lask
+check("roles: registry needs an input budget", (lambda reg_: (setattr(roles, "registry", lambda: {"x": {**reg_["editor"], "budget": {"max_calls": 1}}}), any("budgets" in p for p in roles.check_registry()), setattr(roles, "registry", old))[1])(reg))
+real_read = sources._analytics_json
+sources._analytics_json = lambda p: {"goals": [{"id": "a", "weight": "high"}, {"id": "b", "weight": 2, "until": 20261231}, "x",
+                                               {"id": "c", "weight": 3, "status": "dropped"}, {"id": "d", "weight": 4}]}
+check("goals: bad and dropped goals are skipped, good ones stay", [g["id"] for g in sources.goals()] == ["d"])
+sources._analytics_json = lambda p: {"goals": 5}
+check("goals: a malformed file means no goals", sources.goals() == [])
+sources._analytics_json = real_read
+files.clear(); posted.clear()
+roles.ask = lambda role, prompt, out: ({"title": "Dated", "outcome": "o", "audience": "a", "weight": 5, "focus": [], "communities": [], "splunk": "avoid", "until": "12/31/2026"}
+                                       if out == "goal" else {"focus": "f", "assignments": [], "needs": []})
+assistant.add_goal("dated goal", 5)
+check("goals: a date code cannot read is removed, not trusted", json.loads(files["analytics/goals.json"])["goals"][0]["until"] == "")
+roles.ask = real_roles_ask
+check("assistant: a drop with a bad id never creates a goal", assistant.parse("/goal drop Foo_Bar")[0] == "help")
+kept_p = assistant.clean_plan({"focus": "f", "assignments": [{"role": "ghost", "task": "t", "why": "w"}], "needs": ["a", "b", "c", "d"]})
+check("assistant: a role proposal survives the list limit", "No ghost role exists: t" in kept_p["needs"])
+pat = next(p for m, p, _ in r.WRITE_RULES if "analytics" in p)
+check("assistant: its paths match the real bot rule", all(re.fullmatch(pat, f"/repos/{HOME}/contents/{x}") for x in (sources.GOALS_PATH, sources.PLAN_PATH)))
+check("assistant: the review record path matches the real bot rule", re.fullmatch(pat, f"/repos/{HOME}/contents/analytics/review-some-slug.json"))
 
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

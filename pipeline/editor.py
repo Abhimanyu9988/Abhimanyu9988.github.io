@@ -68,20 +68,25 @@ def gate1(b):
         bad.append("no Evidence Contract")
     elif all(m.get("kind") == "count" for m in ms):
         bad.append("the contract only counts things, so it can prove existence but not value")
-    bad += [f"bad measurement id {m.get('id')!r}" for m in ms if not ID.match(str(m.get("id") or ""))]
+    bad += [f"bad measurement id {m.get('id')!r}" for m in ms if not ID.fullmatch(str(m.get("id") or ""))]
+    import scan
+    bad += [f"measurement {m.get('id')!r}: {scan.bad_measure(m)}" for m in ms if scan.bad_measure(m)]
     return not bad, bad
 
 def marker(b):
     return f"<!-- hero-brief:v1 {base64.b64encode(json.dumps(b).encode()).decode()} -->"
 
 def parse_brief(text):
+    """The brief in a topic body, or None unless it fully matches its contract. Humans can edit issue text."""
+    import contract
     m = MARK.search(text or "")
     if not m:
         return None
     try:
-        return json.loads(base64.b64decode(m[1]).decode())
+        b = json.loads(base64.b64decode(m[1]).decode())
     except (ValueError, UnicodeDecodeError):
         return None
+    return b if not contract.validate(b, contract.schema("brief")) else None
 
 def brief_md(b, passed=True, reasons=()):
     lines = [f"**Reader:** {b.get('reader')}", f"**Their decision:** {b.get('decision')}",
@@ -123,7 +128,7 @@ def lab_refusal(body):
     if mode() != "enforce":
         return ""
     b = parse_brief(body)
-    if not b or not (b.get("gate1") or {}).get("passed"):
+    if not b or not gate1(b)[0]:                  # recomputed: a stored result in issue text proves nothing
         return "this topic has no passing Topic Investment Gate brief, and EDITOR_MODE is enforce"
     return ""
 

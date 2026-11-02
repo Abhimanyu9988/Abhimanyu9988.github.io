@@ -2,11 +2,11 @@
 """Live validation with real credentials. Runs in GitHub Actions and reports on a pull request.
 
 Checks, in order: the pinned model IDs exist, the cheap models answer, a real Editor brief, a real Editor scorecard on
-the PR 88 draft, and a real Tech Head review of this pull request. Every step records what actually happened, so a step
+the PR 88 draft, and a real Tech Head review of the latest commit on main. Every step records what actually happened, so a step
 that did not run is reported as not run. It posts one comment and changes nothing else: no publishing, no lab, no AWS.
 MAX_USD is checked between steps, so a run can pass it by up to one step's cost.
 """
-import json, os, pathlib, subprocess, time
+import json, os, pathlib, time
 import editor, llm, roles, scan, tech_head
 from radar import comment, safe_text
 
@@ -74,8 +74,7 @@ def score(b):
     return card, f"technical {s['technical']['score']}, editorial {s['editorial']['score']}, marketing {s['marketing']['score']}; decision {verdict}"
 
 def review():
-    diff = subprocess.run(["git", "diff", "--no-color", "--text", f"{os.environ['BASE_SHA']}...{os.environ['HEAD_SHA']}"],
-                          capture_output=True, text=True, check=True).stdout
+    diff = tech_head.git_diff(".", os.environ["BASE_SHA"], os.environ["HEAD_SHA"])
     found = tech_head.rules(diff)
     ai = tech_head.review(diff, {}, roles.data("tech_head").get("agents_md", ""))
     findings, dropped, blocked = tech_head.verdict(found, ai, diff)
@@ -104,7 +103,7 @@ def main():
     step("Ping Gemini pin", lambda: ping("gemini", pins["gemini"]))
     b = step("Editor brief, with web search", brief)
     step("Editor scorecard on PR 88", lambda: score(b or {}))
-    step("Tech Head review of this PR", review)
+    step("Tech Head review of the latest main commit", review)
     comment(int(os.environ["PR_NUMBER"]), safe_text(report()))
 
 if __name__ == "__main__":

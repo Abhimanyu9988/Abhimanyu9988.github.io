@@ -6,7 +6,8 @@ Commands, as comments by Abhi on any issue in this repo:
   /goal drop <id>          stop working toward a goal
   /goals                   list active goals and the current plan
 
-What it can change: analytics/goals.json and analytics/plan.json, on the analytics branch. Topic selection reads both.
+What it can change: analytics/goals.json and analytics/plan.json, on the analytics branch. Topic selection reads goals,
+and a goal changes ranking only for titles matching its focus areas. The plan is advice shown to Abhi.
 What it cannot do: publish, spend, start a lab, deploy, or create a role. New capabilities come back as proposals.
 """
 import datetime, json, os, re
@@ -29,7 +30,7 @@ def clean_plan(plan):
     for a in plan.get("assignments") or []:
         (kept if a.get("role") in active else needs).append(
             a if a.get("role") in active else f"No {a.get('role')} role exists: {a.get('task')}")
-    return {"focus": plan.get("focus", ""), "assignments": kept, "needs": needs[:4]}
+    return {"focus": plan.get("focus", ""), "assignments": kept, "needs": (needs[len(plan.get("needs") or []):] + needs)[:4]}
 
 def load():
     text, sha = analytics.read_file(GOALS)
@@ -54,6 +55,10 @@ def add_goal(text, issue):
         finish(goals, same, issue); return
     goal = roles.ask("executive_assistant", f"Turn GOAL TEXT into one structured goal.\n\nGOAL TEXT:\n{text[:2000]}\n\n"
                                             f"EXISTING GOALS:\n{json.dumps(goals)[:3000]}", "goal")
+    try:
+        datetime.date.fromisoformat(str(goal.get("until") or ""))
+    except ValueError:
+        goal["until"] = ""                     # a date code cannot read must not silently expire a goal
     goal.update(id=slug(goal["title"], {g.get("id") for g in goals}), status="active", stated=text[:2000],
                 created=datetime.date.today().isoformat())
     goals.append(goal)
@@ -102,6 +107,8 @@ def parse(text):
     m = re.match(r"/goal\s+drop\s+([a-z0-9-]+)\s*$", t)
     if m:
         return "drop", m[1]
+    if re.match(r"/goal\s+drop\b", t):
+        return "help", ""
     m = re.match(r"/goal\s+(\S[\s\S]*)$", t)
     return ("add", m[1].strip()) if m else ("help", "")
 

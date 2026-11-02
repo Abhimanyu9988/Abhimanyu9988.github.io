@@ -11,8 +11,8 @@ blog. GitHub Actions runs it. A person approves topics and posts.
 
 1. **An agent may propose a claim. An experiment must demonstrate it. The Editor explains why it matters.** A model's
    statement is never evidence.
-2. **Code decides gates.** Models supply inputs and scores. `editor.gate1`, `editor.decide`, `scan.check` and
-   `tech_head.verdict` make the decisions. Never let a model's answer directly pass or fail anything.
+2. **Only code can pass a gate.** `editor.gate1`, `editor.decide`, `scan.check` and `tech_head.verdict` decide. A model can
+   lower a result, with a low score or a blocking point, but no model answer can pass a check by itself.
 3. **Never invent** results, numbers, search volumes, rankings, customers or anecdotes.
 4. **Quality has separate dimensions.** Technical, editorial and marketing scores are never averaged.
 5. **Use code when code is exact.** Arithmetic, schema checks, parsing and aggregation never go to a model.
@@ -66,8 +66,8 @@ A role is one entry in `pipeline/roles/registry.json` plus one prompt and its sc
 
 - **Change a lead's model:** edit the registry, or set its `model_env` repository variable. Roles without a prompt
   file (topic scout, lab engineer, writer) are listed for reference and read their model only from that variable.
-- **Change a lead's data:** add a function to `pipeline/sources.py` and name it in the registry. `roles.data()` feeds it
-  to the Editor, Tech Head and Executive Assistant.
+- **Change a lead's data:** add a function to `pipeline/sources.py`, name it in the registry, and read it from
+  `roles.data()` in that role's prompt.
 - **Hire a new lead:** add the registry entry, prompt, output schema and saved test cases.
 - **A lead is hired only when** `roles.check_registry()` is clean and `python3 tests/test_agents.py` passes.
 

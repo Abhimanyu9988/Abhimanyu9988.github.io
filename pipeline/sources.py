@@ -22,9 +22,15 @@ def _analytics_json(path):
 
 def goals():
     """Active goals, highest weight first. Empty until Abhi sets one with `/goal`."""
-    got, today = _analytics_json(GOALS_PATH).get("goals") or [], datetime.date.today().isoformat()
-    return sorted((g for g in got if isinstance(g, dict) and g.get("status", "active") == "active"
-                   and (not g.get("until") or g["until"] >= today)), key=lambda g: -int(g.get("weight") or 0))
+    got, today = _analytics_json(GOALS_PATH).get("goals"), datetime.date.today().isoformat()
+    return sorted((g for g in (got if isinstance(got, list) else []) if _usable(g, today)), key=lambda g: -g["weight"])
+
+def _usable(g, today):
+    """One badly edited goal is skipped. It must not empty the list or stop a run."""
+    if not isinstance(g, dict) or g.get("status", "active") != "active" or not isinstance(g.get("weight"), int):
+        return False
+    until = g.get("until") or ""
+    return not until or (isinstance(until, str) and until >= today)
 
 def plan():
     return _analytics_json(PLAN_PATH)
@@ -40,7 +46,7 @@ def post_mix(last=10):
     """How many recent lab posts feature Splunk. Deterministic: read from the post files."""
     posts = sorted((ROOT / "site" / "_posts").glob("*.md"), reverse=True)
     posts = [p for p in posts if "open-source-summary" not in p.name][:last]
-    splunk = sum(bool(re.search(r"(?i)splunk", p.read_text()[:600])) for p in posts)
+    splunk = sum(bool(re.search(r"(?i)splunk", p.read_text(errors="replace")[:600])) for p in posts)
     return {"recent_posts": len(posts), "featuring_splunk": splunk}
 
 def roles():

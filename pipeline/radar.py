@@ -382,9 +382,17 @@ def goal_weights():
         return {}
     try:
         import sources
-        return {str(g.get("id")): int(g.get("weight") or 0) for g in sources.goals()}
+        return {str(g.get("id")): g for g in sources.goals()}
     except Exception as e:
         print(f"note: goals not read: {str(e)[:200]}"); return {}
+
+def goal_score(cand, goals):
+    """A goal's weight, only when the title really is about one of its focus areas. A proposer's claim alone earns
+    nothing, because a model reading untrusted news chose that field."""
+    g = goals.get(cand.get("goal")) or {}
+    title = str(cand.get("title", "")).lower()
+    focus = [str(f).lower().strip() for f in g.get("focus") or [] if str(f).strip()]
+    return g.get("weight", 0) if any(f in title for f in focus) else 0
 
 def goals_block():
     if os.environ.get("GOAL_RANKING", "").lower() == "off":
@@ -490,7 +498,7 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
         print(f"{'ACCEPT' if d['accepted'] else 'reject'} {d['yes']}/3 by={c['by']}: {c['title']}")
     weight = goal_weights()                    # Abhi's goals outrank the panel's taste; no goals means no change
     ranked = sorted((c for c in cands if votes[c["id"]]["accepted"]),
-                    key=lambda c: (weight.get(c["goal"], 0), votes[c["id"]]["yes"], c["audience"], len(c["by"]), c["score"]),
+                    key=lambda c: (goal_score(c, weight), votes[c["id"]]["yes"], c["audience"], len(c["by"]), c["score"]),
                     reverse=True)[:limit]
     briefs = investment_gate(ranked) if gate_first() else {}   # shadow runs after posting, so it can never block
     if mode_enforce():

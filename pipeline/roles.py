@@ -61,8 +61,10 @@ def ask(role, prompt, output):
     r, sch = get(role), contract.schema(output)
     system = prompt_text(role)
     for attempt in range(2):
-        spend(role, prompt)
+        spend(role, system + prompt)
+        mark = len(llm.LEDGER)
         got = llm.ask(r["vendor"], system, prompt, sch, tool=f"submit_{output}", model=model(role))
+        _calls[role] = _calls.get(role, 0) + max(0, len(llm.LEDGER) - mark - 1)      # a provider-level retry is a real call too
         problems = contract.validate(got, sch)
         if not problems:
             return got
@@ -85,8 +87,8 @@ def check_registry():
         if r.get("prompt"):
             if not (HERE / "roles" / "prompts" / r["prompt"]).exists():
                 out.append(f"{name}: prompt {r['prompt']} does not exist")
-            if not (r.get("budget") or {}).get("max_calls"):
-                out.append(f"{name}: an AI role needs a call budget")
+            if not (r.get("budget") or {}).get("max_calls") or not (r.get("budget") or {}).get("max_input_tokens"):
+                out.append(f"{name}: an AI role needs call and input budgets")
             if not r.get("model"):
                 out.append(f"{name}: an AI role needs a pinned model")
         for o in r.get("outputs", []):

@@ -6,7 +6,8 @@ name: tech-head
 # here only because no job ever runs code from the PR. Keep it that way. Fork PRs are skipped.
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+    branches: [main]
     paths: ["pipeline/**", ".github/**", "infra/**", "tests/**", "AGENTS.md"]
 permissions:
   contents: read
@@ -35,7 +36,7 @@ jobs:
           fi
           bandit -q -r pr/pipeline --ini empty.ini --ignore-nosec -f json -o reports/bandit.json
           echo $? > reports/bandit.exit
-          zizmor --offline --no-config --format=json pr/.github/workflows > reports/zizmor.json
+          zizmor --offline --no-config --no-ignores --collect=all --strict-collection --format=json pr/.github/workflows > reports/zizmor.json
           echo $? > reports/zizmor.exit
         shell: bash +e {0}
       - uses: actions/upload-artifact@v4
