@@ -36,6 +36,7 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
           permission-pull-requests: write
+          permission-contents: write
       - name: live check
         run: PR_NUMBER="${INPUT_PR:-$(cat pipeline/live-check.request)}" python3 pipeline/live_check.py
         env:

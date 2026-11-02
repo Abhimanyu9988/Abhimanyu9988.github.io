@@ -4,7 +4,7 @@
   MODE=collect (weekly): pull dev.to numbers for every published post and append them to
       analytics/ledger.csv on the `analytics` branch. Then Claude, ChatGPT and Gemini each read the numbers
       and say what is working; Claude merges their views into analytics/insights.md (the topic finders read
-      it) and the summary is posted on the "Impact log" issue.
+      it) and the summary is saved to analytics/insights.md.
   MODE=stats (a `/stats` comment by Abhimanyu): record numbers the platforms don't expose through an API,
       e.g. `/stats linkedin impressions=1200 reactions=40` on a post's publish report issue.
 
@@ -161,17 +161,6 @@ def insights(tbl, posts):
                      MERGE_SCHEMA, tool="submit_brief")
     return str(merged.get("insights_md", "")).strip()
 
-def impact_issue():
-    got = gh("GET", f"/repos/{HOME_REPO}/issues?labels=analytics&state=open&per_page=5")
-    got = [i for i in got if "pull_request" not in i]
-    if got:
-        return got[0]["number"]
-    ensure_label("analytics")
-    return post_issue("\U0001f4c8 Impact log", "Weekly numbers for every published post, and what the three AIs "
-                      "make of them. The full dated record is analytics/ledger.csv on the analytics branch.\n\n"
-                      "Record numbers the platforms don't share through an API by commenting on a post's publish "
-                      "report issue, for example `/stats linkedin impressions=1200 reactions=40`.", "analytics")["number"]
-
 def collect():
     import llm
     posts = published_posts()
@@ -188,8 +177,7 @@ def collect():
         write_file(INSIGHTS, f"# What's working (as of {TODAY})\n\nWritten by Claude, ChatGPT and Gemini from "
                              f"analytics/ledger.csv. The topic finders read this.\n\n{brief}\n", sha,
                    f"analytics: insights for {TODAY}")
-    comment(impact_issue(), f"**Week of {TODAY}**\n\n{safe_text(tbl)}\n\n{safe_text(brief) if brief else ''}\n\n"
-                            f"_Model usage: {llm.usage_summary()}_")
+    print(f"Week of {TODAY}\n{safe_text(tbl)}\n{llm.usage_summary()}")      # no email: the insights file and CTO cover this
 
 # ---------- /stats ----------
 STAT_RX = re.compile(r"^([a-z_]{1,30})=([0-9][0-9,]{0,12})$")

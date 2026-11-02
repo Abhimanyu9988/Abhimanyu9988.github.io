@@ -331,12 +331,12 @@ def ensure_label(label):
             raise
         gh("POST", f"/repos/{REPO}/labels", {"name": label, "color": color, "description": desc})
 
-def post_issue(title, body, label, extra_labels=()):
+def post_issue(title, body, label, extra_labels=(), assign=True):
     assert_safe(title); assert_safe(body)
-    # Assigned to Abhi so GitHub emails it to him (bots' new issues only reach people watching the repo), and
-    # replying "approve" to that email works.
+    # Assigned to Abhi so GitHub emails it to him. Bots' new issues only reach people watching the repo, so topics stay
+    # unassigned: he hears about an article once, when its PR is ready.
     iss = gh("POST", f"/repos/{REPO}/issues", {"title": title, "body": body, "labels": [label, *extra_labels],
-                                               "assignees": [OWNER]})
+                                               "assignees": [OWNER] if assign else []})
     print(f"opened #{iss['number']}: {title}")
     return iss
 
@@ -413,15 +413,18 @@ def gate_first():
     return editor.active()
 
 def shadow_review(opened):
-    """Briefs as issue comments, which a lab never reads. Issues are already open, so a failure here costs nothing."""
+    """Briefs saved to the analytics branch, which a lab never reads. Issues are already open, so a failure costs nothing."""
     import editor
     if editor.mode() != "shadow" or DRY:
         return
+    import analytics
     briefs = investment_gate([c for c, _ in opened])
     for c, number in opened:
         if c["id"] in briefs:
             try:
-                comment(number, f"**Shadow review, nothing here affects this topic.**\n\n{briefs[c['id']]['md']}")
+                analytics.ensure_branch()
+                analytics.write_file(f"analytics/brief-{int(number)}.json", json.dumps(briefs[c["id"]], indent=1), None,
+                                     f"shadow brief for topic {int(number)}")
             except Exception as e:
                 print(f"::warning title=editor::shadow comment skipped: {' '.join(str(e).split())[:300]}", flush=True)
 
@@ -517,8 +520,8 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
         reach = gate.get("md", "") if gate.get("reach_lab") else ""
         body = (f"{c['top']}\n\n{reach + chr(10) + chr(10) if reach else ''}{panel_line(c, votes[c['id']])}\n\n"
                 f"{sources_block(c['srcs'])}\n\n"
-                "**To run this lab:** reply to this email with **approve** (or comment `approve` here). Close the "
-                f"issue if you're not interested.\n\n{src_marker(c['srcs'])}")
+                "**To run this lab yourself:** comment `approve` here. Close the issue if you're not interested."
+                f"\n\n{src_marker(c['srcs'])}")
         try:
             assert_safe(c["title"]); assert_safe(body)
         except Unsafe as e:
@@ -526,14 +529,17 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
         used.update(c["srcs"])
         if DRY:
             print(f"[dry run] would open{' + replicate' if c is best else ''}: {c['title']}\n{body}\n"); continue
-        iss = post_issue(c["title"], body, label, extra_labels)
+        iss = post_issue(c["title"], body, label, extra_labels, assign=False)
         made += 1
         opened.append((c, iss["number"]))
         if c is best:
             add_label(iss["number"], "replicate")
-            comment(iss["number"], "\u2b50 This is the panel's pick. Reply to this email with **approve** to run its "
-                                   "lab (about 30 to 60 minutes, under 1 USD); the draft post comes back by email.")
+            comment(iss["number"], "\u2b50 This is the panel's pick. Its lab starts by itself, inside the monthly budget, "
+                                   "and takes about 30 to 60 minutes.")
             print(f"marked #{iss['number']} as the pick")
+            if os.environ.get("GITHUB_OUTPUT"):
+                with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                    f.write(f"pick={int(iss['number'])}\n")
     shadow_review(opened)
     print(f"done: {made} issue(s) opened. {llm.usage_summary()}")
 

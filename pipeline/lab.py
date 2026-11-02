@@ -525,6 +525,8 @@ def save(result, lab=None):
         (ev / f"{n:02d}-{e['step']}.log").write_text(f"$ {e['cmd']}\n# exit {e['code']} after {e['seconds']}s\n\n{e['output']}\n")
     result["steps"] = [{k: e[k] for k in ("step", "code", "seconds")} for e in EVIDENCE]
     result["usage"] = llm.usage_summary()
+    result["usd"] = llm.cost_usd()[0]
+    result["aws_used"] = os.environ.get("DRY_RUN") != "true"
     result["minutes"] = round((time.time() - START) / 60, 1)
     (OUT / "result.json").write_text(json.dumps(result, indent=1))
 

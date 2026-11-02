@@ -25,6 +25,20 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 
 **Rollback of everything:** set `EDITOR_MODE=off`, `MODEL_AUTO=true`, `GOAL_RANKING=off` and `LINKEDIN_MIN_VOTES=0`, then disable `tech-head` and `assistant`. To remove the code, revert the merge commit. Files on the analytics branch are harmless and can stay.
 
+## CTO, budget and email changes
+
+| Area | Before | After | Undo |
+| --- | --- | --- | --- |
+| Labs | Waited for your `approve` reply | The panel's pick starts its own lab | `AUTO_LAB=off` |
+| Paid work | No monthly limit | Stops at $50, or the month's raised limit. Running work finishes | Raise it on the CTO desk |
+| Topic emails | Every topic assigned to you | Unassigned, so only the PR emails you | Revert `post_issue` |
+| Shadow briefs | Issue comments | Saved to the analytics branch | Revert `shadow_review` |
+| Weekly numbers | Comment on the Impact log | Saved to `insights.md`, no email | Revert `analytics.py` |
+| CTO | None | One issue, a daily status refresh, and a Monday digest | Disable `cto` |
+| Team page | None | `/team/` shows the roster and articles, not spending or tasks | Delete `site/team.md` |
+
+Spend is model calls at list prices plus $1 for each lab. Three limits are deliberate. A manual `editor-eval --live` run and Tech Head reviews are not recorded, because neither should hold a token that can write files. The draft after a paid lab still runs past the limit, so a paid lab is never wasted. CTO replies also run past it, so you can always reach the CTO.
+
 ## Tech Head trust boundary
 
 | Risk | State | Hardening |

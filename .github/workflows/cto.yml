@@ -1,0 +1,53 @@
+name: cto
+# Your replies on the CTO desk issue, a daily refresh of the public team status, and the Monday digest.
+# It cannot publish, spend, deploy or start a lab.
+on:
+  issue_comment:
+    types: [created]
+  schedule:
+    - cron: "12 7 * * *"
+  workflow_dispatch:
+    inputs:
+      digest:
+        description: "Post the digest now"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  actions: read
+concurrency: cto
+jobs:
+  cto:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && (github.event_name != 'issue_comment' ||
+      (!github.event.issue.pull_request && github.event.comment.user.login == 'Abhimanyu9988' &&
+      contains(github.event.issue.labels.*.name, 'cto-desk') && !startsWith(github.event.comment.body, '/')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+      - name: cto
+        run: python3 pipeline/cto.py
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          DIGEST: ${{ inputs.digest }}
+          BUDGET_EXEMPT: "1"
+          CTO_MODEL: ${{ vars.CTO_MODEL }}
+          ASSISTANT_MODEL: ${{ vars.ASSISTANT_MODEL }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

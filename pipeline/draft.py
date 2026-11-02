@@ -11,6 +11,7 @@ Redrafts reuse an earlier lab run's attachment (no new AWS run): `/redraft <note
 passes your notes to the writer and closes the old PR once the new one is open.
 """
 import base64, datetime, json, os, pathlib, re
+import budget
 from radar import HOME_REPO, gh, safe_text, assert_safe, comment, add_label, Unsafe
 import llm, cover, editor, scan
 
@@ -796,6 +797,7 @@ def main():
                           "was not approved, was cancelled, or crashed before writing output. Nothing was drafted.")
         return
     res = json.loads(rf.read_text())
+    budget.add_lab(res)
     topic = json.loads((OUT / "topic.json").read_text()) if (OUT / "topic.json").exists() else {}
     if res["status"] == "reproduced_and_fixed":
         try:

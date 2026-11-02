@@ -1,0 +1,15 @@
+{
+ "type": "object",
+ "required": ["stance", "reply", "goal", "task", "urls"],
+ "properties": {
+  "stance": {"type": "string", "enum": ["agree", "disagree", "need_data"]},
+  "reply": {"type": "string", "description": "the answer to Abhi, under 150 words, with no links"},
+  "goal": {"type": "string", "description": "a new goal in his words, or empty"},
+  "task": {
+   "type": "object",
+   "required": ["title", "owner"],
+   "properties": {"title": {"type": "string"}, "owner": {"type": "string"}}
+  },
+  "urls": {"type": "array", "maxItems": 5, "items": {"type": "string"}}
+ }
+}

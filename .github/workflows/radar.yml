@@ -12,6 +12,7 @@ on:
 permissions:
   contents: read
   issues: read
+  actions: write                       # only to start the pick's lab below
 concurrency: radar
 jobs:
   radar:
@@ -29,7 +30,9 @@ jobs:
           app-id: ${{ vars.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
+          permission-contents: write
       - name: radar
+        id: radar
         run: python3 pipeline/radar.py
         env:
           HERO_PUBLISH: "1"
@@ -48,3 +51,10 @@ jobs:
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           GOAL_RANKING: ${{ vars.GOAL_RANKING }}
+      # The panel's pick goes straight to a lab. The monthly budget is the limit. AUTO_LAB=off restores your approve reply.
+      - name: start the lab
+        if: steps.radar.outputs.pick != '' && vars.AUTO_LAB != 'off'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PICK: ${{ steps.radar.outputs.pick }}
+        run: gh workflow run replicate.yml --repo "$GITHUB_REPOSITORY" --ref main -f issue="$PICK"
