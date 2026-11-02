@@ -282,6 +282,27 @@
    },
    "display": "Market Researcher",
    "dept": "Marketing"
+  },
+  "voice_editor": {
+   "mission": "Make each reviewed draft read like an engineer wrote it, without changing a fact.",
+   "module": "pipeline/draft.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "VOICE_MODEL",
+   "prompt": "voice_editor.md",
+   "outputs": [
+    "voiceedit"
+   ],
+   "data_sources": [
+    "field_notes"
+   ],
+   "budget": {
+    "max_input_tokens": 20000,
+    "max_calls": 2
+   },
+   "display": "Voice Editor",
+   "dept": "Content"
   }
  }
 }

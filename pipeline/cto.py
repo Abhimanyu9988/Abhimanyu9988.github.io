@@ -242,7 +242,8 @@ def research():
         return ""
     got = roles.ask("market_research", f"GOAL:\n{json.dumps(goal)[:1500]}\n\nSUMMARY:\n{str(found.get('summary'))[:5000]}\n\n"
                                        f"PAGES:\n{json.dumps(pages)[:5000]}", "marketbrief")
-    real = [u for u in got.get("sources") or [] if u in pages]
+    urls = {p.get("url") for p in pages if isinstance(p, dict)}
+    real = [u for u in got.get("sources") or [] if u in urls]
     text = "\n".join(["What worked for others:"] + [f"- {x}" for x in got["what_worked"]] + ["", "Topics to try:"] +
                       [f"- {x}" for x in got["topics_to_try"]] + ["", "Avoid:"] + [f"- {x}" for x in got["avoid"]] + ["", "Sources:"] + [f"- {u}" for u in real])
     _, sha = analytics.read_file(BRIEF)

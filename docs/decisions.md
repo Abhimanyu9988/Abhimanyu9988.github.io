@@ -101,3 +101,9 @@ Abhi wants to give one person goals with timelines, text any C-level leader, and
 message goes to the CEO unless it starts with CTO, CMO or CFO. His own words become the goal, so a model cannot invent one.
 The CMO researches how real people reached the top goal, weekly and on each new goal, and the Topic Scout works from it.
 Goals and the market brief are on the public analytics branch, because scheduled jobs read them.
+
+## 2026-11-02: A Voice Editor improves writing and never hides how it was made
+
+Abhi asked for an agent that makes drafts read like a person wrote them. It removes AI patterns, and code rejects any
+rewrite that changes a number or code line, or drops the AI note. It cannot invent his experience, so it asks him one
+optional question per post, and his real answers and `field-notes.md` are what make a post his own.

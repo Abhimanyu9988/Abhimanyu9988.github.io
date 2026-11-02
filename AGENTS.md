@@ -52,6 +52,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/problems.py` | Manual problem finder | Stack Overflow, issues | Issues |
 | `pipeline/lab.py` | Runs the lab in the sandbox | Topic issue | `out/` |
 | `pipeline/draft.py` | Writes the post, runs gate 2, opens the PR | `out/` | Draft PR, review record |
+| `draft.voice_edit` | Voice Editor: removes AI patterns. `voice_safe` rejects any changed fact, code line or disclosure | Reviewed post, `author.md`, `field-notes.md` | The post body |
 | `pipeline/publish.py` | Publishes merged posts | `site/_posts` | dev.to, Hashnode, Medium draft |
 | `pipeline/analytics.py` | Weekly numbers | dev.to, GoatCounter | `analytics` branch |
 | `pipeline/llm.py` | All model calls, pins, cost | `prices.json` | `LEDGER` |
