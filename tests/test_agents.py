@@ -1126,6 +1126,14 @@ old_talk = [{"from": "CTO", "text": "x" * 5000}] * 7 + [{"from": "Topic Scout", 
 kept_talk = cto.recent_talk(old_talk)
 check("leaders: the newest messages always reach the model", kept_talk[-1]["text"] == "Good topic" and kept_talk[-2]["text"].endswith("Prometheus"))
 check("leaders: the talk stays within its limit", len(json.dumps(kept_talk)) < 7000)
+real_ghn, cto.gh = cto.gh, lambda m, p, b=None: {"items": [{"title": "Fix", "html_url": "https://x", "updated_at": "2026-11-02T00:00:00Z"}]}
+got_needed = cto.needed()
+check("oss: GitHub says why he's involved", set(got_needed) == set(cto.NEEDED_QUERIES) and got_needed["review_requested_from_him"][0]["title"] == "Fix")
+cto.gh = lambda m, p, b=None: (_ for _ in ()).throw(RuntimeError("limit"))
+check("oss: a failed search is reported, not guessed", cto.needed()["assigned_to_him"] == "the search failed")
+cto.gh = real_ghn
+check("oss: uses ChatGPT", roles_mod.get("oss_scout")["vendor"] == "chatgpt")
+check("oss: a thread he commented on doesn't count", "Never list a PR only because he commented" in (ROOT / "pipeline/roles/prompts/oss_scout.md").read_text())
 check("oss: reaches OSS Scout", cto.route("OSS: am I needed on 51874?") == ("oss_scout", "am I needed on 51874?") and cto.route("oss-scout: hi")[0] == "oss_scout")
 acted, real_cd, real_si = [], cto.close_drafts, cto.save_ideas
 cto.close_drafts, cto.save_ideas = (lambda t: acted.append(("close", t)) or ["Old post"]), (lambda i: acted.append(("idea", i)))
