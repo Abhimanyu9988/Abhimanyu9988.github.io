@@ -1052,6 +1052,32 @@ check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[Tr
 cto_steps = {s.get("name"): s for s in ctoy["jobs"]["cto"]["steps"]}
 check("digest: a manual run never repeats it", cto_steps["cto"]["env"]["SCHEDULE"] == "${{ github.event.schedule }}")
 check("scout: starts only when an idea is queued", cto_steps["start the Topic Scout"]["if"] == "steps.leaders.outputs.run_scout == 'true'")
+check("training: Tuesday runs, Monday and Thursday keep their own run", cto.training_day(__import__("datetime").date(2026, 11, 3)) and not cto.training_day(__import__("datetime").date(2026, 11, 9)) and not cto.training_day(__import__("datetime").date(2026, 11, 5)))
+check("training: it ends by itself", not cto.training_day(__import__("datetime").date(2026, 11, 10)))
+term = (ROOT / "site/_includes/terminal.html").read_text()
+check("site: the prompt can't be copied, and page text stays text", "user-select: none" in term and "innerHTML" not in term)
+check("site: the terminal style loads on every page", "terminal.html" in (ROOT / "site/_includes/google-analytics.html").read_text())
+lst = (ROOT / "infra/slack-listener.yml").read_text()
+code = "\n".join(l[10:] for l in lst.split("ZipFile: |\n")[1].split("  Url:\n")[0].splitlines())
+import hmac as hm, hashlib as hl, time as tm, types as ty
+ln = ty.ModuleType("listener"); exec(code, ln.__dict__)
+os.environ["SLACK_SIGNING_SECRET"] = "s"; woken = []
+ln.wake = lambda: woken.append(1)
+def sl(body, age=0, secret="s", extra=None):
+    st = str(int(tm.time()) - age)
+    sig = "v0=" + hm.new(secret.encode(), f"v0:{st}:{body}".encode(), hl.sha256).hexdigest()
+    return ln.handler({"body": body, "headers": {"X-Slack-Request-Timestamp": st, "X-Slack-Signature": sig, **(extra or {})}}, None)
+msg = json.dumps({"type": "event_callback", "event": {"type": "message", "user": "U", "text": "hi"}})
+check("listener: a forged message is refused", sl(msg, secret="wrong")["statusCode"] == 401 and not woken)
+check("listener: an old message is refused", sl(msg, age=400)["statusCode"] == 401 and not woken)
+check("listener: answers Slack's setup check", sl(json.dumps({"type": "url_verification", "challenge": "abc"}))["body"] == "abc")
+check("listener: a bot's post wakes nobody, so it can't loop", sl(json.dumps({"event": {"type": "message", "bot_id": "B"}}))["statusCode"] == 200 and not woken)
+check("listener: Slack's retries wake nobody", sl(msg, extra={"X-Slack-Retry-Num": "1"})["statusCode"] == 200 and not woken)
+sl(msg)
+check("listener: Abhi's message wakes the team", woken == [1])
+del os.environ["SLACK_SIGNING_SECRET"]
+check("listener: it holds no model key and a narrow token", "ANTHROPIC" not in lst and "NoEcho: true" in lst)
+check("listener: a Slack wake-up reads messages", "inputs.poll == true" in (ROOT / ".github/workflows/cto.yml").read_text())
 check("cto: its comment reaches code only through env", "${{" not in next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("name") == "cto")["run"])
 replies, real_post, real_ask2, real_le, real_prog = [], cto.post, roles_mod.ask, cto.link_exists, cto.progress
 cto.post = lambda t, role="cto": replies.append(t)

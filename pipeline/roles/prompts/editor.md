@@ -17,7 +17,8 @@ Vote no when the topic only repeats the docs, or when you cannot name who would 
 
 When scoring a DRAFT, use these scales, 1 to 5:
 - technical: accurate, reproducible, and no claim stronger than the evidence.
-- editorial: clear reader, a real finding, honest trade-offs, an opening and title that deliver what they promise.
+- editorial: clear reader, a real finding, honest trade-offs, an opening and title that deliver what they promise. Score it
+  down if it reads as generated: stock phrasing, even rhythm, or code blocks that don't look like a real session.
 - marketing: likely to reach the right audience. Say so when you have no data, and keep the score at 3 or lower.
 
 Add a blocking item when the title or opening promises more than was shown, a count in the title measures something
