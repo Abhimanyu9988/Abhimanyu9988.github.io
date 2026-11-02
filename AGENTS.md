@@ -35,7 +35,8 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 11. **People approve** production deploys, new paid services, major infrastructure, credentials and external publication.
     Disposable labs run on their own, inside the monthly budget.
 12. **No agent starts another agent.** The order is fixed in workflows. The one exception is `radar.yml` and `problems.yml`, which start
-    `replicate.yml` for the panel's pick, with a numeric issue only, behind the budget and `AUTO_LAB`. Editor, Tech Head, Executive Assistant and CTO have
+    `replicate.yml` for the panel's pick, with a numeric issue only, behind the budget and `AUTO_LAB`, and `cto.yml`, which
+    starts `radar.yml` the morning after Abhi queues a topic. Editor, Tech Head, Executive Assistant and CTO have
     call and input budgets. Older pipeline stages still rely on job timeouts, and web research is capped by `max_uses`.
 13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words, in
     Slack or the CTO desk issue, can raise the limit, for that month. No model can change it. Costs are list prices plus lab

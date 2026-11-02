@@ -107,3 +107,10 @@ Goals and the market brief are on the public analytics branch, because scheduled
 Abhi asked for an agent that makes drafts read like a person wrote them. It removes AI patterns, and code rejects any
 rewrite that changes a number or code line, or drops the AI note. It cannot invent his experience, so it asks him one
 optional question per post, and his real answers and `field-notes.md` are what make a post his own.
+
+## 2026-11-02: Leaders can act on Abhi's own words
+
+Leaders could only talk, so asking one to close a draft did nothing. They can now close an open draft and queue a topic,
+each only when his own message asks for it. Closing is limited to open draft PRs by exact title. The digest and market brief
+now run only from the Monday schedule, because manual test runs were repeating them. OSS Scout answers from his oss-scout
+contribution board, which is public, and can't act on GitHub.

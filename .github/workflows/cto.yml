@@ -18,7 +18,7 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
-  actions: read
+  actions: write                       # only to start the Topic Scout for an idea you queued
 concurrency: cto
 jobs:
   cto:
@@ -40,6 +40,7 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-contents: write
           permission-issues: write
+          permission-pull-requests: write
       # The private admin page. Until that repository exists, this step fails quietly and the page is skipped.
       - uses: actions/create-github-app-token@v2
         id: admin
@@ -51,8 +52,11 @@ jobs:
           repositories: team-admin
           permission-contents: write
       - name: cto
+        id: leaders
         run: python3 pipeline/cto.py
         env:
+          SCHEDULE: ${{ github.event.schedule }}
+          OSS_SCOUT_MODEL: ${{ vars.OSS_SCOUT_MODEL }}
           ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
           MANAGER_MODEL: ${{ vars.MANAGER_MODEL }}
           POLL: ${{ github.event.schedule == '*/10 * * * *' }}
@@ -70,6 +74,11 @@ jobs:
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: start the Topic Scout
+        if: steps.leaders.outputs.run_scout == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run radar.yml --repo "$GITHUB_REPOSITORY" --ref main
   # AWS's own month-to-date figure, once a day. It holds no model key, reads no PR, and uses a role that can only read costs.
   billing:
     if: >-
