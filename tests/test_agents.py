@@ -1113,7 +1113,7 @@ check("slack: the cursor moves and each message is answered", heard == ["first",
 cto.answer, slack.history = real_ans, real_hist
 slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
 def hist_api(method, **k):
-    if method == "users.list": return fake_api(method)
+    if method != "conversations.history": return fake_api(method)
     return {"messages": [{"user": "U9", "text": "someone else"}, {"user": "UME", "text": "mine"}, {"bot_id": "B", "username": "CTO (Engineering)", "text": "reply"}]}
 slack.api = hist_api
 hist = slack.history()
@@ -1126,6 +1126,7 @@ real_hist3, slack.history = slack.history, lambda: []
 cto.poll()
 slack.messages, slack.history, cto.answer = real_msg, real_hist3, real_ans3
 check("slack: replies are capped per run", len(heard2) == cto.MAX_REPLIES)
+slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
 check("slack: an outage never stops the work", slack.say("cto", "hi") is False)
 slack.api = real_api
 del os.environ["SLACK_BOT_TOKEN"]
