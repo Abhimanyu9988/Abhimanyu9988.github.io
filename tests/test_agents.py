@@ -395,5 +395,141 @@ assistant.add_goal("same goal", 5)
 check("assistant: a retry does not duplicate the goal", len(json.loads(files["analytics/goals.json"])["goals"]) == 1)
 roles.ask = real_roles_ask
 
+# ---------- PR 89 review: enforcement must have a scorecard ----------
+os.environ["EDITOR_MODE"] = "enforce"
+os.environ.pop("EDITOR_REVIEW", None)
+check("enforce: the Editor runs even with EDITOR_REVIEW unset", editor.review_on())
+os.environ["EDITOR_REVIEW"] = "off"
+check("enforce: EDITOR_REVIEW=off cannot switch the Editor off", editor.review_on())
+check("enforce: no scorecard means no pass", editor.decide(None, {"passed": True, "flags": []}, require_card=True)[0] == "revise")
+good_card = {"scores": {k: {"score": 5, "reasons": []} for k in ("technical", "editorial", "marketing")},
+             "blocking": [], "flags_addressed": [], "claims": []}
+calls_made = []
+real_score, real_ask, real_refine = editor.score, llm.ask, llm.refine
+editor.score = lambda *a: calls_made.append(1) or good_card
+post_ok = {"title": "A plain title", "body": "b", "linkedin": "x"}
+g = draft.review_draft(post_ok, "ctx", {"05-fix.log": "ok"}, None, {}, "build")
+check("enforce: a successful scorecard is what lets a draft pass", g["decision"] == "pass" and calls_made)
+def down(*a): raise RuntimeError("outage")
+editor.score = down
+llm.ask = lambda *a, **k: {}
+g = draft.review_draft(post_ok, "ctx", {"05-fix.log": "ok"}, None, {}, "build")
+check("enforce: a failed scorecard stops the draft with EDITOR_REVIEW off", g["decision"] == "stop")
+editor.score, llm.ask, llm.refine = real_score, real_ask, real_refine
+os.environ["EDITOR_MODE"] = "shadow"; os.environ.pop("EDITOR_REVIEW", None)
+check("shadow: the Editor stays off unless asked", not editor.review_on())
+
+# ---------- PR 89 review: can a measurement lie? ----------
+cm = [{"id": "sidecar_cpu", "what": "sidecar CPU", "unit": "", "accept": {"op": "present"}, "min_entities": 1}]
+raw = {"05-fix.log": "ecs task stats: sidecar cpu 35\nHERO_MEASURE: sidecar_cpu=35"}
+bare = {"05-fix.log": "HERO_MEASURE: sidecar_cpu=35"}
+res1 = lambda logs, sc=None, strict=False: scan.verify_contract(cm, logs, sc, strict)["results"][0]
+check("provenance: raw output above the value corroborates it", res1(raw)["provenance"] == "corroborated")
+check("provenance: a bare line is only self-reported", res1(bare)["provenance"] == "self_reported" and res1(bare)["status"] == "ok")
+check("adversarial: enforce refuses a self-reported value", res1(bare, None, True)["status"] == "uncorroborated")
+check("adversarial: a value typed into a script is refused", res1(bare, {"fix.sh": 'echo "HERO_MEASURE: sidecar_cpu=35"'})["status"] == "hardcoded")
+check("adversarial: a constant typed into a script is refused", res1(bare, {"fix.sh": 'CPU=35\necho "HERO_MEASURE: sidecar_cpu=$CPU"'})["status"] == "hardcoded")
+check("provenance: a value computed by the script is not called hardcoded",
+      res1(raw, {"fix.sh": 'CPU=$(aws ecs describe-tasks)\necho "HERO_MEASURE: sidecar_cpu=$CPU"'})["status"] == "ok")
+fake = {"fix.sh": 'echo "ecs task stats: sidecar cpu 35"\necho "HERO_MEASURE: sidecar_cpu=$V"'}
+check("adversarial: raw text typed by the script corroborates nothing", res1(raw, fake)["provenance"] == "self_reported")
+check("adversarial: that fails in enforce", res1(raw, fake, True)["status"] == "uncorroborated")
+near = {"05-fix.log": "total memory 35\nHERO_MEASURE: sidecar_cpu=35"}
+check("adversarial: the same number about something else does not count", res1(near)["provenance"] == "self_reported")
+later = {"05-fix.log": "HERO_MEASURE: sidecar_cpu=35\nsidecar cpu 35"}
+check("adversarial: output after the claim does not count", res1(later)["provenance"] == "self_reported")
+check("adversarial: a claim in a Terraform log is ignored", res1({"03-apply.log": "HERO_MEASURE: sidecar_cpu=35"})["status"] == "missing")
+two = [{"id": "x", "accept": {"op": "present"}, "min_entities": 2}]
+check("adversarial: one entity with two answers conflicts", scan.verify_contract(two, {"f.log": "HERO_MEASURE: x[a]=1\nHERO_MEASURE: x[a]=9\nHERO_MEASURE: x[b]=2"})["results"][0]["status"] == "conflicting")
+tricky = {"fix.sh": 'V=$((30+5))\necho "sidecar cpu $V"\necho "HERO_MEASURE: sidecar_cpu=$V"'}
+check("known limit: a script that computes a fake value still looks corroborated", res1(raw, tricky)["provenance"] == "corroborated")
+check("scan says plainly that it cannot prove a value", "nothing here proves" in scan.__doc__.replace("\n", " "))
+ct = [{"id": "task_count", "what": "running tasks", "unit": "", "accept": {"op": "present"}, "min_entities": 1}]
+lg = {"05-fix.log": "running tasks 3\nHERO_MEASURE: task_count=3"}
+h1 = scan.check(lg, "Run 3 Tasks", ct)["headline"][0]
+check("title: a corroborated measurement validates the claim", h1["validated"] and h1["basis"] == "measurement")
+h2 = scan.check({"05-fix.log": "tasks: 3"}, "Run 3 Tasks")["headline"][0]
+check("title: a text match stays a heuristic", h2["supported"] and not h2["validated"] and h2["basis"] == "heuristic")
+check("title: the report says a text match is not proof", "not proof" in scan.markdown(scan.check({"05-fix.log": "tasks: 3"}, "Run 3 Tasks")))
+check("title: enforce refuses a claim with no measurement", not scan.check({"05-fix.log": "tasks: 3"}, "Run 3 Tasks", strict=True)["passed"])
+check("title: shadow only reports it", scan.check({"05-fix.log": "tasks: 3"}, "Run 3 Tasks")["passed"])
+check("title: number words do not break validation", scan.check(lg, "Run three Tasks", ct)["headline"][0]["validated"])
+
+# ---------- PR 89 review: scanners must not look clean when they did not run ----------
+rp = pathlib.Path(tempfile.mkdtemp())
+check("scanner: missing reports are unavailable, not clean", all(v["status"] == "unavailable" for v in th.read_reports(rp).values()))
+(rp / "bandit.json").write_text(""); (rp / "bandit.exit").write_text("2")
+check("scanner: an empty report is unavailable", th.read_reports(rp)["bandit"]["status"] == "unavailable")
+(rp / "bandit.json").write_text('{"results": [], "errors": []}'); (rp / "bandit.exit").write_text("2")
+check("scanner: a crash exit code is unavailable", th.read_reports(rp)["bandit"]["status"] == "unavailable")
+(rp / "bandit.exit").write_text("0")
+check("scanner: a real clean run is clean", th.read_reports(rp)["bandit"]["status"] == "clean")
+(rp / "bandit.json").write_text('{"results": [], "errors": [{"filename": "x"}]}')
+check("scanner: files it could not parse make it partial", th.read_reports(rp)["bandit"]["status"] == "partial")
+(rp / "zizmor.json").write_text(""); (rp / "zizmor.exit").write_text("3")
+check("scanner: zizmor with no output is unavailable", th.read_reports(rp)["zizmor"]["status"] == "unavailable")
+(rp / "zizmor.json").write_text('[{"ident": "x"}]'); (rp / "zizmor.exit").write_text("14")
+check("scanner: zizmor findings exit is not a crash", th.read_reports(rp)["zizmor"]["status"] == "findings")
+reps = th.read_reports(rp)
+check("Tech Head: an incomplete review is never called clean", "not a clean result" in th.markdown([], {"summary": "s"}, 0, False, "", reps))
+check("Tech Head: no AI review is incomplete", any("AI review" in g for g in th.complete({}, None)))
+wf = (ROOT / ".github/workflows/tech-head.yml").read_text()
+scan_job = wf[wf.index("  scan:"):wf.index("  review:")]
+check("workflow: the scan job holds no secrets", "secrets." not in scan_job)
+check("workflow: a PR cannot switch bandit off", "--ini empty.ini --ignore-nosec" in scan_job)
+check("workflow: a PR cannot configure zizmor", "--no-config" in scan_job)
+check("workflow: runs from the base branch", "pull_request_target" in wf and "pull_request:" not in wf.split("jobs:")[0].replace("pull_request_target:", ""))
+check("workflow: the reviewer is the base branch copy", "python3 base/pipeline/tech_head.py" in wf and "python3 pr/" not in wf)
+
+# ---------- PR 89 review: what changes on merge, and how to undo it ----------
+os.environ["MODEL_AUTO"] = "true"
+check("rollback: MODEL_AUTO=true turns the pins off", llm._pin("openai") == "")
+os.environ["MODEL_AUTO"] = ""
+check("default: models are pinned", llm._pin("openai") == "gpt-5.5")
+sources_goals = sources.goals
+sources.goals = lambda: [{"id": "aws", "weight": 8}]
+os.environ["GOAL_RANKING"] = "off"
+check("rollback: GOAL_RANKING=off ignores goals", r.goal_weights() == {} and r.goals_block() == "[]")
+os.environ.pop("GOAL_RANKING")
+sources.goals = sources_goals
+def pick(goals):
+    """post_topics ordering with no Editor involved: the same key the pipeline uses."""
+    sent.clear()
+    r._send = fake_send
+    sources.goals = lambda: goals
+    pv = llm.panel_votes
+    llm.panel_votes = lambda v, q, c="", tier="scout": {x["id"]: {"votes": {w: ("yes", "r") for w in llm.PANEL}, "yes": 2 if x["title"] == "Goal topic" else 3, "accepted": True} for x in v}
+    os.environ["EDITOR_MODE"] = "off"
+    r.post_topics([("claude", {"title": "Panel favourite", "sources": ["https://x.y/a"], "replicability": 9, "audience": 9}),
+                   ("claude", {"title": "Goal topic", "sources": ["https://x.y/b"], "replicability": 9, "audience": 9, "goal": "aws"})],
+                  [{"url": "https://x.y/a"}, {"url": "https://x.y/b"}], [], set(), "radar", lambda t, s: "top", 3)
+    llm.panel_votes = pv; sources.goals = sources_goals
+    os.environ["EDITOR_MODE"] = "shadow"
+    r._send = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("tests must not reach GitHub"))
+    return [x[2]["title"] for x in sent if x[1].endswith("/issues")]
+check("default: with no goals the panel's order is unchanged", pick([]) == ["Panel favourite", "Goal topic"])
+check("change: an active goal outranks the panel", pick([{"id": "aws", "weight": 8}]) == ["Goal topic", "Panel favourite"])
+os.environ["GOAL_RANKING"] = "off"
+check("rollback: GOAL_RANKING=off restores the panel's order", pick([{"id": "aws", "weight": 8}]) == ["Panel favourite", "Goal topic"])
+os.environ.pop("GOAL_RANKING")
+pv, la = llm.panel_votes, llm.ask
+llm.panel_votes = lambda cands, *a, **k: {c["id"]: {"yes": 1, "votes": {}} for c in cands}
+llm.ask = lambda who, s, p, sch, tool="submit", **k: {"linkedin": f"{who} post"} if tool == "submit_linkedin" else {"ok": True, "problems": []}
+os.environ["LINKEDIN_MIN_VOTES"] = "0"
+pp, lg2 = draft.linkedin_round({"title": "t", "body": "b", "linkedin": "writer text"}, "build")
+check("rollback: LINKEDIN_MIN_VOTES=0 restores a low-vote post", pp["linkedin"] != "" and lg2.get("by"))
+del os.environ["LINKEDIN_MIN_VOTES"]
+llm.panel_votes, llm.ask = pv, la
+check("every rollback variable reaches its workflow", all(n in (ROOT / f".github/workflows/{w}.yml").read_text() for w, n in
+      (("radar", "GOAL_RANKING"), ("problems", "GOAL_RANKING"), ("radar", "MODEL_AUTO"), ("replicate", "MODEL_AUTO"), ("replicate", "LINKEDIN_MIN_VOTES"),
+       ("redraft", "LINKEDIN_MIN_VOTES"), ("monthly-oss", "LINKEDIN_MIN_VOTES"), ("analytics", "MODEL_AUTO"), ("hero", "MODEL_AUTO"))))
+
+# ---------- PR 89 review: synthetic checks are not human calibration ----------
+hc = evaluate.human_calibration(evaluate.human_comparison())
+check("eval: with no ratings, nothing is calibrated", hc["rated"] == 0 and hc["calibrated"] is False)
+check("eval: labels declare where they came from", all(c.get("labelled_by") for c in cases.values()))
+check("eval: no case claims a human label yet", not any("human" in c["labelled_by"] for c in cases.values()))
+check("eval: the basis is reported", "synthetic" in evaluate.evidence_basis(list(cases.values())))
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

@@ -47,3 +47,5 @@ jobs:
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          MODEL_AUTO: ${{ vars.MODEL_AUTO }}
+          LINKEDIN_MIN_VOTES: ${{ vars.LINKEDIN_MIN_VOTES }}

@@ -378,6 +378,8 @@ GATE_SECONDS = 6 * 60                          # the whole radar job has 20 minu
 
 def goal_weights():
     """{goal id: weight} for active goals. Any failure means no goals, so topic choice falls back to today's."""
+    if os.environ.get("GOAL_RANKING", "").lower() == "off":
+        return {}
     try:
         import sources
         return {str(g.get("id")): int(g.get("weight") or 0) for g in sources.goals()}
@@ -385,6 +387,8 @@ def goal_weights():
         print(f"note: goals not read: {str(e)[:200]}"); return {}
 
 def goals_block():
+    if os.environ.get("GOAL_RANKING", "").lower() == "off":
+        return "[]"
     try:
         import sources
         return json.dumps([{k: g.get(k) for k in ("id", "title", "outcome", "audience", "focus", "splunk", "weight")}

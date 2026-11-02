@@ -33,7 +33,8 @@ def active():
     return mode() in ("warn", "enforce")
 
 def review_on():
-    return os.environ.get("EDITOR_REVIEW", "").strip().lower() == "on"
+    """Enforce always needs the Editor. EDITOR_REVIEW only decides whether it also runs in shadow or warn."""
+    return mode() == "enforce" or os.environ.get("EDITOR_REVIEW", "").strip().lower() == "on"
 
 # ---------- Gate 1: Topic Investment Gate and Evidence Contract ----------
 def brief(title, details):
@@ -102,6 +103,8 @@ LAB_RULES = """THIS TOPIC HAS AN EVIDENCE CONTRACT (in the topic body). It was f
   entities, `HERO_MEASURE: <id>[<entity>]=<value>`, one line per task, pod or service.
 - Print the real result even when it is unexpected or unflattering. Print the line with value null if you could not
   measure it; never estimate.
+- Directly above each HERO_MEASURE line, print the unedited command output the value came from, including the id or
+  entity name. Never type a measured value into a script.
 - The before-check must be able to fail. A zero from a brand-new lab name proves nothing."""
 
 WRITER_RULES = """READER BRIEF AND CLAIM RULES (these override the section structure above; sections are roles you may
@@ -144,10 +147,10 @@ def score(post, context, report, b):
     card["prompt_version"] = roles.prompt_version("editor")
     return card
 
-def decide(card, report, known_urls=()):
+def decide(card, report, known_urls=(), require_card=False):
     """pass or revise, with reasons, computed by code. Dimensions never average. High flags need the Editor's answer
     when it runs; they stay visible either way, because logs themselves cannot be revised."""
-    out = []
+    out = ["no successful Editor scorecard exists for this draft"] if require_card and not card else []
     if report and not report.get("passed", True):
         out.append("the evidence checks did not pass: " + "; ".join(report.get("failures") or [])[:400])
     if card:

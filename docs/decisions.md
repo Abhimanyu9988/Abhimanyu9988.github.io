@@ -2,6 +2,19 @@
 
 Newest first. Each entry says what was decided and why, so a future agent does not undo it by accident.
 
+## 2026-11-02: Enforce requires a successful Editor scorecard
+
+`EDITOR_REVIEW` cannot switch the Editor off in enforce. An outage stops the draft.
+
+## 2026-11-02: Measurements are graded, not trusted
+
+A lab script prints its own evidence, so code can catch lost, typed-in and unsupported values but cannot prove a value.
+Stronger proof would need a runner-side re-query, which is out of scope for now.
+
+## 2026-11-02: Tech Head uses pull_request_target with no PR code execution
+
+A PR must not be able to edit its own review. Scanners run in a separate job with no secrets.
+
 ## 2026-11-02: Milestone 1 builds gates before the Editor
 
 The Topic Investment Gate and Evidence Contract come first, because code can check them. The Editor's scorecard is

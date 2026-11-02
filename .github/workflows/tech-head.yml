@@ -1,20 +1,52 @@
 name: tech-head
-# Reviews every change to the pipeline: repo rules and scanners first, then one AI reviewer. It comments on the PR.
-# Code from the pull request is only ever read here, never run: the reviewer runs from the base branch, and the PR is
-# checked out as data with no credentials. Forks are skipped, so their code never gets near a secret.
+# Reviews every change to the pipeline. Two jobs, so the trust boundary is physical:
+#   scan    reads the pull request with scanners. It has no secrets, and its only output is a report artifact.
+#   review  runs on a fresh machine with secrets, from the base branch. The PR and the reports are data.
+# pull_request_target loads this file from the base branch, so a pull request cannot edit its own review. It is safe
+# here only because no job ever runs code from the PR. Keep it that way. Fork PRs are skipped.
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened, ready_for_review]
     paths: ["pipeline/**", ".github/**", "infra/**", "tests/**", "AGENTS.md"]
 permissions:
   contents: read
-  pull-requests: read
 concurrency: { group: "tech-head-${{ github.event.pull_request.number }}", cancel-in-progress: true }
 jobs:
-  review:
+  scan:
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+      # Each scanner records its own exit code, so "did not run" can never look like "found nothing".
+      # --ini and --ignore-nosec stop the pull request from switching bandit's checks off.
+      - name: scanners
+        run: |
+          mkdir -p reports
+          printf '[bandit]\n' > empty.ini
+          pip install bandit==1.9.4 zizmor==1.31.1 || exit 0
+          bandit -q -r pr/pipeline --ini empty.ini --ignore-nosec -f json -o reports/bandit.json
+          echo $? > reports/bandit.exit
+          zizmor --offline --no-config --format=json pr/.github/workflows > reports/zizmor.json
+          echo $? > reports/zizmor.exit
+        shell: bash +e {0}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+          if-no-files-found: warn
+  review:
+    needs: scan
+    if: always() && needs.scan.result != 'skipped'
+    runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,12 +59,11 @@ jobs:
           path: pr
           fetch-depth: 0
           persist-credentials: false
-      - name: scanners
-        run: |
-          pip install bandit==1.9.4 zizmor==1.31.1
-          mkdir -p reports
-          bandit -q -r pr/pipeline -f json -o reports/bandit.json || true
-          zizmor --offline --format=json pr/.github/workflows > reports/zizmor.json || true
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: reports
+          path: reports
       - uses: actions/create-github-app-token@v2
         id: bot
         with:
@@ -41,7 +72,6 @@ jobs:
           permission-issues: write
           permission-pull-requests: write
       - name: review
-        # The first PR that adds this file has no reviewer on its base branch yet.
         if: hashFiles('base/pipeline/tech_head.py') != ''
         run: python3 base/pipeline/tech_head.py
         env:

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Evidence checks done by code, not by a model. No network and no LLM.
 
-  verify_contract(contract, logs)   did the lab produce each measurement promised before it ran?
-  headline_claims(title, logs)      is every number-and-noun claim in a title backed by one evidence line?
+  verify_contract(contract, logs)   did the lab report each promised measurement, and how well is each one supported?
+  headline_claims(title, logs)      a heuristic: does each number sit next to its noun on one evidence line?
   scan(logs)                        anomalies a reader or reviewer should not miss: nulls, gaps, weak controls.
   check(logs, title, contract)      all three as one scan/1 report. `passed` covers the title and the contract, which a
                                     revision or a new lab can fix. Flags are reported for people and the Editor.
@@ -10,6 +10,9 @@
 A lab reports a measurement by printing one line per value:
     HERO_MEASURE: <id>=<value>            or    HERO_MEASURE: <id>[<entity>]=<value>
 `logs` is {file name: text}. Findings cite file and line so a person can check them.
+
+Limit of all this: the lab script writes both the raw output and the HERO_MEASURE lines, so nothing here proves a value
+is true. It catches lost values, typed-in values and unsupported claims. Only a runner-side re-query could prove more.
 """
 import pathlib, re
 
@@ -43,31 +46,84 @@ def read_logs(folder, first=1):
 def _clean(value):
     return value.strip().strip("\"'`").strip()
 
+NOT_RUN = re.compile(r"-(?:init|plan|apply|destroy|cleanup)\.log$")
+LITERAL = re.compile(r"HERO_MEASURE:\s*([a-z0-9_]+)(?:\[[^\]]*\])?\s*=\s*([^\s\"'`]*)")
+ASSIGNED = re.compile(r"^\s*(?:export\s+|readonly\s+|local\s+)?([A-Za-z_]\w*)=[\"']?(-?\d+(?:\.\d+)?)[\"']?\s*(?:#.*)?$", re.M)
+WINDOW = 40                                    # how far above a measurement its raw output may sit
+
 def measurements(logs):
-    """{id: [{entity, value, file, line}]} from HERO_MEASURE lines."""
+    """{id: [{entity, value, file, line, text}]} from HERO_MEASURE lines in the lab's run logs."""
     out = {}
     for name, text in logs.items():
+        if NOT_RUN.search(name):
+            continue                               # only reproduce and fix output can report a result
         for n, line in enumerate(text.splitlines(), 1):
             m = MEASURE.match(line)
             if m:
                 out.setdefault(m[1], []).append({"entity": m[2] or "", "value": m[3], "file": name, "line": n})
     return out
 
-def verify_contract(contract, logs):
-    """Every measurement must exist, hold a real value, cover enough labelled entities and meet its fixed criterion."""
-    seen, results = measurements(logs), []
+def typed_values(scripts):
+    """{measure id: True} for measurements a script types in instead of computing."""
+    typed = {}
+    for text in (scripts or {}).values():
+        constants = {m[1] for m in ASSIGNED.finditer(text)}
+        for m in LITERAL.finditer(text):
+            value = m[2].strip()
+            name = re.fullmatch(r"\$\{?([A-Za-z_]\w*)\}?", value)
+            if (value and "$" not in value and "%" not in value) or (name and name[1] in constants):
+                typed[m[1]] = True
+    return typed
+
+def _printed_by_script(line, scripts):
+    """True when a log line is text a script typed, so it cannot corroborate anything."""
+    wanted = re.sub(r"\s+", " ", line).strip()
+    return bool(wanted) and any(wanted in re.sub(r"\s+", " ", t) for t in (scripts or {}).values())
+
+def _raw_support(row, cid, logs, scripts):
+    """True when command output above the measurement holds its value next to its entity or measure name.
+    Scripts control stdout, so this raises the cost of a false claim. It does not prove the claim."""
+    lines = logs[row["file"]].splitlines()[max(0, row["line"] - 1 - WINDOW):row["line"] - 1]
+    number = VALUE.fullmatch(_clean(row["value"]))
+    value = _plain(number[1]) if number else _clean(row["value"])
+    names = {row["entity"].lower()} if row["entity"] else {w for w in cid.lower().split("_") if len(w) > 2}
+    for line in reversed(lines):
+        low = _plain(line).lower()
+        if line.lstrip().startswith("HERO_") or line.startswith(("$ ", "# ")) or _printed_by_script(line, scripts):
+            continue
+        if re.search(rf"(?<![\d.\w]){re.escape(value.lower())}(?![\d.\w])", low) and any(n and n in low for n in names):
+            return True
+    return False
+
+def verify_contract(contract, logs, scripts=None, strict=False):
+    """Check the contract and grade each measurement's provenance.
+
+    status      ok, or why the measurement fails. A typed-in value always fails.
+    provenance  corroborated: command output above it holds the value. self_reported: only the HERO_MEASURE line.
+                Neither means proven: the lab script prints both. In strict mode, self_reported fails.
+    """
+    seen, typed, results = measurements(logs), typed_values(scripts), []
     for c in contract or []:
         rows, status = seen.get(c["id"], []), "ok"
         real = [r for r in rows if _clean(r["value"]).lower() not in EMPTY and not BROKEN.search(r["value"])]
         needed = int(c.get("min_entities") or 1)
         count = len({r["entity"] for r in real if r["entity"]}) if needed > 1 else len(real)
         accept = c.get("accept") or {"op": "present"}
+        values = {}
+        for r in real:
+            values.setdefault(r["entity"], set()).add(_clean(r["value"]))
+        backed = [r for r in real if _raw_support(r, c["id"], logs, scripts)]
+        provenance = "corroborated" if real and len(backed) == len(real) else "self_reported"
         if not rows:
             status = "missing"
+        elif c["id"] in typed:
+            status, provenance = "hardcoded", "typed_in_script"
         elif not real:
             status = "no_value"
         elif len(real) < len(rows):
             status = "bad_value"                  # one lost value cannot hide behind the good ones
+        elif any(len(v) > 1 for k, v in values.items() if k):
+            status = "conflicting"                # one entity, two answers
         elif count < needed:
             status = "too_few_entities"
         elif accept.get("op", "present") != "present":
@@ -79,7 +135,9 @@ def verify_contract(contract, logs):
                 status = "wrong_unit"
             elif not all(OPS[accept["op"]](float(p[1].replace(",", "")), float(accept.get("value", 0))) for p in parsed):
                 status = "failed_criterion"
-        results.append({"id": c["id"], "status": status, "values": len(real), "needed": needed,
+        if status == "ok" and strict and provenance != "corroborated":
+            status = "uncorroborated"
+        results.append({"id": c["id"], "status": status, "values": len(real), "needed": needed, "provenance": provenance,
                         "where": f"{rows[0]['file']}:{rows[0]['line']}" if rows else ""})
     return {"passed": all(r["status"] == "ok" for r in results), "results": results}
 
@@ -198,13 +256,34 @@ def _coverage(name, lines, start):
                         "why": f"values for {len(b['ids'])} of {len(ref['ids'])} entities"})
     return out
 
-def check(logs, title="", contract=None):
-    """One report. `passed` is false on a broken contract or an unsupported title claim."""
-    flags, heads = scan(logs), headline_claims(title, logs)
-    result = verify_contract(contract, logs) if contract else None
-    bad_heads = [h for h in heads if not h["supported"]]
-    failures = [f"title claim not found in evidence: {h['claim']}" for h in bad_heads]
+def _validate_title(heads, contract, result, logs):
+    """A title number is validated only by a corroborated contract measurement that shares its noun and value.
+    A text match is a heuristic: it shows the words appear in a log, not that the claim is true."""
+    ok = {r["id"] for r in (result or {}).get("results", []) if r["status"] == "ok" and r["provenance"] == "corroborated"}
+    seen = measurements(logs)
+    for h in heads:
+        h["basis"], h["validated"] = "heuristic", False
+        for c in contract or []:
+            about = f"{c['id']} {c.get('what', '')} {c.get('unit', '')}".lower()
+            if c["id"] in ok and h["noun"] and h["noun"] in about:
+                got = {_plain(VALUE.fullmatch(_clean(r["value"]))[1]) for r in seen.get(c["id"], [])
+                       if VALUE.fullmatch(_clean(r["value"]))}
+                numbers = _numbers(h["number"])
+                if numbers & got or str(len(seen.get(c["id"], []))) in numbers:
+                    h["basis"], h["validated"] = "measurement", True
+    return heads
+
+def check(logs, title="", contract=None, scripts=None, strict=False):
+    """One report. `passed` is false on a broken contract or a title claim with no match in the evidence.
+    strict (enforce) also requires corroborated measurements and measured title numbers."""
+    flags = scan(logs)
+    result = verify_contract(contract, logs, scripts, strict) if contract else None
+    heads = _validate_title(headline_claims(title, logs), contract, result, logs)
+    failures = [f"title claim not found in evidence: {h['claim']}" for h in heads if not h["supported"]]
     failures += [f"measurement {r['id']}: {r['status']}" for r in (result or {}).get("results", []) if r["status"] != "ok"]
+    if strict:
+        failures += [f"title claim has no measurement behind it: {h['claim']}" for h in heads
+                     if h["supported"] and not h["validated"]]
     return {"schema": "scan/1", "flags": flags[:MAX_FLAGS], "headline": heads, "contract": result, "failures": failures,
             "passed": not failures}
 
@@ -213,10 +292,16 @@ def markdown(report):
     for h in report.get("headline") or []:
         if not h["supported"]:
             lines.append(f"- **Title claim not found in evidence:** {h['claim']}")
+        elif h.get("validated"):
+            lines.append(f"- Title claim backed by a corroborated measurement: {h['claim']}")
+        else:
+            lines.append(f"- Title claim matched by text search only, which is not proof: {h['claim']}")
     c = report.get("contract")
     for r in (c or {}).get("results", []):
         if r["status"] != "ok":
             lines.append(f"- **Contract measurement `{r['id']}`:** {r['status']} ({r['values']} of {r['needed']} values)")
+        else:
+            lines.append(f"- Measurement `{r['id']}`: {r['provenance']}, reported by the lab script, not independently re-run")
     for f in report.get("flags") or []:
         lines.append(f"- {f['severity']}: {f['why']} ({f['file']}:{f['line']}): `{f['text']}`")
     return "\n".join(lines) or "- No evidence problems found."

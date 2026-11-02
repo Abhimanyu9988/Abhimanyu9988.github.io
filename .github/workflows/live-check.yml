@@ -1,0 +1,46 @@
+name: live-check
+# Real API calls with a hard $3 budget. It posts one comment and changes nothing else.
+# The pull_request trigger is temporary, for validating this branch, and is removed before the PR leaves draft.
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request to report on"
+        required: true
+        type: string
+  pull_request:
+    paths: ["pipeline/live-check.request"]
+permissions:
+  contents: read
+jobs:
+  live:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+          permission-pull-requests: write
+      - name: live check
+        run: python3 pipeline/live_check.py
+        env:
+          PR_NUMBER: ${{ inputs.pr || github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || 'HEAD' }}
+          EDITOR_MODE: shadow
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

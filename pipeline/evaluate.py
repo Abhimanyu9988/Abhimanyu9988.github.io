@@ -4,8 +4,10 @@
   python3 pipeline/evaluate.py           offline: runs the code checks on tests/eval/cases.json
   python3 pipeline/evaluate.py --live    also asks the Editor for briefs (needs ANTHROPIC_API_KEY; costs a few dollars)
 
-These are engineering targets on a small set, not proof of general accuracy. Results print their sample sizes.
-Labels marked provisional need Abhi's confirmation. tests/eval/human-ratings.json holds his ratings.
+Two different things live here, and they must never be merged:
+  regression checks    synthetic, evidence-derived or provisional labels. They catch regressions in the gates.
+  human calibration    Abhi's ratings in tests/eval/human-ratings.json. Empty until he rates, and too small to show
+                       that editorial quality improved even then.
 """
 import json, pathlib, re, sys
 import editor, scan
@@ -72,6 +74,20 @@ def human_comparison():
                      "agrees": None if rating is None else passed == (rating >= 4)})
     return rows
 
+def evidence_basis(cases):
+    """How many cases each kind of label rests on, so nobody mistakes these for human judgement."""
+    out = {}
+    for c in cases:
+        key = c.get("labelled_by", "unknown")
+        out[key] = out.get(key, 0) + 1
+    return out
+
+def human_calibration(rows):
+    rated = [x for x in rows if x["rating"] is not None]
+    return {"rated": len(rated), "of": len(rows), "calibrated": False if not rated else None,
+            "agreement": rate(sum(1 for x in rated if x["agrees"]), len(rated)),
+            "note": "Agreement on a handful of pieces is a sanity check. It is not evidence that quality improved."}
+
 def meets_targets(r):
     return (r["headline_detection"] == TARGETS["headline_detection"]
             and (r["trivial_rejection"] or 0) >= TARGETS["trivial_rejection"]
@@ -85,12 +101,15 @@ def cost_per_worthwhile(total_usd, ratings, worthwhile_from=4):
     return round(total_usd / good, 2) if good else None
 
 def main():
-    r = run(json.loads((EVAL / "cases.json").read_text()), "--live" in sys.argv)
-    r["human_comparison"] = human_comparison()
+    cases = json.loads((EVAL / "cases.json").read_text())
+    r = run(cases, "--live" in sys.argv)
+    rows = human_comparison()
+    r["human_comparison"], r["human_calibration"], r["label_basis"] = rows, human_calibration(rows), evidence_basis(cases)
     print(json.dumps(r, indent=1))
-    print("Meets targets on this small set." if meets_targets(r) else "Does not meet targets yet.")
-    print("Small labelled set: treat these as checks, not measured accuracy.")
-    sys.exit(0 if meets_targets(r) else 1)
+    ok = meets_targets(r)
+    print("Regression checks pass." if ok else "Regression checks fail.")
+    print("These are mostly synthetic regression checks. They do not show that editorial quality improved.")
+    sys.exit(0 if ok else 1)
 
 if __name__ == "__main__":
     main()

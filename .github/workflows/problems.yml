@@ -43,3 +43,5 @@ jobs:
           EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          MODEL_AUTO: ${{ vars.MODEL_AUTO }}
+          GOAL_RANKING: ${{ vars.GOAL_RANKING }}

@@ -7,11 +7,13 @@
   4. verdict(...)     code decides. Findings on files outside the diff are dropped as unsupported.
 
 TECH_HEAD_MODE: advisory (default) comments only; blocking also fails the check on a blocker.
-Run from the base branch's checkout: code in the pull request is data here and is never executed.
+tech-head.yml runs from the base branch through pull_request_target, so a pull request cannot edit its own review.
+Code in the pull request is data here and is never executed. See docs/merge-behavior.md for the trust boundary.
 """
 import json, os, pathlib, re, subprocess, sys
 
 MAX_DIFF = 60_000
+SCANNERS = ("bandit", "zizmor")
 # (id, severity, category, pattern on an added line, problem, fix, only these paths or None)
 RULES = (
     ("hard-secret", "blocker", "security", re.compile(r"AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|"
@@ -76,18 +78,31 @@ def rules(diff):
     return found
 
 def read_reports(folder):
-    """Summaries of scanner output, so a noisy scanner cannot flood the prompt."""
+    """{scanner: {status, items}}. status is clean, findings, partial or unavailable. A scanner that did not finish is
+    unavailable, which is never the same as clean."""
     out, root = {}, pathlib.Path(folder or ".")
-    for name in ("bandit.json", "zizmor.json"):
-        p = root / name
-        if p.exists():
-            try:
-                data = json.loads(p.read_text() or "{}")
-            except ValueError:
-                out[name] = "unreadable"; continue
-            items = data.get("results") if isinstance(data, dict) else data
-            out[name] = (items or [])[:40]
+    for name in SCANNERS:
+        p = root / f"{name}.json"
+        code = root / f"{name}.exit"
+        try:
+            exit_code = int(code.read_text().strip())
+            data = json.loads(p.read_text())
+        except (OSError, ValueError):
+            out[name] = {"status": "unavailable", "items": []}; continue
+        if name == "bandit":
+            items, errors = data.get("results") or [], data.get("errors") or []
+            ran = exit_code in (0, 1)
+        else:
+            items, errors = (data if isinstance(data, list) else []), []
+            ran = isinstance(data, list)
+        status = "unavailable" if not ran else "partial" if errors else "findings" if items else "clean"
+        out[name] = {"status": status, "items": items[:40], "errors": errors[:5]}
     return out
+
+def complete(reports, ai):
+    """Reasons this review is incomplete. An incomplete review must never read as a clean one."""
+    gaps = [f"{n} {r['status']}" for n, r in reports.items() if r["status"] in ("unavailable", "partial")]
+    return gaps + ([] if ai else ["AI review did not run"])
 
 def review(diff, reports, agents_md):
     import roles
@@ -109,11 +124,16 @@ def verdict(rule_findings, ai, diff):
     kept.sort(key=lambda f: rank.get(f.get("severity"), 3))
     return kept, dropped, any(f.get("severity") == "blocker" and f.get("rule") for f in kept)
 
-def markdown(findings, ai, dropped, blocked, skipped=""):
+def markdown(findings, ai, dropped, blocked, skipped="", reports=None):
     claimed = any(f.get("severity") == "blocker" for f in findings)
+    gaps = complete(reports or {}, ai)
     head = ("code rules found a blocker" if blocked else "the reviewer raised a possible blocker, please judge it" if claimed
-            else "notes to read" if findings else "no findings")
+            else "notes to read" if findings else "incomplete, this is not a clean result" if gaps else "no findings")
     lines = [f"**Tech Head review: {head}.**", ""]
+    if reports:
+        lines += ["Scanners: " + ", ".join(f"{n} {r['status']}" for n, r in reports.items()) + ".", ""]
+    if gaps:
+        lines += [f"**Incomplete:** {'; '.join(gaps)}.", ""]
     if (ai or {}).get("summary"):
         lines += [str(ai["summary"]), ""]
     if skipped:
@@ -134,17 +154,18 @@ def main():
     from radar import comment, safe_text
     diff = git_diff(os.environ["PR_DIR"], os.environ["BASE_SHA"], os.environ["HEAD_SHA"])
     found, ai, skipped = rules(diff), None, ""
+    reports = read_reports(os.environ.get("REPORTS_DIR"))
     if any(f["rule"] == "hard-secret" for f in found):
         skipped = "the change appears to contain a credential, so it was not sent to a model"
     else:
         try:
-            ai = review(diff, read_reports(os.environ.get("REPORTS_DIR")), roles.data("tech_head").get("agents_md", ""))
+            ai = review(diff, reports, roles.data("tech_head").get("agents_md", ""))
         except Exception as e:                     # no key, budget, or a model outage: code rules still stand
             skipped = str(e)[:200]
     findings, dropped, blocked = verdict(found, ai, diff)
-    comment(int(os.environ["PR_NUMBER"]), safe_text(markdown(findings, ai, dropped, blocked, skipped)))
-    if blocked and os.environ.get("TECH_HEAD_MODE", "advisory") == "blocking":
-        sys.exit("Tech Head found a blocker")
+    comment(int(os.environ["PR_NUMBER"]), safe_text(markdown(findings, ai, dropped, blocked, skipped, reports)))
+    if os.environ.get("TECH_HEAD_MODE", "advisory") == "blocking" and (blocked or complete(reports, ai)):
+        sys.exit("Tech Head found a blocker, or could not finish its review")
 
 if __name__ == "__main__":
     main()

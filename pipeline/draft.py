@@ -215,7 +215,8 @@ def linkedin_round(post, kind):
                             "first two lines, read past 'see more', and click the link? Vote yes only for ones that "
                             f"also follow the rules and sound like a real engineer, not marketing.\n{LINKEDIN_RULES}",
                             f"ARTICLE TITLE: {post['title']}", tier="write")
-    ranked = sorted((c for c in cands if votes[c["id"]]["yes"] >= 2), key=lambda c: -votes[c["id"]]["yes"])
+    need = int(os.environ.get("LINKEDIN_MIN_VOTES") or 2)   # 0 restores the old behaviour; see docs/merge-behavior.md
+    ranked = sorted((c for c in cands if votes[c["id"]]["yes"] >= need), key=lambda c: -votes[c["id"]]["yes"])
     for c in ranked:                               # a post the panel didn't choose never ships as its choice
         try:
             chk = llm.ask("claude", "You check LinkedIn posts against the article they promote.",
@@ -229,6 +230,8 @@ def linkedin_round(post, kind):
                    "others": [f"{o['by']} ({votes[o['id']]['yes']}/3)" for o in cands if o is not c]}
             return {**post, "linkedin": c["text"]}, log
         llm.warn(f"linkedin check: {c['by']}'s post failed: {'; '.join(map(str, chk.get('problems') or []))[:200]}")
+    if not need:
+        return post, None
     return {**post, "linkedin": ""}, {"unapproved": True, "candidate": post.get("linkedin", "")}
 
 def linkedin_md(l):
@@ -504,24 +507,22 @@ def write_post(context, kind="problem", extra=""):
     post, log["linkedin"] = linkedin_round(post, kind)
     return post, log
 
-def review_draft(post, context, logs, brief, topic, kind):
+def review_draft(post, context, logs, brief, topic, kind, scripts=None):
     """Evidence checks, then the Editor if enabled. Enforce allows one revision, then stops. Other modes only report."""
     if editor.mode() == "off":
         return {"decision": "pass", "reasons": [], "post": post, "report": None, "card": None}
     known = {str(s.get("url")) for s in topic.get("sources") or [] if isinstance(s, dict)}
     known |= {str(p.get("url")) for p in (brief or {}).get("existing_pages") or []}
+    enforce = editor.mode() == "enforce"
     def judge(p):
-        report = scan.check(logs, p.get("title", ""), (brief or {}).get("measurements"))
-        card, failed = None, []
+        report = scan.check(logs, p.get("title", ""), (brief or {}).get("measurements"), scripts, strict=enforce)
+        card = None
         if editor.review_on():
             try:
                 card = editor.score(p, context, report, brief)
             except Exception as e:
                 llm.warn(f"editor review skipped: {str(e)[:300]}")
-                failed = ["the Editor's review could not run, so this draft has no review"]
-        verdict, reasons = editor.decide(card, report, known)
-        if failed and editor.mode() == "enforce":   # an outage must not read as approval
-            verdict, reasons = "revise", reasons + failed
+        verdict, reasons = editor.decide(card, report, known, require_card=enforce)   # an outage is never approval
         return report, card, verdict, reasons
     report, card, verdict, reasons = judge(post)
     if verdict == "revise" and editor.mode() == "enforce":
@@ -651,7 +652,8 @@ def open_pr(issue_no, res, topic):
     brief = editor.parse_brief(topic.get("body"))
     measures = (brief or {}).get("measurements")
     logs = scan.read_logs(OUT / "evidence", first=res.get("attempt_log_from", 1))   # failed attempts prove nothing
-    before = scan.check(logs, "", measures)
+    scripts = {k: v for k, v in lab.items() if k.endswith(".sh")}
+    before = scan.check(logs, "", measures, scripts, strict=editor.mode() == "enforce")
     refused = editor.lab_refusal(topic.get("body"))
     if refused:
         comment(issue_no, f"Nothing was drafted: {safe_text(refused)}.")
@@ -663,7 +665,7 @@ def open_pr(issue_no, res, topic):
         return
     post, log = write_post(context, kind, editor.writer_context(brief, before))
     post["body"] = drop_pipeline_lines(fix_output_tabs(post["body"]))
-    gate = review_draft(post, context, logs, brief, topic, kind)
+    gate = review_draft(post, context, logs, brief, topic, kind, scripts)
     if gate["decision"] == "stop":
         add_label(issue_no, "editor-stopped")
         comment(issue_no, "The draft did not clear the gates after one revision, so no PR was opened.\n\n"
