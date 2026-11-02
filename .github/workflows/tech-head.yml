@@ -46,7 +46,7 @@ jobs:
           if-no-files-found: warn
   review:
     needs: scan
-    if: always() && needs.scan.result != 'skipped'
+    if: "!cancelled() && needs.scan.result != 'skipped'"
     # pull_request_target runs with GITHUB_REF on the default branch, so a main-only environment allows this job.
     # Do not add required reviewers here: they would pause every review.
     environment: tech-head

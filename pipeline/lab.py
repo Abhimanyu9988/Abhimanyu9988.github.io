@@ -126,6 +126,8 @@ def last_failure(issue_no):
         if not isinstance(c, dict):
             continue
         body = c.get("body") or ""
+        if body.startswith("**Shadow review"):
+            continue                               # shadow text is model output, and a lab must never read it
         if (c.get("user") or {}).get("login", "").startswith("hero-bot") and "**Last failure:**" in body:
             m = re.search(r"\*\*Last failure:\*\*(.*?)```\n(.*?)```", body, re.S)
             fix = re.search(r"\*\*Lab:\*\*(.*?)\n\n", body, re.S)

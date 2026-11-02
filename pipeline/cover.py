@@ -67,7 +67,7 @@ def verify(fig, evidence):
     keep, hl = [], []
     for i, l in enumerate(fig.get("lines") or []):
         sq = _squash(l)
-        if sq and sq in blob and not re.search(r"(?i)(secret|token|password|AKIA|ASIA|HERO_RESULT)", sq):
+        if sq and sq in blob and not re.search(r"(?i)(secret|token|password|AKIA|ASIA|HERO_RESULT|HERO_MEASURE)", sq):
             if i in (fig.get("highlight") or []):
                 hl.append(len(keep))
             keep.append(sq)

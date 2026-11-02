@@ -28,13 +28,13 @@ RULES = (
      "Use pull_request, or prove no PR code runs in that job.", ".github/workflows/"),
     ("workflow-injection", "blocker", "security",
      re.compile(r"^(?!\s*-?\s*(?!(?:run|script)\b)[A-Za-z_][\w-]*:\s*[\"']?\$\{\{)(?!\s*-?\s*(?:env|concurrency)\s*:)"
-                r".*\$\{\{.*?\bgithub\.(event|head_ref)"),
+                r".*\$\{\{.*?\bgithub\.(event\b|head_ref\b)"),
      "Event data may be expanded inside a shell script.", "Pass it through env and quote it.", ".github/"),
     ("write-all", "major", "security", re.compile(r"permissions:\s*write-all"),
      "The workflow grants every write permission.", "List only the permissions the job needs.", ".github/workflows/"),
     ("shell-true", "major", "security", re.compile(r"shell\s*=\s*(True|1)\b"),
      "A subprocess uses a shell.", "Pass an argument list.", ".py"),
-    ("dynamic-exec", "blocker", "security", re.compile(r"(?<![\w.])(eval|exec)\s*\(|\bbuiltins\.(eval|exec)\b|\bos\.system\s*\(|pickle\.loads?\b|yaml\.unsafe_load\b|"
+    ("dynamic-exec", "blocker", "security", re.compile(r"(?<![\w.])(eval|exec)\s*\(|\bbuiltins\.(eval|exec)\b|__builtins__|\bos\.(system|popen)\s*\(|pickle\.loads?\b|yaml\.unsafe_load\b|"
                 r"yaml\.load\((?!.*SafeLoader)"),
      "Dynamic execution or unsafe parsing.", "Parse data with a safe loader; never execute text.", ".py"),
     ("github-write-bypass", "blocker", "security", re.compile(r"api\.github\.com.*(POST|PUT|PATCH|DELETE)|"
@@ -42,7 +42,7 @@ RULES = (
      "Send every bot write through radar.gh().", "pipeline/"),
     ("unbounded-loop", "major", "reliability", re.compile(r"^\s*while True:"),
      "An unbounded loop can run a job or its model bill forever.", "Add a limit or deadline.", ".py"),
-    ("tls-off", "blocker", "security", re.compile(r"verify\s*=\s*False|_create_" r"unverified_context|--insecure\b"),
+    ("tls-off", "blocker", "security", re.compile(r"verify\s*=\s*False|_create_" r"unverified_context|--in" r"secure\b"),
      "TLS verification is turned off.", "Keep verification on.", None),
 )
 
@@ -145,7 +145,7 @@ def read_reports(folder):
             items, errors = (data if isinstance(data, list) else []), []
             ran = isinstance(data, list)
         status = "unavailable" if not ran else "partial" if errors else "findings" if items else "clean"
-        out[name] = {"status": status, "items": items[:40], "errors": errors[:5]}
+        out[name] = {"status": status, "items": items, "errors": errors[:5]}
     return out
 
 def relevant(reports, changed):
@@ -162,6 +162,17 @@ def relevant(reports, changed):
                              "line": item.get("line_number"), "severity": item.get("issue_severity") or
                              (item.get("determinations") or {}).get("severity")})
         out[name] = {"status": r.get("status"), "items": kept}
+    return out
+
+def scanner_blockers(reports, changed):
+    """A scanner's script-injection finding on a changed workflow blocks like a code rule, because it is one."""
+    out = []
+    for item in (reports.get("zizmor") or {}).get("items") or []:
+        text = json.dumps(item)
+        hit = next((p for p in changed if p in text), None)
+        if item.get("ident") == "template-injection" and hit:
+            out.append({"severity": "blocker", "category": "security", "file": hit, "line": 0, "rule": "zizmor-template-injection",
+                        "problem": str(item.get("desc"))[:200], "fix": "Pass the value through env and quote it."})
     return out
 
 def complete(reports, ai, left=0):
@@ -190,7 +201,7 @@ def review(diff, reports, agents_md):
             continue
         merged["summary"] = " ".join(x for x in (merged["summary"], str(got.get("summary", ""))) if x)[:800]
         merged["findings"] += got.get("findings") or []
-    if merged["failed_batches"] == len(kept):
+    if kept and merged["failed_batches"] == len(kept):
         raise RuntimeError(merged.get("error") or "no batch was reviewed")
     return merged
 
@@ -241,8 +252,8 @@ def main():
     import roles
     from radar import comment, safe_text
     diff = git_diff(os.environ["PR_DIR"], os.environ["BASE_SHA"], os.environ["HEAD_SHA"])
-    found, ai, skipped = rules(diff), None, ""
     reports = read_reports(os.environ.get("REPORTS_DIR"))
+    found, ai, skipped = rules(diff) + scanner_blockers(reports, files_in(diff)), None, ""
     if any(f["rule"] == "hard-secret" for f in found):
         skipped = "the change appears to contain a credential, so it was not sent to a model"
     else:
@@ -252,9 +263,14 @@ def main():
             skipped = str(e)[:200]
     findings, dropped, blocked = verdict(found, ai, diff)
     left = prioritise(diff)[1]
-    fallback = ("**Tech Head review: code rules found a blocker.**" if blocked else "**Tech Head review finished.**") + \
-               " The full text failed the link-safety check. See the workflow run."
-    comment(int(os.environ["PR_NUMBER"]), safe_text(markdown(findings, ai, dropped, blocked, skipped, reports, left), fallback))
+    text = markdown(findings, ai, dropped, blocked, skipped, reports, left)
+    print(text)                                    # the fallback below points here
+    gaps = complete(reports, ai, left)
+    fallback = (f"**Tech Head review: {'code rules found a blocker' if blocked else 'finished'}.** {len(findings)} finding(s), "
+                f"{sum(f.get('severity') == 'blocker' for f in findings)} marked blocker. "
+                + (f"**Incomplete, {len(gaps)} gap(s).** " if gaps else "")
+                + "The full text failed the link-safety check, so read it in the workflow run log.")
+    comment(int(os.environ["PR_NUMBER"]), safe_text(text, fallback))
     if os.environ.get("TECH_HEAD_MODE", "advisory") == "blocking" and (blocked or complete(reports, ai, left)):
         sys.exit("Tech Head found a blocker, or could not finish its review")
 

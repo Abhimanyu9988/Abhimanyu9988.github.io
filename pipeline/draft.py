@@ -191,6 +191,13 @@ LINKEDIN_SCHEMA = {"type": "object", "required": ["linkedin"], "properties": {
 LINKEDIN_CHECK = {"type": "object", "required": ["ok", "problems"], "properties": {
     "ok": {"type": "boolean"}, "problems": {"type": "array", "items": {"type": "string"}}}}
 
+def min_votes():
+    """2 by default. 0 restores the old behaviour; see docs/merge-behavior.md. A bad value must not crash a draft."""
+    try:
+        return int(os.environ.get("LINKEDIN_MIN_VOTES") or 2)
+    except ValueError:
+        return 2
+
 def linkedin_round(post, kind):
     """The writer's LinkedIn post plus one each from the other two; all three vote on which would stop the scroll;
     Claude checks the winner against the article (falling back to the runner-up). Returns (post, log)."""
@@ -208,14 +215,15 @@ def linkedin_round(post, kind):
         except Exception as e:
             llm.warn(f"linkedin round: {who}: {str(e)[:200]}")
     cands = [{"id": f"l{i + 1}", "by": llm.NAMES[w], "text": t} for i, (w, t) in enumerate(who_wrote.items()) if t]
-    if len(cands) < 2:
-        return post, None
+    need = min_votes()
+    if len(cands) < 2:                             # no vote is possible, so nothing can be the panel's choice
+        return (post, None) if not need else ({**post, "linkedin": ""},
+                                              {"unapproved": True, "candidate": post.get("linkedin", "")})
     votes = llm.panel_votes([{"id": c["id"], "post": c["text"]} for c in cands],
                             "You are an ECS/EKS engineer scrolling LinkedIn. Which of these would make you stop at the "
                             "first two lines, read past 'see more', and click the link? Vote yes only for ones that "
                             f"also follow the rules and sound like a real engineer, not marketing.\n{LINKEDIN_RULES}",
                             f"ARTICLE TITLE: {post['title']}", tier="write")
-    need = int(os.environ.get("LINKEDIN_MIN_VOTES") or 2)   # 0 restores the old behaviour; see docs/merge-behavior.md
     ranked = sorted((c for c in cands if votes[c["id"]]["yes"] >= need), key=lambda c: -votes[c["id"]]["yes"])
     for c in ranked:                               # a post the panel didn't choose never ships as its choice
         try:
@@ -240,7 +248,7 @@ def linkedin_md(l):
     if l.get("unapproved"):
         return ("**LinkedIn round:** no version won 2 of 3 votes and passed the fact check, so no LinkedIn post ships "
                 "with this draft. The writer's unapproved text, if you want a starting point:\n\n"
-                f"> {safe_text(l.get('candidate'), '[left out]')[:1500]}\n\n")
+                f"> {safe_text(str(l.get('candidate'))[:1500], '[left out]')}\n\n")
     return (f"**LinkedIn round:** the panel picked {l['by']}'s post ({l['yes']} of 3 votes); Claude checked it against "
             f"the article. Others: {', '.join(l['others'])}.\n\n")
 
@@ -559,14 +567,16 @@ def record_review(slug, gate, brief):
     except Exception as e:
         llm.warn(f"review not recorded: {str(e)[:300]}")
 
+GATE_TEXT = 6000                               # GitHub refuses a PR body over 65,536 characters
+
 def gate_md(gate):
     """The review at the top of the PR when it may matter, or folded away in shadow mode."""
     if not gate.get("report"):
         return ""
     head = {"pass": "passed", "revise": "needs attention", "stop": "stopped"}[gate["decision"]]
-    text = f"{safe_text(scan.markdown(gate['report']))}\n\n{safe_text(editor.card_md(gate['card']))}".strip()
+    text = f"{safe_text(scan.markdown(gate['report'])[:GATE_TEXT])}\n\n{safe_text(editor.card_md(gate['card'])[:GATE_TEXT])}".strip()
     if gate["reasons"]:
-        text += "\n\n" + "\n".join(f"- {safe_text(r)}" for r in gate["reasons"])
+        text += "\n\n" + "\n".join(f"- {safe_text(str(r)[:400])}" for r in gate["reasons"][:12])
     if editor.mode() == "shadow":
         return (f"<details><summary><b>Shadow review: {head}</b> (nothing here affects publishing)</summary>\n\n{text}"
                 "\n\n</details>\n\n")
@@ -750,6 +760,7 @@ def open_pr(issue_no, res, topic):
     title = safe_text("Draft: " + post["title"], "Draft post")[:120]
     if len(body) > 60000:
         body = body.replace(preview, "[preview too long for the PR description; read the post file]")
+    body = body[:64000]                            # the last line of defence: a refused PR would strand the branch
     assert_safe(title); assert_safe(body)          # check before anything is created, so a failure leaves no mess
     base = gh("GET", f"/repos/{HOME_REPO}/git/ref/heads/main")["object"]["sha"]
     gh("POST", f"/repos/{HOME_REPO}/git/refs", {"ref": f"refs/heads/{branch}", "sha": base})

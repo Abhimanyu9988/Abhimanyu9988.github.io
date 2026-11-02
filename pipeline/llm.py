@@ -94,13 +94,14 @@ def gemini_models():
         pin, data = _pin("gemini"), {}
         try:
             data = call("GET", "https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000",
-                        headers={"x-goog-api-key": _key("GEMINI_API_KEY")})
-        except (RuntimeError, OSError) as e:
+                        headers={"x-goog-api-key": _key("GEMINI_API_KEY")}) or {}
+        except Exception as e:                     # with a pin, the list only adds fallbacks
             if not pin:
                 raise
             warn(f"Gemini model list unavailable, using the pin: {str(e)[:200]}")
-        names = [m["name"] for m in data.get("models", [])
-                 if "generateContent" in m.get("supportedGenerationMethods", [])]
+        models = data.get("models") if isinstance(data, dict) else []
+        names = [m["name"] for m in models or [] if isinstance(m, dict) and m.get("name")
+                 and "generateContent" in m.get("supportedGenerationMethods", [])]
         out = []
         for kind in ("pro", "flash"):          # newest version first; a GA model beats a preview of the same version
             got = [(n, re.fullmatch(rf"models/gemini-(\d+(?:\.\d+)?)-{kind}(-preview)?", n)) for n in names]

@@ -26,11 +26,11 @@ def slug(title, taken):
 def clean_plan(plan):
     """Only real, active roles receive work. Anything else becomes a proposal for Abhi to decide."""
     active = sources.roles()
-    kept, needs = [], list(plan.get("needs") or [])
+    kept, needs, n = [], list(plan.get("needs") or []), len(plan.get("needs") or [])
     for a in plan.get("assignments") or []:
         (kept if a.get("role") in active else needs).append(
             a if a.get("role") in active else f"No {a.get('role')} role exists: {a.get('task')}")
-    return {"focus": plan.get("focus", ""), "assignments": kept, "needs": (needs[len(plan.get("needs") or []):] + needs)[:4]}
+    return {"focus": plan.get("focus", ""), "assignments": kept, "needs": (needs[n:] + needs[:n])[:4]}
 
 def load():
     text, sha = analytics.read_file(GOALS)

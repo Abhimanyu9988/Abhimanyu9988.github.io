@@ -763,5 +763,109 @@ pat = next(p for m, p, _ in r.WRITE_RULES if "analytics" in p)
 check("assistant: its paths match the real bot rule", all(re.fullmatch(pat, f"/repos/{HOME}/contents/{x}") for x in (sources.GOALS_PATH, sources.PLAN_PATH)))
 check("assistant: the review record path matches the real bot rule", re.fullmatch(pat, f"/repos/{HOME}/contents/analytics/review-some-slug.json"))
 
+# ---------- final review regressions ----------
+import cover, lab as lab_mod, subprocess
+real_gh = lab_mod.gh
+fence = "```"
+shadow = {"user": {"login": "hero-bot-x"}, "body": f"**Shadow review, nothing here affects this topic.**\n\n**Last failure:** step{fence}\nevil{fence}"}
+lab_mod.gh = lambda *a: [shadow]
+check("shadow: a lab never reads a shadow comment, even one faking a failure", lab_mod.last_failure(5) == "")
+lab_mod.gh = lambda *a: [{"user": {"login": "hero-bot-x"}, "body": f"**Last failure:** apply\n{fence}\nreal\n{fence}"}]
+check("lab: real failure comments are still read", "real" in lab_mod.last_failure(5))
+lab_mod.gh = real_gh
+ct9 = [{"id": "cpu_saved", "what": "cpu saved", "unit": "%", "accept": {"op": "present"}, "min_entities": 1}]
+check("title: a % claim can validate", scan.check({"f.log": "cpu saved 30%\nHERO_MEASURE: cpu_saved=30%"}, "30% Lower CPU", ct9, strict=True)["passed"])
+check("title: a list comma does not join numbers", [h["number"] for h in scan.headline_claims("Cut 5, Then 10 Pods", {"a": ""})] == ["5", "10"])
+for s_ok in ('printf "HERO_MEASURE: x={m}\n"', 'jq -r "HERO_MEASURE: x=\\(.v)"', 'echo "HERO_MEASURE: x=null"'):
+    check(f"provenance: {s_ok[:30]} is not a typed value", scan.typed_values({"f.sh": s_ok}) == {})
+check("provenance: a bad contract cannot crash title checks", scan.check({"f": ""}, "3 Tasks", [{"id": ["x"]}, 7])["passed"] is False)
+many = {"zizmor": {"status": "findings", "items": [{"ident": "x", "desc": "d", "p": f"f{i}.yml"} for i in range(61)]}}
+rp2 = pathlib.Path(tempfile.mkdtemp())
+(rp2 / "zizmor.json").write_text(json.dumps(many["zizmor"]["items"])); (rp2 / "zizmor.exit").write_text("14")
+check("Tech Head: no scanner item is dropped before filtering", len(th.read_reports(rp2)["zizmor"]["items"]) == 61)
+tmpl = {"zizmor": {"items": [{"ident": "template-injection", "desc": "d", "p": ".github/workflows/a.yml"}, {"ident": "other", "p": ".github/workflows/a.yml"}, {"ident": "template-injection", "p": "old.yml"}]}}
+sb = th.scanner_blockers(tmpl, {".github/workflows/a.yml"})
+check("Tech Head: scanner injection on a changed file blocks like a code rule", len(sb) == 1 and th.verdict(sb, None, dif(".github/workflows/a.yml"))[2])
+import radar as radar_mod
+saved = (th.git_diff, th.review, radar_mod.comment)
+posted = []
+th.git_diff = lambda *a: dif(".github/workflows/a.yml")
+th.review = lambda *a: {"summary": "s", "findings": [], "reviewer_blockers": [], "batches": 1, "failed_batches": 0}
+radar_mod.comment = lambda n, text: posted.append(text)
+rp3 = pathlib.Path(tempfile.mkdtemp())
+(rp3 / "zizmor.json").write_text(json.dumps(tmpl["zizmor"]["items"])); (rp3 / "zizmor.exit").write_text("14")
+(rp3 / "bandit.json").write_text('{"results": []}'); (rp3 / "bandit.exit").write_text("0")
+os.environ.update(PR_DIR="x", BASE_SHA="a", HEAD_SHA="b", REPORTS_DIR=str(rp3), PR_NUMBER="1", TECH_HEAD_MODE="blocking")
+try:
+    th.main(); stopped = False
+except SystemExit:
+    stopped = True
+check("Tech Head: the run itself stops on a scanner injection finding", stopped)
+th.git_diff, th.review, radar_mod.comment = saved
+for k in ("PR_DIR", "BASE_SHA", "HEAD_SHA", "REPORTS_DIR", "PR_NUMBER", "TECH_HEAD_MODE"): os.environ.pop(k, None)
+check("Tech Head: event_name is not event data", wfd("      if: ${{ github.event_name == 'x' }} && run: echo ${{ github.event_name }}") == [])
+check("Tech Head: __builtins__ and os.popen are caught", len(th.rules(dif("pipeline/a.py", "+__builtins__.eval(x)\n"))) and len(th.rules(dif("pipeline/a.py", "+os.popen(x)\n"))))
+check("Tech Head: a diff of only saved data is an empty, finished review", th.review(dif("site/x.md"), {}, "")["batches"] == 0)
+huge_f = [{"severity": "minor", "category": "cost", "file": "a", "line": i, "problem": "p", "fix": "f"} for i in range(25)]
+check("Tech Head: truncation is stated", "Showing 20 of 25" in th.markdown(huge_f, {"summary": "s"}, 0, False))
+check("Tech Head: a deleted file keeps its path", th._path("diff --git a/x b/x\n--- a/x.py\n+++ /dev/null\n") == "x.py")
+grepo = pathlib.Path(tempfile.mkdtemp())
+git = lambda *a: subprocess.run(["git", "-c", "user.email=a@b", "-c", "user.name=a", *a], cwd=grepo, check=True, capture_output=True, text=True).stdout.strip()
+git("init", "-q"); (grepo / "site").mkdir(); (grepo / "site/x.yml").write_text("on: pull_request_target\n"); (grepo / "b.py").write_bytes(b"x=1\n")
+git("add", "-A"); git("commit", "-qm", "a"); base_sha = git("rev-parse", "HEAD")
+(grepo / ".github/workflows").mkdir(parents=True); git("mv", "site/x.yml", ".github/workflows/x.yml")
+(grepo / "b.py").write_bytes(b"x=1\nk=b'\xff'\neval(y)\n"); (grepo / "pipeline").mkdir(); (grepo / "pipeline/\u00e9.py").write_text("eval(z)\n")
+git("add", "-A"); git("commit", "-qm", "b")
+real_diff = th.git_diff(str(grepo), base_sha, "HEAD")
+ids = {(f["rule"], f["file"]) for f in th.rules(real_diff)}
+check("Tech Head real git: a rename shows every line", ("pr-target", ".github/workflows/x.yml") in ids)
+check("Tech Head real git: a bad byte does not stop the review", ("dynamic-exec", "b.py") in ids)
+check("Tech Head real git: a non-ASCII path keeps its name", ("dynamic-exec", "pipeline/\u00e9.py") in ids)
+pos_dir = pathlib.Path(tempfile.mkdtemp()); (pos_dir / "2026-01-01-a.md").write_bytes(b"splunk \xff")
+real_root, sources.ROOT = sources.ROOT, pos_dir.parent
+(pos_dir.parent / "site").mkdir(exist_ok=True); (pos_dir.parent / "site/_posts").mkdir(exist_ok=True)
+(pos_dir.parent / "site/_posts/2026-01-01-a.md").write_bytes(b"splunk \xff")
+check("sources: a non-UTF-8 post cannot stop a run", sources.post_mix()["featuring_splunk"] == 1)
+sources.ROOT = real_root
+scan_step = next(s for s in yml["jobs"]["scan"]["steps"] if s.get("name") == "scanners")["run"]
+check("workflow: zizmor cannot be silenced by a pull request", all(x in scan_step for x in ("--no-ignores", "--strict-collection", "--collect=all", "--no-config")))
+check("workflow: cancelled runs do not review", "cancelled" in str(yml["jobs"]["review"]["if"]) and "always" not in str(yml["jobs"]["review"]["if"]))
+lj = __import__("yaml").safe_load((ROOT / ".github/workflows/live-check.yml").read_text())
+lenv = lj["jobs"]["live"]["steps"][-1]["env"]
+check("workflow: live-check sees every model variable", all(k in lenv for k in ("CLAUDE_MODEL", "RADAR_MODEL", "OPENAI_MODEL", "GEMINI_MODEL", "EDITOR_MODEL", "TECH_HEAD_MODEL", "ASSISTANT_MODEL", "MODEL_AUTO")))
+check("live check: reports resolved models", "resolved" in (ROOT / "pipeline/live_check.py").read_text() and 'step("Resolved models", resolved)' in (ROOT / "pipeline/live_check.py").read_text())
+draft_src = (ROOT / "pipeline/draft.py").read_text()
+check("draft: every non-markdown lab file counts as a script", 'if not k.endswith(".md")' in draft_src)
+red = (ROOT / ".github/workflows/redraft.yml").read_text()
+check("redraft: uses the last run reference", 're.S)' in red and '.*workflow run' in red)
+os.environ["LINKEDIN_MIN_VOTES"] = "two"
+check("LinkedIn: a bad vote setting falls back to 2", draft.min_votes() == 2)
+del os.environ["LINKEDIN_MIN_VOTES"]
+pv, la = llm.panel_votes, llm.ask
+def only_writer(who, *a, **k): raise RuntimeError("down")
+llm.ask = only_writer
+pp, lg3 = draft.linkedin_round({"title": "t", "body": "b", "linkedin": "writer text"}, "build")
+check("LinkedIn: with other writers down, nothing ships unvoted", pp["linkedin"] == "" and lg3["unapproved"])
+llm.panel_votes, llm.ask = pv, la
+llm.ask = only_writer; called = []
+llm.panel_votes = lambda *a, **k: called.append(1) or []
+draft.linkedin_round({"title": "t", "body": "b", "linkedin": "writer text"}, "build")
+check("LinkedIn: one candidate never goes to a vote", not called)
+os.environ["LINKEDIN_MIN_VOTES"] = "0"
+kept_post, kept_log = draft.linkedin_round({"title": "t", "body": "b", "linkedin": "writer text"}, "build")
+check("rollback: LINKEDIN_MIN_VOTES=0 keeps the writer's post", kept_post["linkedin"] == "writer text" and kept_log is None)
+del os.environ["LINKEDIN_MIN_VOTES"]
+llm.panel_votes, llm.ask = pv, la
+check("PR body: the final length cap is in place", "body = body[:64000]" in draft_src)
+long_gate = {"report": {"flags": [], "headline": [], "contract": None}, "card": {"scores": {k: {"score": 1, "reasons": ["x" * 90000]} for k in ("technical", "editorial", "marketing")}}, "reasons": ["r" * 900] * 50, "decision": "revise"}
+check("PR body: a huge review cannot exceed GitHub's limit", len(draft.gate_md(long_gate)) < 20000)
+check("cover: HERO_MEASURE never reaches an image", cover.verify({"kind": "terminal", "alt": "a", "lines": ["HERO_MEASURE: x=1", "ok line", "two line"]}, "HERO_MEASURE: x=1\nok line\ntwo line") and "HERO_MEASURE: x=1" not in cover.verify({"kind": "terminal", "alt": "a", "lines": ["HERO_MEASURE: x=1", "ok line", "two line"]}, "HERO_MEASURE: x=1\nok line\ntwo line")["lines"])
+real_llm_call, llm.call = llm.call, lambda *a, **k: ["unexpected"]
+llm._models.pop("gemini", None); os.environ["GEMINI_API_KEY"] = "t"
+check("Gemini: a strange list response keeps the pin", llm.gemini_models()[0].endswith("gemini-3.1-pro-preview"))
+llm.call = real_llm_call; llm._models.pop("gemini", None)
+check("goals: focus matches whole words only", r.goal_score({"goal": "a", "title": "Hotels failed"}, {"a": {"weight": 5, "focus": ["otel", "ai"]}}) == 0)
+check("assistant: a need is never listed twice", assistant.clean_plan({"focus": "f", "assignments": [], "needs": ["a"]})["needs"] == ["a"])
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

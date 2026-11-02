@@ -10,9 +10,13 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 | Topic ranking | Panel votes and self-scores | Same, until a goal exists. A goal's weight then outranks votes, only for titles matching its focus areas | `GOAL_RANKING=off`, or `/goal drop <id>` | `default: with no goals`, `change: an active goal`, `rollback: GOAL_RANKING=off` |
 | Topic prompts | Every topic must feature Splunk | Splunk wherever it fits | Revert `SPLUNK_RULE` in `pipeline/radar.py` | `Splunk is no longer mandatory` |
 | LinkedIn choice, including the monthly post | Best-voted post that passes the fact check, even with 0 votes; the writer's text if none pass | Needs 2 of 3 votes and the fact check. Otherwise the post ships without LinkedIn text, and the PR shows the writer's text | `LINKEDIN_MIN_VOTES=0` | `LinkedIn:` tests, `rollback: LINKEDIN_MIN_VOTES=0` |
-| Cover screenshots | Filter `HERO_RESULT` lines | Also filter `HERO_MEASURE` lines | None needed | `HERO_MEASURE` filter |
-| PR body | Technical checks | Adds a folded shadow review and a dollar estimate | `EDITOR_MODE=off` | `shadow: a failed check only reports` |
-| Radar runs | No Editor | Up to 2 briefs per run, after issues open, as issue comments | `EDITOR_MODE=off` | `shadow:` tests |
+| Covers and screenshots | Filter `HERO_RESULT` lines | Also filter `HERO_MEASURE` lines | None needed | `HERO_MEASURE` filter |
+| Topic prompts | No goals text | Adds a goals list and a recent Splunk mix | `GOAL_RANKING=off` removes goals | `rollback: GOAL_RANKING=off` |
+| Failed labs | The lab reads earlier failure comments | Unchanged, and shadow comments are skipped | None needed | `shadow: a lab never reads` |
+| `tests` workflow | Pipeline and workflow changes | Also runs on `labs/**` and `AGENTS.md` | Revert the path filter | Workflow tests |
+| LinkedIn with fewer than 2 candidates | Writer's post ships unchecked | No post ships | `LINKEDIN_MIN_VOTES=0` | `LinkedIn:` tests |
+| PR body | Technical checks | Adds a folded shadow review and a dollar estimate. `EDITOR_MODE=off` removes the review; the estimate stays | `EDITOR_MODE=off` | `shadow: a failed check only reports` |
+| Radar and `problems` runs | No Editor | Up to 2 briefs per run, after issues open, as issue comments | `EDITOR_MODE=off` | `shadow:` tests |
 | Draft job | No record | Writes `analytics/review-<slug>.json` on the analytics branch | `EDITOR_MODE=off` | Pipeline suite in shadow mode |
 | Labs, article prompts, publishing | Unchanged | Unchanged in shadow | Not needed | `shadow: no rule reaches the lab`, `shadow: nothing reaches the writer` |
 | New workflows | None | `tech-head` on pipeline PRs, `assistant` on `/goal`, manual `editor-eval` and `live-check` | Disable the workflow in the Actions tab | Workflow tests |
@@ -65,13 +69,13 @@ Observed from job logs and workflow files on 2 November 2026. Environment secret
 **Phase 1, before PR 89 merges. Nothing existing is touched.**
 
 1. Create `live-check` and `tech-head`, each limited to the selected branch `main`. Add no required reviewers to `tech-head`.
-2. Copy, do not move. Add `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `BOT_PRIVATE_KEY` to `live-check`. Add `OPENAI_API_KEY` and `BOT_PRIVATE_KEY` to `tech-head`.
-3. Prefer new provider keys with spend limits for these environments, and a second private key on the GitHub App. A copied key is equally exposed through its repository copy, so only new keys gain protection here.
+2. Create new provider keys with spend limits, and a second private key on the GitHub App. Secrets are write-only, so you cannot copy an existing value out of GitHub, and new keys are what gain protection: a value that also sits at repository level stays exposed through that copy.
+3. Add new `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` and `BOT_PRIVATE_KEY` values to `live-check`. Add new `OPENAI_API_KEY` and `BOT_PRIVATE_KEY` values to `tech-head`. An environment secret takes precedence over a repository secret of the same name.
 4. Leave every repository secret in place.
 
-**Phase 2, after PR 89 merges and passes `live-check`.** Create a `pipeline` environment limited to `main`, with the three model keys. Add `environment: pipeline` to `radar`, `problems`, `hero`, `monthly-oss`, `redraft`, `replicate` draft and `assistant`. Add the model keys to `publish` and `aws-lab`, because `analytics` and the lab job cannot name a second environment. The lab job must keep `aws-lab`, because its AWS role trusts that environment by name. Confirm one successful run of each job, with Splunk checks included, before the next phase.
+**Phase 2, after PR 89 merges and passes `live-check`.** Create a `pipeline` environment limited to `main`. Limit `publish` and `aws-lab` to `main` too, because otherwise a branch could still reach keys placed there. Add new model keys to `pipeline`, `publish` and `aws-lab`. Add `environment: pipeline` to `radar`, `problems`, `hero`, `monthly-oss`, `redraft`, `replicate` draft and `assistant`. `analytics` and the lab job cannot name a second environment, and the lab job must keep `aws-lab`, because its AWS role trusts that environment by name. Confirm one successful run of each job, with Splunk checks included, before the next phase.
 
-**Phase 3, once every job has passed.** Delete the three repository model keys, then rotate them. To roll back at any point, add the repository secrets back.
+**Phase 3, once every job has passed.** Delete the three repository model keys, confirm scheduled jobs still run, and only then revoke the old keys. Revoking first would stop anything still using them. To roll back before revocation, add the repository secrets back.
 
 **`BOT_PRIVATE_KEY` stays at repository level for now.** `merge-on-approve` needs it and cannot use a main-only environment. Allowing `refs/pull/*/merge` would also let any branch's pull request reach the key. Closing this needs a separate design change, such as a narrower app for merges.
 

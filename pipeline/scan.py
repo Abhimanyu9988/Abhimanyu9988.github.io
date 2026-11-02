@@ -49,7 +49,6 @@ def _clean(value):
 NOT_RUN = re.compile(r"-(?:init|plan|apply|destroy|cleanup)\.log$")
 LITERAL = re.compile(r"HERO_MEASURE:\s*([a-z0-9_]+)(?:\[[^\]]*\])?\s*=\s*[\"']?([^\s\"'`]*)")
 ASSIGNED = re.compile(r"^[ \t]*(?:export[ \t]+|readonly[ \t]+|local[ \t]+)?([A-Za-z_]\w*)=[\"']?(-?\d+(?:\.\d+)?)[\"']?[ \t]*(?:#.*)?$", re.M)
-PRINTF = re.compile(r"%[-0-9.]*[a-z]")
 WINDOW = 40                                    # how far above a measurement its raw output may sit
 
 def measurements(logs):
@@ -73,7 +72,7 @@ def typed_values(scripts):
         for m in LITERAL.finditer(text):
             value = m[2].strip()
             name = re.fullmatch(r"\$\{?([A-Za-z_]\w*)\}?", value)
-            if (value and "$" not in value and not PRINTF.search(value)) or (name and name[1] in constants):
+            if VALUE.fullmatch(value) or (name and name[1] in constants):   # only a typed number is a typed value
                 typed[m[1]] = True
     return typed
 
@@ -172,7 +171,7 @@ WORDS = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eigh
          "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
          "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60,
          "seventy": 70, "eighty": 80, "ninety": 90, "hundred": 100, "thousand": 1000}
-CLAIM = re.compile(r"(?:(\$)|(?<![\w.,$]))(\d[\d,]*(?:\.\d+)?(?![\w,]*\d)|(?:" + "|".join(sorted(WORDS, key=len, reverse=True)) +
+CLAIM = re.compile(r"(?:(\$)|(?<![\w.,$]))(\d(?:[\d,]*\d)?(?:\.\d+)?(?![\w,]*\d)|(?:" + "|".join(sorted(WORDS, key=len, reverse=True)) +
                    r")\b)\s*(%|[-\s]*[A-Za-z][A-Za-z-]*(?:\s+[A-Za-z][A-Za-z-]*){0,2})?", re.I)
 STOP = {"to", "in", "with", "and", "or", "of", "on", "for", "a", "an", "the", "without", "from", "by", "at", "via"}
 NOT_A_COUNT = re.compile(r"(?i)\b(step|attempt|phase|version|line|stage|try)\s*#?$")
@@ -293,8 +292,10 @@ def _validate_title(heads, contract, result, logs):
     for h in heads:
         h["basis"], h["validated"] = "heuristic", False
         for c in contract or []:
+            if bad_measure(c):
+                continue
             about = f"{c.get('id')} {c.get('what', '')} {c.get('unit', '')}".lower().replace("_", " ")
-            if c.get("id") in ok and h["noun"] and re.search(rf"\b{re.escape(h['noun'])}s?\b", about):
+            if c.get("id") in ok and h["noun"] and re.search(rf"(?<!\w){re.escape(h['noun'])}s?(?!\w)", about):
                 got = {_plain(VALUE.fullmatch(_clean(r["value"]))[1]) for r in seen.get(c["id"], [])
                        if VALUE.fullmatch(_clean(r["value"]))}
                 numbers = _numbers(h["number"])
