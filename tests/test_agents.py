@@ -1070,7 +1070,7 @@ cto.admin_on, cto.admin_read = (lambda: True), (lambda path: ("", None))
 cto.admin_write = lambda path, text, sha, msg: private_tasks.__setitem__(path, text)
 cto.answer("track spending", [])
 cto.admin_on, cto.admin_read, cto.admin_write = real_on, real_rp, real_wp
-check("cto: a task reaches an active role", json.loads(private_tasks["tasks.json"])["tasks"][0]["owner"] == "spend_tracker" and "Assigned" in replies[-1])
+check("cto: a task reaches an active role", json.loads(private_tasks["tasks.json"])["tasks"][0]["owner"] == "spend_tracker" and "Added to the list" in replies[-1] and "don't act" in replies[-1])
 roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "t", "owner": "ghost"}, "urls": []}
 cto.answer("hire someone", [])
 real_assistant_goal = assistant.add_goal
@@ -1090,6 +1090,13 @@ check("leaders: when they need him, the steps are numbered", "What I need from y
 for said, want in (("CMO: how did others do it", ("cmo", "how did others do it")), ("cfo, are we ok", ("cfo", "are we ok")), ("@CTO why", ("cto", "why")),
                    ("my goal is X", ("ceo", "my goal is X")), ("ceofy this", ("ceo", "ceofy this"))):
     check(f"leaders: routes {said!r}", cto.route(said) == want)
+check("leaders: one message can reach two leaders", cto.split_leaders("CMO: Good topic\nCTO: Waiting for the demo") == [("cmo", "Good topic"), ("cto", "Waiting for the demo")])
+check("leaders: extra lines stay with their leader", cto.split_leaders("CMO: one\ntwo\nCTO: three") == [("cmo", "one\ntwo"), ("cto", "three")])
+check("leaders: a plain message goes to the CEO", cto.split_leaders("hello\nthere") == [("ceo", "hello\nthere")])
+old_talk = [{"from": "CTO", "text": "x" * 5000}] * 7 + [{"from": "Topic Scout", "text": "New pick: Prometheus"}, {"from": "Abhi", "text": "Good topic"}]
+kept_talk = cto.recent_talk(old_talk)
+check("leaders: the newest messages always reach the model", kept_talk[-1]["text"] == "Good topic" and kept_talk[-2]["text"].endswith("Prometheus"))
+check("leaders: the talk stays within its limit", len(json.dumps(kept_talk)) < 7000)
 for leader in ("ceo", "cto", "cmo", "cfo"):
     check(f"leaders: {leader} is on the team", roles_mod.get(leader)["status"] == "active" and roles_mod.get(leader)["display"].lower() == leader)
 assistant.add_goal = real_assistant_goal
