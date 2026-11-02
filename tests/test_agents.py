@@ -501,7 +501,7 @@ def one_fails(role, prompt, out):
         raise RuntimeError("outage")
     return {"summary": "s", "findings": []}
 roles.ask = one_fails
-th.MAX_BATCHES = 4
+th.MAX_DIFF, th.MAX_BATCHES = 100, 4
 two = "".join(f"diff --git a/pipeline/{n}.py b/pipeline/{n}.py\n+{n * 30}\n" for n in "ab")
 got_ai = th.review(two, {}, "")
 check("Tech Head: each batch gets its own call", len(seen_prompts) == 2 and "batch 2 of 2" in seen_prompts[1])
@@ -524,7 +524,7 @@ for name in ("live-check", "editor-eval"):
     check(f"policy: {name} refuses to run from a branch", "github.ref == 'refs/heads/main'" in text)
     check(f"policy: {name} checks out main, never the selected ref", "ref: main" in text and "github.sha" not in text and "head.sha" not in text)
     check(f"policy: {name} uses the protected environment", "environment: live-check" in text)
-    check(f"policy: {name} has no pull request trigger", "pull_request" not in text.split("jobs:")[0])
+    check(f"policy: {name} has no pull request trigger", "pull_request" not in text.split("\non:", 1)[1].split("jobs:")[0])
 check("workflow: a failed scanner install is recorded", "echo 127 > reports/bandit.exit" in wf)
 (rp / "bandit.exit").write_text("127"); (rp / "bandit.json").unlink()
 check("scanner: a failed install is unavailable, not clean", th.read_reports(rp)["bandit"]["status"] == "unavailable")
