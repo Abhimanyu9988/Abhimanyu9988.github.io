@@ -12,7 +12,7 @@ passes your notes to the writer and closes the old PR once the new one is open.
 """
 import base64, datetime, json, os, pathlib, re
 from radar import HOME_REPO, gh, safe_text, assert_safe, comment, add_label, Unsafe
-import llm, cover
+import llm, cover, editor, scan
 
 OUT = pathlib.Path("out")
 SITE_URL = "https://abhimanyu9988.github.io"
@@ -191,6 +191,13 @@ LINKEDIN_SCHEMA = {"type": "object", "required": ["linkedin"], "properties": {
 LINKEDIN_CHECK = {"type": "object", "required": ["ok", "problems"], "properties": {
     "ok": {"type": "boolean"}, "problems": {"type": "array", "items": {"type": "string"}}}}
 
+def min_votes():
+    """2 by default. 0 restores the old behaviour; see docs/merge-behavior.md. A bad value must not crash a draft."""
+    try:
+        return int(os.environ.get("LINKEDIN_MIN_VOTES") or 2)
+    except ValueError:
+        return 2
+
 def linkedin_round(post, kind):
     """The writer's LinkedIn post plus one each from the other two; all three vote on which would stop the scroll;
     Claude checks the winner against the article (falling back to the runner-up). Returns (post, log)."""
@@ -208,15 +215,17 @@ def linkedin_round(post, kind):
         except Exception as e:
             llm.warn(f"linkedin round: {who}: {str(e)[:200]}")
     cands = [{"id": f"l{i + 1}", "by": llm.NAMES[w], "text": t} for i, (w, t) in enumerate(who_wrote.items()) if t]
-    if len(cands) < 2:
-        return post, None
+    need = min_votes()
+    if len(cands) < 2:                             # no vote is possible, so nothing can be the panel's choice
+        return (post, None) if not need else ({**post, "linkedin": ""},
+                                              {"unapproved": True, "candidate": post.get("linkedin", "")})
     votes = llm.panel_votes([{"id": c["id"], "post": c["text"]} for c in cands],
                             "You are an ECS/EKS engineer scrolling LinkedIn. Which of these would make you stop at the "
                             "first two lines, read past 'see more', and click the link? Vote yes only for ones that "
                             f"also follow the rules and sound like a real engineer, not marketing.\n{LINKEDIN_RULES}",
                             f"ARTICLE TITLE: {post['title']}", tier="write")
-    ranked = sorted(cands, key=lambda c: -votes[c["id"]]["yes"])
-    for c in ranked:
+    ranked = sorted((c for c in cands if votes[c["id"]]["yes"] >= need), key=lambda c: -votes[c["id"]]["yes"])
+    for c in ranked:                               # a post the panel didn't choose never ships as its choice
         try:
             chk = llm.ask("claude", "You check LinkedIn posts against the article they promote.",
                           "Is every number and claim in POST supported by ARTICLE, with nothing about Abhi beyond what "
@@ -229,11 +238,17 @@ def linkedin_round(post, kind):
                    "others": [f"{o['by']} ({votes[o['id']]['yes']}/3)" for o in cands if o is not c]}
             return {**post, "linkedin": c["text"]}, log
         llm.warn(f"linkedin check: {c['by']}'s post failed: {'; '.join(map(str, chk.get('problems') or []))[:200]}")
-    return post, None
+    if not need:
+        return post, None
+    return {**post, "linkedin": ""}, {"unapproved": True, "candidate": post.get("linkedin", "")}
 
 def linkedin_md(l):
     if not l:
         return ""
+    if l.get("unapproved"):
+        return ("**LinkedIn round:** no version won 2 of 3 votes and passed the fact check, so no LinkedIn post ships "
+                "with this draft. The writer's unapproved text, if you want a starting point:\n\n"
+                f"> {safe_text(str(l.get('candidate'))[:1500], '[left out]')}\n\n")
     return (f"**LinkedIn round:** the panel picked {l['by']}'s post ({l['yes']} of 3 votes); Claude checked it against "
             f"the article. Others: {', '.join(l['others'])}.\n\n")
 
@@ -261,7 +276,8 @@ def review_md(name, log):
 def drop_pipeline_lines(md):
     """HERO_RESULT lines are the lab runner's signal, not output a reader would see; drop them from code blocks."""
     return re.sub(r"```([^\n`]*)\n(.*?)```", lambda m: f"```{m.group(1)}\n" + "".join(
-        l for l in m.group(2).splitlines(True) if not l.lstrip().startswith("HERO_RESULT")) + "```", md, flags=re.S)
+        l for l in m.group(2).splitlines(True) if not l.lstrip().startswith(("HERO_RESULT", "HERO_MEASURE"))) + "```",
+        md, flags=re.S)
 
 def fix_output_tabs(md):
     """Writers sometimes double-escape tabs in pasted output; turn a literal \\t back into a tab, but only inside
@@ -474,10 +490,11 @@ def tighten(post, kind="problem"):
             llm.warn("tighten: the shorter version changed code or output; kept the reviewed one"); break
         post = {**post, **{k: v for k, v in cut.items() if v}}
         m = measure(post["body"])
-    note = (f"cut from {m0['prose']} to {m['prose']} words of prose" if m is not m0 else "")
+    note = (f"cut from {m0['prose']} to {m['prose']} words of prose" if m["prose"] != m0["prose"] else "")
     return post, note
 
-def write_post(context, kind="problem"):
+def write_post(context, kind="problem", extra=""):
+    """`extra` carries the reader brief and claim rules, and is empty unless EDITOR_MODE is warn or enforce."""
     K = KINDS[kind]
     notes = os.environ.get("REDRAFT_NOTES", "").strip()[:2000]
     if notes:                                      # Abhi's `/redraft` comment on the previous draft
@@ -490,13 +507,85 @@ def write_post(context, kind="problem"):
     context = f"{chosen}\n\nAUTHOR:\n{author}\n\nSTYLE SIGNALS:\n{signals}\n\n{context}"
     post = llm.ask("chatgpt", "You write hands-on AWS container articles for Abhimanyu's blog, strictly from real lab "
                               "output, in a warm human voice.", f"Write the article and the LinkedIn post.\n\n"
-                   f"RULES:\n{K['rules']}\n\nLINKEDIN RULES:\n{LINKEDIN_RULES}\n\n{context}", POST_SCHEMA)
-    post, log = llm.refine("blog article and LinkedIn post", post, K["rubric"], f"RULES:\n{K['rules']}\n\n{context}",
+                   f"RULES:\n{K['rules']}{extra}\n\nLINKEDIN RULES:\n{LINKEDIN_RULES}\n\n{context}", POST_SCHEMA)
+    post, log = llm.refine("blog article and LinkedIn post", post, K["rubric"], f"RULES:\n{K['rules']}{extra}\n\n{context}",
                            POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
     log["headline"] = head
     post, log["tightened"] = tighten(post, kind)
     post, log["linkedin"] = linkedin_round(post, kind)
     return post, log
+
+def review_draft(post, context, logs, brief, topic, kind, scripts=None):
+    """Evidence checks, then the Editor if enabled. Enforce allows one revision, then stops. Other modes only report."""
+    if editor.mode() == "off":
+        return {"decision": "pass", "reasons": [], "post": post, "report": None, "card": None}
+    known = {str(s.get("url")) for s in topic.get("sources") or [] if isinstance(s, dict)}
+    known |= {str(p.get("url")) for p in (brief or {}).get("existing_pages") or []}
+    enforce = editor.mode() == "enforce"
+    def judge(p):
+        report = scan.check(logs, p.get("title", ""), (brief or {}).get("measurements"), scripts, strict=enforce)
+        card = None
+        if editor.review_on():
+            try:
+                card = editor.score(p, context, report, brief)
+            except Exception as e:
+                llm.warn(f"editor review skipped: {str(e)[:300]}")
+        verdict, reasons = editor.decide(card, report, known, require_card=enforce)   # an outage is never approval
+        return report, card, verdict, reasons
+    report, card, verdict, reasons = judge(post)
+    if verdict == "revise" and editor.mode() == "enforce":
+        try:
+            fixed = llm.ask("chatgpt", "You revise hands-on articles without inventing anything.",
+                            "Fix every problem below. Never invent a result: if a result is missing, say so plainly "
+                            f"and narrow the claim.\n\nPROBLEMS:\n{json.dumps(reasons)}\n\nPOST:\n{json.dumps(post)}"
+                            f"\n\n{context}", POST_SCHEMA, tool="revise")
+            if fixed.get("body"):                  # only the article changes; it goes through the fact check again
+                K = KINDS[kind]
+                changed = {**post, **{k: fixed[k] for k in ("title", "description", "body") if fixed.get(k)}}
+                changed, _ = llm.refine("blog article and LinkedIn post", changed, K["rubric"],
+                                        f"RULES:\n{K['rules']}\n\n{context}", POST_SCHEMA, writer="chatgpt",
+                                        reviewer="claude", judge="gemini")
+                changed["linkedin"] = post.get("linkedin", "")
+                post = {**changed, "body": drop_pipeline_lines(fix_output_tabs(changed["body"]))}
+                report, card, verdict, reasons = judge(post)
+        except Exception as e:
+            llm.warn(f"revision failed: {str(e)[:300]}")
+        if verdict == "revise":
+            return {"decision": "stop", "reasons": reasons, "post": post, "report": report, "card": card}
+    return {"decision": verdict, "reasons": reasons, "post": post, "report": report, "card": card}
+
+def record_review(slug, gate, brief):
+    """Keep every gate result for evaluation, on the analytics branch, so reviews never touch a published file."""
+    import analytics
+    try:
+        analytics.ensure_branch()
+        path = f"analytics/review-{slug[:70]}.json"
+        _, sha = analytics.read_file(path)
+        data = {"mode": editor.mode(), "decision": gate["decision"], "reasons": gate["reasons"], "evidence": gate["report"],
+                "scorecard": gate["card"], "brief": brief, "usd": llm.cost_usd()[0]}
+        analytics.write_file(path, json.dumps(data, indent=1), sha, f"analytics: review for {slug[:60]}")
+    except Exception as e:
+        llm.warn(f"review not recorded: {str(e)[:300]}")
+
+GATE_TEXT = 6000                               # GitHub refuses a PR body over 65,536 characters
+
+def clip_gate(text):
+    return text if len(text) <= GATE_TEXT else text[:GATE_TEXT] + "\n\n[cut here: the full review is on the analytics branch]"
+
+def gate_md(gate):
+    """The review at the top of the PR when it may matter, or folded away in shadow mode."""
+    if not gate.get("report"):
+        return ""
+    head = {"pass": "passed", "revise": "needs attention", "stop": "stopped"}[gate["decision"]]
+    text = f"{safe_text(clip_gate(scan.markdown(gate['report'])))}\n\n{safe_text(clip_gate(editor.card_md(gate['card'])))}".strip()
+    if gate["reasons"]:
+        text += "\n\n" + "\n".join(f"- {safe_text(str(r)[:400])}" for r in gate["reasons"][:12])
+        if len(gate["reasons"]) > 12:
+            text += f"\n- and {len(gate['reasons']) - 12} more"
+    if editor.mode() == "shadow":
+        return (f"<details><summary><b>Shadow review: {head}</b> (nothing here affects publishing)</summary>\n\n{text}"
+                "\n\n</details>\n\n")
+    return f"### Review: {head}\n\n{text}\n\n---\n\n"
 
 def on_main(path):
     try:
@@ -531,7 +620,7 @@ def add_shots(post, slug):
     for im in (got.get("images") or [])[:3]:
         lines = [str(l).replace("\t", "    ").rstrip() for l in im.get("lines") or []]
         lines = [l for l in lines if l.strip() and re.sub(r"\s+", " ", l).strip() in blob
-                 and not re.search(r"(?i)(secret|token|password|AKIA|ASIA|HERO_RESULT)", l)]
+                 and not re.search(r"(?i)(secret|token|password|AKIA|ASIA|HERO_RESULT|HERO_MEASURE)", l)]
         head = str(im.get("after_heading") or "").strip().lstrip("#").strip()
         m = re.search(rf"^#{{2,3}} +{re.escape(head)}\s*$", post["body"], re.M) if head else None
         if len(lines) < 3 or not m:
@@ -562,6 +651,10 @@ def add_files_section(body, slug, names):
     tail = body.rfind("\n---\n")
     return (body[:tail] + "\n\n" + block + body[tail:]) if tail > 0 else body + "\n\n" + block
 
+def finish_body(body, run_id):
+    """A refused PR would strand the branch, so the cap comes first. /redraft reads the marker, which follows all model text."""
+    return f"{body[:64000]}\n\n<!-- lab-run: {run_id} -->"
+
 def open_pr(issue_no, res, topic):
     slug = res["slug"][:60].strip("-")
     if on_main(f"labs/{slug}"):                    # already published: the new post needs its own name
@@ -575,8 +668,30 @@ def open_pr(issue_no, res, topic):
                           f"result, so nothing was drafted.\n\n{verdict_md(v, kind)}\n\nThe lab and raw output are in the "
                           f"`lab` attachment of workflow run {res['run_id']}.")
         return
-    post, log = write_post(context, kind)
+    brief = editor.parse_brief(topic.get("body"))
+    measures = (brief or {}).get("measurements")
+    logs = scan.read_logs(OUT / "evidence", first=res.get("attempt_log_from", 1))   # failed attempts prove nothing
+    scripts = {k: v for k, v in lab.items() if not k.endswith(".md")}
+    before = scan.check(logs, "", measures, scripts, strict=editor.mode() == "enforce")
+    refused = editor.lab_refusal(topic.get("body"))
+    if refused:
+        comment(issue_no, f"Nothing was drafted: {safe_text(refused)}.")
+        return
+    if editor.mode() == "enforce" and before["contract"] and not before["contract"]["passed"]:
+        add_label(issue_no, "evidence-failed")     # stop before paying for a draft nobody can stand behind
+        comment(issue_no, "The lab ran, but it did not produce what the Evidence Contract required, so nothing was "
+                          f"drafted.\n\n{safe_text(scan.markdown(before))}")
+        return
+    post, log = write_post(context, kind, editor.writer_context(brief, before))
     post["body"] = drop_pipeline_lines(fix_output_tabs(post["body"]))
+    gate = review_draft(post, context, logs, brief, topic, kind, scripts)
+    if gate["decision"] == "stop":
+        add_label(issue_no, "editor-stopped")
+        comment(issue_no, "The draft did not clear the gates after one revision, so no PR was opened.\n\n"
+                          + safe_text("\n".join(f"- {r}" for r in gate["reasons"])))
+        record_review(res.get("slug", "topic"), gate, brief)
+        return
+    post = gate["post"]
     nice = title_slug(post["title"])               # the web address follows the post's title, not the topic's
     if nice and nice != slug:
         if on_main(f"labs/{nice}"):
@@ -632,7 +747,7 @@ def open_pr(issue_no, res, topic):
     shown = ("a chart of the lab's real numbers" if (fig or {}).get("kind") == "chart" else
              "real lines from the lab's output" if fig else "the title (no evidence picture passed the check)")
     cut = f" The panel {log['tightened']}." if log.get("tightened") else ""
-    body = (f"## {safe_text(post['title'])}\n\n_{safe_text(post['description'])}_\n\n"
+    body = (f"{gate_md(gate)}## {safe_text(post['title'])}\n\n_{safe_text(post['description'])}_\n\n"
             f"![cover]({raw_cover})\n\n"
             f"**Length:** about {words:,} words, {max(1, round(words / 230))} min read ({m['prose']:,} words of prose)."
             f"{cut} **Cover:** {shown}; used on your site, dev.to, Medium and LinkedIn.\n\n"
@@ -647,13 +762,14 @@ def open_pr(issue_no, res, topic):
             f"(workflow run {res['run_id']}).\n\n{verdict_md(v, kind)}\n\n"
             f"{headline_md(log.get('headline'))}{linkedin_md(log.get('linkedin'))}"
             f"{review_md('Lab review', res.get('review'))}\n\n{review_md('Article review', log)}\n\n"
-            f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}\n\n</details>{warn}\n\n"
+            f"**Model usage:** lab job: {res.get('usage')}; draft job: {llm.usage_summary()}; {llm.cost_line()}\n\n</details>{warn}\n\n"
             "**To publish: approve this PR** (GitHub app: Files changed, Review, Approve). It merges itself, goes live on "
                "your site and dev.to, and you get the ready-to-post email for Medium and LinkedIn. "
             f"To change anything, edit `site/_posts/{today}-{slug}.md` in this PR, or comment `/redraft <what to change>`.\n")
     title = safe_text("Draft: " + post["title"], "Draft post")[:120]
     if len(body) > 60000:
         body = body.replace(preview, "[preview too long for the PR description; read the post file]")
+    body = finish_body(body, res["run_id"])
     assert_safe(title); assert_safe(body)          # check before anything is created, so a failure leaves no mess
     base = gh("GET", f"/repos/{HOME_REPO}/git/ref/heads/main")["object"]["sha"]
     gh("POST", f"/repos/{HOME_REPO}/git/refs", {"ref": f"refs/heads/{branch}", "sha": base})
@@ -662,6 +778,8 @@ def open_pr(issue_no, res, topic):
     pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": title, "head": branch, "base": "main",
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
+    if gate.get("report"):
+        record_review(slug, gate, brief)
     old = os.environ.get("OLD_PR", "")
     if old.isdigit():                              # a `/redraft`: retire the draft it replaces
         comment(int(old), f"Replaced by the redraft in pull request no. {pr['number']}.")

@@ -1,0 +1,16 @@
+{
+ "question": "Would you send this to a senior engineer you respect? 1 to 5.",
+ "rated_by": "",
+ "ratings": {
+  "scale-to-zero-sqs-workers-on-ecs-fargate": null,
+  "eks-canary-releases-alb": null,
+  "trace-a-java-service-on-eks-with-one-annotation-zero-code": null,
+  "from-broken-ingress-to-healthy-alb-an-eks-and-splunk-hands": null,
+  "eks-app-slow-cpu-fine-scale-on-splunk-latency-with-keda": null,
+  "open-source-summary-2026-10": null,
+  "ecs-fargate-3-tasks-3-splunk-metric-series-one-otel-sidecar": null
+ },
+ "unpublished_titles": {
+  "ecs-fargate-3-tasks-3-splunk-metric-series-one-otel-sidecar": "ECS Fargate: 3 Tasks, 3 Splunk Metric Series, One OTel Sidecar"
+ }
+}

@@ -1,0 +1,46 @@
+{
+ "type": "object",
+ "required": [
+  "focus",
+  "assignments",
+  "needs"
+ ],
+ "properties": {
+  "focus": {
+   "type": "string",
+   "description": "this period's focus in two sentences at most"
+  },
+  "assignments": {
+   "type": "array",
+   "maxItems": 8,
+   "items": {
+    "type": "object",
+    "required": [
+     "role",
+     "task",
+     "why"
+    ],
+    "properties": {
+     "role": {
+      "type": "string",
+      "description": "a role id from the registry"
+     },
+     "task": {
+      "type": "string"
+     },
+     "why": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "needs": {
+   "type": "array",
+   "maxItems": 4,
+   "items": {
+    "type": "string"
+   },
+   "description": "capabilities no current role has; a proposal, never created automatically"
+  }
+ }
+}

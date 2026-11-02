@@ -1,0 +1,97 @@
+name: tech-head
+# Reviews every change to the pipeline. Two jobs, so the trust boundary is physical:
+#   scan    reads the pull request with scanners. It has no secrets, and its only output is a report artifact.
+#   review  runs on a fresh machine with secrets, from the base branch. The PR and the reports are data.
+# pull_request_target loads this file from the base branch, so a pull request cannot edit its own review. It is safe
+# here only because no job ever runs code from the PR. Keep it that way. Fork PRs are skipped.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, edited]
+    branches: [main]
+    paths: ["pipeline/**", ".github/**", "infra/**", "tests/**", "AGENTS.md"]
+permissions:
+  contents: read
+concurrency: { group: "tech-head-${{ github.event.pull_request.number }}", cancel-in-progress: true }
+jobs:
+  scan:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          persist-credentials: false
+      # Each scanner records its own exit code, so "did not run" can never look like "found nothing".
+      # --ini and --ignore-nosec stop the pull request from switching bandit's checks off.
+      - name: scanners
+        run: |
+          mkdir -p reports
+          printf '[bandit]\n' > empty.ini
+          if ! pip install bandit==1.9.4 zizmor==1.31.1; then
+            echo 127 > reports/bandit.exit
+            echo 127 > reports/zizmor.exit
+            exit 0
+          fi
+          bandit -q -r pr/pipeline --ini empty.ini --ignore-nosec -f json -o reports/bandit.json
+          echo $? > reports/bandit.exit
+          zizmor --offline --no-config --no-ignores --collect=all --strict-collection --format=json pr/.github/workflows > reports/zizmor.json
+          echo $? > reports/zizmor.exit
+        shell: bash +e {0}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+          if-no-files-found: warn
+  review:
+    needs: scan
+    if: "!cancelled() && needs.scan.result != 'skipped'"
+    # pull_request_target runs with GITHUB_REF on the default branch, so a main-only environment allows this job.
+    # Do not add required reviewers here: they would pause every review.
+    environment: tech-head
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: reports
+          path: reports
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+          permission-pull-requests: write
+      - name: review
+        if: hashFiles('base/pipeline/tech_head.py') != ''
+        run: python3 base/pipeline/tech_head.py
+        env:
+          PR_DIR: pr
+          REPORTS_DIR: reports
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          TECH_HEAD_MODE: ${{ vars.TECH_HEAD_MODE }}
+          TECH_HEAD_MODEL: ${{ vars.TECH_HEAD_MODEL }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

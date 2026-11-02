@@ -9,7 +9,7 @@ Real problems on AWS containers, **replicated in a disposable AWS lab** and expl
 Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit every post before it goes out.
 
 1. **Choose (Monday and Thursday).** Each AI proposes a how-to of the shape *deploy X on EKS or ECS with Y, then
-   monitor it with Splunk Observability Cloud* (Argo CD with self-heal, Helm, KEDA, the OpenTelemetry Operator...),
+   monitor it*, with Splunk Observability Cloud wherever it fits (Argo CD with self-heal, Helm, KEDA, the OpenTelemetry Operator...),
    from official docs, AWS What's New, project releases and Hacker News, scored on "would an ECS/EKS engineer think
    *I want to set this up*?". All three vote on the pooled list; topics with 2 of 3 votes open as issues, and the
    best one gets `replicate`. (The old "fix a real problem" finder still exists; run problems.yml by hand.)
@@ -51,6 +51,17 @@ Three AIs work as a panel, Claude, ChatGPT and Gemini, and I review and edit eve
 
 To rewrite a draft without another AWS run, run `replicate` with `issue` and `from_run` (the earlier run's id).
 
+## The team around the pipeline
+
+`AGENTS.md` is the map and rulebook for every AI working here. New pieces, all replaceable through `pipeline/roles/registry.json`:
+
+- **Topic Investment Gate and Evidence Contract:** before a lab, the Editor names the reader and the measurements the lab must produce. Afterward, code checks them.
+- **Editor:** scores a draft on separate technical, editorial and marketing dimensions, once `EDITOR_REVIEW=on`.
+- **Tech Head:** reviews every pipeline PR with code rules, scanners and one AI reviewer.
+- **Executive Assistant:** comment `/goal <what you want>` on any issue, and the team's priorities follow. `/goals` lists them.
+
+`EDITOR_MODE` defaults to `shadow`, which reports without changing labs, drafts or publishing.
+
 ## Beyond the posts (AWS Hero helpers, `pipeline/hero.py`)
 
 - **Community Builders watcher (Mondays):** when the application window opens, or in early January when it
@@ -76,7 +87,7 @@ To rewrite a draft without another AWS run, run `replicate` with `issue` and `fr
   `site/_posts/` and `labs/`, and open PRs into `main` that I must approve. Nothing it writes to an issue,
   comment, PR or commit message can contain a GitHub link, reference or @mention, so other projects never get
   pinged. `tests/test_safety.py` checks every one of these rules.
-- **Accuracy:** posts may only show output that appears in the lab's evidence logs, and ChatGPT checks that
+- **Accuracy:** posts may only show output that appears in the lab's evidence logs, and Claude checks that
   before I see the draft.
 
 ## Knobs (repository variables)

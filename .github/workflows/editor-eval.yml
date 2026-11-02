@@ -1,0 +1,30 @@
+name: editor-eval
+# Manual only. Runs the labelled evaluation set. Live mode asks the Editor for real briefs and costs a few dollars.
+# It touches no AWS, opens nothing, and publishes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      live:
+        description: "Ask the Editor for real briefs (uses the Claude API)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  evaluate:
+    # Same rule as live-check: this job holds a model key, so it only ever runs main's code.
+    if: github.ref == 'refs/heads/main' && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    environment: live-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - run: python3 pipeline/evaluate.py ${{ inputs.live && '--live' || '' }}
+        env:
+          REPO: ${{ github.repository }}
+          GH_READ_TOKEN: ${{ github.token }}
+          EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

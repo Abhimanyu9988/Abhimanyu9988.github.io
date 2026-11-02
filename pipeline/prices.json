@@ -1,0 +1,33 @@
+{
+ "as_of": "2026-11-02",
+ "source": "official pricing pages; review before relying on them",
+ "usd_per_million": {
+  "claude-sonnet-5-5": [
+   2,
+   10
+  ],
+  "claude-opus-5-5": [
+   4,
+   20
+  ],
+  "claude-haiku-5-5": [
+   0.1,
+   0.5
+  ],
+  "gpt-5.5": [
+   5,
+   30
+  ],
+  "gemini-3.1-pro-preview": [
+   2,
+   12
+  ]
+ },
+ "web_search_usd_each": 0.01,
+ "defaults": {
+  "claude_write": "claude-sonnet-5-5",
+  "claude_scout": "claude-haiku-5-5",
+  "openai": "gpt-5.5",
+  "gemini": "gemini-3.1-pro-preview"
+ }
+}

@@ -1,0 +1,57 @@
+# Decisions
+
+Newest first. Each entry says what was decided and why, so a future agent does not undo it by accident.
+
+## 2026-11-02: Enforce requires a successful Editor scorecard
+
+`EDITOR_REVIEW` cannot switch the Editor off in enforce. An outage stops the draft.
+
+## 2026-11-02: Measurements are graded, not trusted
+
+A lab script prints its own evidence, so code can catch lost, typed-in and unsupported values but cannot prove a value.
+Stronger proof would need a runner-side re-query, which is out of scope for now.
+
+## 2026-11-02: Tech Head uses pull_request_target with no PR code execution
+
+A PR must not be able to edit its own review. Scanners run in a separate job with no secrets.
+
+## 2026-11-02: Milestone 1 builds gates before the Editor
+
+The Topic Investment Gate and Evidence Contract come first, because code can check them. The Editor's scorecard is
+built but stays off until those two have been evaluated. A scorecard from another AI is not proof of quality.
+
+## 2026-11-02: Shadow mode must not change production behaviour
+
+In shadow mode, briefs go in issue comments, which labs do not read. Review records go to the analytics branch.
+
+## 2026-11-02: Low views do not prove low quality
+
+Three separate questions: are posts worth reading, are the right people finding them, and do readers act afterward?
+The Editor addresses only the first. With so little traffic, milestone success uses human ratings and saved cases.
+
+## 2026-11-02: Cost per accepted worthwhile article is the main cost measure
+
+Model fees per article hide the cost of rejected topics and failed labs. Stopping a weak topic early can save more
+than using a cheaper model.
+
+## 2026-11-02: Splunk is used wherever it fits
+
+Splunk is no longer required in every topic. The aim is about half of posts over time, and it is never forced.
+
+## 2026-11-02: Reviews, goals and costs live on the analytics branch
+
+Git keeps history and needs no new service. The existing bot rule already allows `analytics/*`.
+
+## 2026-11-02: Fixed workflow, no LLM orchestrator
+
+A fixed order is testable, costs nothing per decision, and cannot delegate recursively.
+
+## 2026-11-02: One approval per article
+
+Success means excellent articles with minimal effort from Abhi. Routine decisions stay with agents inside budgets and
+permissions, and each article reaches him as one PR to approve or reject once.
+
+## 2026-11-02: The final live check runs on merge
+
+`live-check` holds keys, so it runs only from `main`. A merge that changes `pipeline/live-check.request` starts it, so the
+check needs no manual command. A push to `main` is trusted code, and a branch cannot start this trigger.

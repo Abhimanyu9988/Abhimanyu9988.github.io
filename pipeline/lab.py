@@ -126,6 +126,8 @@ def last_failure(issue_no):
         if not isinstance(c, dict):
             continue
         body = c.get("body") or ""
+        if not re.match(r"[^\n]*attempt\(s\), \S+ min, workflow run \d+\.", body):
+            continue                               # only the lab failure report: other comments carry model text
         if (c.get("user") or {}).get("login", "").startswith("hero-bot") and "**Last failure:**" in body:
             m = re.search(r"\*\*Last failure:\*\*(.*?)```\n(.*?)```", body, re.S)
             fix = re.search(r"\*\*Lab:\*\*(.*?)\n\n", body, re.S)
@@ -582,7 +584,11 @@ def main():
                 os.environ.get(k) for k in SPLUNK_VARS):
             raise RuntimeError("this topic monitors with Splunk Observability Cloud, but SPLUNK_REALM, "
                                "SPLUNK_ACCESS_TOKEN and SPLUNK_API_TOKEN are not all saved for the aws-lab environment")
-        rules = LAB_RULES + ("\n\n" + BUILD_RULES if kind == "build" else "")
+        import editor
+        refused = editor.lab_refusal(issue.get("body"))
+        if refused:                                 # before any model or AWS money is spent
+            raise RuntimeError(refused)
+        rules = LAB_RULES + ("\n\n" + BUILD_RULES if kind == "build" else "") + editor.lab_rules(issue.get("body"))
         goal = ("build something useful on AWS and prove it works with real output" if kind == "build" else
                 "reproduce a real problem on AWS and then fix it")
         lab_id = f"{slug[:24].strip('-')}-{RUN_ID[-6:]}"
@@ -622,6 +628,7 @@ def main():
             if result.get("applied") and (WORK / "cleanup.sh").exists():
                 run("cleanup", ["bash", "cleanup.sh"], 10 * 60, env=tf_env(lab_id), sandbox=True)  # last try's leftovers
             result["attempts"], result["status"] = attempt, "failed"
+            result["attempt_log_from"] = len(EVIDENCE) + 1      # evidence checks read only the final attempt
             failed, out = attempt_once(lab, lab_id, result)
             if not failed:
                 result.pop("last_failure", None)

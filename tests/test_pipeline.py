@@ -2,7 +2,8 @@
 import io, json, os, pathlib, shutil, sys, tempfile
 HOME = "Abhimanyu9988/Abhimanyu9988.github.io"
 PIPE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline")
-os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", ISSUE="4", RUN_ID="123456789")
+os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", ISSUE="4", RUN_ID="123456789",
+                  EDITOR_MODE=os.environ.get("TEST_EDITOR_MODE", "off"), MODEL_AUTO="true")
 sys.path.insert(0, PIPE)
 import radar as r, llm, lab, draft, check_plan
 def _no_network(*a, **k):
@@ -356,7 +357,7 @@ lab.call = _real_lab_call
 _real_lab_gh = lab.gh
 lab.gh = lambda m, path, *a, **k: [
     {"user": {"login": "Abhimanyu9988"}, "body": "approve"},
-    {"user": {"login": "hero-bot-abhimanyu9988[bot]"}, "body": "x\n\n**Last failure:** fix (the fix did not work)\n```\n"
+    {"user": {"login": "hero-bot-abhimanyu9988[bot]"}, "body": "x 2 attempt(s), 30 min, workflow run 1.\n\n**Last failure:** fix (the fix did not work)\n```\n"
      "error: missing required parameter \"activationTargetValue\"\nHERO_RESULT: not_fixed\n```\n\n**Lab:** Builds KEDA.\n\nmore"}]
 _lf = lab.last_failure(72)
 check("lab: a re-run starts from the previous run's failure (bot comments only)",
@@ -481,9 +482,8 @@ check("headline round: ChatGPT writes five, Claude vetoes the untrue pick, the n
       and "AUTHOR:" in writer_prompt and "observability agents" in writer_prompt and "412 reactions" in writer_prompt)
 _pr = next(b for m, p_, b in sent if p_.endswith("/pulls"))
 pr_body_first = _pr["body"]
-check("LinkedIn round: all three write, the top-voted post that fails the fact check is skipped for the next",
-      "gemini linkedin" not in text and "LinkedIn round:** the panel picked ChatGPT" in _pr["body"]
-      and "Gemini (3/3)" in _pr["body"])
+check("LinkedIn round: a post that fails the fact check never ships, and no version wins by default",
+      "gemini linkedin" not in text and "no version won 2 of 3 votes" in _pr["body"])
 check("headline round shown in the PR, with the other options and the veto",
       "Headline round:** ChatGPT wrote five titles" in _pr["body"] and "Overpromise title (vetoed" in _pr["body"])
 check("checklist no longer asks Abhi to write his own line", "add a line from your own experience" not in _pr["body"])
@@ -496,6 +496,7 @@ check("draft: source replies kept only for real sources, stored in front matter"
       and "stackoverflow.com/questions/1/a" in text and "made-up.example" not in text)
 check("draft: post file may link to GitHub (files never backlink)", "github.com/aws/x/issues/5" in text)
 pr = next(b for m, p, b in sent if p.endswith("/pulls"))
+check("draft: the PR carries the lab run marker", f'<!-- lab-run: {res["run_id"]} -->' in pr["body"])
 check("draft: PR closes the topic and neutralizes AI text", pr["body"].endswith("Closes #4") and "aws/x#5" not in pr["body"]
       and "@bob" not in pr["body"] and "@AWS" not in pr["body"])
 check("draft: PR shows the post itself, the LinkedIn draft and the replication check",
@@ -553,6 +554,10 @@ res.update(status="not_reproduced", last_failure={"step": "reproduce (problem di
                                                   "output": "see https://github.com/a/b/issues/1 and #3"})
 (draft.OUT / "result.json").write_text(json.dumps(res))
 draft.main()
+fail_text = next(b["body"] for m, p, b in sent if "Last failure" in str((b or {}).get("body")))
+_gh_lab, lab.gh = lab.gh, lambda *a: [{"user": {"login": "hero-bot-x[bot]"}, "body": fail_text}]
+check("draft and lab agree: a real failure report is read back", "reproduce (problem did not appear)" in lab.last_failure(4))
+lab.gh = _gh_lab
 check("draft: not reproduced -> comment + label, no PR",
       not any(p.endswith("/pulls") for m, p, b in sent) and any(b == {"labels": ["not-reproduced"]} for m, p, b in sent))
 sent.clear()

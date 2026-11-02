@@ -1,0 +1,60 @@
+name: live-check
+# From trusted code on main only: real API calls that post one comment and change nothing else. A merge that changes
+# pipeline/live-check.request starts it with no further step, or start it by hand. Spending is
+# checked between steps against a $3 limit, and each step's size is bounded by its role budget, so a run can pass the
+# limit slightly. Never add a pull_request trigger here: this job holds secrets and runs the code it checks out.
+on:
+  push:
+    branches: [main]
+    paths: [pipeline/live-check.request]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Pull request to report on"
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  live:
+    # A branch can edit its own copy of this file, so this guard stops mistakes, not a hostile branch. Only credentials
+    # held in the live-check environment, limited to main, close that. See docs/merge-behavior.md.
+    if: github.ref == 'refs/heads/main' && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    environment: live-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+          permission-pull-requests: write
+      - name: live check
+        run: PR_NUMBER="${INPUT_PR:-$(cat pipeline/live-check.request)}" python3 pipeline/live_check.py
+        env:
+          INPUT_PR: ${{ inputs.pr }}
+          BASE_SHA: HEAD~1
+          HEAD_SHA: HEAD
+          EDITOR_MODE: shadow
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          RADAR_MODEL: ${{ vars.RADAR_MODEL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
+          TECH_HEAD_MODEL: ${{ vars.TECH_HEAD_MODEL }}
+          ASSISTANT_MODEL: ${{ vars.ASSISTANT_MODEL }}
+          MODEL_AUTO: ${{ vars.MODEL_AUTO }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

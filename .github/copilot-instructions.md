@@ -1,5 +1,7 @@
 # Review instructions for Copilot
 
+AGENTS.md holds the rules and map for this repo. Follow it first.
+
 This repo is Abhimanyu's blog about AWS containers. Every post replicates a real problem in a disposable AWS
 lab and shows the fix. Draft PRs come from a bot and contain a post (`site/_posts/*.md`), the lab
 (`labs/<slug>/`: Terraform, `reproduce.sh`, `fix.sh`, `cleanup.sh`, README) and the raw output

@@ -1,0 +1,498 @@
+[
+ {
+  "id": "pr88-title",
+  "type": "headline",
+  "title": "ECS Fargate: 3 Tasks, 3 Splunk Metric Series, One OTel Sidecar",
+  "logs_dir": "tests/fixtures/pr88",
+  "unsupported": true,
+  "labelled_by": "evidence"
+ },
+ {
+  "id": "flawed-invented-latency",
+  "type": "headline",
+  "title": "Cut EKS latency by 90% with one Helm flag",
+  "log_lines": [
+   "latency p95 1200ms",
+   "latency p95 1100ms"
+  ],
+  "unsupported": true,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "flawed-invented-scale",
+  "type": "headline",
+  "title": "Scale to 500 pods in 2 minutes",
+  "log_lines": [
+   "replicas: 5",
+   "scaled in 90 seconds"
+  ],
+  "unsupported": true,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "canary-title",
+  "type": "headline",
+  "title": "Roll back an EKS release in 16 seconds without restarting a pod",
+  "logs_dir": "labs/eks-canary-releases-alb/evidence",
+  "unsupported": false,
+  "labelled_by": "evidence"
+ },
+ {
+  "id": "fargate-title",
+  "type": "headline",
+  "title": "Fargate SQS worker stuck at 0 tasks? The IF(running > 0) guard never gets to run",
+  "logs_dir": "labs/scale-to-zero-sqs-workers-on-ecs-fargate/evidence",
+  "unsupported": false,
+  "labelled_by": "evidence"
+ },
+ {
+  "id": "trivial-exists",
+  "type": "topic",
+  "title": "Task metrics appear in a backend",
+  "details": "",
+  "label": "trivial",
+  "labelled_by": "synthetic",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "How many tasks show up?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "natural",
+   "measurements": [
+    {
+     "id": "tasks",
+     "what": "tasks",
+     "kind": "count",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    }
+   ],
+   "verdict": "go",
+   "reasons": []
+  }
+ },
+ {
+  "id": "trivial-does-it-work",
+  "type": "topic",
+  "title": "Does the Collector sidecar work on Fargate?",
+  "details": "",
+  "label": "trivial",
+  "labelled_by": "synthetic",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "Does the sidecar work?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "natural",
+   "measurements": [
+    {
+     "id": "overhead_mb",
+     "what": "overhead_mb",
+     "kind": "overhead",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    }
+   ],
+   "verdict": "go",
+   "reasons": []
+  }
+ },
+ {
+  "id": "trivial-editor-no",
+  "type": "topic",
+  "title": "Install a Helm chart",
+  "details": "",
+  "label": "trivial",
+  "labelled_by": "synthetic",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "Which flags change startup time?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "natural",
+   "measurements": [
+    {
+     "id": "startup_s",
+     "what": "startup_s",
+     "kind": "latency",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    }
+   ],
+   "verdict": "no",
+   "reasons": []
+  }
+ },
+ {
+  "id": "trivial-forced-splunk",
+  "type": "topic",
+  "title": "Add Splunk to a topic that does not need it",
+  "details": "",
+  "label": "trivial",
+  "labelled_by": "synthetic",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "How much does it add?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "forced",
+   "measurements": [
+    {
+     "id": "added_ms",
+     "what": "added_ms",
+     "kind": "latency",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    }
+   ],
+   "verdict": "go",
+   "reasons": []
+  }
+ },
+ {
+  "id": "trivial-no-contract",
+  "type": "topic",
+  "title": "A topic with no measurements",
+  "details": "",
+  "label": "trivial",
+  "labelled_by": "synthetic",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "What changes?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "natural",
+   "measurements": [],
+   "verdict": "go",
+   "reasons": []
+  }
+ },
+ {
+  "id": "strong-sidecar-cost",
+  "type": "topic",
+  "title": "What a per-task OTel sidecar really costs on Fargate",
+  "details": "",
+  "label": "strong",
+  "labelled_by": "provisional-claude",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "How much CPU, memory and series does a sidecar add, and what fails when it dies?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "natural",
+   "measurements": [
+    {
+     "id": "sidecar_cpu",
+     "what": "sidecar_cpu",
+     "kind": "overhead",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    },
+    {
+     "id": "series_per_task",
+     "what": "series_per_task",
+     "kind": "count",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 3
+    },
+    {
+     "id": "signal_loss_s",
+     "what": "signal_loss_s",
+     "kind": "failure",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    }
+   ],
+   "verdict": "go",
+   "reasons": []
+  }
+ },
+ {
+  "id": "strong-keda-latency",
+  "type": "topic",
+  "title": "Latency versus CPU autoscaling on EKS",
+  "details": "",
+  "label": "strong",
+  "labelled_by": "provisional-claude",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "How much sooner does latency-based scaling react than CPU under the same load?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "natural",
+   "measurements": [
+    {
+     "id": "reaction_s",
+     "what": "reaction_s",
+     "kind": "comparison",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    }
+   ],
+   "verdict": "go",
+   "reasons": []
+  }
+ },
+ {
+  "id": "strong-alb-503",
+  "type": "topic",
+  "title": "ALB 503s during rolling updates",
+  "details": "",
+  "label": "strong",
+  "labelled_by": "provisional-claude",
+  "brief": {
+   "reader": "platform engineer on ECS",
+   "decision": "which approach to adopt",
+   "question": "what does it cost?",
+   "takeaway": "a concrete choice",
+   "adds": "measured result",
+   "open_question": "How many requests fail at each deregistration delay?",
+   "tradeoffs": [
+    "cost versus detail"
+   ],
+   "existing_pages": [],
+   "demand": {
+    "level": "none",
+    "evidence": ""
+   },
+   "splunk_fit": "natural",
+   "measurements": [
+    {
+     "id": "failed_requests",
+     "what": "failed_requests",
+     "kind": "failure",
+     "unit": "",
+     "accept": {
+      "op": "present"
+     },
+     "min_entities": 1
+    }
+   ],
+   "verdict": "go",
+   "reasons": []
+  }
+ },
+ {
+  "id": "evidence-pr88-style-gap",
+  "type": "evidence",
+  "contract": [
+   {
+    "id": "cpu_by_task",
+    "what": "cpu_by_task",
+    "kind": "overhead",
+    "unit": "",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   }
+  ],
+  "log_lines": [
+   "HERO_MEASURE: cpu_by_task[a1]=0.77",
+   "HERO_MEASURE: cpu_by_task[b2]=null",
+   "HERO_MEASURE: cpu_by_task[c3]=null"
+  ],
+  "should_pass": false,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "evidence-missing",
+  "type": "evidence",
+  "contract": [
+   {
+    "id": "overhead_mb",
+    "what": "overhead_mb",
+    "kind": "overhead",
+    "unit": "",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "log_lines": [
+   "nothing measured"
+  ],
+  "should_pass": false,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "evidence-complete",
+  "type": "evidence",
+  "contract": [
+   {
+    "id": "cpu_by_task",
+    "what": "cpu_by_task",
+    "kind": "overhead",
+    "unit": "",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   }
+  ],
+  "log_lines": [
+   "HERO_MEASURE: cpu_by_task[a]=0.7",
+   "HERO_MEASURE: cpu_by_task[b]=0.2"
+  ],
+  "should_pass": true,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "evidence-criterion-failed",
+  "type": "evidence",
+  "contract": [
+   {
+    "id": "loss_s",
+    "what": "",
+    "kind": "failure",
+    "unit": "s",
+    "accept": {
+     "op": "lt",
+     "value": 5
+    },
+    "min_entities": 1
+   }
+  ],
+  "log_lines": [
+   "HERO_MEASURE: loss_s=9"
+  ],
+  "should_pass": false,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "flawed-wrong-unit-of-count",
+  "type": "headline",
+  "title": "Run 12,000 Metric Series on one sidecar",
+  "log_lines": [
+   "found 1,000 series"
+  ],
+  "unsupported": true,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "flawed-step-number",
+  "type": "headline",
+  "title": "3 Splunk Metric Series from one sidecar",
+  "log_lines": [
+   "step 3: list series"
+  ],
+  "unsupported": true,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "evidence-error-text",
+  "type": "evidence",
+  "contract": [
+   {
+    "id": "x",
+    "what": "",
+    "kind": "overhead",
+    "unit": "",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "log_lines": [
+   "HERO_MEASURE: x=error: not found"
+  ],
+  "should_pass": false,
+  "labelled_by": "review"
+ }
+]

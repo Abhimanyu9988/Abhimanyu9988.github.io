@@ -1,0 +1,113 @@
+{
+ "version": 1,
+ "roles": {
+  "executive_assistant": {
+   "mission": "Turn Abhi's goals into priorities and assignments for the team.",
+   "module": "pipeline/assistant.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "ASSISTANT_MODEL",
+   "prompt": "assistant.md",
+   "outputs": [
+    "goal",
+    "plan"
+   ],
+   "data_sources": [
+    "goals",
+    "roles",
+    "post_mix"
+   ],
+   "budget": {
+    "max_input_tokens": 12000,
+    "max_calls": 4
+   }
+  },
+  "editor": {
+   "mission": "Decide whether a topic deserves a lab and whether a draft deserves readers.",
+   "module": "pipeline/editor.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-opus-5-5",
+   "model_env": "EDITOR_MODEL",
+   "prompt": "editor.md",
+   "outputs": [
+    "brief",
+    "scorecard"
+   ],
+   "data_sources": [
+    "goals",
+    "post_mix",
+    "field_notes",
+    "web_search"
+   ],
+   "budget": {
+    "max_input_tokens": 60000,
+    "max_calls": 8
+   }
+  },
+  "tech_head": {
+   "mission": "Review code changes for security, scalability, reliability, cost and future AI readability.",
+   "module": "pipeline/tech_head.py",
+   "status": "active",
+   "vendor": "chatgpt",
+   "model": "gpt-5.5",
+   "model_env": "TECH_HEAD_MODEL",
+   "prompt": "tech-head.md",
+   "outputs": [
+    "techreview"
+   ],
+   "data_sources": [
+    "pr_diff",
+    "scanner_reports",
+    "agents_md"
+   ],
+   "budget": {
+    "max_input_tokens": 45000,
+    "max_calls": 8
+   }
+  },
+  "topic_scout": {
+   "mission": "Propose topics.",
+   "module": "pipeline/radar.py",
+   "status": "active",
+   "vendor": "panel",
+   "model": "",
+   "model_env": "RADAR_MODEL",
+   "prompt": "",
+   "outputs": [],
+   "data_sources": [
+    "goals",
+    "post_mix",
+    "insights"
+   ],
+   "budget": {}
+  },
+  "lab_engineer": {
+   "mission": "Build and run the disposable lab.",
+   "module": "pipeline/lab.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "CLAUDE_MODEL",
+   "prompt": "",
+   "outputs": [],
+   "data_sources": [],
+   "budget": {}
+  },
+  "writer": {
+   "mission": "Write the article from the evidence and the brief.",
+   "module": "pipeline/draft.py",
+   "status": "active",
+   "vendor": "chatgpt",
+   "model": "gpt-5.5",
+   "model_env": "OPENAI_MODEL",
+   "prompt": "",
+   "outputs": [],
+   "data_sources": [
+    "field_notes"
+   ],
+   "budget": {}
+  }
+ }
+}

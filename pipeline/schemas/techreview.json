@@ -1,0 +1,61 @@
+{
+ "type": "object",
+ "required": [
+  "summary",
+  "findings"
+ ],
+ "properties": {
+  "summary": {
+   "type": "string",
+   "description": "two sentences at most"
+  },
+  "findings": {
+   "type": "array",
+   "maxItems": 15,
+   "items": {
+    "type": "object",
+    "required": [
+     "severity",
+     "category",
+     "file",
+     "line",
+     "problem",
+     "fix"
+    ],
+    "properties": {
+     "severity": {
+      "enum": [
+       "blocker",
+       "major",
+       "minor"
+      ]
+     },
+     "category": {
+      "enum": [
+       "security",
+       "scalability",
+       "reliability",
+       "cost",
+       "maintainability",
+       "ai_readability"
+      ]
+     },
+     "file": {
+      "type": "string",
+      "description": "a path from the diff"
+     },
+     "line": {
+      "type": "integer",
+      "minimum": 0
+     },
+     "problem": {
+      "type": "string"
+     },
+     "fix": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}

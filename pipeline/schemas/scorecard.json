@@ -1,0 +1,167 @@
+{
+ "type": "object",
+ "required": [
+  "scores",
+  "blocking",
+  "flags_addressed",
+  "claims"
+ ],
+ "properties": {
+  "scores": {
+   "type": "object",
+   "required": [
+    "technical",
+    "editorial",
+    "marketing"
+   ],
+   "properties": {
+    "technical": {
+     "type": "object",
+     "required": [
+      "score",
+      "reasons"
+     ],
+     "properties": {
+      "score": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 5
+      },
+      "reasons": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "maxItems": 4
+      }
+     }
+    },
+    "editorial": {
+     "type": "object",
+     "required": [
+      "score",
+      "reasons"
+     ],
+     "properties": {
+      "score": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 5
+      },
+      "reasons": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "maxItems": 4
+      }
+     }
+    },
+    "marketing": {
+     "type": "object",
+     "required": [
+      "score",
+      "reasons"
+     ],
+     "properties": {
+      "score": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 5
+      },
+      "reasons": {
+       "type": "array",
+       "items": {
+        "type": "string"
+       },
+       "maxItems": 4
+      }
+     }
+    }
+   }
+  },
+  "blocking": {
+   "type": "array",
+   "maxItems": 8,
+   "items": {
+    "type": "object",
+    "required": [
+     "dimension",
+     "problem",
+     "evidence",
+     "fix"
+    ],
+    "properties": {
+     "dimension": {
+      "enum": [
+       "technical",
+       "editorial"
+      ]
+     },
+     "problem": {
+      "type": "string"
+     },
+     "evidence": {
+      "type": "string",
+      "description": "file:line or a quoted sentence"
+     },
+     "fix": {
+      "type": "string",
+      "description": "a specific, actionable change"
+     }
+    }
+   }
+  },
+  "flags_addressed": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "addressed",
+     "how"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "addressed": {
+      "type": "boolean"
+     },
+     "how": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "claims": {
+   "type": "array",
+   "maxItems": 20,
+   "description": "claims that do not come from this lab's evidence",
+   "items": {
+    "type": "object",
+    "required": [
+     "text",
+     "class",
+     "source_ref"
+    ],
+    "properties": {
+     "text": {
+      "type": "string"
+     },
+     "class": {
+      "enum": [
+       "sourced",
+       "estimate",
+       "hypothesis"
+      ]
+     },
+     "source_ref": {
+      "type": "string",
+      "description": "the URL for a sourced claim, otherwise empty"
+     }
+    }
+   }
+  }
+ }
+}
