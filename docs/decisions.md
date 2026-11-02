@@ -88,3 +88,9 @@ Abhi asked for an admin page and a manager who checks that effort produces resul
 branch and issues are too. The admin page, daily log and task list go to the private `team-admin` repository instead: GitHub
 shows its README as a page on any device, with no server or new login. Monthly spend amounts stay on the public branch,
 because every job reads them. The Operations Manager reviews the week and only gives advice.
+
+## 2026-11-02: Topics must teach, not walk through setup
+
+Abhi rejected "Scale ECS Fargate on ALB request count and prove it in CloudWatch" as useless. The cause was the Scout's own
+brief, which asked for "deploy X, then monitor it". Topics now need a hook the docs do not give: a failure, a surprise or a
+measured number. Thursday's run now looks for real failures people hit, and the same rule applies to Monday's topics.

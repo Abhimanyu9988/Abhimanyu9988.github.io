@@ -1,6 +1,7 @@
 name: problems
 on:
-  # No schedule: Monday and Thursday are both deploy-and-monitor topics (radar.yml). Run by hand if wanted.
+  schedule:
+    - cron: "0 6 * * 4"     # Thursday: real failures people hit, alongside Monday's topics
   workflow_dispatch:
     inputs:
       dry_run:
@@ -10,6 +11,7 @@ on:
 permissions:
   contents: read
   issues: read
+  actions: write                       # only to start the pick's lab below
 concurrency: problems
 jobs:
   problems:
@@ -29,8 +31,10 @@ jobs:
           permission-issues: write
           permission-contents: write
       - name: problems
+        id: problems
         run: python3 pipeline/problems.py
         env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           HERO_PUBLISH: "1"
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
@@ -46,3 +50,10 @@ jobs:
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           GOAL_RANKING: ${{ vars.GOAL_RANKING }}
+      # The monthly budget is the limit. AUTO_LAB=off restores your approve reply.
+      - name: start the lab
+        if: steps.problems.outputs.pick != '' && vars.AUTO_LAB != 'off'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PICK: ${{ steps.problems.outputs.pick }}
+        run: gh workflow run replicate.yml --repo "$GITHUB_REPOSITORY" --ref main -f issue="$PICK"

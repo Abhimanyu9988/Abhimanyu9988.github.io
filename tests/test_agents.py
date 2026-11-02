@@ -1174,6 +1174,11 @@ check("billing: runs only in a main-only environment, with its own role", bj["en
 billing_sh = (ROOT / "infra/billing-role.sh").read_text()
 check("billing: the AWS role can only read costs", billing_sh.count('"Action": "ce:GetCostAndUsage"') == 1 and "ce:*" not in billing_sh and "environment:live-check" in billing_sh)
 check("editor: drafts get a quality verdict by default", "vars.EDITOR_REVIEW || 'on'" in (ROOT / ".github/workflows/replicate.yml").read_text())
+check("topics: each one needs a hook the docs do not give", "hook" in r.BUILD_SCHEMA["properties"]["topics"]["items"]["required"])
+check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / "pipeline/radar.py").read_text())
+py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
+check("topics: Thursday looks for real failures", py[True]["schedule"][0]["cron"] == "0 6 * * 4" and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
+check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
 ry = __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())
 rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])

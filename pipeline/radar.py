@@ -604,10 +604,12 @@ def collect():
 AUDIENCE = {"type": "integer", "description": "1-10: how many ECS/EKS engineers would recognise this pain from a "
              "symptom they've hit or fear (errors, stuck rollouts, wrong dashboards, surprise bills) and click"}
 BUILD_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics": {"type": "array", "items": {
-    "type": "object", "required": ["title", "payoff", "proof", "lab", "replicability", "audience", "sources"],
+    "type": "object", "required": ["title", "hook", "payoff", "proof", "lab", "replicability", "audience", "sources"],
     "properties": {
-        "title": {"type": "string", "description": "max 75 chars: the outcome the reader gets, e.g. 'Monitor any app "
-                  "on EKS with zero code changes'"},
+        "title": {"type": "string", "description": "max 75 chars: the symptom, surprise or question that makes an "
+                  "engineer stop, e.g. 'Why your EKS pods get OOMKilled with 40% memory free'. Never a list of steps"},
+        "hook": {"type": "string", "description": "1 sentence: what the reader learns that the official docs do not say: "
+                 "a failure, a surprise, or a measured number nobody publishes"},
         "goal": {"type": "string", "description": "id of the goal in GOALS this serves, or empty"},
         "payoff": {"type": "string", "description": "2 sentences: what the reader has running at the end and why "
                    "they'd want it at work"},
@@ -617,7 +619,7 @@ BUILD_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics
                 "installed or configured)"},
         "replicability": {"type": "integer", "description": "1-10: how reliably this can be built within LAB LIMITS"},
         "audience": {"type": "integer", "description": "1-10: how many ECS/EKS engineers would read the title and "
-                     "think 'I want to deploy this'"},
+                     "think 'that happened to me' or 'I need to know this'"},
         "sources": {"type": "array", "items": {"type": "string"}, "description": "URLs copied exactly from ITEMS"}}}}}}
 
 SPLUNK_RULE = ("Use Splunk Observability Cloud wherever it genuinely fits the topic, aiming for about half of posts over "
@@ -627,12 +629,12 @@ SPLUNK_RULE = ("Use Splunk Observability Cloud wherever it genuinely fits the to
 BUILD_QUESTION = ("Should this become a deploy-and-monitor how-to on Abhimanyu's blog? Every post DEPLOYS something "
                   "on AWS containers with a cross-tech tool (Argo CD, Helm, KEDA, the OpenTelemetry Operator, "
                   f"Terraform...) and then MONITORS it. {SPLUNK_RULE} The posts that do best for "
-                  "him teach people to build something they want at work, with a big but true promise (his best "
+                  "him teach people something they couldn't get from the docs, with a big but true promise (his best "
                   "post: a universal metrics integration guide, 'monitor any application with zero code'). Vote yes "
-                  "only if a busy ECS/EKS engineer would read the title and think 'I want to set this up', the lab "
-                  "can prove both the deploy and the monitoring data arriving within the LAB LIMITS, and it doesn't "
-                  "repeat an existing topic. Vote no for news recaps, niche flags, and anything whose payoff can't "
-                  "be shown in real output.")
+                  "only if a busy ECS/EKS engineer would stop at the title, the hook teaches something the docs do not "
+                  "say, the lab can prove it within the LAB LIMITS, and it doesn't repeat an existing topic. Vote no "
+                  "for setup walkthroughs that only show a documented feature working, news recaps, niche flags, and "
+                  "anything whose payoff can't be shown in real output.")
 
 SPLUNK_READY = os.environ.get("SPLUNK_READY", "").lower() == "true"
 NO_SPLUNK = ("Splunk Observability Cloud is NOT set up for the lab yet, so for now monitor with open-source tools "
@@ -645,21 +647,21 @@ def ask_panel(items, existing):
     author = (pathlib.Path(__file__).with_name("author.md").read_text()
               if pathlib.Path(__file__).with_name("author.md").exists() else "")
     return propose_all(
-        "You pick how-to topics for Abhimanyu's hands-on blog about AWS containers. Every post DEPLOYS something "
-        "on AWS with a cross-tech tool and then MONITORS it in a disposable lab, proving both with real output, so "
-        "readers can do the same in their own account.",
-        f"Choose up to {MAX_ISSUES + 2} how-tos of the shape 'deploy X on EKS or ECS with Y, then monitor it'. "
+        "You pick topics for Abhimanyu's hands-on blog about AWS containers. A post earns its reader in one of three "
+        "ways: it TROUBLESHOOTS a failure engineers really hit, it TEACHES why something behaves in a way that surprises "
+        "people, or it MEASURES something nobody publishes. Every post proves its point with real output from a "
+        "disposable lab. A walkthrough that only shows a documented feature working is not a post.",
+        f"Choose up to {MAX_ISSUES + 2} topics, each with a hook the official docs do not give. "
         f"{SPLUNK_RULE} Recent mix: {mix['featuring_splunk']} of the last {mix['recent_posts']} posts feature Splunk. "
         "Favour topics that serve GOALS, and set each topic's goal field to the goal id. "
-        "Examples of the shape (don't just copy them): 'Monitor EKS with Splunk "
-        "Observability Cloud in 15 minutes'; 'Deploy to EKS with Argo CD, turn on self-heal, and watch "
-        "reconciliation fix drift'; 'Auto-instrument a Java service on EKS and see its traces in Splunk APM'; "
-        "'Scale EKS workloads on a Splunk Observability metric with KEDA'. Each needs a concrete outcome "
-        "engineers want at work, done step by step in under an hour, and real proof: the deploy working AND the "
-        "monitoring data arriving. Mix the cross-tech tools from week to week. Use ITEMS as sources: docs for the "
+        "Examples of the shape (don't just copy them): 'Why your ECS service drops requests while CPU looks fine'; "
+        "'What a Collector sidecar really costs a small Fargate task'; 'Argo CD says Synced, your app is still "
+        "broken'; 'The 90 seconds between a traffic spike and your first new task'. Each needs a concrete "
+        "lesson engineers can use at work, a lab under an hour, and real proof: output that shows the failure, "
+        "surprise or number. Mix the cross-tech tools from week to week. Use ITEMS as sources: docs for the "
         "building blocks, AWS What's New and releases for something new, Hacker News for what people care about. "
         "Play to the AUTHOR's strengths (OpenTelemetry, Splunk Observability, Kubernetes, auto-instrumentation). The "
-        f"title states the outcome. Do not repeat anything in EXISTING. {'' if SPLUNK_READY else NO_SPLUNK} "
+        f"title states the symptom, surprise or question, never the steps. Do not repeat anything in EXISTING. {'' if SPLUNK_READY else NO_SPLUNK} "
         f"{NO_REFS}\n\nAUTHOR:\n{author}\n\nGOALS:\n{goals_block()}\n\n"
         f"LAB LIMITS:\n{LAB_LIMITS}\n\n"
         f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
@@ -674,7 +676,7 @@ def main():
         print("done: nothing new"); return
     topics = ask_panel(items, existing)
     post_topics(topics, items, existing, used, LABEL,
-                lambda t, srcs: (f"**What you'll build:** {neutralize(t.get('payoff'))}\n\n**Proof it works:** "
+                lambda t, srcs: (f"**Why read it:** {neutralize(t.get('hook'))}\n\n**What you'll build:** {neutralize(t.get('payoff'))}\n\n**Proof it works:** "
                                  f"{neutralize(t.get('proof'))}\n\n**Lab:** {neutralize(t.get('lab'))}"),
                 MAX_ISSUES, question=BUILD_QUESTION + ("" if SPLUNK_READY else " " + NO_SPLUNK), extra_labels=("build",))
 
