@@ -16,6 +16,7 @@ TASKS, STATUS, CURSOR = "analytics/tasks.json", "analytics/status.json", "analyt
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
 MAX_TASKS = 40
+MAX_REPLIES = 5                                # each poll. CTO replies run past the monthly limit, so this bounds them
 
 def desk():
     number = budget.desk()
@@ -147,7 +148,7 @@ def poll():
     mine, newest = slack.messages(after)
     if newest != after or not sha:
         analytics.write_file(CURSOR, json.dumps({"ts": newest}), sha, "slack: cursor")
-    for m in mine:
+    for m in mine[-MAX_REPLIES:]:
         try:
             answer(m["text"], slack.history())
         except Exception as e:

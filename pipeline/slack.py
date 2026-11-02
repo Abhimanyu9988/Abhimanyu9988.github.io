@@ -57,5 +57,7 @@ def messages(after):
     return sorted(mine, key=lambda m: float(m["ts"])), max([m["ts"] for m in rows] + [after], key=float)
 
 def history():
-    rows = api("conversations.history", channel=channel(), limit=8)["messages"]
-    return [{"from": m.get("username") or "Abhi", "text": m.get("text", "")[:1500]} for m in reversed(rows)]
+    """Abhi and the team only, so anyone else in the workspace stays out of the model's context."""
+    me, rows = owner(), api("conversations.history", channel=channel(), limit=20)["messages"]
+    kept = [m for m in rows if m.get("user") == me or m.get("bot_id")][:8]
+    return [{"from": m.get("username") or "Abhi", "text": m.get("text", "")[:1500]} for m in reversed(kept)]

@@ -35,7 +35,8 @@ def limit(m=None):
     return got if isinstance(got, (int, float)) and got > 0 else LIMIT_USD
 
 def spent(m=None):
-    """(dollars, {job: dollars}) for the month, from file names alone. AWS's own figure replaces lab estimates once it exists."""
+    """(dollars, {job: dollars}) for the month, from file names alone. AWS reports late, so the higher of its figure and
+    the lab estimates counts, and a lab that ran today is never missed."""
     from radar import HOME_REPO, gh
     jobs, actual = {}, {}
     for f in gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []:
@@ -46,8 +47,7 @@ def spent(m=None):
         if aws and aws[1] == (m or month()):
             actual[aws[2]] = int(aws[3])
     if actual:
-        jobs.pop("aws_estimate", None)
-        jobs["aws"] = actual[max(actual)]
+        jobs["aws"] = max(actual[max(actual)], jobs.pop("aws_estimate", 0))
     return sum(jobs.values()) / 100, {k: v / 100 for k, v in jobs.items()}
 
 def check():
@@ -142,8 +142,8 @@ def record_aws(path):
     import analytics
     day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
     usd = float(json.load(open(path))["ResultsByTime"][0]["Total"]["UnblendedCost"]["Amount"])
-    analytics.write_file(f"analytics/aws-{day}-c{math.ceil(usd * 100)}.json", json.dumps({"usd": usd, "source": "cost-explorer"}),
-                         None, "spend: AWS actual")
+    name = f"analytics/aws-{day}-c{math.ceil(usd * 100)}.json"
+    analytics.write_file(name, json.dumps({"usd": usd, "source": "cost-explorer"}), analytics.read_file(name)[1], "spend: AWS actual")
 
 if __name__ == "__main__":
     import sys

@@ -1021,9 +1021,11 @@ for x in b_written: del files_b[x]
 listing_aws = [{"name": f"spend-{b_month}-1-1-9-draft-c300.json"}, {"name": f"spend-{b_month}-1-1-9-aws_estimate-c100.json"},
                {"name": f"aws-{b_month}-01-c40.json"}, {"name": f"aws-{b_month}-02-c75.json"}]
 radar_b.gh = lambda m, p, b=None: listing_aws
-check("budget: AWS's own figure replaces the estimate, latest day only", budget.spent() == (3.75, {"draft": 3.0, "aws": 0.75}))
+check("budget: AWS's latest figure counts, or the estimates if higher", budget.spent() == (4.0, {"draft": 3.0, "aws": 1.0}))
+listing_aws[1] = {"name": f"spend-{b_month}-1-1-9-aws_estimate-c50.json"}
+check("budget: a higher AWS figure wins", budget.spent() == (3.75, {"draft": 3.0, "aws": 0.75}))
 radar_b.gh = lambda m, p, b=None: listing_aws[:2]
-check("budget: the estimate counts until AWS reports", budget.spent()[0] == 4.0)
+check("budget: the estimate counts until AWS reports", budget.spent()[0] == 3.5)
 radar_b.gh = real_rgh
 cost_file = pathlib.Path(tempfile.mkdtemp()) / "cost.json"
 cost_file.write_text(json.dumps({"ResultsByTime": [{"Total": {"UnblendedCost": {"Amount": "2.3456", "Unit": "USD"}}}]}))
@@ -1110,6 +1112,20 @@ cto.poll()
 check("slack: the cursor moves and each message is answered", heard == ["first", "second"] and json.loads(files_b[cto.CURSOR])["ts"] == "8.0")
 cto.answer, slack.history = real_ans, real_hist
 slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+def hist_api(method, **k):
+    if method == "users.list": return fake_api(method)
+    return {"messages": [{"user": "U9", "text": "someone else"}, {"user": "UME", "text": "mine"}, {"bot_id": "B", "username": "CTO (Engineering)", "text": "reply"}]}
+slack.api = hist_api
+hist = slack.history()
+check("slack: other people stay out of the model's context", [h["text"] for h in hist] == ["reply", "mine"] and hist[1]["from"] == "Abhi")
+slack.api = fake_api
+heard2, real_ans3 = [], cto.answer
+cto.answer = lambda t, h: heard2.append(t)
+real_msg, slack.messages = slack.messages, lambda a: ([{"ts": str(i), "text": str(i)} for i in range(9)], "9")
+real_hist3, slack.history = slack.history, lambda: []
+cto.poll()
+slack.messages, slack.history, cto.answer = real_msg, real_hist3, real_ans3
+check("slack: replies are capped per run", len(heard2) == cto.MAX_REPLIES)
 check("slack: an outage never stops the work", slack.say("cto", "hi") is False)
 slack.api = real_api
 del os.environ["SLACK_BOT_TOKEN"]
