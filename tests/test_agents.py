@@ -1104,7 +1104,7 @@ cto.post, cto.link_exists, cto.progress = real_post, real_le, real_prog
 cto.research = real_research
 goals_b, sources.goals = sources.goals, lambda: [{"title": "AWS Hero", "outcome": "Become an AWS Hero", "weight": 8}]
 real_spent, budget.spent = budget.spent, lambda: (1, {})
-real_wr, llm.web_research = llm.web_research, lambda q, max_uses=4: {"summary": "s", "pages": {"https://real.example/a": {"title": "a"}}}
+real_wr, llm.web_research = llm.web_research, lambda q, max_uses=4: {"summary": "s", "pages": [{"url": "https://real.example/a", "title": "a"}]}
 roles_mod.ask = lambda *a, **k: {"what_worked": ["Spoke at meetups"], "topics_to_try": ["Why X fails"], "avoid": ["Docs repeats"], "sources": ["https://real.example/a", "https://invented.example/b"]}
 brief_text = cto.research()
 check("cmo: research is saved for the Topic Scout", "Spoke at meetups" in files_b[cto.BRIEF] and "Why X fails" in brief_text)
@@ -1212,6 +1212,21 @@ real_ev = list(lab_mod.EVIDENCE); lab_mod.EVIDENCE.clear()
 lab_mod.save({"status": "failed"}, "text, not a lab")
 check("lab: a bad lab still writes its result, so spend and the failure survive", "usd" in json.loads((lab_mod.OUT / "result.json").read_text()))
 lab_mod.OUT = real_out; lab_mod.EVIDENCE.extend(real_ev)
+vold = "It took 35 seconds to recover.\n\n```\nkubectl get pods\n```\n\n_Drafted with AI assistance and reviewed by me._\n"
+vgood = "Recovery took 35 seconds.\n\n```\nkubectl get pods\n```\n\n_Drafted with AI assistance and reviewed by me._\n"
+check("voice: a clean rewrite passes", draft.voice_safe(vold, vgood))
+check("voice: a new number is refused", not draft.voice_safe(vold, vgood.replace("35", "40")))
+check("voice: a changed command is refused", not draft.voice_safe(vold, vgood.replace("get pods", "delete pods")))
+check("voice: a dropped code block is refused", not draft.voice_safe(vold, "Recovery took 35 seconds, and I am sure of that.\n\n_Drafted with AI assistance and reviewed by me._\n"))
+check("voice: the AI note can never be removed", not draft.voice_safe(vold, vgood.replace("_Drafted with AI assistance and reviewed by me._", "_Reviewed by me, carefully._")))
+real_vask, roles_mod.ask = roles_mod.ask, lambda *a, **k: {"body": vgood, "question": "What did you see first?"}
+vpost, vq = draft.voice_edit({"body": vold})
+check("voice: a safe rewrite is used, with its question", vpost["body"] == vgood and "first" in vq)
+roles_mod.ask = lambda *a, **k: {"body": vgood.replace("35", "99"), "question": "q"}
+check("voice: an unsafe rewrite keeps the reviewed post", draft.voice_edit({"body": vold}) == ({"body": vold}, ""))
+roles_mod.ask = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+check("voice: an outage keeps the reviewed post", draft.voice_edit({"body": vold}) == ({"body": vold}, ""))
+roles_mod.ask = real_vask
 check("topics: each one needs a hook the docs do not give", "hook" in r.BUILD_SCHEMA["properties"]["topics"]["items"]["required"])
 check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / "pipeline/radar.py").read_text())
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())

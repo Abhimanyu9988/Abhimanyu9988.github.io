@@ -1,0 +1,17 @@
+{
+ "type": "object",
+ "required": [
+  "body",
+  "question"
+ ],
+ "properties": {
+  "body": {
+   "type": "string",
+   "description": "the full article in markdown"
+  },
+  "question": {
+   "type": "string",
+   "description": "one short question for Abhi"
+  }
+ }
+}

@@ -494,6 +494,31 @@ def tighten(post, kind="problem"):
     note = (f"cut from {m0['prose']} to {m['prose']} words of prose" if m["prose"] != m0["prose"] else "")
     return post, note
 
+NUMBER = re.compile(r"\d[\d.,]*\d|\d")
+KEEP_LINES = re.compile(r"(?m)^.*(?:Drafted with AI assistance|Disclosure:).*$")
+
+def voice_safe(old, new):
+    """Code decides. The rewrite keeps every code line, adds no number, drops no disclosure, and stays about the same length."""
+    return (bool(new) and only_cuts(old, new) and only_cuts(new, old)
+            and set(NUMBER.findall(new)) <= set(NUMBER.findall(old))
+            and all(line in new for line in KEEP_LINES.findall(old))
+            and 0.7 * len(old) <= len(new) <= 1.15 * len(old))
+
+def voice_edit(post):
+    """(post, question for Abhi). Any failure or unsafe rewrite keeps the reviewed post, so this can only add polish."""
+    import roles
+    author = pathlib.Path(__file__).with_name("author.md")
+    try:
+        got = roles.ask("voice_editor", f"AUTHOR:\n{author.read_text()[:2000] if author.exists() else ''}\n\nFIELD NOTES:\n"
+                                        f"{roles.data('voice_editor').get('field_notes', '')}\n\nPOST:\n{post['body']}", "voiceedit")
+    except Exception as e:
+        llm.warn(f"voice edit skipped: {str(e)[:200]}")
+        return post, ""
+    if not voice_safe(post["body"], got["body"]):
+        llm.warn("voice edit: the rewrite changed a fact or code line, so the reviewed post was kept")
+        return post, ""
+    return {**post, "body": got["body"]}, safe_text(got["question"])[:300]
+
 def write_post(context, kind="problem", extra=""):
     """`extra` carries the reader brief and claim rules, and is empty unless EDITOR_MODE is warn or enforce."""
     K = KINDS[kind]
@@ -513,6 +538,7 @@ def write_post(context, kind="problem", extra=""):
                            POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
     log["headline"] = head
     post, log["tightened"] = tighten(post, kind)
+    post, log["question"] = voice_edit(post)
     post, log["linkedin"] = linkedin_round(post, kind)
     return post, log
 
@@ -780,6 +806,9 @@ def open_pr(issue_no, res, topic):
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
     slack.say("writer", f"Draft ready for your decision: {post['title']}\nhttps://github.com/{HOME_REPO}/pull/{pr['number']}")
+    if (log.get("question") if isinstance(log, dict) else ""):
+        slack.say("voice_editor", f"Optional, but this is what makes a post truly yours: {log['question']}\n"
+                                  "To add your answer, comment /redraft with it on the PR.")
     if gate.get("report"):
         record_review(slug, gate, brief)
     old = os.environ.get("OLD_PR", "")
