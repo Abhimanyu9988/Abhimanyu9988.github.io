@@ -91,7 +91,18 @@ def drop_goal(gid, issue):
         comment(issue, safe_text(f"No goal called {gid}. Use `/goals` to see them.")); return
     hit[0]["status"] = "dropped"
     save(GOALS, {"goals": goals}, sha, f"goals: drop {gid}")
-    comment(issue, safe_text(f"Dropped `{gid}`. Topic selection stops favouring it from its next run."))
+    active = [g for g in goals if g.get("status") == "active"]
+    try:
+        if active:
+            text = plan_md(make_plan(active))
+        else:
+            _, plan_sha = analytics.read_file(PLAN)
+            save(PLAN, {"focus": "", "assignments": [], "needs": []}, plan_sha, "goals: clear plan")
+            text = "No active goals remain, so the team plan is clear."
+    except Exception as e:
+        print(f"plan failed: {str(e)[:300]}")
+        text = "I could not update the team plan just now. It may still list this goal."
+    comment(issue, safe_text(f"Dropped `{gid}`. Topic selection stops favouring it from its next run.\n\n{text}"))
 
 def list_goals(issue):
     active = sources.goals()

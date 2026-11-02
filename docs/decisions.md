@@ -55,3 +55,12 @@ permissions, and each article reaches him as one PR to approve or reject once.
 
 `live-check` holds keys, so it runs only from `main`. A merge that changes `pipeline/live-check.request` starts it, so the
 check needs no manual command. A push to `main` is trusted code, and a branch cannot start this trigger.
+
+## 2026-11-02: Tech Head findings accepted after the merge
+
+The first OpenAI review of Milestone 1 ran on merge. These were judged and left as they are:
+
+- `pull_request_target` in `tech-head.yml` is the design. No job runs code from the PR.
+- `live-check` starting on a push to `main` stays, because only an approved merge can change the request file.
+- `docs/merge-behavior.md` keeps the secret names. They are already public in the workflow files.
+- The brief marker stays outside `safe_text`. It is base64 inside an HTML comment, and bot writes are still checked as a whole.
