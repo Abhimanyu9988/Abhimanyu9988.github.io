@@ -392,7 +392,7 @@ def goal_score(cand, goals):
     g = goals.get(cand.get("goal")) or {}
     title = str(cand.get("title", "")).lower()
     focus = [str(f).lower().strip() for f in g.get("focus") or [] if str(f).strip()]
-    return g.get("weight", 0) if any(re.search(rf"(?<!\w){re.escape(f)}(?!\w)", title) for f in focus) else 0
+    return g.get("weight", 0) if any(re.search(rf"(?<!\w){re.escape(f)}s?(?!\w)", title) for f in focus) else 0
 
 def goals_block():
     if os.environ.get("GOAL_RANKING", "").lower() == "off":

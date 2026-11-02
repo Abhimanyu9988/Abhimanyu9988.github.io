@@ -569,14 +569,19 @@ def record_review(slug, gate, brief):
 
 GATE_TEXT = 6000                               # GitHub refuses a PR body over 65,536 characters
 
+def clip_gate(text):
+    return text if len(text) <= GATE_TEXT else text[:GATE_TEXT] + "\n\n[cut here: the full review is on the analytics branch]"
+
 def gate_md(gate):
     """The review at the top of the PR when it may matter, or folded away in shadow mode."""
     if not gate.get("report"):
         return ""
     head = {"pass": "passed", "revise": "needs attention", "stop": "stopped"}[gate["decision"]]
-    text = f"{safe_text(scan.markdown(gate['report'])[:GATE_TEXT])}\n\n{safe_text(editor.card_md(gate['card'])[:GATE_TEXT])}".strip()
+    text = f"{safe_text(clip_gate(scan.markdown(gate['report'])))}\n\n{safe_text(clip_gate(editor.card_md(gate['card'])))}".strip()
     if gate["reasons"]:
         text += "\n\n" + "\n".join(f"- {safe_text(str(r)[:400])}" for r in gate["reasons"][:12])
+        if len(gate["reasons"]) > 12:
+            text += f"\n- and {len(gate['reasons']) - 12} more"
     if editor.mode() == "shadow":
         return (f"<details><summary><b>Shadow review: {head}</b> (nothing here affects publishing)</summary>\n\n{text}"
                 "\n\n</details>\n\n")
@@ -645,6 +650,10 @@ def add_files_section(body, slug, names):
         return body[:m.start()] + block + body[m.start():]
     tail = body.rfind("\n---\n")
     return (body[:tail] + "\n\n" + block + body[tail:]) if tail > 0 else body + "\n\n" + block
+
+def finish_body(body, run_id):
+    """A refused PR would strand the branch, so the cap comes first. /redraft reads the marker, which follows all model text."""
+    return f"{body[:64000]}\n\n<!-- lab-run: {run_id} -->"
 
 def open_pr(issue_no, res, topic):
     slug = res["slug"][:60].strip("-")
@@ -760,7 +769,7 @@ def open_pr(issue_no, res, topic):
     title = safe_text("Draft: " + post["title"], "Draft post")[:120]
     if len(body) > 60000:
         body = body.replace(preview, "[preview too long for the PR description; read the post file]")
-    body = body[:64000]                            # the last line of defence: a refused PR would strand the branch
+    body = finish_body(body, res["run_id"])
     assert_safe(title); assert_safe(body)          # check before anything is created, so a failure leaves no mess
     base = gh("GET", f"/repos/{HOME_REPO}/git/ref/heads/main")["object"]["sha"]
     gh("POST", f"/repos/{HOME_REPO}/git/refs", {"ref": f"refs/heads/{branch}", "sha": base})

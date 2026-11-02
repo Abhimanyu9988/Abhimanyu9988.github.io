@@ -34,7 +34,7 @@ RULES = (
      "The workflow grants every write permission.", "List only the permissions the job needs.", ".github/workflows/"),
     ("shell-true", "major", "security", re.compile(r"shell\s*=\s*(True|1)\b"),
      "A subprocess uses a shell.", "Pass an argument list.", ".py"),
-    ("dynamic-exec", "blocker", "security", re.compile(r"(?<![\w.])(eval|exec)\s*\(|\bbuiltins\.(eval|exec)\b|__builtins__|\bos\.(system|popen)\s*\(|pickle\.loads?\b|yaml\.unsafe_load\b|"
+    ("dynamic-exec", "blocker", "security", re.compile(r"(?<![\w.])(eval|exec)\s*\(|\bbuiltins\.(eval|exec)\b|__built" r"ins__|\bos\.(system|popen)\s*\(|pickle\.loads?\b|yaml\.unsafe_load\b|"
                 r"yaml\.load\((?!.*SafeLoader)"),
      "Dynamic execution or unsafe parsing.", "Parse data with a safe loader; never execute text.", ".py"),
     ("github-write-bypass", "blocker", "security", re.compile(r"api\.github\.com.*(POST|PUT|PATCH|DELETE)|"
@@ -165,13 +165,17 @@ def relevant(reports, changed):
     return out
 
 def scanner_blockers(reports, changed):
-    """A scanner's script-injection finding on a changed workflow blocks like a code rule, because it is one."""
+    """A confident, High script-injection finding on a changed workflow blocks like a code rule, because it is one.
+    It matches by file, so an old finding in a workflow a PR touches also blocks. That is advisory until blocking mode."""
     out = []
     for item in (reports.get("zizmor") or {}).get("items") or []:
-        text = json.dumps(item)
+        text, grade = json.dumps(item), item.get("determinations") or {}
         hit = next((p for p in changed if p in text), None)
-        if item.get("ident") == "template-injection" and hit:
-            out.append({"severity": "blocker", "category": "security", "file": hit, "line": 0, "rule": "zizmor-template-injection",
+        if item.get("ident") == "template-injection" and hit and grade.get("severity") == "High" and grade.get("confidence") != "Low":
+            where = ((item.get("locations") or [{}])[0].get("concrete") or {}).get("location") or {}
+            row = (where.get("start_point") or {}).get("row")
+            out.append({"severity": "blocker", "category": "security", "file": hit, "rule": "zizmor-template-injection",
+                        "line": row + 1 if isinstance(row, int) else 0,
                         "problem": str(item.get("desc"))[:200], "fix": "Pass the value through env and quote it."})
     return out
 
@@ -180,16 +184,32 @@ def complete(reports, ai, left=0):
     gaps = [f"{n} {r['status']}" for n, r in reports.items() if r["status"] in ("unavailable", "partial")]
     gaps += [f"{left:,} characters of the diff were not reviewed"] if left else []
     gaps += [f"{ai['failed_batches']} review batch(es) failed"] if (ai or {}).get("failed_batches") else []
+    gaps += [f"{ai['scanner_items_cut']} scanner item(s) were not sent to the reviewer"] if (ai or {}).get("scanner_items_cut") else []
     return gaps + ([] if ai else ["AI review did not run"])
+
+def fit_scanners(rel, limit=5500):
+    """(reports, items cut). Each scanner gets its own share, so one cannot push another out of the prompt."""
+    out, cut = {}, 0
+    for name, r in rel.items():
+        kept, size = [], 0
+        for item in r.get("items") or []:
+            size += len(json.dumps(item))
+            if size > limit:
+                break
+            kept.append(item)
+        cut += len(r.get("items") or []) - len(kept)
+        out[name] = {**r, "items": kept}
+    return out, cut
 
 def review(diff, reports, agents_md):
     """One model call per batch. A failed batch keeps earlier findings and counts as unreviewed, never as clean."""
     import roles
     kept, left = batches(diff)
-    merged = {"summary": "", "findings": [], "failed_batches": 0, "batches": len(kept)}
+    fitted, cut = fit_scanners(relevant(reports, files_in(diff)))
+    merged = {"summary": "", "findings": [], "failed_batches": 0, "batches": len(kept), "scanner_items_cut": cut if kept else 0}
     for i, chunk in enumerate(kept, 1):
         note = f"\nThis is batch {i} of {len(kept)}." + (f" {left:,} characters stay unreviewed: say so." if left else "")
-        scanners = json.dumps(relevant(reports, files_in(diff)))[:12000] if i == 1 else "see batch 1"
+        scanners = json.dumps(fitted) if i == 1 else "see batch 1"
         try:
             got = roles.ask("tech_head", f"Review this change.{note}\n\nAGENTS.md:\n{agents_md}\n\nSCANNER REPORTS:\n"
                                          f"{scanners}\n\nDIFF:\n{chunk}", "techreview")
@@ -207,7 +227,7 @@ def review(diff, reports, agents_md):
 
 def verdict(rule_findings, ai, diff):
     """(findings, dropped count, blocked). The file check stops a model reporting problems in code it never saw.
-    Only code rules can block. A model's blocker is shown to a person, who decides."""
+    Only code rules and scanner_blockers can block. A model's blocker is shown to a person, who decides."""
     allowed, kept, dropped = files_in(diff), list(rule_findings), 0
     for f in (ai or {}).get("findings") or []:
         if f.get("file") in allowed:
@@ -222,7 +242,8 @@ def markdown(findings, ai, dropped, blocked, skipped="", reports=None, left=0):
     claimed = any(f.get("severity") == "blocker" for f in findings)
     gaps = complete(reports or {}, ai, left)
     head = ("code rules found a blocker" if blocked else "the reviewer raised a possible blocker, please judge it" if claimed
-            else "notes to read" if findings else "incomplete, this is not a clean result" if gaps else "no findings")
+            else "notes to read" if findings else "incomplete, this is not a clean result" if gaps
+            else "only saved data changed, so no model read this" if ai and not ai.get("batches") else "no findings")
     lines = [f"**Tech Head review: {head}.**", ""]
     if reports:
         lines += ["Scanners: " + ", ".join(f"{n} {r['status']}" for n, r in reports.items()) + ".", ""]
@@ -264,7 +285,7 @@ def main():
     findings, dropped, blocked = verdict(found, ai, diff)
     left = prioritise(diff)[1]
     text = markdown(findings, ai, dropped, blocked, skipped, reports, left)
-    print(text)                                    # the fallback below points here
+    print("\n".join(f"| {line}" for line in text.splitlines()))   # the prefix stops model text acting as a runner command
     gaps = complete(reports, ai, left)
     fallback = (f"**Tech Head review: {'code rules found a blocker' if blocked else 'finished'}.** {len(findings)} finding(s), "
                 f"{sum(f.get('severity') == 'blocker' for f in findings)} marked blocker. "

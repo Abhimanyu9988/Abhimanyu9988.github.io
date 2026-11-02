@@ -357,7 +357,7 @@ lab.call = _real_lab_call
 _real_lab_gh = lab.gh
 lab.gh = lambda m, path, *a, **k: [
     {"user": {"login": "Abhimanyu9988"}, "body": "approve"},
-    {"user": {"login": "hero-bot-abhimanyu9988[bot]"}, "body": "x\n\n**Last failure:** fix (the fix did not work)\n```\n"
+    {"user": {"login": "hero-bot-abhimanyu9988[bot]"}, "body": "x 2 attempt(s), 30 min, workflow run 1.\n\n**Last failure:** fix (the fix did not work)\n```\n"
      "error: missing required parameter \"activationTargetValue\"\nHERO_RESULT: not_fixed\n```\n\n**Lab:** Builds KEDA.\n\nmore"}]
 _lf = lab.last_failure(72)
 check("lab: a re-run starts from the previous run's failure (bot comments only)",

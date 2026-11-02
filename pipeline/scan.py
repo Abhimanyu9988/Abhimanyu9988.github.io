@@ -64,6 +64,8 @@ def measurements(logs):
                                                  "file": name, "line": n})
     return out
 
+PRINTF = re.compile(r"%[-0-9.]*[a-z]")
+
 def typed_values(scripts):
     """{measure id: True} for measurements a script types in instead of computing."""
     typed = {}
@@ -72,7 +74,8 @@ def typed_values(scripts):
         for m in LITERAL.finditer(text):
             value = m[2].strip()
             name = re.fullmatch(r"\$\{?([A-Za-z_]\w*)\}?", value)
-            if VALUE.fullmatch(value) or (name and name[1] in constants):   # only a typed number is a typed value
+            typed_number = re.search(r"\d", value) and not re.search(r"[$\\{}]", value) and not PRINTF.search(value)
+            if typed_number or (name and name[1] in constants):
                 typed[m[1]] = True
     return typed
 

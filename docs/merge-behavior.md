@@ -10,10 +10,12 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 | Topic ranking | Panel votes and self-scores | Same, until a goal exists. A goal's weight then outranks votes, only for titles matching its focus areas | `GOAL_RANKING=off`, or `/goal drop <id>` | `default: with no goals`, `change: an active goal`, `rollback: GOAL_RANKING=off` |
 | Topic prompts | Every topic must feature Splunk | Splunk wherever it fits | Revert `SPLUNK_RULE` in `pipeline/radar.py` | `Splunk is no longer mandatory` |
 | LinkedIn choice, including the monthly post | Best-voted post that passes the fact check, even with 0 votes; the writer's text if none pass | Needs 2 of 3 votes and the fact check. Otherwise the post ships without LinkedIn text, and the PR shows the writer's text | `LINKEDIN_MIN_VOTES=0` | `LinkedIn:` tests, `rollback: LINKEDIN_MIN_VOTES=0` |
-| Covers and screenshots | Filter `HERO_RESULT` lines | Also filter `HERO_MEASURE` lines | None needed | `HERO_MEASURE` filter |
+| Covers and screenshots | Filter `HERO_RESULT` lines | Also filter `HERO_MEASURE` lines | None needed | `cover: HERO_MEASURE never reaches an image` |
 | Topic prompts | No goals text | Adds a goals list and a recent Splunk mix | `GOAL_RANKING=off` removes goals | `rollback: GOAL_RANKING=off` |
 | Failed labs | The lab reads earlier failure comments | Unchanged, and shadow comments are skipped | None needed | `shadow: a lab never reads` |
-| `tests` workflow | Pipeline and workflow changes | Also runs on `labs/**` and `AGENTS.md` | Revert the path filter | Workflow tests |
+| `tests` workflow | Pipeline and workflow changes | On pull requests it also runs on `labs/**` and `AGENTS.md`, and adds `test_agents.py`, `evaluate.py` and the pipeline suite in shadow mode | Revert the workflow | Workflow tests |
+| `/redraft` | Finds the lab run from the first `workflow run N` in the PR | Reads a `lab-run` marker after all model text. PRs without it use the old way | Revert the workflow | `redraft:` tests |
+| Failed lab re-runs | Any bot comment with a `Last failure` line | Only the lab's own failure report | None needed | `lab:` tests |
 | LinkedIn with fewer than 2 candidates | Writer's post ships unchecked | No post ships | `LINKEDIN_MIN_VOTES=0` | `LinkedIn:` tests |
 | PR body | Technical checks | Adds a folded shadow review and a dollar estimate. `EDITOR_MODE=off` removes the review; the estimate stays | `EDITOR_MODE=off` | `shadow: a failed check only reports` |
 | Radar and `problems` runs | No Editor | Up to 2 briefs per run, after issues open, as issue comments | `EDITOR_MODE=off` | `shadow:` tests |
@@ -29,6 +31,7 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 | Risk | State | Hardening |
 | --- | --- | --- |
 | A PR edits its own review | Fixed. `pull_request_target` loads the workflow from the base branch | Keep the rule that no job runs PR code |
+| Blocking on scanners | Only a High, not low-confidence zizmor `template-injection` on a changed workflow blocks. It matches by file, so an old finding there also blocks | Accepted, advisory for now |
 | A scanner runs beside secrets | Fixed. Scanners run in a job with no secrets, and pass only a report file | None |
 | A PR silences a scanner | Fixed for `.bandit`, `# nosec`, zizmor config, inline ignores and `.gitignore` | None |
 | A scanner fails silently | Fixed. Reports say clean, findings, partial or unavailable, and blocking mode fails on anything incomplete | None |
@@ -75,7 +78,7 @@ Observed from job logs and workflow files on 2 November 2026. Environment secret
 
 **Phase 2, after PR 89 merges and passes `live-check`.** Create a `pipeline` environment limited to `main`. Limit `publish` and `aws-lab` to `main` too, because otherwise a branch could still reach keys placed there. Add new model keys to `pipeline`, `publish` and `aws-lab`. Add `environment: pipeline` to `radar`, `problems`, `hero`, `monthly-oss`, `redraft`, `replicate` draft and `assistant`. `analytics` and the lab job cannot name a second environment, and the lab job must keep `aws-lab`, because its AWS role trusts that environment by name. Confirm one successful run of each job, with Splunk checks included, before the next phase.
 
-**Phase 3, once every job has passed.** Delete the three repository model keys, confirm scheduled jobs still run, and only then revoke the old keys. Revoking first would stop anything still using them. To roll back before revocation, add the repository secrets back.
+**Phase 3, once every job has passed.** Delete the three repository model keys, confirm scheduled jobs still run, and only then revoke the old keys. Revoking first would stop anything still using them. Keep the old keys somewhere safe until then, because GitHub will not show them again: to roll back, add them back as repository secrets, or use the new keys.
 
 **`BOT_PRIVATE_KEY` stays at repository level for now.** `merge-on-approve` needs it and cannot use a main-only environment. Allowing `refs/pull/*/merge` would also let any branch's pull request reach the key. Closing this needs a separate design change, such as a narrower app for merges.
 
