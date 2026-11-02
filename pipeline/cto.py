@@ -7,7 +7,7 @@
 What it can do: answer, record a goal he agreed, and assign a tracked task to an active role.
 What it cannot do: publish, spend, deploy, change the budget, or hold a credential. Links are checked by code first.
 """
-import datetime, json, os, re, urllib.error, urllib.request
+import datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
 from radar import HOME_REPO, comment, ensure_label, gh, post_issue, safe_text
 import analytics, budget, contract, roles, sources
 
@@ -40,13 +40,29 @@ def add_task(task):
     analytics.write_file(TASKS, json.dumps({"tasks": (keep + [row])[-MAX_TASKS:]}, indent=1), sha, "tasks: add")
     return f"Assigned to {row['owner']}: {row['title']}."
 
+def public_https(url):
+    """Model-written links run on a runner that holds keys, so private and internal addresses are refused."""
+    u = urllib.parse.urlsplit(url)
+    if u.scheme != "https" or not u.hostname or u.port not in (None, 443):
+        return False
+    try:
+        return all(ipaddress.ip_address(a[4][0]).is_global for a in socket.getaddrinfo(u.hostname, 443))
+    except (OSError, ValueError):
+        return False
+
+class CheckedRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not public_https(newurl):
+            raise urllib.error.URLError("redirect refused")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
 def link_exists(url):
     """True when the page answers. A sign-in page counts: 401 and 403 show it exists, and Abhi is the one signing in."""
-    if not url.startswith("https://"):
+    if not public_https(url):
         return False
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     try:
-        with urllib.request.urlopen(req, timeout=10):
+        with urllib.request.build_opener(CheckedRedirect).open(req, timeout=10):
             return True
     except urllib.error.HTTPError as e:
         return e.code in (401, 403)

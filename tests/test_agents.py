@@ -1051,6 +1051,8 @@ del files_b[budget.LIMITS]
 roles_mod.ask, roles_mod.data = real_ask2, real_data
 cto.comment, cto.link_exists, cto.progress, cto.thread = real_comment, real_le, real_prog, real_thread
 check("cto: plain http is never confirmed", cto.link_exists("http://example.com") is False)
+for inner in ("https://127.0.0.1/", "https://169.254.169.254/latest", "https://10.0.0.1/", "https://[::1]/", "https://example.com:8443/"):
+    check(f"cto: refuses {inner}", cto.public_https(inner) is False)
 pub = cto.public_status({"waiting": ["a"], "shipped": ["b"], "spent": 9, "limit": 50, "by_job": {}, "tasks": [{"title": "secret", "owner": "x"}], "failed_runs": ["x"]})
 check("team page: no spending, tasks or failures", "secret" not in json.dumps(pub) and "spent" not in pub and "tasks" not in pub and "failed" not in json.dumps(pub))
 check("team page: the page builds its text safely", "innerHTML" not in (ROOT / "site/team.md").read_text())

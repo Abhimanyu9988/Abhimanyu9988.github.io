@@ -79,7 +79,6 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-issues: write
           permission-pull-requests: write
-          permission-contents: write
       - name: review
         if: hashFiles('base/pipeline/tech_head.py') != ''
         run: python3 base/pipeline/tech_head.py
