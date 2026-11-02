@@ -14,6 +14,10 @@ on:
         description: "Post the digest now"
         type: boolean
         default: false
+      poll:
+        description: "Read Slack now. The Slack listener sets this"
+        type: boolean
+        default: false
 permissions:
   contents: read
   issues: read
@@ -59,7 +63,7 @@ jobs:
           OSS_SCOUT_MODEL: ${{ vars.OSS_SCOUT_MODEL }}
           ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
           MANAGER_MODEL: ${{ vars.MANAGER_MODEL }}
-          POLL: ${{ github.event.schedule == '*/10 * * * *' }}
+          POLL: ${{ github.event.schedule == '*/10 * * * *' || inputs.poll == true }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
           DIGEST: ${{ inputs.digest }}

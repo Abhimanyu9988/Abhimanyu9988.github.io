@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Wakes the team as soon as Abhi messages Slack. It checks Slack's signature, then starts the cto workflow. It reads nothing and holds no model keys.
+Parameters:
+  SlackSigningSecret:
+    Type: String
+    NoEcho: true
+  GitHubToken:
+    Type: String
+    NoEcho: true
+    Description: A fine-grained token for this one repository with Actions write only.
+Resources:
+  Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+  Logs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/slack-listener
+      RetentionInDays: 7
+  Listener:
+    Type: AWS::Lambda::Function
+    DependsOn: Logs
+    Properties:
+      FunctionName: slack-listener
+      Runtime: python3.13
+      Handler: index.handler
+      Role: !GetAtt Role.Arn
+      MemorySize: 128
+      Timeout: 3
+      Environment:
+        Variables:
+          SLACK_SIGNING_SECRET: !Ref SlackSigningSecret
+          GITHUB_TOKEN: !Ref GitHubToken
+      Code:
+        ZipFile: |
+          import base64, hashlib, hmac, json, os, time, urllib.request
+
+          REPO = "Abhimanyu9988/Abhimanyu9988.github.io"
+
+          def signed(headers, body):
+              try:
+                  stamp = int(headers.get("x-slack-request-timestamp", "0"))
+              except ValueError:
+                  return False
+              if abs(time.time() - stamp) > 300:
+                  return False
+              mac = hmac.new(os.environ["SLACK_SIGNING_SECRET"].encode(), f"v0:{stamp}:{body}".encode(), hashlib.sha256)
+              return hmac.compare_digest("v0=" + mac.hexdigest(), headers.get("x-slack-signature", ""))
+
+          def wake():
+              req = urllib.request.Request(
+                  f"https://api.github.com/repos/{REPO}/actions/workflows/cto.yml/dispatches", method="POST",
+                  data=json.dumps({"ref": "main", "inputs": {"poll": "true"}}).encode(),
+                  headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}", "Accept": "application/vnd.github+json",
+                           "User-Agent": "slack-listener"})
+              urllib.request.urlopen(req, timeout=2)
+
+          def handler(event, context):
+              body = event.get("body") or ""
+              if event.get("isBase64Encoded"):
+                  body = base64.b64decode(body).decode()
+              headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+              if not signed(headers, body):
+                  return {"statusCode": 401, "body": "bad signature"}
+              data = json.loads(body)
+              if data.get("type") == "url_verification":
+                  return {"statusCode": 200, "body": str(data.get("challenge", ""))}
+              message = data.get("event") or {}
+              human = message.get("type") == "message" and not message.get("bot_id") and not message.get("subtype")
+              if human and "x-slack-retry-num" not in headers:
+                  try:
+                      wake()
+                  except Exception as e:
+                      print(f"wake failed: {type(e).__name__}")   # the 10-minute check still picks the message up
+              return {"statusCode": 200, "body": "ok"}
+  Url:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt Listener.Arn
+  PublicUrl:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName: !Ref Listener
+      FunctionUrlAuthType: NONE
+      Principal: "*"
+  PublicInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref Listener
+      Principal: "*"
+Outputs:
+  RequestUrl:
+    Value: !GetAtt Url.FunctionUrl

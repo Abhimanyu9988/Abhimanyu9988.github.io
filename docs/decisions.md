@@ -120,3 +120,8 @@ contribution board, which is public, and can't act on GitHub.
 Abhi wants to review an article every day until 9 November, so the daily job also starts the Topic Scout on days without
 their own run. Code blocks on his site now look like a terminal: black, white text and a green directory prompt that can't
 be copied. dev.to and Medium use their own styling.
+
+## 2026-11-02: A Lambda wakes the team on each Slack message
+
+Abhi approved faster replies. A small function checks Slack's signature and starts `cto.yml`, so it holds no model keys and
+reads nothing. It runs in his main account, because the lab account is disposable. The 10-minute check stays as a fallback.
