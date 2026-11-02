@@ -37,8 +37,8 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 12. **No agent starts another agent.** The order is fixed in workflows. The one exception is `radar.yml`, which starts
     `replicate.yml` for the panel's pick, with a numeric issue only, behind the budget and `AUTO_LAB`. Editor, Tech Head, Executive Assistant and CTO have
     call and input budgets. Older pipeline stages still rely on job timeouts, and web research is capped by `max_uses`.
-13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words in
-    the CTO desk issue can raise the limit, for that month. No model can change it. Costs are list prices plus lab
+13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words, in
+    Slack or the CTO desk issue, can raise the limit, for that month. No model can change it. Costs are list prices plus lab
     estimates, never invoices, so never present them as billing data.
 14. **This repo is public, and so is its `analytics` branch and every issue.** Nothing private goes there. Abhi's requests
     and the admin page live in the private `team-admin` repository, and his conversations belong in Slack.

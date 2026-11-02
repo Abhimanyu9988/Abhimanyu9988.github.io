@@ -57,10 +57,14 @@ def admin_write(path, text, sha, msg):
     admin_api("PUT", path, {**body, "sha": sha} if sha else body)
 
 def read_private(path):
-    return admin_read(path.split("/")[-1]) if admin_on() else analytics.read_file(path)
+    return admin_read(path.split("/")[-1]) if admin_on() else ("", None)
 
 def write_private(path, text, sha, msg):
-    (admin_write if admin_on() else analytics.write_file)(path.split("/")[-1] if admin_on() else path, text, sha, msg)
+    """Never falls back to this public repo. Without the private repo, nothing is stored."""
+    if not admin_on():
+        return False
+    admin_write(path.split("/")[-1], text, sha, msg)
+    return True
 
 def tasks():
     text, sha = read_private(TASKS)
@@ -76,7 +80,8 @@ def add_task(task):
     row = {"title": str(task.get("title"))[:160], "owner": task["owner"], "status": "open",
            "created": datetime.date.today().isoformat()}
     keep = [t for t in got if t.get("title") != row["title"]]
-    write_private(TASKS, json.dumps({"tasks": (keep + [row])[-MAX_TASKS:]}, indent=1), sha, "tasks: add")
+    if not write_private(TASKS, json.dumps({"tasks": (keep + [row])[-MAX_TASKS:]}, indent=1), sha, "tasks: add"):
+        return "Task not saved, because the private admin repo isn't connected yet."
     return f"Assigned to {row['owner']}: {row['title']}."
 
 def public_https(url):
@@ -235,7 +240,11 @@ def poll():
         return
     text, sha = analytics.read_file(CURSOR)
     after = json.loads(text)["ts"] if text.strip() else f"{datetime.datetime.now(datetime.timezone.utc).timestamp():.6f}"
-    mine, newest = slack.messages(after)
+    try:
+        mine, newest = slack.messages(after)
+    except Exception as e:
+        print(f"::warning title=slack::messages not read: {' '.join(str(e).split())[:200]}")
+        return
     if newest != after or not sha:
         analytics.write_file(CURSOR, json.dumps({"ts": newest}), sha, "slack: cursor")
     for m in mine[-MAX_REPLIES:]:
