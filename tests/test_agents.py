@@ -492,6 +492,12 @@ th.MAX_DIFF = real_max
 check("Tech Head: a comment naming a risk is not the risk", th.rules("+++ b/.github/workflows/a.yml\n@@ -0,0 +1 @@\n+# pull_request_target is safe here\n") == [])
 check("Tech Head: a key in a comment is still caught", th.rules(f"+++ b/pipeline/a.py\n@@ -0,0 +1 @@\n+# {FAKE}\n") != [])
 
+lc = (ROOT / ".github/workflows/live-check.yml").read_text()
+check("workflow: the live check can only be started by hand", "pull_request" not in lc.split("jobs:")[0].split("on:", 1)[1])
+check("workflow: a failed scanner install is recorded", "echo 127 > reports/bandit.exit" in wf)
+(rp / "bandit.exit").write_text("127"); (rp / "bandit.json").unlink()
+check("scanner: a failed install is unavailable, not clean", th.read_reports(rp)["bandit"]["status"] == "unavailable")
+
 # ---------- PR 89 review: what changes on merge, and how to undo it ----------
 os.environ["MODEL_AUTO"] = "true"
 check("rollback: MODEL_AUTO=true turns the pins off", llm._pin("openai") == "")

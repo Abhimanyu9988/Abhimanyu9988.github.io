@@ -32,4 +32,26 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 | Unpinned actions and scanner hashes | Open | Pin actions to commit SHAs. Add pip hashes |
 | **Any branch workflow can read repository secrets** | **Open, the main remaining risk** | Move `OPENAI_API_KEY` and `BOT_PRIVATE_KEY` for this job into a `tech-head` environment limited to `main`. Do the same for other keys when convenient. This is a repository setting, so only you can change it |
 
+`pull_request_target` is flagged as a blocker by Tech Head's own code rule whenever it is added. For `tech-head.yml` that is
+the intended design: it stops a pull request editing its own review, and no job runs PR code. Change it only with that in mind.
+
 Before enabling `TECH_HEAD_MODE=blocking`, also make `tech-head` a required check on `main`.
+
+## Live validation record
+
+Run on 2 November 2026 in GitHub Actions with the repository's real keys. Costs use list prices.
+
+| Step | Model | Seconds | Tokens in | Tokens out | Cost |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Model IDs listed, all 5 found | None | 1.7 | 0 | 0 | $0 |
+| Ping, Haiku | claude-haiku-5-5 | 0.9 | 471 | 47 | under $0.001 |
+| Ping, Sonnet | claude-sonnet-5-5 | 1.9 | 471 | 47 | $0.001 |
+| Ping, OpenAI | gpt-5.5 | 2.4 | 92 | 23 | $0.001 |
+| Ping, Gemini | gemini-3.1-pro-preview | 2.1 | 84 | 9 | under $0.001 |
+| Editor brief with web search | claude-opus-5-5, claude-sonnet-5-5 | 52.6 | 36,455 | 6,496 | $0.219 |
+| Editor scorecard on PR 88 | claude-opus-5-5 | 37.1 | 10,375 | 4,104 | $0.124 |
+| Tech Head, first run | gpt-5.5 | 26.1 | 18,583 | 1,841 | $0.148 |
+| Tech Head, risk-ordered run | gpt-5.5 | 48.8 | 29,704 | 3,670 | $0.259 |
+
+Total: $0.753. These runs exercised the code before the final Tech Head workflow and live-check changes. The `tech-head`
+and `assistant` workflows themselves have not run on GitHub, because they cannot run until they exist on `main`.

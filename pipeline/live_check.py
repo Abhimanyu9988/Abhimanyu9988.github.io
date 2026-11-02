@@ -4,6 +4,7 @@
 Checks, in order: the pinned model IDs exist, the cheap models answer, a real Editor brief, a real Editor scorecard on
 the PR 88 draft, and a real Tech Head review of this pull request. Every step records what actually happened, so a step
 that did not run is reported as not run. It posts one comment and changes nothing else: no publishing, no lab, no AWS.
+MAX_USD is checked between steps, so a run can pass it by up to one step's cost.
 """
 import json, os, pathlib, subprocess, time
 import editor, llm, roles, scan, tech_head
@@ -95,10 +96,6 @@ def report():
     return "\n".join(lines)
 
 def main():
-    if os.environ.get("LIVE_ONLY") == "tech_head":
-        step("Tech Head review of this PR", review)
-        comment(int(os.environ["PR_NUMBER"]), safe_text(report()))
-        return
     step("Model IDs listed", listed)
     pins = llm.PRICES["defaults"]
     step("Ping Haiku pin", lambda: ping("claude", pins["claude_scout"]))

@@ -28,7 +28,11 @@ jobs:
         run: |
           mkdir -p reports
           printf '[bandit]\n' > empty.ini
-          pip install bandit==1.9.4 zizmor==1.31.1 || exit 0
+          if ! pip install bandit==1.9.4 zizmor==1.31.1; then
+            echo 127 > reports/bandit.exit
+            echo 127 > reports/zizmor.exit
+            exit 0
+          fi
           bandit -q -r pr/pipeline --ini empty.ini --ignore-nosec -f json -o reports/bandit.json
           echo $? > reports/bandit.exit
           zizmor --offline --no-config --format=json pr/.github/workflows > reports/zizmor.json

@@ -1,6 +1,7 @@
 name: live-check
-# Real API calls with a hard $3 budget. It posts one comment and changes nothing else.
-# The pull_request trigger is temporary, for validating this branch, and is removed before the PR leaves draft.
+# Manual only, from trusted code on main: real API calls that post one comment and change nothing else. Spending is
+# checked between steps against a $3 limit, and each step's size is bounded by its role budget, so a run can pass the
+# limit slightly. Never add a pull_request trigger here: this job holds secrets and runs the code it checks out.
 on:
   workflow_dispatch:
     inputs:
@@ -8,19 +9,15 @@ on:
         description: "Pull request to report on"
         required: true
         type: string
-  pull_request:
-    paths: ["pipeline/live-check.request"]
 permissions:
   contents: read
 jobs:
   live:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/create-github-app-token@v2
@@ -33,11 +30,10 @@ jobs:
       - name: live check
         run: python3 pipeline/live_check.py
         env:
-          PR_NUMBER: ${{ inputs.pr || github.event.pull_request.number }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || 'HEAD' }}
+          PR_NUMBER: ${{ inputs.pr }}
+          BASE_SHA: HEAD~1
+          HEAD_SHA: HEAD
           EDITOR_MODE: shadow
-          LIVE_ONLY: tech_head
           HERO_PUBLISH: "1"
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}
