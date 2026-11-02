@@ -103,5 +103,5 @@ Final run on merge, from `main` at `9b9cd03`, for $1.362:
 | Editor scorecard on PR 88, revise | claude-opus-5-5 | 61.7 | 20,958 | 6,708 | $0.218 |
 | Tech Head on the whole merge, 10 findings | gpt-5.5 | 229.5 | 84,910 | 16,787 | $0.928 |
 
-Total: $0.753. These runs predate the final fixes, including Tech Head batching, so that code has only offline tests. The
+Total of the earlier runs: $0.753. These runs predate the final fixes, including Tech Head batching, so that code has only offline tests. The
 `tech-head` and `assistant` workflows have not run on GitHub, because they cannot run until they exist on `main`.

@@ -12,7 +12,7 @@ Two different things live here, and they must never be merged:
 import json, pathlib, re, sys
 import editor, llm, scan
 
-MAX_LIVE_USD = 3                               # live cases reset role budgets, so this one limit covers the whole run
+MAX_LIVE_USD = 3                               # checked before each live case, so the last case can pass it slightly
 
 ROOT = pathlib.Path(__file__).parent.parent
 EVAL = ROOT / "tests" / "eval"
