@@ -1,0 +1,41 @@
+name: env-check
+# Temporary. Proves the environment rules, then gets deleted.
+# It runs no repository code, uses no action, has no pull_request trigger and holds no token permission. No step ever
+# receives a secret: each value below is only the true or false result of "does this secret exist".
+# From chore/env-check, both environment jobs must be refused. From main, both must pass.
+on:
+  push:
+    branches: [main, chore/env-check]
+    paths: [.github/workflows/env-check.yml]
+  workflow_dispatch:
+permissions: {}
+jobs:
+  no-environment:                                # the control: this job names no environment, so it always runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "scope=none ref=$GITHUB_REF"
+  live-check-env:
+    environment: live-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          ANTHROPIC: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          OPENAI: ${{ secrets.OPENAI_API_KEY != '' }}
+          GEMINI: ${{ secrets.GEMINI_API_KEY != '' }}
+          BOT: ${{ secrets.BOT_PRIVATE_KEY != '' }}
+        run: |
+          echo "scope=live-check ref=$GITHUB_REF anthropic=$ANTHROPIC openai=$OPENAI gemini=$GEMINI bot=$BOT"
+          test "$ANTHROPIC$OPENAI$GEMINI$BOT" = truetruetruetrue
+  tech-head-env:
+    environment: tech-head
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - env:
+          OPENAI: ${{ secrets.OPENAI_API_KEY != '' }}
+          BOT: ${{ secrets.BOT_PRIVATE_KEY != '' }}
+        run: |
+          echo "scope=tech-head ref=$GITHUB_REF openai=$OPENAI bot=$BOT"
+          test "$OPENAI$BOT" = truetrue
