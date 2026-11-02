@@ -1,3 +1,8 @@
+Abhi's own topic ideas. Put these first:
+- Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them
+- VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest
+End of his ideas.
+
 What worked for others:
 - The pages show no personal account of anyone becoming a Splunk MVP by publishing two articles a week. They also show no one who built AWS-community visibility that way. Treat any claim of a proven two-a-week route as unsupported.
 - Per the summary of Splunk's official sources, MVPs are members with consistent participation in at least one community area. Examples are answering questions in Splunk Answers, leading a user group, and contributing on Slack. Article volume is not named as the basis.
