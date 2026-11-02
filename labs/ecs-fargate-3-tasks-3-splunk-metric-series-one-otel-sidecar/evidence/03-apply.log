@@ -1,0 +1,46 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 31s
+
+aws_iam_role.exec: Creating...
+aws_cloudwatch_log_group.ecs: Creating...
+aws_ecs_cluster.main: Creating...
+aws_vpc.main: Creating...
+aws_iam_role.exec: Creation complete after 0s [id=hero-lab-watch-ecs-fargate-task-c-986662-exec]
+aws_iam_role_policy_attachment.exec: Creating...
+aws_iam_role_policy_attachment.exec: Creation complete after 0s [id=hero-lab-watch-ecs-fargate-task-c-986662-exec-20261102073034995200000001]
+aws_cloudwatch_log_group.ecs: Creation complete after 0s [id=/ecs/watch-ecs-fargate-task-c-986662]
+aws_ecs_task_definition.app: Creating...
+aws_ecs_task_definition.app: Creation complete after 1s [id=watch-ecs-fargate-task-c-986662-app]
+aws_ecs_cluster.main: Still creating... [00m10s elapsed]
+aws_vpc.main: Still creating... [00m10s elapsed]
+aws_ecs_cluster.main: Creation complete after 11s [id=arn:aws:ecs:eu-central-1:<account-id>:cluster/watch-ecs-fargate-task-c-986662]
+aws_vpc.main: Creation complete after 12s [id=vpc-00081f738414aef1f]
+aws_internet_gateway.igw: Creating...
+aws_subnet.public[1]: Creating...
+aws_subnet.public[0]: Creating...
+aws_security_group.task: Creating...
+aws_internet_gateway.igw: Creation complete after 1s [id=igw-087619344bc2a5b1f]
+aws_route_table.public: Creating...
+aws_route_table.public: Creation complete after 2s [id=rtb-099fd58c389bbc4dc]
+aws_security_group.task: Creation complete after 4s [id=sg-03eabfe46f8da9cd0]
+aws_subnet.public[1]: Still creating... [00m10s elapsed]
+aws_subnet.public[0]: Still creating... [00m10s elapsed]
+aws_subnet.public[1]: Creation complete after 12s [id=subnet-097dfaf647bbaaac9]
+aws_subnet.public[0]: Creation complete after 12s [id=subnet-09ac0e16784e9bae4]
+aws_route_table_association.public[0]: Creating...
+aws_route_table_association.public[1]: Creating...
+aws_route_table_association.public[1]: Creation complete after 1s [id=rtbassoc-0a51aa6102d7e626d]
+aws_route_table_association.public[0]: Creation complete after 1s [id=rtbassoc-08caf470ef29c1812]
+aws_ecs_service.app: Creating...
+aws_ecs_service.app: Creation complete after 2s [id=arn:aws:ecs:eu-central-1:<account-id>:service/watch-ecs-fargate-task-c-986662/watch-ecs-fargate-task-c-986662-svc]
+
+Apply complete! Resources: 14 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "watch-ecs-fargate-task-c-986662"
+log_group_name = "/ecs/watch-ecs-fargate-task-c-986662"
+region_name = "eu-central-1"
+service_name = "watch-ecs-fargate-task-c-986662-svc"
+task_family = "watch-ecs-fargate-task-c-986662-app"
+
