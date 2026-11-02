@@ -78,9 +78,10 @@ def review():
     found = tech_head.rules(diff)
     ai = tech_head.review(diff, {}, roles.data("tech_head").get("agents_md", ""))
     findings, dropped, blocked = tech_head.verdict(found, ai, diff)
-    details["tech_head"] = {"diff_chars": len(diff), "cut_at": tech_head.MAX_DIFF, "dropped": dropped, "summary": ai.get("summary"),
+    left = tech_head.prioritise(diff)[1]
+    details["tech_head"] = {"diff_chars": len(diff), "unreviewed_chars": left, "dropped": dropped, "summary": ai.get("summary"),
                             "findings": [{k: f.get(k) for k in ("severity", "category", "file", "line", "problem", "fix", "rule")} for f in findings[:15]]}
-    return ai, f"{len(findings)} finding(s), {dropped} dropped; reviewed {min(len(diff), tech_head.MAX_DIFF):,} of {len(diff):,} characters"
+    return ai, f"{len(findings)} finding(s), {dropped} dropped; {left:,} reviewable characters left out"
 
 def report():
     lines = ["**Live validation, real API calls.** Tokens are as reported by each API. Costs use the list prices in `pipeline/prices.json`.", "",
@@ -94,6 +95,10 @@ def report():
     return "\n".join(lines)
 
 def main():
+    if os.environ.get("LIVE_ONLY") == "tech_head":
+        step("Tech Head review of this PR", review)
+        comment(int(os.environ["PR_NUMBER"]), safe_text(report()))
+        return
     step("Model IDs listed", listed)
     pins = llm.PRICES["defaults"]
     step("Ping Haiku pin", lambda: ping("claude", pins["claude_scout"]))

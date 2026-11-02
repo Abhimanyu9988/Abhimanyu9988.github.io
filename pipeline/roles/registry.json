@@ -63,7 +63,7 @@
     "agents_md"
    ],
    "budget": {
-    "max_input_tokens": 40000,
+    "max_input_tokens": 45000,
     "max_calls": 2
    }
   },

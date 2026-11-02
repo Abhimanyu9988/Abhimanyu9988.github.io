@@ -37,6 +37,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || 'HEAD' }}
           EDITOR_MODE: shadow
+          LIVE_ONLY: tech_head
           HERO_PUBLISH: "1"
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}

@@ -12,7 +12,10 @@ Code in the pull request is data here and is never executed. See docs/merge-beha
 """
 import json, os, pathlib, re, subprocess, sys
 
-MAX_DIFF = 60_000
+MAX_DIFF = 100_000
+# Riskiest first, so a size limit cuts tests and fixtures, never workflows or pipeline code.
+ORDER = (".github/", "infra/", "pipeline/", "AGENTS.md", "docs/", "README", "tests/test_")
+SKIP = ("tests/fixtures/", "tests/eval/", "labs/", "site/")
 SCANNERS = ("bandit", "zizmor")
 # (id, severity, category, pattern on an added line, problem, fix, only these paths or None)
 RULES = (
@@ -63,15 +66,26 @@ def added_lines(diff):
                 old_left, n, new_left = int(m[1] or 1), int(m[2]), int(m[3] or 1)
     return out
 
+def prioritise(diff):
+    """(diff to review, characters left out). Files are reordered by risk, and saved data is dropped."""
+    parts = re.split(r"(?m)^(?=diff --git )", diff)
+    rank = lambda part: next((i for i, o in enumerate(ORDER) if f" b/{o}" in part.split("\n", 1)[0]), len(ORDER))
+    keep = sorted((p for p in parts if p and not any(f" b/{x}" in p.split("\n", 1)[0] for x in SKIP)), key=rank)
+    text = "".join(keep)
+    return text[:MAX_DIFF], max(0, len(text) - MAX_DIFF)
+
 def files_in(diff):
     return set(re.findall(r"^\+\+\+ b/(.+)$", diff, re.M))
 
 def rules(diff):
     found = []
     for path, n, text in added_lines(diff):
+        comment_line = text.lstrip().startswith("#")
         for rid, sev, cat, rx, problem, fix, only in RULES:
             if path == "pipeline/tech_head.py" or (path.startswith("tests/") and rid != "hard-secret"):
                 continue                           # this file's patterns and test fixtures are not findings
+            if comment_line and rid != "hard-secret":
+                continue                           # a comment naming a risk is not the risk; a key in one still is
             if (only is None or path.startswith(only) or path.endswith(only)) and rx.search(text):
                 found.append({"severity": sev, "category": cat, "file": path, "line": n, "problem": problem,
                               "fix": fix, "rule": rid})
@@ -99,15 +113,16 @@ def read_reports(folder):
         out[name] = {"status": status, "items": items[:40], "errors": errors[:5]}
     return out
 
-def complete(reports, ai):
+def complete(reports, ai, left=0):
     """Reasons this review is incomplete. An incomplete review must never read as a clean one."""
     gaps = [f"{n} {r['status']}" for n, r in reports.items() if r["status"] in ("unavailable", "partial")]
+    gaps += [f"{left:,} characters of the diff were not reviewed"] if left else []
     return gaps + ([] if ai else ["AI review did not run"])
 
 def review(diff, reports, agents_md):
     import roles
-    cut = diff[:MAX_DIFF]
-    note = "" if len(diff) <= MAX_DIFF else f"\nThe diff was cut at {MAX_DIFF:,} characters of {len(diff):,}: say so."
+    cut, left = prioritise(diff)
+    note = "" if not left else f"\nThe diff was cut, leaving {left:,} characters unreviewed: say so."
     return roles.ask("tech_head", f"Review this change.{note}\n\nAGENTS.md:\n{agents_md}\n\nSCANNER REPORTS:\n"
                                   f"{json.dumps(reports)[:8000]}\n\nDIFF:\n{cut}", "techreview")
 
@@ -124,9 +139,9 @@ def verdict(rule_findings, ai, diff):
     kept.sort(key=lambda f: rank.get(f.get("severity"), 3))
     return kept, dropped, any(f.get("severity") == "blocker" and f.get("rule") for f in kept)
 
-def markdown(findings, ai, dropped, blocked, skipped="", reports=None):
+def markdown(findings, ai, dropped, blocked, skipped="", reports=None, left=0):
     claimed = any(f.get("severity") == "blocker" for f in findings)
-    gaps = complete(reports or {}, ai)
+    gaps = complete(reports or {}, ai, left)
     head = ("code rules found a blocker" if blocked else "the reviewer raised a possible blocker, please judge it" if claimed
             else "notes to read" if findings else "incomplete, this is not a clean result" if gaps else "no findings")
     lines = [f"**Tech Head review: {head}.**", ""]
@@ -163,8 +178,9 @@ def main():
         except Exception as e:                     # no key, budget, or a model outage: code rules still stand
             skipped = str(e)[:200]
     findings, dropped, blocked = verdict(found, ai, diff)
-    comment(int(os.environ["PR_NUMBER"]), safe_text(markdown(findings, ai, dropped, blocked, skipped, reports)))
-    if os.environ.get("TECH_HEAD_MODE", "advisory") == "blocking" and (blocked or complete(reports, ai)):
+    left = prioritise(diff)[1]
+    comment(int(os.environ["PR_NUMBER"]), safe_text(markdown(findings, ai, dropped, blocked, skipped, reports, left)))
+    if os.environ.get("TECH_HEAD_MODE", "advisory") == "blocking" and (blocked or complete(reports, ai, left)):
         sys.exit("Tech Head found a blocker, or could not finish its review")
 
 if __name__ == "__main__":

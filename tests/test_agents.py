@@ -481,6 +481,17 @@ check("workflow: a PR cannot configure zizmor", "--no-config" in scan_job)
 check("workflow: runs from the base branch", "pull_request_target" in wf and "pull_request:" not in wf.split("jobs:")[0].replace("pull_request_target:", ""))
 check("workflow: the reviewer is the base branch copy", "python3 base/pipeline/tech_head.py" in wf and "python3 pr/" not in wf)
 
+big = "".join(f"diff --git a/{f} b/{f}\n+x\n" for f in ("tests/test_a.py", "pipeline/a.py", ".github/workflows/a.yml", "tests/fixtures/a.log"))
+ordered, left = th.prioritise(big)
+check("Tech Head: workflows are reviewed before pipeline code and tests", ordered.index(".github") < ordered.index("pipeline/a.py") < ordered.index("tests/test_a.py"))
+check("Tech Head: saved fixtures are not reviewed", "fixtures" not in ordered and left == 0)
+real_max, th.MAX_DIFF = th.MAX_DIFF, 20
+check("Tech Head: a cut diff reports what was left out", th.prioritise(big)[1] > 0)
+check("Tech Head: a cut diff is incomplete", any("not reviewed" in g for g in th.complete({}, {"summary": ""}, 5)))
+th.MAX_DIFF = real_max
+check("Tech Head: a comment naming a risk is not the risk", th.rules("+++ b/.github/workflows/a.yml\n@@ -0,0 +1 @@\n+# pull_request_target is safe here\n") == [])
+check("Tech Head: a key in a comment is still caught", th.rules(f"+++ b/pipeline/a.py\n@@ -0,0 +1 @@\n+# {FAKE}\n") != [])
+
 # ---------- PR 89 review: what changes on merge, and how to undo it ----------
 os.environ["MODEL_AUTO"] = "true"
 check("rollback: MODEL_AUTO=true turns the pins off", llm._pin("openai") == "")
