@@ -206,11 +206,12 @@ def review(diff, reports, agents_md):
     """One model call per batch. A failed batch keeps earlier findings and counts as unreviewed, never as clean."""
     import roles
     kept, left = batches(diff)
-    fitted, cut = fit_scanners(relevant(reports, files_in(diff)))
-    merged = {"summary": "", "findings": [], "failed_batches": 0, "batches": len(kept), "scanner_items_cut": cut if kept else 0}
+    merged = {"summary": "", "findings": [], "failed_batches": 0, "batches": len(kept), "scanner_items_cut": 0}
     for i, chunk in enumerate(kept, 1):
         note = f"\nThis is batch {i} of {len(kept)}." + (f" {left:,} characters stay unreviewed: say so." if left else "")
-        scanners = json.dumps(fitted) if i == 1 else "see batch 1"
+        fitted, cut = fit_scanners(relevant(reports, files_in(chunk)))   # each call is stateless, so each batch gets its own
+        merged["scanner_items_cut"] += cut
+        scanners = json.dumps(fitted)
         try:
             got = roles.ask("tech_head", f"Review this change.{note}\n\nAGENTS.md:\n{agents_md}\n\nSCANNER REPORTS:\n"
                                          f"{scanners}\n\nDIFF:\n{chunk}", "techreview")

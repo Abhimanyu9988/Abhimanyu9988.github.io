@@ -559,7 +559,7 @@ def record_review(slug, gate, brief):
     import analytics
     try:
         analytics.ensure_branch()
-        path = f"analytics/review-{slug[:70]}.json"
+        path = f"analytics/review-{slug[:60]}-{os.environ.get('RUN_ID', 'local')}.json"   # a redraft must not replace the record
         _, sha = analytics.read_file(path)
         data = {"mode": editor.mode(), "decision": gate["decision"], "reasons": gate["reasons"], "evidence": gate["report"],
                 "scorecard": gate["card"], "brief": brief, "usd": llm.cost_usd()[0]}

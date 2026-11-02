@@ -248,6 +248,7 @@ check("assistant: the plan is saved and shown", "analytics/plan.json" in files a
 check("assistant: writes pass the bot's allowlist paths", all(p.startswith("analytics/") for p in files))
 assistant.drop_goal("aws-community-articles", 5)
 check("assistant: a dropped goal stops being active", json.loads(files["analytics/goals.json"])["goals"][0]["status"] == "dropped")
+check("assistant: dropping the last goal clears the plan", json.loads(files["analytics/plan.json"])["assignments"] == [] and "plan is clear" in posted[-1])
 roles.ask = real_roles_ask
 real_goals = sources.goals
 sources.goals = lambda: [{"id": "aws", "weight": 8}]
@@ -766,10 +767,10 @@ kept_p = assistant.clean_plan({"focus": "f", "assignments": [{"role": "ghost", "
 check("assistant: a role proposal survives the list limit", "No ghost role exists: t" in kept_p["needs"])
 pat = next(p for m, p, _ in r.WRITE_RULES if "analytics" in p)
 check("assistant: its paths match the real bot rule", all(re.fullmatch(pat, f"/repos/{HOME}/contents/{x}") for x in (sources.GOALS_PATH, sources.PLAN_PATH)))
-check("assistant: the review record path matches the real bot rule", re.fullmatch(pat, f"/repos/{HOME}/contents/analytics/review-some-slug.json"))
+check("assistant: the review record path matches the real bot rule", re.fullmatch(pat, f"/repos/{HOME}/contents/analytics/review-some-slug-123.json"))
 
 # ---------- final review regressions ----------
-import cover, contextlib, io, lab as lab_mod, subprocess
+import analytics as analytics_mod, cover, contextlib, evaluate, io, lab as lab_mod, subprocess
 real_gh = lab_mod.gh
 fence = "```"
 shadow = {"user": {"login": "hero-bot-x"}, "body": f"**Shadow review, nothing here affects this topic.**\n\n**Last failure:** step\n{fence}\nevil\n{fence}"}
@@ -814,6 +815,12 @@ big_scan = {"bandit": {"status": "findings", "items": [{"filename": "pr/pipeline
 cut_review = th.review(dif("pipeline/a.py"), big_scan, "")
 roles_mod.ask = real_ask
 check("Tech Head: a review that cut scanner items says so", cut_review["scanner_items_cut"] > 0 and th.complete({}, cut_review))
+seen_prompts = []
+real_ask, roles_mod.ask = roles_mod.ask, lambda who, prompt, *a, **k: seen_prompts.append(prompt) or {"summary": "s", "findings": []}
+two = dif("pipeline/a.py", "+x\n" * (th.MAX_DIFF // 4)) + dif("pipeline/b.py", "+y\n" * (th.MAX_DIFF // 4))
+th.review(two, {"bandit": {"status": "findings", "items": [{"filename": "pr/pipeline/b.py", "issue_text": "marker", "test_id": "B1", "line_number": 1}]}}, "")
+roles_mod.ask = real_ask
+check("Tech Head: a later batch sees its own scanner findings", len(seen_prompts) == 2 and "marker" in seen_prompts[1] and "marker" not in seen_prompts[0])
 check("Tech Head: no scanner item is dropped before filtering", len(th.read_reports(rp2)["zizmor"]["items"]) == 61)
 def zz(path, ident="template-injection", sev="High", conf="High"):
     loc = lambda kind, row: {"symbolic": {"kind": kind, "key": {"Local": {"verbatim_path": path}}}, "concrete": {"location": {"start_point": {"row": row}}}}
@@ -899,6 +906,22 @@ check("redraft: model text cannot choose the lab run", red_run(draft.finish_body
 check("redraft: a PR with no marker still works", red_run("from (workflow run 42).\n\nCloses #5") == "42")
 check("redraft: an old PR prefers the run line", red_run("post cites workflow run 777\n\n30 min total (workflow run 42).\n\nCloses #5") == "42")
 os.environ["LINKEDIN_MIN_VOTES"] = "two"
+os.environ["RUN_ID"] = "77"; rec_paths = []
+real_write, real_read, real_branch = analytics_mod.write_file, analytics_mod.read_file, analytics_mod.ensure_branch
+analytics_mod.ensure_branch, analytics_mod.read_file = (lambda: None), (lambda p: ("", None))
+analytics_mod.write_file = lambda path, *a: rec_paths.append(path)
+draft.record_review("my-post", {"decision": "pass", "reasons": [], "report": {}, "card": {}}, {})
+analytics_mod.write_file, analytics_mod.read_file, analytics_mod.ensure_branch = real_write, real_read, real_branch
+del os.environ["RUN_ID"]
+check("review record: a redraft keeps the earlier record", rec_paths == ["analytics/review-my-post-77.json"])
+sys.path.insert(0, str(ROOT / "pipeline"))
+real_cost, llm.cost_usd = llm.cost_usd, lambda: (3.0, [])
+try:
+    evaluate.run([{"type": "topic", "id": "t", "title": "t", "details": "", "label": "strong"}], live=True); live_stopped = False
+except SystemExit:
+    live_stopped = True
+llm.cost_usd = real_cost
+check("evaluation: live cases stop at the run limit", live_stopped)
 check("LinkedIn: a bad vote setting falls back to 2", draft.min_votes() == 2)
 del os.environ["LINKEDIN_MIN_VOTES"]
 pv, la = llm.panel_votes, llm.ask

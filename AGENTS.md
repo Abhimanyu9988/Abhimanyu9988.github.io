@@ -63,7 +63,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | --- | --- | --- | --- |
 | `EDITOR_MODE` | off, shadow, warn, enforce | shadow | shadow reports only and changes no lab, draft or publish behaviour |
 | `EDITOR_REVIEW` | on, off | off | Runs the Editor in shadow or warn. Enforce always requires a successful scorecard |
-| `TECH_HEAD_MODE` | advisory, blocking | advisory | blocking fails the check on a blocker |
+| `TECH_HEAD_MODE` | advisory, blocking | advisory | blocking fails the check on a code-rule or scanner blocker, or an incomplete review. A model's blocker is for a person to judge |
 
 All are repository variables. `docs/merge-behavior.md` lists what changes on merge and how to undo each change.
 

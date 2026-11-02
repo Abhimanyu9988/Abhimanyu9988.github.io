@@ -102,7 +102,7 @@ def report():
         lines.append(f"| {r['step']} | {r['result']} | {r['seconds']} | {r['in']:,} | {r['out']:,} | ${r['usd']:.3f} | {', '.join(r.get('models', []))} | {note} |")
     usd, unknown = llm.cost_usd()
     lines += ["", f"**Total:** ${usd:.3f}" + (f", excluding unpriced {', '.join(unknown)}" if unknown else ""), "",
-              "<details><summary>Details</summary>", "", "```json", json.dumps(details, indent=1)[:9000], "```", "", "</details>"]
+              "<details><summary>Details</summary>", "", "```json", json.dumps(details, indent=1)[:40000], "```", "", "</details>"]
     return "\n".join(lines)
 
 def main():

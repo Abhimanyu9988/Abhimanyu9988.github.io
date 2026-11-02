@@ -10,7 +10,9 @@ Two different things live here, and they must never be merged:
                        that editorial quality improved even then.
 """
 import json, pathlib, re, sys
-import editor, scan
+import editor, llm, scan
+
+MAX_LIVE_USD = 3                               # checked before each live case, so the last case can pass it slightly
 
 ROOT = pathlib.Path(__file__).parent.parent
 EVAL = ROOT / "tests" / "eval"
@@ -38,6 +40,8 @@ def run(cases, live=False):
         elif c["type"] == "topic":
             if live:
                 import roles
+                if llm.cost_usd()[0] >= MAX_LIVE_USD:
+                    raise SystemExit(f"Live evaluation stopped at its ${MAX_LIVE_USD} limit, so these results are incomplete.")
                 roles._calls.clear()              # the budget is per topic here, not per run
             b = editor.brief(c["title"], c["details"]) if live else c["brief"]
             passed = editor.gate1(b)[0]
