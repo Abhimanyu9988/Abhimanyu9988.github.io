@@ -1,0 +1,54 @@
+$ bash reproduce.sh
+# exit 0 after 179s
+
+== 1. Wait for the two self-managed worker nodes (max ~3.5 min)
+E1102 16:51:30.527287      59 reflector.go:227] "Failed to watch" err="Get \"https://A1D13FD97F8FCCB89B20F2F5E48F8B33.gr7.eu-central-1.eks.amazonaws.com/api/v1/nodes?allowWatchBookmarks=true&fieldSelector=metadata.name%3Dip-10-42-0-188.eu-central-1.compute.internal&resourceVersion=1399&timeout=20s&timeoutSeconds=401&watch=true\": context canceled" reflector="k8s.io/client-go/tools/watch/informerwatcher.go:162" type="*unstructured.Unstructured"
+node/ip-10-42-0-188.eu-central-1.compute.internal condition met
+E1102 16:51:30.828582      59 reflector.go:227] "Failed to watch" err="Get \"https://A1D13FD97F8FCCB89B20F2F5E48F8B33.gr7.eu-central-1.eks.amazonaws.com/api/v1/nodes?allowWatchBookmarks=true&fieldSelector=metadata.name%3Dip-10-42-1-183.eu-central-1.compute.internal&resourceVersion=1399&timeout=20s&timeoutSeconds=451&watch=true\": context canceled" reflector="k8s.io/client-go/tools/watch/informerwatcher.go:162" type="*unstructured.Unstructured"
+node/ip-10-42-1-183.eu-central-1.compute.internal condition met
+NAME                                           STATUS   ROLES    AGE   VERSION                INTERNAL-IP   EXTERNAL-IP      OS-IMAGE                        KERNEL-VERSION                     CONTAINER-RUNTIME
+ip-10-42-0-188.eu-central-1.compute.internal   Ready    <none>   33s   v1.33.13-eks-6e7947a   10.42.0.188   63.189.209.102   Amazon Linux 2023.12.20261102   6.12.113-138.209.amzn2023.x86_64   containerd://2.3.7+unknown
+ip-10-42-1-183.eu-central-1.compute.internal   Ready    <none>   34s   v1.33.13-eks-6e7947a   10.42.1.183   63.179.243.47    Amazon Linux 2023.12.20261102   6.12.113-138.209.amzn2023.x86_64   containerd://2.3.7+unknown
+
+== 2. Install the Splunk OpenTelemetry Collector (chart 0.163.1) for cluster fix-eks-alb-503s-caused-223292
+NAME                                                          READY   STATUS    RESTARTS   AGE
+splunk-otel-collector-agent-9g7pr                             1/1     Running   0          14s
+splunk-otel-collector-agent-tptn2                             1/1     Running   0          14s
+splunk-otel-collector-k8s-cluster-receiver-57cdbf7c69-d2wt9   1/1     Running   0          14s
+
+== 3. Install the AWS Load Balancer Controller (chart 1.13.4, EKS Pod Identity)
+NAME                        	NAMESPACE  	REVISION	UPDATED                                	STATUS  	CHART                              	APP VERSION
+aws-load-balancer-controller	kube-system	1       	2026-11-02 16:51:56.864225734 +0000 UTC	deployed	aws-load-balancer-controller-1.13.4	v2.13.4    
+splunk-otel-collector       	splunk     	1       	2026-11-02 16:51:34.990373868 +0000 UTC	deployed	splunk-otel-collector-0.163.1      	0.163.1    
+
+== 4. Deploy the misconfigured app and ingress
+namespace/lab-web created
+deployment.apps/web created
+service/web created
+ingress.networking.k8s.io/web created
+ALB: k8s-labweb-web-bd7d33bdf0-1112945333.eu-central-1.elb.amazonaws.com
+
+== 5. Pods: Running but never Ready
+timed out waiting for the condition on pods/web-59c4d9997-lcxh2
+timed out waiting for the condition on pods/web-59c4d9997-nhr8d
+NAME                  READY   STATUS    RESTARTS   AGE   IP            NODE                                           NOMINATED NODE   READINESS GATES
+web-59c4d9997-lcxh2   0/1     Running   0          30s   10.42.1.120   ip-10-42-1-183.eu-central-1.compute.internal   <none>           <none>
+web-59c4d9997-nhr8d   0/1     Running   0          30s   10.42.0.26    ip-10-42-0-188.eu-central-1.compute.internal   <none>           <none>
+-- readiness probe events:
+LAST SEEN   TYPE      REASON      OBJECT                    MESSAGE
+3s          Warning   Unhealthy   pod/web-59c4d9997-lcxh2   Readiness probe failed: HTTP probe failed with statuscode: 404
+3s          Warning   Unhealthy   pod/web-59c4d9997-nhr8d   Readiness probe failed: HTTP probe failed with statuscode: 404
+-- EndpointSlice conditions (ready=false means the Service has no usable backends):
+  pod web-59c4d9997-lcxh2  ip 10.42.1.120  ready=false
+  pod web-59c4d9997-nhr8d  ip 10.42.0.26  ready=false
+
+== 6. ALB target group registered targets
+target group: arn:aws:elasticloadbalancing:eu-central-1:<account-id>:targetgroup/k8s-labweb-web-b1f7fa280a/cccbc8627ef1d788
+registered targets: 0
+[]
+
+== 7. curl the ALB (waits for ALB DNS + provisioning, bounded by the script budget)
+<h1>503 Service Temporarily Unavailable</h1>
+curl http status: 503
+HERO_RESULT: reproduced
+
