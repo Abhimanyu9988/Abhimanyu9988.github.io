@@ -18,7 +18,7 @@
   },
   {
    "role": "Topic Scout",
-   "dept": "Research",
+   "dept": "Marketing",
    "mission": "Find topics worth a lab."
   },
   {
@@ -55,6 +55,31 @@
    "role": "Operations Manager",
    "dept": "Office",
    "mission": "Check each week that effort and spending are producing the results Abhi wants."
+  },
+  {
+   "role": "CEO",
+   "dept": "Executive",
+   "mission": "Turn Abhi's goals and timelines into the team's priorities."
+  },
+  {
+   "role": "CMO",
+   "dept": "Marketing",
+   "mission": "Find out how others reached Abhi's goals, and make sure each article earns attention."
+  },
+  {
+   "role": "CFO",
+   "dept": "Finance",
+   "mission": "Own the budget and judge whether spending is worth it."
+  },
+  {
+   "role": "Market Researcher",
+   "dept": "Marketing",
+   "mission": "Research how real people reached each goal."
+  },
+  {
+   "role": "Voice Editor",
+   "dept": "Content",
+   "mission": "Make each reviewed draft read like an engineer wrote it, without changing a fact."
   }
  ],
  "in_review": [
