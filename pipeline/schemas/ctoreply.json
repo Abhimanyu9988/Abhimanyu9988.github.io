@@ -9,7 +9,9 @@
   "needs_abhi",
   "close_prs",
   "ideas",
-  "done_tasks"
+  "done_tasks",
+  "consult",
+  "build"
  ],
  "properties": {
   "stance": {
@@ -81,6 +83,24 @@
     "type": "string"
    },
    "description": "exact titles of tasks he says are done or wants removed"
+  },
+  "consult": {
+   "type": "array",
+   "maxItems": 2,
+   "items": {
+    "enum": [
+     "ceo",
+     "cto",
+     "cmo",
+     "cfo",
+     "oss_scout"
+    ]
+   },
+   "description": "Secretary only: who to ask before answering, or empty"
+  },
+  "build": {
+   "type": "string",
+   "description": "a change to the site, board or pipeline that Abhi asked for, in his words, or empty"
   }
  }
 }

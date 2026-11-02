@@ -1,7 +1,7 @@
 name: cto
 # Your Slack messages every 10 minutes, your replies on the CTO desk issue, a daily refresh of the public team status,
 # and the Monday digest. Slack needs no server this way, so an answer can take a few minutes.
-# It cannot publish, spend, deploy or start a lab.
+# It cannot publish, deploy or start a lab. It can start a build you asked for, which ends in a PR you merge.
 on:
   issue_comment:
     types: [created]
@@ -22,7 +22,7 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
-  actions: write                       # only to start the Topic Scout for an idea you queued
+  actions: write                       # only to start the Topic Scout for an idea you queued, or a build you asked for
 concurrency: cto
 jobs:
   cto:
@@ -64,6 +64,7 @@ jobs:
           ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
           MANAGER_MODEL: ${{ vars.MANAGER_MODEL }}
           POLL: ${{ github.event.schedule == '*/10 * * * *' || inputs.poll == true }}
+          SECRETARY_MODEL: ${{ vars.SECRETARY_MODEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
           DIGEST: ${{ inputs.digest }}
@@ -85,6 +86,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run radar.yml --repo "$GITHUB_REPOSITORY" --ref main
+      - name: start the build
+        if: steps.leaders.outputs.build_request != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUEST: ${{ steps.leaders.outputs.build_request }}
+        run: gh workflow run engineer.yml --repo "$GITHUB_REPOSITORY" --ref main -f request="$REQUEST"
   # AWS's own month-to-date figure, once a day. It holds no model key, reads no PR, and uses a role that can only read costs.
   billing:
     if: >-

@@ -1117,11 +1117,11 @@ check("leaders: a step keeps only confirmed links", "good.example" in cto.steps_
 cto.link_exists = real_le2
 check("leaders: when they need him, the steps are numbered", "What I need from you" in replies[-1] and "1. Open Settings" in replies[-1] and "2. Click Save" in replies[-1])
 for said, want in (("CMO: how did others do it", ("cmo", "how did others do it")), ("cfo, are we ok", ("cfo", "are we ok")), ("@CTO why", ("cto", "why")),
-                   ("my goal is X", ("ceo", "my goal is X")), ("ceofy this", ("ceo", "ceofy this"))):
+                   ("my goal is X", ("secretary", "my goal is X")), ("ceofy this", ("secretary", "ceofy this")), ("Secretary: find it", ("secretary", "find it"))):
     check(f"leaders: routes {said!r}", cto.route(said) == want)
 check("leaders: one message can reach two leaders", cto.split_leaders("CMO: Good topic\nCTO: Waiting for the demo") == [("cmo", "Good topic"), ("cto", "Waiting for the demo")])
 check("leaders: extra lines stay with their leader", cto.split_leaders("CMO: one\ntwo\nCTO: three") == [("cmo", "one\ntwo"), ("cto", "three")])
-check("leaders: a plain message goes to the CEO", cto.split_leaders("hello\nthere") == [("ceo", "hello\nthere")])
+check("leaders: a plain message goes to the Secretary", cto.split_leaders("hello\nthere") == [("secretary", "hello\nthere")])
 old_talk = [{"from": "CTO", "text": "x" * 5000}] * 7 + [{"from": "Topic Scout", "text": "New pick: Prometheus"}, {"from": "Abhi", "text": "Good topic"}]
 kept_talk = cto.recent_talk(old_talk)
 check("leaders: the newest messages always reach the model", kept_talk[-1]["text"] == "Good topic" and kept_talk[-2]["text"].endswith("Prometheus"))
@@ -1157,7 +1157,7 @@ check("ideas: they lead the brief, and research stays", files_b[cto.BRIEF].start
 check("ideas: new research keeps them", "Add-on IAM" in cto.ideas_block(files_b[cto.BRIEF]))
 check("ideas: the Scout runs tomorrow", json.loads(files_b[cto.PENDING])["run"] is True)
 del files_b[cto.BRIEF], files_b[cto.PENDING]
-for leader in ("ceo", "cto", "cmo", "cfo"):
+for leader in ("ceo", "cto", "cmo", "cfo", "secretary"):
     check(f"leaders: {leader} is on the team", roles_mod.get(leader)["status"] == "active" and roles_mod.get(leader)["display"].lower() == leader)
 assistant.add_goal = real_assistant_goal
 check("cto: an unknown role gets no work", any("No ghost role exists" in x for x in replies))
@@ -1305,6 +1305,60 @@ check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / 
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
 check("topics: Thursday looks for real failures", py[True]["schedule"][0]["cron"] == "0 6 * * 4" and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
+
+# ---------- secretary and builds ----------
+live_board_url = "https://abhimanyu9988.github.io/board/"
+asked, sent, built = [], [], []
+real_rask, real_pg, real_post, real_sb, real_lx, real_atask = roles_mod.ask, cto.progress, cto.post, cto.start_build, cto.link_exists, cto.add_task
+blank = {"reply": "x", "stance": "agree", "goal": "", "task": {}, "urls": [], "needs_abhi": [], "close_prs": [], "ideas": [], "done_tasks": [], "consult": [], "build": ""}
+def fake_ask(role, prompt, out):
+    asked.append((role, "TEAM ANSWERS" in prompt))
+    if role == "secretary" and "TEAM ANSWERS" not in prompt:
+        return {**blank, "consult": ["cto", "oss_scout", "ghost"], "reply": "asking"}
+    return {**blank, "reply": f"from {role}", "task": {}, "build": "add a ghost" if role == "cfo" else ""}
+roles_mod.ask, cto.progress, cto.post, cto.start_build = fake_ask, lambda: {"board_url": live_board_url}, lambda t, role="cto": sent.append((role, t)), lambda r: built.append(r)
+real_ar, analytics.read_file = analytics.read_file, lambda p, ref=None: ("", None)
+real_ned, real_brd, cto.needed, cto.board = cto.needed, cto.board, lambda: {}, lambda: ""
+cto.answer("where is my board?", [])
+check("secretary: she asks up to two people, then answers once", [a[0] for a in asked] == ["secretary", "cto", "oss_scout", "secretary"] and asked[-1][1] and len(sent) == 1)
+check("secretary: only her final answer reaches him", sent[0][0] == "secretary" and "asking" not in sent[0][1])
+roles_mod.ask = lambda role, prompt, out: {**blank, "build": "add a username box"}
+sent.clear()
+cto.answer("how is the board?", [], "cto")
+check("build: a model alone can't start one", not built)
+cto.answer("build a username box", [], "cmo")
+check("build: only the Secretary, CEO and CTO can start one", not built)
+cto.answer("CTO please start on the username box", [], "cto")
+check("build: his words start it, and he's told", built == ["add a username box"] and "Started" in sent[-1][1])
+outfile = tempfile.mktemp()
+os.environ["GITHUB_OUTPUT"] = outfile
+real_sb("line one\nline two")
+check("build: the request reaches the workflow on one line", "line one line two" in open(outfile).read())
+del os.environ["GITHUB_OUTPUT"]
+roles_mod.ask, cto.progress, cto.post, cto.start_build = real_rask, real_pg, real_post, real_sb
+analytics.read_file, cto.needed, cto.board = real_ar, real_ned, real_brd
+for leader in ("ceo", "cto", "cmo", "cfo", "secretary"):
+    check(f"leaders: {leader} looks for the answer before saying no", "Never stop at no" in (ROOT / f"pipeline/roles/prompts/{leader}.md").read_text())
+real_gh3, cto.gh = cto.gh, lambda m, path, b=None: [{"title": "Add it", "head": {"ref": "feat/x"}, "state": "open", "html_url": "https://g/1"}, {"title": "Old", "head": {"ref": "fix/y"}, "state": "closed", "merged_at": "2999-01-01T00:00:00Z"}] if "/pulls" in path else {}
+real_spent, cto.budget.spent = cto.budget.spent, lambda: (1.0, {})
+real_lim, cto.budget.limit = cto.budget.limit, lambda: 50
+real_ctasks, cto.tasks = cto.tasks, lambda: ([], None)
+facts_now = cto.progress()
+check("leaders: they can see the board, open PRs and what shipped", facts_now["board_url"].endswith("/board/") and facts_now["open_pipeline_prs"] == [{"title": "Add it", "url": "https://g/1"}] and facts_now["recently_shipped"] == ["Old"])
+cto.gh, cto.budget.spent, cto.budget.limit, cto.tasks = real_gh3, real_spent, real_lim, real_ctasks
+import engineer, yaml as _y
+check("engineer: protected paths are refused", engineer.blocked([".github/workflows/x.yml", "infra/a", "site/_posts/a.md", "pipeline/budget.py", "pipeline/radar.py", "labs/x", "tests/test_safety.py"]) != [] and len(engineer.blocked([".github/x", "infra/a", "site/_posts/a.md", "pipeline/budget.py", "pipeline/radar.py", "labs/x", "tests/test_safety.py"])) == 7)
+check("engineer: ordinary files are allowed", engineer.blocked(["site/board.html", "pipeline/live_board.py", "tests/test_agents.py", "AGENTS.md"]) == [])
+os.environ.update(ANTHROPIC_API_KEY="k", SLACK_BOT_TOKEN="s", BOT_TOKEN="b")
+check("engineer: the agent gets one secret, and tests get none", set(engineer.agent_env()) == {"PATH", "HOME", "ANTHROPIC_API_KEY"} and set(engineer.test_env()) == {"PATH", "HOME"})
+os.environ.pop("ANTHROPIC_API_KEY"); os.environ.pop("SLACK_BOT_TOKEN"); os.environ["BOT_TOKEN"] = "test"
+check("engineer: the agent has no shell or web tools", '"Read,Edit,Write,Glob,Grep"' in (ROOT / "pipeline/engineer.py").read_text() and "--strict-mcp-config" in (ROOT / "pipeline/engineer.py").read_text())
+eng = _y.safe_load((ROOT / ".github/workflows/engineer.yml").read_text())
+env_of = lambda job: {k: v for st in eng["jobs"][job]["steps"] for k, v in (st.get("env") or {}).items()}
+check("engineer: the build job can't write, and the writing job has no model key", "BOT_TOKEN" not in env_of("build") and "ANTHROPIC_API_KEY" not in env_of("finish") and eng["permissions"] == {"contents": "read"})
+check("engineer: the request reaches code only through env", all("${{" not in st.get("run", "") for job in eng["jobs"].values() for st in job["steps"]))
+check("engineer: the writing job can't change workflows", "permission-workflows" not in str(eng["jobs"]["finish"]["steps"]))
+check("cto: the build request reaches the shell only through env", "${{" not in next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("name") == "start the build")["run"])
 
 # ---------- live board ----------
 import datetime as _dt, live_board

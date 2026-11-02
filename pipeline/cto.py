@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""The leadership desk: CEO, CTO, CMO and CFO. Abhi texts them in Slack, and the CTO desk issue works until Slack is on.
+"""The leadership desk: Secretary, CEO, CTO, CMO and CFO. Abhi texts them in Slack, and the CTO desk issue works until Slack is on.
 
-A message starting with a title, such as "CMO: ..." or "OSS: ...", goes to that person. Anything else goes to the CEO.
+A message starting with a title, such as "CMO: ..." or "OSS: ...", goes to that person. Anything else goes to the Secretary,
+who asks up to two others and gives him one answer.
 
   python3 pipeline/cto.py   no input: refresh the public team status, and on Mondays run market research and the digest.
                             POLL=true: answer Abhi's new Slack messages and refresh the live board. The Slack listener
                             starts this as soon as he posts, and a 10-minute check is the fallback.
                             COMMENT_BODY: answer Abhi on the CTO desk issue.
 
-What leaders can do: answer, record a goal he stated, list tasks, close a draft he rejected, and queue a topic he asked for.
-Code carries out those last two, and only when his own words ask for them.
+What leaders can do: answer, record a goal he stated, list tasks, close a draft he rejected, queue a topic he asked for, and
+start a build he asked for. Code carries out those last three, and only when his own words ask for them. A build ends in a
+pull request that he merges, so it can't change his site by itself.
 What it cannot do: publish, spend, deploy, change the budget, or hold a credential. Links are checked by code first.
 """
 import base64, datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
@@ -21,7 +23,10 @@ ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, s
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
 MAX_TASKS = 40
-LEADER = re.compile(r"\s*@?(ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-]*", re.I)
+LEADER = re.compile(r"\s*@?(secretary|ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-]*", re.I)
+BUILD_WORDS = re.compile(r"(?i)\b(build|add|create|make|fix|change|implement|update|remove|start|work on|go ahead)\b")
+BUILDERS = ("secretary", "ceo", "cto")
+CONSULT = ("ceo", "cto", "cmo", "cfo", "oss_scout")
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
 DONE_WORDS = re.compile(r"(?i)\b(done|finished|complete|completed|remove|close|delete|drop)\b")
 IDEA_WORDS = re.compile(r"(?i)\b(topic|idea|try|pick|write about|tomorrow)\b")
@@ -136,7 +141,11 @@ def progress():
     running = gh("GET", f"/repos/{HOME_REPO}/actions/runs?status=in_progress&per_page=30") or {}
     picks = gh("GET", f"/repos/{HOME_REPO}/issues?labels=radar&state=open&sort=created&direction=desc&per_page=8") or []
     total, jobs = budget.spent()
-    return {"newest_topics_first": [{"title": i["title"], "panel_pick": any(l["name"] == "replicate" for l in i["labels"]), "opened": i["created_at"][:10]}
+    pipeline = [p for p in pulls if not p["head"]["ref"].startswith("draft/")]
+    return {"board_url": live_board.PAGE,
+            "open_pipeline_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in pipeline if p["state"] == "open"],
+            "recently_shipped": [p["title"] for p in pipeline if (p.get("merged_at") or "") >= since][:12],
+            "newest_topics_first": [{"title": i["title"], "panel_pick": any(l["name"] == "replicate" for l in i["labels"]), "opened": i["created_at"][:10]}
                                     for i in picks if "pull_request" not in i],
             "waiting": [p["title"] for p in drafts if p["state"] == "open"],
             "shipped": [p["title"] for p in drafts if (p.get("merged_at") or "") >= since],
@@ -232,10 +241,10 @@ def thread(number):
     return [{"from": "Abhi" if c["user"]["login"] == "Abhimanyu9988" else "CTO", "text": c["body"][:1500]} for c in rows[-8:]]
 
 def route(text):
-    """(leader, message). The CEO takes anything not addressed to a leader."""
+    """(leader, message). The Secretary takes anything not addressed to a leader."""
     hit = LEADER.match(text)
     if not hit:
-        return "ceo", text
+        return "secretary", text
     role = "oss_scout" if hit[1].lower().startswith("oss") else hit[1].lower()
     return role, text[hit.end():].strip() or text
 
@@ -365,18 +374,33 @@ def board():
         print(f"::warning title=oss::board not read: {' '.join(str(e).split())[:200]}")
         return ""
 
-def answer(text, talk, role="ceo"):
+def ask_role(role, text, talk, p, heard=None):
+    team, (brief, _) = roles.data("cto"), analytics.read_file(BRIEF)
+    extra = f"\n\nGITHUB:\n{json.dumps(needed())[:9000]}\n\nBOARD:\n{board()[:3000]}" if role == "oss_scout" else ""
+    extra += f"\n\nTEAM ANSWERS:\n{json.dumps(heard)[:5000]}" if heard else ""
+    return roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
+                           f"{json.dumps({**p, 'team': roster(p)})[:6000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
+                           f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
+
+def start_build(request):
+    """cto.yml starts engineer.yml after this step, because only that step holds the token to do it."""
+    line = " ".join(str(request).split())[:1500]
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"build_request<<END_OF_REQUEST\n{line.replace('END_OF_REQUEST', '')}\nEND_OF_REQUEST\n")
+
+def answer(text, talk, role="secretary"):
     wanted = budget.requested_limit(text)
     if wanted:
         budget.set_limit(wanted)
         post(f"Done. This month's limit is now ${wanted}. It returns to ${budget.LIMIT_USD} next month.", "cfo")
         return
-    p, team = progress(), roles.data("cto")
-    brief, _ = analytics.read_file(BRIEF)
-    extra = f"\n\nGITHUB:\n{json.dumps(needed())[:9000]}\n\nBOARD:\n{board()[:3000]}" if role == "oss_scout" else ""
-    got = roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
-                           f"{json.dumps({**p, 'team': roster(p)})[:4000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
-                          f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
+    p = progress()
+    got = ask_role(role, text, talk, p)
+    if role == "secretary" and got.get("consult"):         # only her final answer can act or reach him
+        heard = {who: ask_role(who, text, talk, p).get("reply", "") for who in got["consult"][:2] if who in CONSULT}
+        if heard:
+            got = ask_role(role, text, talk, p, heard)
     reply = URL.sub("[link removed]", got["reply"])
     good = [u for u in got.get("urls") or [] if link_exists(u)]
     notes = [add_task(got["task"])] if (got.get("task") or {}).get("title") else []
@@ -386,6 +410,9 @@ def answer(text, talk, role="ceo"):
     if got.get("done_tasks") and DONE_WORDS.search(text):
         finished = finish_tasks(got["done_tasks"])
         notes.append(f"Marked done: {', '.join(finished)}." if finished else "I found no open task with that title.")
+    if got.get("build") and role in BUILDERS and BUILD_WORDS.search(text):
+        start_build(got["build"])
+        notes.append("Started. The CTO will post the pull request here when it's ready, usually within 30 minutes.")
     if got.get("ideas") and IDEA_WORDS.search(text):
         save_ideas(got["ideas"])
         notes.append("Saved for the Topic Scout. It runs tomorrow morning and starts a lab if a topic clears the bar.")

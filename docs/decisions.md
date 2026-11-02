@@ -147,3 +147,14 @@ which are already on the public branch, so the page can be public. It isn't in t
 can't load live data from GitHub, and a GitHub Project needs a new token and can't be tested here. Moves stay in his browser,
 so they don't follow him between devices. Syncing them needs somewhere to save them, such as a Lambda with a passphrase.
 The Slack message now gives counts and a link. `board.json` changes only when a card does, to avoid a commit every 10 minutes.
+
+## 2026-11-02: The Secretary answers, and the CTO can build
+
+Abhi's unnamed messages now go to a Secretary. She asks up to two people and gives him one answer, so he doesn't chase anyone.
+The CEO told him there was no board link because leaders couldn't see shipped work. They now see the board address, open PRs
+and recent merges, and their prompts tell them to find the way forward. They still can't claim something exists when it doesn't.
+
+Tasks never ran, so the CTO was only a list. A build now runs a coding agent in `engineer.yml`. The agent can read and edit files,
+with no shell or web tools. Tests run with no secrets. A second job with no model key applies the patch to a clean checkout and
+opens a PR, so the job that can write never runs what the agent wrote. Workflows, infrastructure, posts, labs and safety code
+are off limits. Each request can spend up to $4, and he merges every PR. A build starts only when his own words ask for one.
