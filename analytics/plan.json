@@ -1,0 +1,46 @@
+{
+ "focus": "Build toward two shareable Splunk and AWS how-to articles a week, with Splunk MVP rules checked at the official source first. Keep Splunk in the mix, since only 2 of the last 5 posts featured it.",
+ "assignments": [
+  {
+   "role": "market_research",
+   "task": "Check the official Splunk MVP program page for its rules and criteria, and quote them with the link. Then find how real people became Splunk MVPs and got noticed by the AWS community.",
+   "why": "The MVP rules must come from the official source, not memory. Real examples show what to copy."
+  },
+  {
+   "role": "cmo",
+   "task": "Use the research to say what makes engineers share a Splunk or AWS article. Give the team a short checklist for each article.",
+   "why": "Abhi wants articles engineers actually share, not just published ones."
+  },
+  {
+   "role": "topic_scout",
+   "task": "Propose a short list of lab-worthy topics that combine Splunk and AWS. Aim for at least 3 of every 5 posts to feature Splunk. Send the list to the editor.",
+   "why": "Recent mix is 2 of 5 Splunk, and the MVP goal requires Splunk."
+  },
+  {
+   "role": "editor",
+   "task": "Pick which topics get a lab. Later, decide which drafts are good enough to reach readers.",
+   "why": "This keeps quality high at two articles a week."
+  },
+  {
+   "role": "lab_engineer",
+   "task": "Run labs for the approved topics in disposable AWS labs and record the evidence. Start only after the editor approves and spend_tracker confirms budget.",
+   "why": "Articles need real evidence that engineers can trust."
+  },
+  {
+   "role": "writer",
+   "task": "Turn the lab evidence into how-to drafts. Aim for two a week.",
+   "why": "This delivers the weekly output Abhi asked for."
+  },
+  {
+   "role": "spend_tracker",
+   "task": "Record all lab and tool spending. Stop new paid work at the monthly limit.",
+   "why": "Two labs a week costs money, and it needs a hard stop."
+  },
+  {
+   "role": "analyst",
+   "task": "Once articles are published, track shares and reach in the Splunk and AWS communities. Report weekly to manager.",
+   "why": "This shows whether articles are being shared and which topics work."
+  }
+ ],
+ "needs": []
+}
