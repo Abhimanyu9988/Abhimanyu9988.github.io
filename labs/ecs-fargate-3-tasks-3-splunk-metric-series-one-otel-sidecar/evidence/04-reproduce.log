@@ -1,0 +1,28 @@
+$ bash reproduce.sh
+# exit 0 after 44s
+
+== Waiting (max 5 min) for the service to run 1 task
+
+== Service status
+-----------------------------------------------------------------------------
+|                             DescribeServices                              |
++---------+-------------+----------+----------------------------------------+
+| desired | launchType  | running  |                service                 |
++---------+-------------+----------+----------------------------------------+
+|  1      |  FARGATE    |  1       |  watch-ecs-fargate-task-c-986662-svc   |
++---------+-------------+----------+----------------------------------------+
+== Cluster settings (Container Insights)
+[
+    {
+        "name": "containerInsights",
+        "value": "disabled"
+    }
+]
+== Containers in the task definition (names and images only)
+{"name":"app","image":"public.ecr.aws/docker/library/busybox:1.36"}
+== Splunk Observability: metric time series with ecs.cluster.name:watch-ecs-fargate-task-c-986662
+series found: 0
+
+Summary: containers=1 sidecar=0 splunk_series=0 -> only the console shows this service, nothing per task in Splunk.
+HERO_RESULT: reproduced
+
