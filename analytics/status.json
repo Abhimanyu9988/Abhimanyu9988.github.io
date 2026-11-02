@@ -1,0 +1,68 @@
+{
+ "updated": "2026-11-02",
+ "team": [
+  {
+   "role": "Executive Assistant",
+   "dept": "Office",
+   "mission": "Turn Abhi's goals into priorities and assignments for the team."
+  },
+  {
+   "role": "Editor",
+   "dept": "Content",
+   "mission": "Decide whether a topic deserves a lab and whether a draft deserves readers."
+  },
+  {
+   "role": "Tech Head",
+   "dept": "Engineering",
+   "mission": "Review code changes for security, scalability, reliability, cost and future AI readability."
+  },
+  {
+   "role": "Topic Scout",
+   "dept": "Research",
+   "mission": "Find topics worth a lab."
+  },
+  {
+   "role": "Lab Engineer",
+   "dept": "Engineering",
+   "mission": "Run each experiment in a disposable AWS lab."
+  },
+  {
+   "role": "Writer",
+   "dept": "Content",
+   "mission": "Turn a lab's evidence into a draft article."
+  },
+  {
+   "role": "CTO",
+   "dept": "Engineering",
+   "mission": "Run the team, track progress and spending, and answer Abhi with evidence."
+  },
+  {
+   "role": "Spend Tracker",
+   "dept": "Finance",
+   "mission": "Keep every dollar the team spends recorded, and stop new paid work at the monthly limit."
+  },
+  {
+   "role": "Publisher",
+   "dept": "Marketing",
+   "mission": "Publish approved articles and prepare distribution."
+  },
+  {
+   "role": "Analyst",
+   "dept": "Marketing",
+   "mission": "Track how published articles perform."
+  },
+  {
+   "role": "Operations Manager",
+   "dept": "Office",
+   "mission": "Check each week that effort and spending are producing the results Abhi wants."
+  }
+ ],
+ "in_review": [
+  "Draft: From EKS ALB 503s to 200s with Ready Pods and Healthy Targets",
+  "Draft: ECS Fargate: 3 Tasks, 3 Splunk Metric Series, One OTel Sidecar"
+ ],
+ "published": [
+  "Draft: October: Kubernetes memory semantics and Collector edge fixes",
+  "Draft: EKS App Slow, CPU Fine? Scale on Splunk Latency with KEDA"
+ ]
+}
