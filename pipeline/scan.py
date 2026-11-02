@@ -70,7 +70,8 @@ PRINTF = re.compile(r"%[-0-9.]*[a-z]")
 def constants_in(text):
     """Names given one literal value and never changed. A counter starts at 0 and is computed, not typed.
     When unsure, a name is not constant: a false "typed" fails a paid lab, and no grade proves a value anyway."""
-    code = "\n".join(l for l in text.splitlines() if "HERO_MEASURE" not in l and not l.lstrip().startswith("#"))
+    code = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+    code = re.sub(r"HERO_MEASURE:[^\n\"'`]*", "", code)   # the text of a measure is not an assignment, the rest of its line may be
     out = set()
     for n in {m[1] for m in ASSIGNED.finditer(code)}:
         assigned = re.findall(rf"(?<![\w$-]){n}\+?=(?!=)", code)

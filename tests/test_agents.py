@@ -790,7 +790,8 @@ for counter in ('count=0\nfor p in a; do count=$((count+1)); done\necho "HERO_ME
                 'c=0\nIFS=, read -r a c < f\necho "HERO_MEASURE: x=$c"', 'c=0\nprintf -v c "%d" 3\necho "HERO_MEASURE: x=$c"', 'c=0\nlet "c++"\necho "HERO_MEASURE: x=$c"',
                 'c=0\nfor c in 1 2; do :; done\necho "HERO_MEASURE: x=$c"', 'n=0\nif a; then :; else n=$(wc -l < f); fi\necho "HERO_MEASURE: x=$n"',
                 'n=0\na || { n=$(wc -l < f); }\necho "HERO_MEASURE: x=$n"', 'n=0\ncase $1 in a) n=$(wc -l < f);; esac\necho "HERO_MEASURE: x=$n"',
-                'n=0\ndeclare n=$(wc -l < f)\necho "HERO_MEASURE: x=$n"', 'n=0\neval "n=\\$(wc -l < f)"\necho "HERO_MEASURE: x=$n"',
+                'n=0\ndeclare n=$(wc -l < f)\necho "HERO_MEASURE: x=$n"', 'n=0\n[ -f f ] && n=$(wc -l < f); echo "HERO_MEASURE: x=$n"',
+                'n=0\nif a; then n=$(wc -l < f); fi; echo "HERO_MEASURE: x=$n"', 'n=0\necho "HERO_MEASURE: x=$n"; n=$(wc -l <f)', 'n=0\neval "n=\\$(wc -l < f)"\necho "HERO_MEASURE: x=$n"',
                 """echo 'HERO_MEASURE: x=1'$(wc -l < f)""", 'c=0\nif a; then c=4; fi\necho "HERO_MEASURE: x=$c"'):
     check("provenance: a computed counter is not typed", scan.typed_values({"f.sh": counter}) == {})
 for s_ok in ('print("HERO_MEASURE: x=0.%03d" % ms)', 'printf "HERO_MEASURE: x=1%d ms\n"', 'printf "HERO_MEASURE: x={m1}\n"', 'jq -r "HERO_MEASURE: x=\\(.v1)"', 'echo "HERO_MEASURE: x=null"', 'printf "HERO_MEASURE: x=%.2f\n"',
