@@ -641,6 +641,14 @@ NO_SPLUNK = ("Splunk Observability Cloud is NOT set up for the lab yet, so for n
              "the lab can prove (the OpenTelemetry Collector with Prometheus and Grafana, or CloudWatch Container "
              "Insights) instead of Splunk, keeping the same deploy-and-monitor shape.")
 
+def market_brief():
+    """The CMO's research for the top goal. Empty until there is a goal."""
+    try:
+        f = gh("GET", f"/repos/{HOME_REPO}/contents/analytics/market-brief.md?ref=analytics")
+        return base64.b64decode(f.get("content", "")).decode("utf-8", "replace")[:3000]
+    except Exception:
+        return ""
+
 def ask_panel(items, existing):
     import sources
     mix = sources.post_mix()
@@ -665,6 +673,7 @@ def ask_panel(items, existing):
         f"{NO_REFS}\n\nAUTHOR:\n{author}\n\nGOALS:\n{goals_block()}\n\n"
         f"LAB LIMITS:\n{LAB_LIMITS}\n\n"
         f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
+        f"WHAT MARKETING FOUND:\n{market_brief() or 'no research yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",
         BUILD_SCHEMA)
 
