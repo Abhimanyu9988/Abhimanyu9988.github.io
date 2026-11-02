@@ -1003,18 +1003,36 @@ budget.check()
 check("budget: the test workflow never stops", not budget.in_pipeline())
 os.environ.update(GITHUB_WORKFLOW="replicate"); budget.EXTRA.clear()
 budget.add_lab({"usd": 0.5, "aws_used": True})
-check("budget: a lab counts its models plus the AWS estimate", budget.EXTRA == [1.5])
+check("budget: a lab counts its models and the AWS estimate", budget.EXTRA == [0.5] and budget.EXTRA_AWS == [1.0])
+budget.EXTRA.clear(); budget.EXTRA_AWS.clear()
 os.environ["FROM_RUN"] = "9"; budget.EXTRA.clear(); budget.add_lab({"usd": 0.5, "aws_used": True}); del os.environ["FROM_RUN"]
 check("budget: a redraft from an old lab is not counted twice", budget.EXTRA == [])
-budget.EXTRA.append(1.234)
+budget.EXTRA.append(1.234); budget.EXTRA_AWS.append(1.0)
 saved_ledger = list(llm.LEDGER); llm.LEDGER.clear()
 real_branch2, analytics_mod.ensure_branch = analytics_mod.ensure_branch, lambda: None
 budget.record()
 analytics_mod.ensure_branch = real_branch2
 llm.LEDGER.extend(saved_ledger)
 b_written = [k for k in files_b if k.startswith("analytics/spend-")]
-check("budget: a job records its spend, rounded up", len(b_written) == 1 and budget.SPEND.fullmatch(b_written[0].split("/")[1])[2] == "124")
-budget.EXTRA.clear()
+check("budget: a job records its spend and the AWS estimate", sorted(budget.SPEND.fullmatch(x.split("/")[1])[2] for x in b_written) == ["100", "124"])
+check("budget: the AWS estimate is its own record", any("-aws_estimate-" in x for x in b_written))
+budget.EXTRA.clear(); budget.EXTRA_AWS.clear()
+for x in b_written: del files_b[x]
+listing_aws = [{"name": f"spend-{b_month}-1-1-9-draft-c300.json"}, {"name": f"spend-{b_month}-1-1-9-aws_estimate-c100.json"},
+               {"name": f"aws-{b_month}-01-c40.json"}, {"name": f"aws-{b_month}-02-c75.json"}]
+radar_b.gh = lambda m, p, b=None: listing_aws
+check("budget: AWS's latest figure counts, or the estimates if higher", budget.spent() == (4.0, {"draft": 3.0, "aws": 1.0}))
+listing_aws[1] = {"name": f"spend-{b_month}-1-1-9-aws_estimate-c50.json"}
+check("budget: a higher AWS figure wins", budget.spent() == (3.75, {"draft": 3.0, "aws": 0.75}))
+radar_b.gh = lambda m, p, b=None: listing_aws[:2]
+check("budget: the estimate counts until AWS reports", budget.spent()[0] == 3.5)
+radar_b.gh = real_rgh
+cost_file = pathlib.Path(tempfile.mkdtemp()) / "cost.json"
+cost_file.write_text(json.dumps({"ResultsByTime": [{"Total": {"UnblendedCost": {"Amount": "2.3456", "Unit": "USD"}}}]}))
+budget.record_aws(str(cost_file))
+aws_file = [k for k in files_b if k.startswith("analytics/aws-")]
+check("budget: AWS's figure is saved, rounded up", len(aws_file) == 1 and aws_file[0].endswith("-c235.json") and budget.AWS_ACTUAL.fullmatch(aws_file[0].split("/")[1]))
+del files_b[aws_file[0]]
 os.environ.clear(); os.environ.update(env_b)
 for said, want in (("raise budget to 75", 75), ("Please increase the budget to $120 for now", 120), ("set budget 60", 60),
                    ("should we raise budget to 75?", None), ("the budget was 50", None), ("raise budget to 99999", None), ("I like this", None)):
@@ -1026,38 +1044,126 @@ ctoy = __import__("yaml").safe_load((ROOT / ".github/workflows/cto.yml").read_te
 cif = ctoy["jobs"]["cto"]["if"]
 check("cto: only Abhi on the desk issue starts it", "comment.user.login == 'Abhimanyu9988'" in cif and "cto-desk" in cif and "issue.pull_request" in cif)
 check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[True] and ctoy["jobs"]["cto"]["steps"][0]["with"]["ref"] == "main")
-check("cto: its comment reaches code only through env", "${{" not in ctoy["jobs"]["cto"]["steps"][2]["run"])
-replies, real_comment, real_ask2, real_le, real_prog, real_thread = [], cto.comment, roles_mod.ask, cto.link_exists, cto.progress, cto.thread
-cto.comment = lambda n, t: replies.append(t)
+check("cto: its comment reaches code only through env", "${{" not in next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("name") == "cto")["run"])
+replies, real_post, real_ask2, real_le, real_prog = [], cto.post, roles_mod.ask, cto.link_exists, cto.progress
+cto.post = lambda t, role="cto": replies.append(t)
 cto.progress = lambda: {"spent": 1}
-cto.thread = lambda n: []
 cto.link_exists = lambda u: u == "https://good.example/bill"
 roles_mod.ask = lambda *a, **k: {"stance": "disagree", "reply": "No, see https://bad.example/x for why.", "goal": "", "task": {"title": "", "owner": ""},
                                  "urls": ["https://good.example/bill", "https://nope.example/y"]}
 real_data, roles_mod.data = roles_mod.data, lambda r: {}
-cto.answer("monitor my azure bill", 5)
+cto.answer("monitor my azure bill", [])
 check("cto: only confirmed links reach Abhi", "good.example" in replies[-1] and "nope.example" not in replies[-1] and "bad.example" not in replies[-1] and "could not be confirmed" in replies[-1])
 roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "Watch the bill", "owner": "spend_tracker"}, "urls": []}
-cto.answer("track spending", 5)
+cto.answer("track spending", [])
 check("cto: a task reaches an active role", json.loads(files_b[cto.TASKS])["tasks"][0]["owner"] == "spend_tracker" and "Assigned" in replies[-1])
 roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "t", "owner": "ghost"}, "urls": []}
-cto.answer("hire someone", 5)
-check("cto: an unknown role gets no work", "No ghost role exists" in replies[-1])
+cto.answer("hire someone", [])
+real_assistant_goal = assistant.add_goal
+goal_calls = []
+assistant.add_goal = lambda text, n: goal_calls.append(text)
+roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "Invented", "task": {"title": "", "owner": ""}, "urls": []}
+cto.answer("tell me a joke", [])
+check("cto: a model cannot invent a goal", goal_calls == [])
+cto.answer("my new goal is AWS community articles", [])
+check("cto: a goal he states is recorded", goal_calls == ["Invented"])
+assistant.add_goal = real_assistant_goal
+check("cto: an unknown role gets no work", any("No ghost role exists" in x for x in replies))
 limit_calls = []
 roles_mod.ask = lambda *a, **k: limit_calls.append(1)
-cto.answer("raise budget to 75", 5)
+cto.answer("raise budget to 75", [])
 check("cto: a limit change never reaches a model", not limit_calls and "$75" in replies[-1])
 del files_b[budget.LIMITS]
 roles_mod.ask, roles_mod.data = real_ask2, real_data
-cto.comment, cto.link_exists, cto.progress, cto.thread = real_comment, real_le, real_prog, real_thread
+cto.post, cto.link_exists, cto.progress = real_post, real_le, real_prog
 check("cto: plain http is never confirmed", cto.link_exists("http://example.com") is False)
 for inner in ("https://127.0.0.1/", "https://169.254.169.254/latest", "https://10.0.0.1/", "https://[::1]/", "https://example.com:8443/"):
     check(f"cto: refuses {inner}", cto.public_https(inner) is False)
 pub = cto.public_status({"waiting": ["a"], "shipped": ["b"], "spent": 9, "limit": 50, "by_job": {}, "tasks": [{"title": "secret", "owner": "x"}], "failed_runs": ["x"]})
 check("team page: no spending, tasks or failures", "secret" not in json.dumps(pub) and "spent" not in pub and "tasks" not in pub and "failed" not in json.dumps(pub))
 check("team page: the page builds its text safely", "innerHTML" not in (ROOT / "site/team.md").read_text())
-md = cto.digest_md({"waiting": ["Post A"], "shipped": [], "failed_runs": [], "spent": 3.5, "limit": 50, "tasks": [{"title": "t", "owner": "editor"}]})
-check("digest: budget, waiting and work in progress are shown", all(x in md for x in ("$3.50 of $50.00", "Post A", "editor: t")))
+md = cto.digest_md({"waiting": ["Post A"], "shipped": [], "failed_runs": [], "running": ["replicate"], "spent": 3.5, "limit": 50, "tasks": [{"title": "Check it", "owner": "editor"}]})
+check("digest: budget, waiting and work in progress are shown", all(x in md for x in ("$3.50 of $50.00", "Post A", "Content: Editor: Check it", "Engineering: Lab Engineer: working now", "Finance: Spend Tracker: idle")))
+check("team: every active role has a name and a department", all(r.get("display") and r.get("dept") for r in roles_mod.registry().values()))
+check("team: nothing in the registry is broken", roles_mod.check_registry() == [])
+check("cto desk: its label exists, so the desk can be created", "cto-desk" in radar_b.LABELS)
+import slack
+posted_slack, real_api = [], slack.api
+def fake_api(method, **k):
+    posted_slack.append((method, k))
+    return {"conversations.list": {"channels": [{"id": "C2"}, {"id": "C1", "is_general": True}]},
+            "users.list": {"members": [{"id": "U9"}, {"id": "UME", "is_primary_owner": True}]},
+            "conversations.history": {"messages": [{"ts": "5.0", "user": "UME", "text": "second"}, {"ts": "4.0", "user": "UME", "text": "first"},
+                                                   {"ts": "6.0", "user": "U9", "text": "not him"}, {"ts": "7.0", "user": "UME", "bot_id": "B", "text": "echo"},
+                                                   {"ts": "8.0", "user": "UME", "subtype": "channel_join", "text": "joined"}]}}.get(method, {})
+slack.api = fake_api
+check("slack: off without a token", slack.say("cto", "hi") is False and not posted_slack)
+os.environ["SLACK_BOT_TOKEN"] = "x"
+check("slack: posts", slack.say("spend_tracker", "<!channel> hi"))
+sent_msg = next(k for m, k in posted_slack if m == "chat.postMessage")
+check("slack: each agent posts under its name and department", sent_msg["username"] == "Spend Tracker (Finance)")
+check("slack: text cannot ping the channel", "<" not in sent_msg["text"])
+mine, newest = slack.messages("3.0")
+check("slack: only Abhi's own messages count, oldest first", [m["text"] for m in mine] == ["first", "second"] and newest == "8.0")
+heard, real_ans, real_hist = [], cto.answer, slack.history
+cto.answer, slack.history = (lambda t, h: heard.append(t)), (lambda: [])
+files_b[cto.CURSOR] = json.dumps({"ts": "3.0"})
+cto.poll()
+check("slack: the cursor moves and each message is answered", heard == ["first", "second"] and json.loads(files_b[cto.CURSOR])["ts"] == "8.0")
+cto.answer, slack.history = real_ans, real_hist
+slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+def hist_api(method, **k):
+    if method != "conversations.history": return fake_api(method)
+    return {"messages": [{"user": "U9", "text": "someone else"}, {"user": "UME", "text": "mine"}, {"bot_id": "B", "username": "CTO (Engineering)", "text": "reply"}]}
+slack.api = hist_api
+hist = slack.history()
+check("slack: other people stay out of the model's context", [h["text"] for h in hist] == ["reply", "mine"] and hist[1]["from"] == "Abhi")
+slack.api = fake_api
+heard2, real_ans3 = [], cto.answer
+cto.answer = lambda t, h: heard2.append(t)
+real_msg, slack.messages = slack.messages, lambda a: ([{"ts": str(i), "text": str(i)} for i in range(9)], "9")
+real_hist3, slack.history = slack.history, lambda: []
+cto.poll()
+slack.messages, slack.history, cto.answer = real_msg, real_hist3, real_ans3
+check("slack: replies are capped per run", len(heard2) == cto.MAX_REPLIES)
+slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+check("slack: an outage never stops the work", slack.say("cto", "hi") is False)
+slack.api = real_api
+del os.environ["SLACK_BOT_TOKEN"]
+saved_admin, real_aw = {}, cto.activity
+cto.activity = lambda: [("radar", "success", 1)]
+real_res, cto.results = cto.results, lambda: [(12, "post-a", "devto")]
+ap = {"waiting": ["Post A"], "shipped": [], "failed_runs": [], "running": [], "spent": 3.5, "limit": 50, "by_job": {"radar": 3.5}, "tasks": []}
+page = cto.admin_md(ap, "2026-11-02", "**Operations Manager (Office): on track.** ok")
+check("admin: cost, today, articles, readers and team are all on the page", all(x in page for x in ("$3.50 of $50.00", "radar: $3.50", "radar: success (1)", "Post A", "12 views: post-a", "Finance: Spend Tracker", "Operations Manager")))
+check("manager: cost per article is arithmetic", cto.facts({**ap, "shipped": ["a", "b"], "spent": 10})["cost_per_published_article_this_week"] == 5)
+check("manager: no article means no cost figure, not a guess", cto.facts(ap)["cost_per_published_article_this_week"] is None)
+real_mask, roles_mod.ask = roles_mod.ask, lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
+check("manager: a failed review says so", "did not run" in cto.manager_review(ap))
+roles_mod.ask = lambda *a, **k: {"verdict": "not_enough_data", "summary": "Too early.", "actions": ["Editor: x"]}
+check("manager: its verdict is shown", "not enough data" in cto.manager_review(ap) and "Editor: x" in cto.manager_review(ap))
+roles_mod.ask = real_mask
+cto.admin_read, real_ard = (lambda path: ("", None)), cto.admin_read
+real_awr, cto.admin_write = cto.admin_write, lambda path, text, sha, msg: saved_admin.__setitem__(path, text)
+os.environ["ADMIN_TOKEN"] = "t"
+cto.save_admin(ap)
+add_before = dict(files_b)
+cto.write_private(cto.TASKS, "{}", None, "m")
+del os.environ["ADMIN_TOKEN"]
+check("admin: the page and daily log go to the private repo", "README.md" in saved_admin and any(k.startswith("log-") for k in saved_admin))
+check("privacy: tasks go to the private repo when it exists", "tasks.json" in saved_admin and files_b == add_before)
+cto.admin_write, cto.admin_read, cto.activity, cto.results = real_awr, real_ard, real_aw, real_res
+check("admin: skipped until the private repo exists", cto.save_admin(ap) is None)
+ad = next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("id") == "admin")
+check("admin: its token reaches only that repo, and a missing repo fails quietly", ad["with"]["repositories"] == "team-admin" and ad["continue-on-error"] is True)
+check("privacy: the public status never reads the private page", "tasks" not in cto.public_status.__code__.co_names)
+cyml = (ROOT / ".github/workflows/cto.yml").read_text()
+bj = ctoy["jobs"]["billing"]
+check("billing: no model key and no PR input", "ANTHROPIC" not in str(bj) and "pull_request" not in str(bj) and bj["steps"][0]["with"]["ref"] == "main")
+check("billing: runs only in a main-only environment, with its own role", bj["environment"] == "live-check" and "BILLING_ROLE_ARN" in str(bj))
+billing_sh = (ROOT / "infra/billing-role.sh").read_text()
+check("billing: the AWS role can only read costs", billing_sh.count('"Action": "ce:GetCostAndUsage"') == 1 and "ce:*" not in billing_sh and "environment:live-check" in billing_sh)
+check("editor: drafts get a quality verdict by default", "vars.EDITOR_REVIEW || 'on'" in (ROOT / ".github/workflows/replicate.yml").read_text())
 ry = __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())
 rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])

@@ -35,6 +35,7 @@ jobs:
         id: radar
         run: python3 pipeline/radar.py
         env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           HERO_PUBLISH: "1"
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           SPLUNK_READY: ${{ vars.SPLUNK_REALM != '' && secrets.SPLUNK_ACCESS_TOKEN != '' && secrets.SPLUNK_API_TOKEN != '' }}

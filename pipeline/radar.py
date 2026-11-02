@@ -28,6 +28,7 @@ LABELS = {"radar": ("0e8a16", "Topic idea from the radar"),
           "not-reproduced": ("cccccc", "The lab could not reproduce this"),
           "replication-disputed": ("fbca04", "The lab ran, but the panel did not confirm the replication"),
           "analytics": ("0052cc", "Impact log: weekly analytics for the published posts"),
+          "cto-desk": ("0e8a16", "The CTO's thread with Abhi"),
           "hero-goal": ("b60205", "AWS Hero milestones: Community Builders and other applications"),
           "talk-kit": ("5319e7", "A 10-minute talk built from a lab"),
           "teaching": ("0e8a16", "A student session built from a lab"),
@@ -537,6 +538,8 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
             comment(iss["number"], "\u2b50 This is the panel's pick. Its lab starts by itself, inside the monthly budget, "
                                    "and takes about 30 to 60 minutes.")
             print(f"marked #{iss['number']} as the pick")
+            import slack
+            slack.say("topic_scout", f"New pick for a lab: {c['title']}")
             if os.environ.get("GITHUB_OUTPUT"):
                 with open(os.environ["GITHUB_OUTPUT"], "a") as f:
                     f.write(f"pick={int(iss['number'])}\n")

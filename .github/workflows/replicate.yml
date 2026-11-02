@@ -150,7 +150,7 @@ jobs:
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           LINKEDIN_MIN_VOTES: ${{ vars.LINKEDIN_MIN_VOTES }}
           EDITOR_MODE: ${{ vars.EDITOR_MODE }}
-          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW }}
+          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW || 'on' }}
           EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
       # Fresh credentials: the first session may be close to its 2-hour limit by now.
       - if: always() && env.DRY_RUN != 'true'
@@ -217,6 +217,7 @@ jobs:
         run: python3 pipeline/draft.py
         env:
           BUDGET_EXEMPT: "1"                 # the lab is already paid for, so its article still gets written
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           FROM_RUN: ${{ inputs.from_run }}
           HERO_PUBLISH: "1"
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
@@ -232,5 +233,5 @@ jobs:
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           LINKEDIN_MIN_VOTES: ${{ vars.LINKEDIN_MIN_VOTES }}
           EDITOR_MODE: ${{ vars.EDITOR_MODE }}
-          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW }}
+          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW || 'on' }}
           EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}

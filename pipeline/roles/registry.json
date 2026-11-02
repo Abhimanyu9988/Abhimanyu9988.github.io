@@ -21,7 +21,9 @@
    "budget": {
     "max_input_tokens": 12000,
     "max_calls": 4
-   }
+   },
+   "display": "Executive Assistant",
+   "dept": "Office"
   },
   "editor": {
    "mission": "Decide whether a topic deserves a lab and whether a draft deserves readers.",
@@ -44,7 +46,9 @@
    "budget": {
     "max_input_tokens": 60000,
     "max_calls": 8
-   }
+   },
+   "display": "Editor",
+   "dept": "Content"
   },
   "tech_head": {
    "mission": "Review code changes for security, scalability, reliability, cost and future AI readability.",
@@ -65,49 +69,45 @@
    "budget": {
     "max_input_tokens": 45000,
     "max_calls": 8
-   }
+   },
+   "display": "Tech Head",
+   "dept": "Engineering"
   },
   "topic_scout": {
-   "mission": "Propose topics.",
+   "mission": "Find topics worth a lab.",
    "module": "pipeline/radar.py",
    "status": "active",
-   "vendor": "panel",
-   "model": "",
-   "model_env": "RADAR_MODEL",
-   "prompt": "",
+   "vendor": "code",
+   "model_env": "",
+   "data_sources": [],
+   "budget": {},
    "outputs": [],
-   "data_sources": [
-    "goals",
-    "post_mix",
-    "insights"
-   ],
-   "budget": {}
+   "display": "Topic Scout",
+   "dept": "Research"
   },
   "lab_engineer": {
-   "mission": "Build and run the disposable lab.",
+   "mission": "Run each experiment in a disposable AWS lab.",
    "module": "pipeline/lab.py",
    "status": "active",
-   "vendor": "claude",
-   "model": "claude-sonnet-5-5",
-   "model_env": "CLAUDE_MODEL",
-   "prompt": "",
-   "outputs": [],
+   "vendor": "code",
+   "model_env": "",
    "data_sources": [],
-   "budget": {}
+   "budget": {},
+   "outputs": [],
+   "display": "Lab Engineer",
+   "dept": "Engineering"
   },
   "writer": {
-   "mission": "Write the article from the evidence and the brief.",
+   "mission": "Turn a lab's evidence into a draft article.",
    "module": "pipeline/draft.py",
    "status": "active",
-   "vendor": "chatgpt",
-   "model": "gpt-5.5",
-   "model_env": "OPENAI_MODEL",
-   "prompt": "",
+   "vendor": "code",
+   "model_env": "",
+   "data_sources": [],
+   "budget": {},
    "outputs": [],
-   "data_sources": [
-    "field_notes"
-   ],
-   "budget": {}
+   "display": "Writer",
+   "dept": "Content"
   },
   "cto": {
    "mission": "Run the team, track progress and spending, and answer Abhi with evidence.",
@@ -129,7 +129,9 @@
    "budget": {
     "max_input_tokens": 12000,
     "max_calls": 3
-   }
+   },
+   "display": "CTO",
+   "dept": "Engineering"
   },
   "spend_tracker": {
    "mission": "Keep every dollar the team spends recorded, and stop new paid work at the monthly limit.",
@@ -139,7 +141,54 @@
    "model_env": "",
    "data_sources": [],
    "budget": {},
-   "outputs": []
+   "outputs": [],
+   "display": "Spend Tracker",
+   "dept": "Finance"
+  },
+  "publisher": {
+   "mission": "Publish approved articles and prepare distribution.",
+   "module": "pipeline/publish.py",
+   "status": "active",
+   "vendor": "code",
+   "model_env": "",
+   "data_sources": [],
+   "budget": {},
+   "outputs": [],
+   "display": "Publisher",
+   "dept": "Marketing"
+  },
+  "analyst": {
+   "mission": "Track how published articles perform.",
+   "module": "pipeline/analytics.py",
+   "status": "active",
+   "vendor": "code",
+   "model_env": "",
+   "data_sources": [],
+   "budget": {},
+   "outputs": [],
+   "display": "Analyst",
+   "dept": "Marketing"
+  },
+  "manager": {
+   "mission": "Check each week that effort and spending are producing the results Abhi wants.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "MANAGER_MODEL",
+   "prompt": "manager.md",
+   "outputs": [
+    "managerreview"
+   ],
+   "data_sources": [
+    "goals"
+   ],
+   "budget": {
+    "max_input_tokens": 8000,
+    "max_calls": 2
+   },
+   "display": "Operations Manager",
+   "dept": "Office"
   }
  }
 }

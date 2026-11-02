@@ -11,7 +11,7 @@ Redrafts reuse an earlier lab run's attachment (no new AWS run): `/redraft <note
 passes your notes to the writer and closes the old PR once the new one is open.
 """
 import base64, datetime, json, os, pathlib, re
-import budget
+import budget, slack
 from radar import HOME_REPO, gh, safe_text, assert_safe, comment, add_label, Unsafe
 import llm, cover, editor, scan
 
@@ -779,6 +779,7 @@ def open_pr(issue_no, res, topic):
     pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": title, "head": branch, "base": "main",
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
+    slack.say("writer", f"Draft ready for your decision: {post['title']}\nhttps://github.com/{HOME_REPO}/pull/{pr['number']}")
     if gate.get("report"):
         record_review(slug, gate, brief)
     old = os.environ.get("OLD_PR", "")
@@ -820,6 +821,7 @@ def main():
                 "reproduced_fix_failed": ("\U0001f9ea The starting point was set up, but the build did not work." if build
                                           else "\U0001f9ea The lab reproduced the problem, but the fix did not work."),
                 "failed": "❌ The lab did not get to a result."}.get(res["status"], res["status"])
+        slack.say("lab_engineer", f"{nice} Topic: {topic.get('title', 'unknown')}")
         msg = (f"{nice} {res.get('attempts')} attempt(s), {res.get('minutes')} min, workflow run {res['run_id']}."
                f"{warn}\n\n**Last failure:** {safe_text(lf.get('step') or 'before the lab ran')}\n```\n{out}\n```\n\n"
                f"{_cleanup_md(res)}**Lab:** {safe_text(res.get('summary') or 'not written')}\n\nThe lab files and raw output are in the run's `lab` "

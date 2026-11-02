@@ -1,0 +1,9 @@
+{
+ "type": "object",
+ "required": ["verdict", "summary", "actions"],
+ "properties": {
+  "verdict": {"type": "string", "enum": ["on_track", "off_track", "not_enough_data"]},
+  "summary": {"type": "string", "description": "under 80 words"},
+  "actions": {"type": "array", "maxItems": 3, "items": {"type": "string"}}
+ }
+}
