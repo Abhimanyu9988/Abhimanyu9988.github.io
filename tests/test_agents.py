@@ -782,7 +782,7 @@ for typed_num in ("1e5", "~35", "35;", "5m30s", "1_000", "+35", "35/s", "3/3", "
     check(f"provenance: {typed_num} is a typed value", scan.typed_values({"f.sh": f'echo "HERO_MEASURE: x={typed_num}"'}) == {"x": True})
 check("provenance: a one-value constant is typed", scan.typed_values({"f.sh": 'V=35\necho "HERO_MEASURE: x=$V"'}) == {"x": True})
 for still_typed in ('x=35\necho "HERO_MEASURE: x=$x"', 'V=35\nD=$((V*2))\necho "HERO_MEASURE: x=$V"', 'V=35\nif (( V > 30 )); then echo hi; fi\necho "HERO_MEASURE: x=$V"',
-                    'V=35\n# wait for V\necho "HERO_MEASURE: x=$V"'):
+                    'V=35\n# wait for V\necho "HERO_MEASURE: x=$V"', 'V=35\n# V=34 was too high\necho "HERO_MEASURE: x=$V"'):
     check("provenance: reading a constant keeps it typed", scan.typed_values({"f.sh": still_typed}) == {"x": True})
 for counter in ('count=0\nfor p in a; do count=$((count+1)); done\necho "HERO_MEASURE: x=$count"',
                 'count=0\n((count++))\necho "HERO_MEASURE: x=$count"', 'total=0\ntotal=$(wc -l < f)\necho "HERO_MEASURE: x=$total"',
