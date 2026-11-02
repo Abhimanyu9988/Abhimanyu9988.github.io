@@ -4,7 +4,8 @@
 A message starting with a title, such as "CMO: ..." or "OSS: ...", goes to that person. Anything else goes to the CEO.
 
   python3 pipeline/cto.py   no input: refresh the public team status, and on Mondays run market research and the digest.
-                            POLL=true: answer Abhi's new Slack messages. No server is needed, so replies take minutes.
+                            POLL=true: answer Abhi's new Slack messages and refresh the live board. The Slack listener
+                            starts this as soon as he posts, and a 10-minute check is the fallback.
                             COMMENT_BODY: answer Abhi on the CTO desk issue.
 
 What leaders can do: answer, record a goal he stated, list tasks, close a draft he rejected, and queue a topic he asked for.
@@ -13,7 +14,7 @@ What it cannot do: publish, spend, deploy, change the budget, or hold a credenti
 """
 import base64, datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
 from radar import HOME_REPO, comment, ensure_label, gh, post_issue, safe_text
-import analytics, budget, contract, roles, slack, sources
+import analytics, budget, contract, live_board, roles, slack, sources
 
 TASKS, STATUS, CURSOR = "analytics/tasks.json", "analytics/status.json", "analytics/slack-cursor.json"
 ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, so its analytics branch is too
@@ -22,6 +23,7 @@ URL = re.compile(r"https?://[^\s)\]>]+")
 MAX_TASKS = 40
 LEADER = re.compile(r"\s*@?(ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-]*", re.I)
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
+DONE_WORDS = re.compile(r"(?i)\b(done|finished|complete|completed|remove|close|delete|drop)\b")
 IDEA_WORDS = re.compile(r"(?i)\b(topic|idea|try|pick|write about|tomorrow)\b")
 IDEAS_HEAD, IDEAS_END = "Abhi's own topic ideas. Put these first:", "End of his ideas."
 PENDING = "analytics/ideas-pending.json"
@@ -285,6 +287,16 @@ def research():
     analytics.write_file(BRIEF, ideas_block(old) + text + "\n", sha, "market: weekly brief")
     return text
 
+def finish_tasks(titles):
+    """Only exact titles, and only when his own words ask. A task stays in the file, marked done."""
+    got, sha = tasks()
+    hit = [t for t in got if t.get("status") == "open" and t.get("title") in titles]
+    for t in hit:
+        t["status"] = "done"
+    if hit and write_private(TASKS, json.dumps({"tasks": got}, indent=1), sha, "tasks: done"):
+        return [t["title"] for t in hit]
+    return []
+
 def ideas_block(text):
     """His own ideas survive new research until a Topic Scout run has used them."""
     return text[:text.index(IDEAS_END) + len(IDEAS_END)] + "\n\n" if text.startswith(IDEAS_HEAD) and IDEAS_END in text else ""
@@ -309,11 +321,14 @@ def close_drafts(titles):
             closed.append(name)
     return closed
 
-NEEDED_QUERIES = {"review_requested_from_him": "is:open is:pr user-review-requested:Abhimanyu9988",
-                  "code_owner_team_reviews": "is:open is:pr review-requested:Abhimanyu9988 -user-review-requested:Abhimanyu9988",
-                  "assigned_to_him": "is:open assignee:Abhimanyu9988",
-                  "changes_requested_on_his_prs": "is:open is:pr author:Abhimanyu9988 review:changes_requested",
-                  "mentions": "is:open mentions:Abhimanyu9988 -author:Abhimanyu9988"}
+ME = "Abhimanyu9988"
+NEEDED_QUERIES = {"review_requested_from_him": f"is:open is:pr user-review-requested:{ME}",
+                  "code_owner_team_reviews": f"is:open is:pr review-requested:{ME} -user-review-requested:{ME}",
+                  "prs_assigned_to_him": f"is:open is:pr assignee:{ME} -user:{ME}",
+                  "assigned_to_him": f"is:open is:issue assignee:{ME} -user:{ME}",   # his own repos hold the team's topics and drafts
+                  "changes_requested_on_his_prs": f"is:open is:pr author:{ME} review:changes_requested",
+                  "pr_mentions": f"is:open is:pr mentions:{ME} -author:{ME} -user:{ME}",
+                  "mentions": f"is:open is:issue mentions:{ME} -author:{ME} -user:{ME}"}
 
 def needed():
     """GitHub's own answer on why he's involved. A failed search is reported, never replaced by a guess."""
@@ -344,7 +359,7 @@ def answer(text, talk, role="ceo"):
         return
     p, team = progress(), roles.data("cto")
     brief, _ = analytics.read_file(BRIEF)
-    extra = f"\n\nGITHUB:\n{json.dumps(needed())[:6000]}\n\nBOARD:\n{board()[:3000]}" if role == "oss_scout" else ""
+    extra = f"\n\nGITHUB:\n{json.dumps(needed())[:9000]}\n\nBOARD:\n{board()[:3000]}" if role == "oss_scout" else ""
     got = roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
                            f"{json.dumps({**p, 'team': roster(p)})[:4000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
                           f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
@@ -354,6 +369,9 @@ def answer(text, talk, role="ceo"):
     if got.get("close_prs") and CLOSE_WORDS.search(text):   # his words decide, never a model's alone
         closed = close_drafts(got["close_prs"])
         notes.append(f"Closed: {', '.join(closed)}." if closed else "I found no open draft with that title.")
+    if got.get("done_tasks") and DONE_WORDS.search(text):
+        finished = finish_tasks(got["done_tasks"])
+        notes.append(f"Marked done: {', '.join(finished)}." if finished else "I found no open task with that title.")
     if got.get("ideas") and IDEA_WORDS.search(text):
         save_ideas(got["ideas"])
         notes.append("Saved for the Topic Scout. It runs tomorrow morning and starts a lab if a topic clears the bar.")
@@ -393,6 +411,15 @@ def poll():
                 print(f"::warning title=cto::reply failed: {' '.join(str(e).split())[:200]}")
                 post("I could not answer that just now. Please send it again.", role)
 
+def refresh_board():
+    """Never stops the work around it. If this fails, the board keeps its old time, which shows it's out of date."""
+    try:
+        brief, _ = analytics.read_file(BRIEF)
+        ideas = [l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")]
+        live_board.refresh(needed(), [t for t in tasks()[0] if t.get("status") == "open"], ideas, budget.spent()[0], budget.limit())
+    except Exception as e:
+        print(f"::warning title=board::not refreshed: {' '.join(str(e).split())[:200]}")
+
 def training_day(today=None):
     """Monday and Thursday already have their own runs."""
     day = today or datetime.date.today()
@@ -401,6 +428,7 @@ def training_day(today=None):
 def main():
     if os.environ.get("POLL") == "true":
         poll()
+        refresh_board()
         return
     text = os.environ.get("COMMENT_BODY", "").strip()
     if text:

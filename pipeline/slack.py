@@ -26,10 +26,12 @@ def channel():
 def owner():
     return next(u["id"] for u in api("users.list", limit=200)["members"] if u.get("is_primary_owner"))
 
-def clean(text):
+def escape(text):
     """Slack control codes start with <, so escaping stops pasted or model text pinging the channel."""
-    text = str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("**", "*")   # Slack bold is one star
-    return text[:3500]
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+def clean(text):
+    return escape(text).replace("**", "*")[:3500]   # Slack bold is one star
 
 def display(role):
     import roles
@@ -48,6 +50,19 @@ def say(role, text):
     except Exception as e:
         print(f"::warning title=slack::message not sent: {' '.join(str(e).split())[:200]}")
         return False
+
+def keep_updated(role, text, ts):
+    """Edits the message `ts` and returns its id, or posts a new one if that message is gone. `text` must be escaped already."""
+    cid = channel()
+    if ts:
+        try:
+            api("chat.update", channel=cid, ts=ts, text=text)
+            return ts
+        except RuntimeError as e:
+            if "message_not_found" not in str(e):
+                raise
+    api("conversations.join", channel=cid)
+    return api("chat.postMessage", channel=cid, text=text, username=display(role), unfurl_links="false", unfurl_media="false")["ts"]
 
 def messages(after):
     """(Abhi's messages newer than `after`, oldest first, newest timestamp seen). Bots and other people are ignored."""

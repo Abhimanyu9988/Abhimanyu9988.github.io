@@ -125,3 +125,12 @@ be copied. dev.to and Medium use their own styling.
 
 Abhi approved faster replies. A small function checks Slack's signature and starts `cto.yml`, so it holds no model keys and
 reads nothing. It runs in his main account, because the lab account is disposable. The 10-minute check stays as a fallback.
+
+## 2026-11-02: The live board is a pinned Slack message
+
+Abhi asked for a board he can open from Slack. A web page would be public, because this repo and its site are, and the board
+shows private tasks. Slack's help says canvases are for paid plans. One message edited in place works on any plan, needs no new
+Slack permission and costs nothing, because no model runs. It refreshes on every Slack message and every 10 minutes.
+GitHub's search needs `is:issue` or `is:pull-request`, and his own repos filled the results with the team's topics and LinkedIn
+drafts. The searches now skip his own repos, so OpenTelemetry assignments and code owner pings show up. A mention stays under
+"Worth a look", because code can't tell whether it waits on him. Leaders still can't write code, and they now say so.

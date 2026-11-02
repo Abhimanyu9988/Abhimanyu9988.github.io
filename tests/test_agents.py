@@ -1131,6 +1131,8 @@ got_needed = cto.needed()
 check("oss: GitHub says why he's involved", set(got_needed) == set(cto.NEEDED_QUERIES) and got_needed["review_requested_from_him"][0]["title"] == "Fix")
 cto.gh = lambda m, p, b=None: (_ for _ in ()).throw(RuntimeError("limit"))
 check("oss: a failed search is reported, not guessed", cto.needed()["assigned_to_him"] == "the search failed")
+check("oss: every search names issues or PRs, as GitHub requires", all(" is:issue " in q or " is:pr " in q for q in cto.NEEDED_QUERIES.values()))
+check("oss: his own repos' topics and drafts never count as needing him", all("-user:" in cto.NEEDED_QUERIES[k] for k in ("assigned_to_him", "mentions")))
 cto.gh = real_ghn
 check("oss: uses ChatGPT", roles_mod.get("oss_scout")["vendor"] == "chatgpt")
 check("oss: a thread he commented on doesn't count", "Never list a PR only because he commented" in (ROOT / "pipeline/roles/prompts/oss_scout.md").read_text())
@@ -1303,6 +1305,89 @@ check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / 
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
 check("topics: Thursday looks for real failures", py[True]["schedule"][0]["cron"] == "0 6 * * 4" and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
+
+# ---------- live board ----------
+import datetime as _dt, live_board
+now = _dt.datetime(2026, 11, 2, 21, 0, tzinfo=_dt.timezone.utc)
+pr = lambda n, ref, state, **k: {"title": f"Draft: T{n}", "head": {"ref": ref}, "state": state, "html_url": f"https://g/{n}", **k}
+def board_gh(m, path, b=None):
+    assert m == "GET", "the board must not write to GitHub"
+    if "/pulls" in path:
+        return [pr(1, "draft/a", "open"), pr(2, "feat/x", "open"), pr(3, "draft/b", "closed", merged_at="2026-11-01T00:00:00Z"),
+                pr(4, "fix/y", "closed", merged_at="2026-10-31T00:00:00Z"), pr(5, "draft/c", "closed", closed_at="2026-11-01T00:00:00Z"),
+                pr(6, "draft/d", "closed", merged_at="2026-01-01T00:00:00Z"), pr(7, "feat/z", "closed", closed_at="2026-11-01T00:00:00Z")]
+    if "status=in_progress" in path:
+        return {"workflow_runs": [{"name": "replicate", "display_title": "Prometheus lab", "html_url": "https://g/r"}, {"name": "cto", "html_url": "https://g/c"}]}
+    if "status=queued" in path:
+        return {"workflow_runs": []}
+    return {"workflow_runs": [{"name": "radar", "event": "schedule", "html_url": "https://g/f2"}, {"name": "radar", "event": "schedule", "html_url": "https://g/f1"},
+                              {"name": "tests", "event": "pull_request", "html_url": "https://g/f3"}]}
+real_lgh, live_board.gh = live_board.gh, board_gh
+item = lambda t, u, d="2026-11-01": {"title": t, "url": u, "updated": d}
+wanted = {"assigned_to_him": [item("Flink", "https://g/9")], "review_requested_from_him": [item("Same", "https://g/8")], "mentions": [item("Same", "https://g/8"), item("Ping", "https://g/7"),
+          item("Old", "https://g/6", "2026-01-01")], "changes_requested_on_his_prs": "the search failed", "code_owner_team_reviews": [], "pr_mentions": [], "prs_assigned_to_him": []}
+rows = live_board.gather(wanted, [{"title": "<!channel> task", "owner": "cto"}], ["Splunk add-on"], now)
+check("board: drafts ask for approval, other PRs for a merge", "Approve or reject: T1" in rows["needs"][0] and "Merge or close: Draft: T2".replace("Draft: ", "") in rows["needs"][1])
+check("board: GitHub's own needs are listed", any("Assigned: Flink" in x for x in rows["needs"]) and any("Review: Same" in x for x in rows["needs"]))
+check("board: a failed search says so, not 'all clear'", any("Could not check changes requested" in x for x in rows["needs"]))
+check("board: a mention is only worth a look, and only once", [("Same" in x) for x in rows["maybe"]] == [False] and "Ping" in rows["maybe"][0])
+check("board: done shows published, shipped and rejected, newest first, this week only", [x.split("|")[1].split(":")[0] for x in rows["done"]] == ["Published", "Rejected", "Shipped"])
+check("board: only the team's own work is in progress", len(rows["working"]) == 1 and "Lab Engineer is running a lab: Prometheus lab" in rows["working"][0])
+check("board: one latest failure per workflow, not PR checks", rows["failed"] == ["<https://g/f2|radar failed>"])
+check("board: task text can't ping the channel", "<!channel>" not in rows["todo"][0])
+text = live_board.render(rows, 7.5, 50, now)
+check("board: shows spend and every section", "$7.50 of $50" in text and all(w in text for w in ("Needs you", "In progress", "Done in the last 7 days", "Up next", "To do", "Failed in the last day")))
+many = live_board.section("X", [f"r{i}" for i in range(12)])
+check("board: a long list stays short", "r7" in many and "r8" not in many and "and 4 more" in many and "(12)" in many)
+live_board.gh = real_lgh
+calls, said, wrote = [], [], []
+def board_slack(method, **k):
+    calls.append(method)
+    if method == "conversations.list":
+        return {"channels": [{"id": "C", "is_general": True}]}
+    if method == "chat.update" and k["ts"] == "gone":
+        raise RuntimeError("slack chat.update: message_not_found")
+    if method == "chat.update" and k["ts"] == "down":
+        raise RuntimeError("slack chat.update: ratelimited")
+    return {"ok": True, "ts": "new"}
+real_sapi, slack.api = slack.api, board_slack
+check("board: edits the same message", slack.keep_updated("manager", "x", "old") == "old" and "chat.postMessage" not in calls)
+check("board: posts again only if the message is gone", slack.keep_updated("manager", "x", "gone") == "new")
+try:
+    slack.keep_updated("manager", "x", "down"); failed_quietly = True
+except RuntimeError:
+    failed_quietly = False
+check("board: an outage never posts a duplicate", not failed_quietly)
+os.environ["SLACK_BOT_TOKEN"] = "t"
+real_read, real_write, real_say, real_gather = analytics.read_file, analytics.write_file, slack.say, live_board.gather
+live_board.gather = lambda *a: {k: [] for k in ("needs", "maybe", "working", "todo", "next", "done", "failed")}
+slack.say = lambda r, t: said.append(t) or True
+analytics.write_file = lambda p, t, s, m: wrote.append((p, t))
+analytics.read_file = lambda p, ref=None: ("", None)
+live_board.refresh({}, [], [], 1, 50, now)
+check("board: first run saves only the message id, and asks him to pin once", wrote == [(live_board.STATE, '{"ts": "new"}')] and len(said) == 1 and "Pin" in said[0])
+wrote.clear(); said.clear()
+analytics.read_file = lambda p, ref=None: ('{"ts": "old"}', "sha")
+live_board.refresh({}, [], [], 1, 50, now)
+check("board: later runs write nothing and say nothing", not wrote and not said)
+analytics.read_file, analytics.write_file, slack.say, live_board.gather, slack.api = real_read, real_write, real_say, real_gather, real_sapi
+del os.environ["SLACK_BOT_TOKEN"]
+def board_boom(*a, **k):
+    raise RuntimeError("github down")
+real_ref, live_board.refresh = live_board.refresh, board_boom
+real_need, cto.needed = cto.needed, lambda: {}
+real_tasks, cto.tasks = cto.tasks, lambda: ([], None)
+real_bread, analytics.read_file = analytics.read_file, lambda p, ref=None: ("", None)
+cto.refresh_board()
+check("board: a failure never stops the leaders' work", True)
+analytics.read_file, cto.tasks, cto.needed, live_board.refresh = real_bread, real_tasks, real_need, real_ref
+store = {"tasks": [{"title": "A", "status": "open"}, {"title": "B", "status": "open"}]}
+real_rp, real_wp = cto.read_private, cto.write_private
+cto.read_private = lambda p: (json.dumps(store), "sha")
+cto.write_private = lambda p, t, s, m: store.update(json.loads(t)) or True
+check("tasks: only the exact title is marked done", cto.finish_tasks(["A", "C"]) == ["A"] and [t["status"] for t in store["tasks"]] == ["done", "open"])
+cto.read_private, cto.write_private = real_rp, real_wp
+check("tasks: his words decide", cto.DONE_WORDS.search("that task is done") and not cto.DONE_WORDS.search("how is that task going"))
 ry = __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())
 rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])
