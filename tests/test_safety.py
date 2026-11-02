@@ -64,7 +64,6 @@ for name, m, path, b in [
     ("tag ref", "POST", f"/repos/{HOME}/git/refs", {"ref": "refs/tags/draft/x", "sha": "0"}),
     ("PR into other base", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "b", "head": "draft/x", "base": "dev"}),
     ("PR from non-draft head", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "b", "head": "main", "base": "main"}),
-    ("PR from an agent branch with letters", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "b", "head": "agent/x", "base": "main"}),
     ("PR body with cross-repo ref", "POST", f"/repos/{HOME}/pulls", {"title": "t", "body": "Closes aws/x#5", "head": "draft/x", "base": "main"}),
     ("unknown label", "POST", f"/repos/{HOME}/issues/1/labels", {"labels": ["good first issue"]}),
     ("comment with mention", "POST", f"/repos/{HOME}/issues/1/comments", {"body": "thanks @jmdeal"}),
@@ -101,8 +100,7 @@ for name, m, path, b in [
     ("LinkedIn draft in the profile repo", "POST", "/repos/Abhimanyu9988/Abhimanyu9988/issues",
      {"title": "LinkedIn draft: t", "body": "text", "labels": ["linkedin-draft"]}),
     ("draft PR closing its topic", "POST", f"/repos/{HOME}/pulls",
-     {"title": "Draft: t", "body": "summary\n\nCloses #4", "head": "draft/my-topic", "base": "main"}),
-    ("PR from a build run", "POST", f"/repos/{HOME}/pulls", {"title": "Add it", "body": "summary", "head": "agent/123", "base": "main"})]:
+     {"title": "Draft: t", "body": "summary\n\nCloses #4", "head": "draft/my-topic", "base": "main"})]:
     n = len(sent); r.gh(m, path, b)
     check(f"allowed: {name}", len(sent) == n + 1)
 r.PUBLISH = False

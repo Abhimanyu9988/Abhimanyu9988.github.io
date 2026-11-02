@@ -67,7 +67,6 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/cto.py` | Secretary, CEO, CTO, CMO and CFO: talks to Abhi, market research, digest, tasks, public status, starts builds | CTO desk issue, spend, PRs | One issue, `analytics/tasks.json`, `status.json` |
 | `Abhimanyu9988/team-admin` | Private admin page and daily log, written by `cto.py` | Spend, runs, ledger | `README.md`, `log-*.md`, `tasks.json` |
 | `infra/slack-listener.yml` | AWS Lambda that wakes `cto.yml` when Abhi messages Slack | Signed Slack events | One workflow start |
-| `pipeline/engineer.py` | Turns a request from Abhi into a PR he merges. A file-only coding agent, then the tests with no secrets | His request, this repo | `agent/<run>` branch and PR, Slack message, spend |
 | `pipeline/live_board.py` | His board of open source and articles only: cards for `site/board.html`, and a Slack message linking to it. No model | GitHub, ideas, spend | `analytics/board.json` (public data only), that message, `analytics/slack-board.json` |
 | `pipeline/slack.py` | Team channel, one name per agent | `#general` | Slack messages |
 | `pipeline/budget.py` | Spend record and monthly stop, code only | `analytics/spend-*` | `analytics/spend-*`, `budget.json` |

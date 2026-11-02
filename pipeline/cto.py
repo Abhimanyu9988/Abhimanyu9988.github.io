@@ -9,9 +9,10 @@ who asks up to two others and gives him one answer.
                             starts this as soon as he posts, and a 10-minute check is the fallback.
                             COMMENT_BODY: answer Abhi on the CTO desk issue.
 
-What leaders can do: answer, record a goal he stated, list tasks, close a draft he rejected, queue a topic he asked for, and
-start a build he asked for. Code carries out those last three, and only when his own words ask for them. A build ends in a
-pull request that he merges, so it can't change his site by itself.
+What leaders can do: answer, record a goal he stated, list tasks, close a draft he rejected, and queue a topic he asked for.
+Code carries out those last two, and only when his own words ask for them.
+New features are built with Abhi in a Claude chat, not by agents or through the API. Tasks owned by the CTO are his build notes,
+which code lists when he asks for them.
 What it cannot do: publish, spend, deploy, change the budget, or hold a credential. Links are checked by code first.
 """
 import base64, datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
@@ -24,8 +25,6 @@ WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytic
 URL = re.compile(r"https?://[^\s)\]>]+")
 MAX_TASKS = 40
 LEADER = re.compile(r"\s*@?(secretary|ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-]*", re.I)
-BUILD_WORDS = re.compile(r"(?i)\b(build|add|create|make|fix|change|implement|update|remove|start|work on|go ahead)\b")
-BUILDERS = ("secretary", "ceo", "cto")
 CONSULT = ("ceo", "cto", "cmo", "cfo", "oss_scout")
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
 DONE_WORDS = re.compile(r"(?i)\b(done|finished|complete|completed|remove|close|delete|drop)\b")
@@ -96,12 +95,26 @@ def add_task(task):
     if task.get("owner") not in active:
         return f"No {safe_text(str(task.get('owner')))} role exists, so this was not assigned."
     got, sha = tasks()
-    row = {"title": str(task.get("title"))[:160], "owner": task["owner"], "status": "open",
+    row = {"title": str(task.get("title"))[:300], "owner": task["owner"], "status": "open",
            "created": datetime.date.today().isoformat()}
     keep = [t for t in got if t.get("title") != row["title"]]
     if not write_private(TASKS, json.dumps({"tasks": (keep + [row])[-MAX_TASKS:]}, indent=1), sha, "tasks: add"):
         return "Task not saved, because the private admin repo isn't connected yet."
+    if row["owner"] == "cto":
+        return f"Saved to the CTO's build notes: {row['title']}"
     return f"Added to the list for {row['owner']}: {row['title']}. Agents don't act on this list by themselves yet."
+
+def build_notes():
+    """Written by code from the saved list, so a note can't be dropped or reworded on its way to him."""
+    rows = [t["title"] for t in tasks()[0] if t.get("status") == "open" and t.get("owner") == "cto"]
+    if not rows:
+        return ["The CTO's build notes are empty."]
+    parts, part = [], "CTO's build notes for your next session:"
+    for n, title in enumerate(rows, 1):
+        if len(part) + len(title) > 3000:      # Slack cuts a message at 3,500 characters here
+            parts, part = parts + [part], ""
+        part += f"\n{n}. {title}"
+    return parts + [part]
 
 def public_https(url):
     """Model-written links run on a runner that holds keys, so private and internal addresses are refused."""
@@ -382,13 +395,6 @@ def ask_role(role, text, talk, p, heard=None):
                            f"{json.dumps({**p, 'team': roster(p)})[:6000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
                            f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
 
-def start_build(request):
-    """cto.yml starts engineer.yml after this step, because only that step holds the token to do it."""
-    line = " ".join(str(request).split())[:1500]
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"build_request<<END_OF_REQUEST\n{line.replace('END_OF_REQUEST', '')}\nEND_OF_REQUEST\n")
-
 def answer(text, talk, role="secretary"):
     wanted = budget.requested_limit(text)
     if wanted:
@@ -410,9 +416,6 @@ def answer(text, talk, role="secretary"):
     if got.get("done_tasks") and DONE_WORDS.search(text):
         finished = finish_tasks(got["done_tasks"])
         notes.append(f"Marked done: {', '.join(finished)}." if finished else "I found no open task with that title.")
-    if got.get("build") and role in BUILDERS and BUILD_WORDS.search(text):
-        start_build(got["build"])
-        notes.append("Started. The CTO will post the pull request here when it's ready, usually within 30 minutes.")
     if got.get("ideas") and IDEA_WORDS.search(text):
         save_ideas(got["ideas"])
         notes.append("Saved for the Topic Scout. It runs tomorrow morning and starts a lab if a topic clears the bar.")
@@ -420,6 +423,9 @@ def answer(text, talk, role="secretary"):
     notes += [f"{bad} link(s) could not be confirmed, so I left them out."] if bad else []
     links = "\n".join(f"- {u}" for u in good)
     post("\n\n".join(x for x in (reply, links, " ".join(notes), steps_md(got.get("needs_abhi"))) if x), role)
+    if got.get("show_notes"):
+        for part in build_notes():
+            post(part, role)
     if got.get("goal") and STATED_GOAL.search(text):   # his words are recorded, and a model's idea never becomes a goal
         import assistant
         assistant.comment = lambda n, t: post(t, "ceo")

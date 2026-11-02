@@ -266,8 +266,8 @@ def _close_pull(b):
         raise Blocked("draft PRs may only be closed, nothing else")
 
 def _pull(b):
-    if b.get("base") != "main" or not re.fullmatch(r"(draft/[a-z0-9][a-z0-9-]{0,80}|agent/\d+)", str(b.get("head", ""))):
-        raise Blocked("PRs must go from draft/<slug> or agent/<run> into main")
+    if b.get("base") != "main" or not re.fullmatch(r"draft/[a-z0-9][a-z0-9-]{0,80}", str(b.get("head", ""))):
+        raise Blocked("PRs must go from draft/<slug> into main")
     assert_safe(b.get("title", "")); assert_safe(CLOSES.sub("", b.get("body", "")))
 
 # Every GitHub write the bot may make, all inside HOME_REPO.

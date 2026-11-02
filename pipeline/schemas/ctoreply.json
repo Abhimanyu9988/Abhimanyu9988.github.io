@@ -11,7 +11,7 @@
   "ideas",
   "done_tasks",
   "consult",
-  "build"
+  "show_notes"
  ],
  "properties": {
   "stance": {
@@ -98,9 +98,9 @@
    },
    "description": "Secretary only: who to ask before answering, or empty"
   },
-  "build": {
-   "type": "string",
-   "description": "a change to the site, board or pipeline that Abhi asked for, in his words, or empty"
+  "show_notes": {
+   "type": "boolean",
+   "description": "true when Abhi asks to see the CTO's build notes"
   }
  }
 }
