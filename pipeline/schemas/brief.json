@@ -1,0 +1,189 @@
+{
+ "type": "object",
+ "required": [
+  "reader",
+  "decision",
+  "question",
+  "takeaway",
+  "adds",
+  "open_question",
+  "tradeoffs",
+  "existing_pages",
+  "demand",
+  "splunk_fit",
+  "measurements",
+  "verdict",
+  "reasons"
+ ],
+ "properties": {
+  "reader": {
+   "type": "string",
+   "description": "the specific person, e.g. platform engineer running ECS for several teams"
+  },
+  "decision": {
+   "type": "string",
+   "description": "the decision or task that person faces"
+  },
+  "question": {
+   "type": "string",
+   "description": "the question they would type or ask a colleague"
+  },
+  "adds": {
+   "type": "string",
+   "description": "what this post adds that the existing pages do not"
+  },
+  "open_question": {
+   "type": "string",
+   "description": "one measurable question whose answer is not known before the lab runs"
+  },
+  "tradeoffs": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "maxItems": 5,
+   "description": "trade-offs or alternatives the post must weigh"
+  },
+  "existing_pages": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "title",
+     "url",
+     "covers"
+    ],
+    "properties": {
+     "title": {
+      "type": "string"
+     },
+     "url": {
+      "type": "string"
+     },
+     "covers": {
+      "type": "string",
+      "description": "what this page already explains"
+     }
+    }
+   },
+   "maxItems": 8
+  },
+  "demand": {
+   "type": "object",
+   "required": [
+    "level",
+    "evidence"
+   ],
+   "properties": {
+    "level": {
+     "enum": [
+      "none",
+      "weak",
+      "strong"
+     ]
+    },
+    "evidence": {
+     "type": "string",
+     "description": "only what was actually found; never invent volumes or rankings"
+    }
+   }
+  },
+  "splunk_fit": {
+   "enum": [
+    "natural",
+    "optional",
+    "forced",
+    "not_applicable"
+   ],
+   "description": "forced means Splunk would be added only for its own sake"
+  },
+  "goal_id": {
+   "type": "string",
+   "description": "id of the goal this serves, or empty"
+  },
+  "verdict": {
+   "enum": [
+    "go",
+    "no"
+   ]
+  },
+  "reasons": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "maxItems": 5
+  },
+  "takeaway": {
+   "type": "string",
+   "description": "what the reader should know or do after reading, assuming the lab answers the question"
+  },
+  "measurements": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 6,
+   "description": "the Evidence Contract, fixed before the lab runs",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "what",
+     "kind",
+     "unit",
+     "accept",
+     "min_entities"
+    ],
+    "properties": {
+     "id": {
+      "type": "string",
+      "description": "lowercase letters, digits and underscores"
+     },
+     "what": {
+      "type": "string"
+     },
+     "kind": {
+      "enum": [
+       "count",
+       "latency",
+       "overhead",
+       "failure",
+       "comparison",
+       "limit",
+       "cost"
+      ],
+      "description": "count only proves something exists; the others answer a decision"
+     },
+     "unit": {
+      "type": "string"
+     },
+     "accept": {
+      "type": "object",
+      "required": [
+       "op"
+      ],
+      "properties": {
+       "op": {
+        "enum": [
+         "present",
+         "gt",
+         "ge",
+         "lt",
+         "le",
+         "eq"
+        ]
+       },
+       "value": {
+        "type": "number"
+       }
+      }
+     },
+     "min_entities": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "how many tasks, pods or services must each report a value"
+     }
+    }
+   }
+  }
+ }
+}

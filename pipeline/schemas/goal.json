@@ -1,0 +1,57 @@
+{
+ "type": "object",
+ "required": [
+  "title",
+  "outcome",
+  "audience",
+  "weight",
+  "focus",
+  "communities",
+  "splunk"
+ ],
+ "properties": {
+  "title": {
+   "type": "string",
+   "description": "a few words"
+  },
+  "outcome": {
+   "type": "string",
+   "description": "what success looks like"
+  },
+  "audience": {
+   "type": "string"
+  },
+  "weight": {
+   "type": "integer",
+   "minimum": 1,
+   "maximum": 10,
+   "description": "relative priority"
+  },
+  "focus": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "maxItems": 8,
+   "description": "topic areas to favour"
+  },
+  "communities": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "maxItems": 8
+  },
+  "splunk": {
+   "enum": [
+    "required",
+    "wherever_applicable",
+    "avoid"
+   ]
+  },
+  "until": {
+   "type": "string",
+   "description": "YYYY-MM-DD or empty"
+  }
+ }
+}

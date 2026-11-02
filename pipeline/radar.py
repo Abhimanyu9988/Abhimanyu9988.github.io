@@ -31,7 +31,9 @@ LABELS = {"radar": ("0e8a16", "Topic idea from the radar"),
           "hero-goal": ("b60205", "AWS Hero milestones: Community Builders and other applications"),
           "talk-kit": ("5319e7", "A 10-minute talk built from a lab"),
           "teaching": ("0e8a16", "A student session built from a lab"),
-          "build": ("c2e0c6", "Build-and-teach topic: the lab builds something useful and proves it works")}
+          "build": ("c2e0c6", "Build-and-teach topic: the lab builds something useful and proves it works"),
+          "evidence-failed": ("d93f0b", "The lab ran, but the Evidence Contract was not met"),
+          "editor-stopped": ("d93f0b", "The Editor stopped this draft after one revision")}
 # AWS container projects: releases feed the radar, issues feed the problem finder.
 WATCH = ["aws/containers-roadmap", "aws/karpenter-provider-aws", "aws/amazon-vpc-cni-k8s",
          "kubernetes-sigs/aws-load-balancer-controller", "kubernetes-sigs/aws-ebs-csi-driver",
@@ -372,6 +374,46 @@ def load_insights():
     except Exception:
         return ""
 
+def goal_weights():
+    """{goal id: weight} for active goals. Any failure means no goals, so topic choice falls back to today's."""
+    try:
+        import sources
+        return {str(g.get("id")): int(g.get("weight") or 0) for g in sources.goals()}
+    except Exception as e:
+        print(f"note: goals not read: {str(e)[:200]}"); return {}
+
+def goals_block():
+    try:
+        import sources
+        return json.dumps([{k: g.get(k) for k in ("id", "title", "outcome", "audience", "focus", "splunk", "weight")}
+                           for g in sources.goals()])[:3000]
+    except Exception as e:
+        print(f"note: goals not read: {str(e)[:200]}"); return "[]"
+
+def mode_enforce():
+    import editor
+    return editor.mode() == "enforce"
+
+def investment_gate(ranked):
+    """The Editor's brief and Evidence Contract for the top topics. {cand id: {passed, md, reach_lab}}.
+    Failures are skipped in every mode except enforce, where a topic without a passing brief cannot be picked."""
+    import editor
+    if editor.mode() == "off" or DRY:
+        return {}
+    out = {}
+    for c in ranked[:2]:                        # the budget goes on the likeliest picks, not every candidate
+        try:
+            b = editor.brief(c["title"], c["top"])
+            passed, why = editor.gate1(b)
+            print(f"gate 1 {'pass' if passed else 'fail'}: {c['title']}: {why}")
+            md = safe_text(editor.brief_md(b, passed, why), "[brief left out: failed the link-safety check]")
+            out[c["id"]] = {"passed": passed, "reach_lab": editor.active(),
+                            "md": f"{md}\n\n{editor.marker(b)}" if editor.active() else md}
+        except Exception as e:
+            llm_warn = f"::warning title=editor::brief skipped: {' '.join(str(e).split())[:300]}"
+            print(llm_warn, flush=True)
+    return out
+
 def propose_all(system, prompt, schema):
     """Each of the three proposes topics on its own. Returns [(who, topic)]."""
     import llm
@@ -408,7 +450,8 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
         if top is None:
             continue
         cands.append({"id": f"t{len(cands) + 1}", "title": title, "top": top, "srcs": srcs, "by": [who],
-                      "score": int(t.get("replicability") or 0), "audience": int(t.get("audience") or 0)})
+                      "score": int(t.get("replicability") or 0), "audience": int(t.get("audience") or 0),
+                      "goal": str(t.get("goal") or "")})
     insights = load_insights()
     view = [{"id": c["id"], "title": c["title"], "details": c["top"], "replicability_1_to_10": c["score"],
              "audience_1_to_10": c["audience"],
@@ -419,9 +462,16 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
     for c in cands:
         d = votes[c["id"]]
         print(f"{'ACCEPT' if d['accepted'] else 'reject'} {d['yes']}/3 by={c['by']}: {c['title']}")
+    weight = goal_weights()                    # Abhi's goals outrank the panel's taste; no goals means no change
     ranked = sorted((c for c in cands if votes[c["id"]]["accepted"]),
-                    key=lambda c: (votes[c["id"]]["yes"], c["audience"], len(c["by"]), c["score"]), reverse=True)[:limit]
-    best = next((c for c in ranked if c["score"] >= 7 and c["audience"] >= 6), None)
+                    key=lambda c: (weight.get(c["goal"], 0), votes[c["id"]]["yes"], c["audience"], len(c["by"]), c["score"]),
+                    reverse=True)[:limit]
+    briefs = investment_gate(ranked)
+    if mode_enforce():
+        best = next((c for c in ranked if briefs.get(c["id"], {}).get("passed")), None)
+        ranked = [c for c in ranked if briefs.get(c["id"], {}).get("passed")]
+    else:
+        best = next((c for c in ranked if c["score"] >= 7 and c["audience"] >= 6), None)
     if ranked and not best:
         print("no accepted topic scored 7+ for replicability and 6+ for audience; nothing marked replicate")
     if ranked and not DRY:
@@ -429,7 +479,10 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
             ensure_label(l)
     made = 0
     for c in ranked:
-        body = (f"{c['top']}\n\n{panel_line(c, votes[c['id']])}\n\n{sources_block(c['srcs'])}\n\n"
+        gate = briefs.get(c["id"]) or {}
+        reach = gate.get("md", "") if gate.get("reach_lab") else ""
+        body = (f"{c['top']}\n\n{reach + chr(10) + chr(10) if reach else ''}{panel_line(c, votes[c['id']])}\n\n"
+                f"{sources_block(c['srcs'])}\n\n"
                 "**To run this lab:** reply to this email with **approve** (or comment `approve` here). Close the "
                 f"issue if you're not interested.\n\n{src_marker(c['srcs'])}")
         try:
@@ -441,6 +494,8 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
             print(f"[dry run] would open{' + replicate' if c is best else ''}: {c['title']}\n{body}\n"); continue
         iss = post_issue(c["title"], body, label, extra_labels)
         made += 1
+        if gate.get("md") and not gate.get("reach_lab"):       # shadow: a comment, which the lab never reads
+            comment(iss["number"], f"**Shadow review, nothing here affects this topic.**\n\n{gate['md']}")
         if c is best:
             add_label(iss["number"], "replicate")
             comment(iss["number"], "\u2b50 This is the panel's pick. Reply to this email with **approve** to run its "
@@ -510,6 +565,7 @@ BUILD_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics
     "properties": {
         "title": {"type": "string", "description": "max 75 chars: the outcome the reader gets, e.g. 'Monitor any app "
                   "on EKS with zero code changes'"},
+        "goal": {"type": "string", "description": "id of the goal in GOALS this serves, or empty"},
         "payoff": {"type": "string", "description": "2 sentences: what the reader has running at the end and why "
                    "they'd want it at work"},
         "proof": {"type": "string", "description": "1 sentence: the output that proves it works (traces arriving, "
@@ -521,13 +577,17 @@ BUILD_SCHEMA = {"type": "object", "required": ["topics"], "properties": {"topics
                      "think 'I want to deploy this'"},
         "sources": {"type": "array", "items": {"type": "string"}, "description": "URLs copied exactly from ITEMS"}}}}}}
 
+SPLUNK_RULE = ("Use Splunk Observability Cloud wherever it genuinely fits the topic, aiming for about half of posts over "
+               "time, and never force it in. Otherwise monitor with what the reader would naturally use, such as the "
+               "OpenTelemetry Collector with Prometheus and Grafana, or CloudWatch.")
+
 BUILD_QUESTION = ("Should this become a deploy-and-monitor how-to on Abhimanyu's blog? Every post DEPLOYS something "
                   "on AWS containers with a cross-tech tool (Argo CD, Helm, KEDA, the OpenTelemetry Operator, "
-                  "Terraform...) and then MONITORS it with Splunk Observability Cloud. The posts that do best for "
+                  f"Terraform...) and then MONITORS it. {SPLUNK_RULE} The posts that do best for "
                   "him teach people to build something they want at work, with a big but true promise (his best "
                   "post: a universal metrics integration guide, 'monitor any application with zero code'). Vote yes "
                   "only if a busy ECS/EKS engineer would read the title and think 'I want to set this up', the lab "
-                  "can prove both the deploy and the data arriving in Splunk within the LAB LIMITS, and it doesn't "
+                  "can prove both the deploy and the monitoring data arriving within the LAB LIMITS, and it doesn't "
                   "repeat an existing topic. Vote no for news recaps, niche flags, and anything whose payoff can't "
                   "be shown in real output.")
 
@@ -537,23 +597,27 @@ NO_SPLUNK = ("Splunk Observability Cloud is NOT set up for the lab yet, so for n
              "Insights) instead of Splunk, keeping the same deploy-and-monitor shape.")
 
 def ask_panel(items, existing):
+    import sources
+    mix = sources.post_mix()
     author = (pathlib.Path(__file__).with_name("author.md").read_text()
               if pathlib.Path(__file__).with_name("author.md").exists() else "")
     return propose_all(
         "You pick how-to topics for Abhimanyu's hands-on blog about AWS containers. Every post DEPLOYS something "
-        "on AWS with a cross-tech tool and then MONITORS it with Splunk Observability Cloud, in a disposable lab, "
-        "proving both with real output, so readers can do the same in their own account.",
-        f"Choose up to {MAX_ISSUES + 2} how-tos of the shape 'deploy X on EKS or ECS with Y, then monitor it with "
-        "Splunk Observability Cloud'. Examples of the shape (don't just copy them): 'Monitor EKS with Splunk "
+        "on AWS with a cross-tech tool and then MONITORS it in a disposable lab, proving both with real output, so "
+        "readers can do the same in their own account.",
+        f"Choose up to {MAX_ISSUES + 2} how-tos of the shape 'deploy X on EKS or ECS with Y, then monitor it'. "
+        f"{SPLUNK_RULE} Recent mix: {mix['featuring_splunk']} of the last {mix['recent_posts']} posts feature Splunk. "
+        "Favour topics that serve GOALS, and set each topic's goal field to the goal id. "
+        "Examples of the shape (don't just copy them): 'Monitor EKS with Splunk "
         "Observability Cloud in 15 minutes'; 'Deploy to EKS with Argo CD, turn on self-heal, and watch "
         "reconciliation fix drift'; 'Auto-instrument a Java service on EKS and see its traces in Splunk APM'; "
         "'Scale EKS workloads on a Splunk Observability metric with KEDA'. Each needs a concrete outcome "
         "engineers want at work, done step by step in under an hour, and real proof: the deploy working AND the "
-        "data arriving in Splunk. Mix the cross-tech tools from week to week. Use ITEMS as sources: docs for the "
+        "monitoring data arriving. Mix the cross-tech tools from week to week. Use ITEMS as sources: docs for the "
         "building blocks, AWS What's New and releases for something new, Hacker News for what people care about. "
         "Play to the AUTHOR's strengths (OpenTelemetry, Splunk Observability, Kubernetes, auto-instrumentation). The "
         f"title states the outcome. Do not repeat anything in EXISTING. {'' if SPLUNK_READY else NO_SPLUNK} "
-        f"{NO_REFS}\n\nAUTHOR:\n{author}\n\n"
+        f"{NO_REFS}\n\nAUTHOR:\n{author}\n\nGOALS:\n{goals_block()}\n\n"
         f"LAB LIMITS:\n{LAB_LIMITS}\n\n"
         f"WHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
         f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)}",

@@ -39,5 +39,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           RADAR_MODEL: ${{ vars.RADAR_MODEL }}
+          EDITOR_MODE: ${{ vars.EDITOR_MODE }}
+          EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}

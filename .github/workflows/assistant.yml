@@ -1,0 +1,39 @@
+name: assistant
+# `/goal <what you want>`, `/goal drop <id>` or `/goals` from you on any issue. Your Executive Assistant records the
+# goal, updates the team's plan on the analytics branch, and replies. It cannot publish, spend, deploy or start a lab.
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: read
+concurrency: assistant
+jobs:
+  assistant:
+    if: >-
+      github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && !github.event.issue.pull_request &&
+      github.event.comment.user.login == 'Abhimanyu9988' && startsWith(github.event.comment.body, '/goal')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+      - name: assistant
+        run: python3 pipeline/assistant.py
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE: ${{ github.event.issue.number }}
+          ASSISTANT_MODEL: ${{ vars.ASSISTANT_MODEL }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Data-source adapters. A role names sources in roles/registry.json; each name maps to one function here.
+
+To change where a role gets data, change or add one adapter. Roles and prompts stay the same.
+Every adapter returns plain text or JSON-ready data, and returns an empty value when the source is unavailable,
+so a missing source degrades a role instead of crashing it.
+"""
+import base64, json, pathlib, re
+
+HERE = pathlib.Path(__file__).parent
+ROOT = HERE.parent
+GOALS_PATH, PLAN_PATH = "analytics/goals.json", "analytics/plan.json"
+
+def _analytics_json(path):
+    from radar import HOME_REPO, gh
+    try:
+        f = gh("GET", f"/repos/{HOME_REPO}/contents/{path}?ref=analytics")
+        return json.loads(base64.b64decode(f.get("content", "")).decode("utf-8", "replace") or "{}")
+    except Exception as e:
+        print(f"note: {path} not read: {str(e)[:160]}")
+        return {}
+
+def goals():
+    """Active goals, highest weight first. Empty until Abhi sets one with `/goal`."""
+    got = _analytics_json(GOALS_PATH).get("goals") or []
+    return sorted((g for g in got if isinstance(g, dict) and g.get("status", "active") == "active"),
+                  key=lambda g: -int(g.get("weight") or 0))
+
+def plan():
+    return _analytics_json(PLAN_PATH)
+
+def field_notes():
+    p = HERE / "field-notes.md"
+    if not p.exists():
+        return ""
+    return "\n".join(l for l in p.read_text().splitlines() if l.startswith("- "))[:4000]
+
+def post_mix(last=10):
+    """How many recent lab posts feature Splunk. Deterministic: read from the post files."""
+    posts = sorted((ROOT / "site" / "_posts").glob("*.md"), reverse=True)
+    posts = [p for p in posts if "open-source-summary" not in p.name][:last]
+    splunk = sum(bool(re.search(r"(?i)splunk", p.read_text()[:600])) for p in posts)
+    return {"recent_posts": len(posts), "featuring_splunk": splunk}
+
+def roles():
+    return {k: v.get("mission", "") for k, v in json.loads((HERE / "roles" / "registry.json").read_text())["roles"].items()
+            if v.get("status") == "active"}
+
+def agents_md():
+    p = ROOT / "AGENTS.md"
+    return p.read_text()[:8000] if p.exists() else ""
+
+ADAPTERS = {"goals": goals, "plan": plan, "field_notes": field_notes, "post_mix": post_mix, "roles": roles,
+            "agents_md": agents_md}
+# Supplied by the caller at run time, not read here: the role's task provides them.
+RUNTIME = {"web_search", "pr_diff", "scanner_reports", "insights"}
+
+def known(name):
+    return name in ADAPTERS or name in RUNTIME

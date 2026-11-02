@@ -1,7 +1,7 @@
 name: tests
 on:
   pull_request:
-    paths: ["pipeline/**", "tests/**", ".github/workflows/**"]
+    paths: ["pipeline/**", "tests/**", ".github/workflows/**", "labs/**", "AGENTS.md"]
   push:
     branches: [main]
     paths: ["pipeline/**", "tests/**"]
@@ -18,3 +18,6 @@ jobs:
       - run: python3 tests/test_safety.py
       - run: pip install markdown==3.10.3 matplotlib==3.10.7 python-frontmatter pyyaml
       - run: python3 tests/test_pipeline.py
+      - run: python3 tests/test_agents.py
+      - run: python3 pipeline/evaluate.py
+        env: { REPO: "${{ github.repository }}" }

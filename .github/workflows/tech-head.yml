@@ -1,0 +1,59 @@
+name: tech-head
+# Reviews every change to the pipeline: repo rules and scanners first, then one AI reviewer. It comments on the PR.
+# Code from the pull request is only ever read here, never run: the reviewer runs from the base branch, and the PR is
+# checked out as data with no credentials. Forks are skipped, so their code never gets near a secret.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ["pipeline/**", ".github/**", "infra/**", "tests/**", "AGENTS.md"]
+permissions:
+  contents: read
+  pull-requests: read
+concurrency: { group: "tech-head-${{ github.event.pull_request.number }}", cancel-in-progress: true }
+jobs:
+  review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: pr
+          fetch-depth: 0
+          persist-credentials: false
+      - name: scanners
+        run: |
+          pip install bandit==1.9.4 zizmor==1.31.1
+          mkdir -p reports
+          bandit -q -r pr/pipeline -f json -o reports/bandit.json || true
+          zizmor --offline --format=json pr/.github/workflows > reports/zizmor.json || true
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-issues: write
+          permission-pull-requests: write
+      - name: review
+        # The first PR that adds this file has no reviewer on its base branch yet.
+        if: hashFiles('base/pipeline/tech_head.py') != ''
+        run: python3 base/pipeline/tech_head.py
+        env:
+          PR_DIR: pr
+          REPORTS_DIR: reports
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          TECH_HEAD_MODE: ${{ vars.TECH_HEAD_MODE }}
+          TECH_HEAD_MODEL: ${{ vars.TECH_HEAD_MODEL }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

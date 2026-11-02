@@ -1,0 +1,15 @@
+{
+ "type": "object",
+ "required": [
+  "version",
+  "roles"
+ ],
+ "properties": {
+  "version": {
+   "type": "integer"
+  },
+  "roles": {
+   "type": "object"
+  }
+ }
+}

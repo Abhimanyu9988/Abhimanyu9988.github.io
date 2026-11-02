@@ -2,7 +2,8 @@
 import io, json, os, pathlib, shutil, sys, tempfile
 HOME = "Abhimanyu9988/Abhimanyu9988.github.io"
 PIPE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline")
-os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", ISSUE="4", RUN_ID="123456789")
+os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", ISSUE="4", RUN_ID="123456789",
+                  EDITOR_MODE="off", MODEL_AUTO="true")
 sys.path.insert(0, PIPE)
 import radar as r, llm, lab, draft, check_plan
 def _no_network(*a, **k):
@@ -481,9 +482,8 @@ check("headline round: ChatGPT writes five, Claude vetoes the untrue pick, the n
       and "AUTHOR:" in writer_prompt and "observability agents" in writer_prompt and "412 reactions" in writer_prompt)
 _pr = next(b for m, p_, b in sent if p_.endswith("/pulls"))
 pr_body_first = _pr["body"]
-check("LinkedIn round: all three write, the top-voted post that fails the fact check is skipped for the next",
-      "gemini linkedin" not in text and "LinkedIn round:** the panel picked ChatGPT" in _pr["body"]
-      and "Gemini (3/3)" in _pr["body"])
+check("LinkedIn round: a post that fails the fact check never ships, and no version wins by default",
+      "gemini linkedin" not in text and "no version won 2 of 3 votes" in _pr["body"])
 check("headline round shown in the PR, with the other options and the veto",
       "Headline round:** ChatGPT wrote five titles" in _pr["body"] and "Overpromise title (vetoed" in _pr["body"])
 check("checklist no longer asks Abhi to write his own line", "add a line from your own experience" not in _pr["body"])

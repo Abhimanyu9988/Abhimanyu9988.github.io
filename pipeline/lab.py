@@ -582,7 +582,8 @@ def main():
                 os.environ.get(k) for k in SPLUNK_VARS):
             raise RuntimeError("this topic monitors with Splunk Observability Cloud, but SPLUNK_REALM, "
                                "SPLUNK_ACCESS_TOKEN and SPLUNK_API_TOKEN are not all saved for the aws-lab environment")
-        rules = LAB_RULES + ("\n\n" + BUILD_RULES if kind == "build" else "")
+        import editor
+        rules = LAB_RULES + ("\n\n" + BUILD_RULES if kind == "build" else "") + editor.lab_rules(issue.get("body"))
         goal = ("build something useful on AWS and prove it works with real output" if kind == "build" else
                 "reproduce a real problem on AWS and then fix it")
         lab_id = f"{slug[:24].strip('-')}-{RUN_ID[-6:]}"
