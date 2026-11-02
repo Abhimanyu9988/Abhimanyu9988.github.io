@@ -1,0 +1,26 @@
+{
+ "goals": [
+  {
+   "title": "Splunk MVP + AWS community visibility",
+   "outcome": "Become a Splunk MVP and get noticed by the AWS community by January 2027, by publishing two articles a week that engineers actually share. Note: Splunk MVP program rules and criteria must be checked against the official source before planning; none are assumed here.",
+   "audience": "Engineers in the Splunk and AWS communities",
+   "weight": 8,
+   "focus": [
+    "Splunk",
+    "AWS",
+    "engineering how-tos",
+    "shareable technical articles"
+   ],
+   "communities": [
+    "Splunk community",
+    "AWS community"
+   ],
+   "splunk": "required",
+   "until": "2027-01-31",
+   "id": "splunk-mvp-aws-community-visibility",
+   "status": "active",
+   "stated": "My goal is to become a Splunk MVP and get noticed by the AWS community by January 2027. I want two article a week that engineers actually share.",
+   "created": "2026-11-02"
+  }
+ ]
+}
