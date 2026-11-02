@@ -36,7 +36,7 @@ jobs:
           runs = re.findall(r"<!-- lab-run: (\d+) -->", body)    # written after all model text, so the last one is ours
           run = runs[-1] if runs else None
           if not run:                                            # a PR opened before the marker existed
-              found = re.search(r"workflow run (\d+)", body)
+              found = re.search(r"min total \(workflow run (\d+)\)", body) or re.search(r"workflow run (\d+)", body)
               run = found.group(1) if found else None
           issue = re.search(r"Closes #(\d+)\s*\Z", body.strip()) or re.search(r"\*\*Topic:\*\* issue no\. (\d+)", body)
           if not (run and issue):

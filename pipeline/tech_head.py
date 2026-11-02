@@ -169,11 +169,12 @@ def scanner_blockers(reports, changed):
     It matches by file, so an old finding in a workflow a PR touches also blocks. That is advisory until blocking mode."""
     out = []
     for item in (reports.get("zizmor") or {}).get("items") or []:
-        text, grade = json.dumps(item), item.get("determinations") or {}
-        hit = next((p for p in changed if p in text), None)
-        if item.get("ident") == "template-injection" and hit and grade.get("severity") == "High" and grade.get("confidence") != "Low":
-            where = ((item.get("locations") or [{}])[0].get("concrete") or {}).get("location") or {}
-            row = (where.get("start_point") or {}).get("row")
+        grade = item.get("determinations") or {}
+        spot = next((l for l in item.get("locations") or [] if (l.get("symbolic") or {}).get("kind") == "Primary"), {})
+        local = ((spot.get("symbolic") or {}).get("key") or {}).get("Local") or {}
+        hit = str(local.get("verbatim_path") or local.get("given_path") or "").removeprefix("pr/")
+        if item.get("ident") == "template-injection" and hit in changed and grade.get("severity") == "High" and grade.get("confidence") != "Low":
+            row = (((spot.get("concrete") or {}).get("location") or {}).get("start_point") or {}).get("row")
             out.append({"severity": "blocker", "category": "security", "file": hit, "rule": "zizmor-template-injection",
                         "line": row + 1 if isinstance(row, int) else 0,
                         "problem": str(item.get("desc"))[:200], "fix": "Pass the value through env and quote it."})
@@ -187,7 +188,7 @@ def complete(reports, ai, left=0):
     gaps += [f"{ai['scanner_items_cut']} scanner item(s) were not sent to the reviewer"] if (ai or {}).get("scanner_items_cut") else []
     return gaps + ([] if ai else ["AI review did not run"])
 
-def fit_scanners(rel, limit=5500):
+def fit_scanners(rel, limit=20000):
     """(reports, items cut). Each scanner gets its own share, so one cannot push another out of the prompt."""
     out, cut = {}, 0
     for name, r in rel.items():
@@ -285,7 +286,7 @@ def main():
     findings, dropped, blocked = verdict(found, ai, diff)
     left = prioritise(diff)[1]
     text = markdown(findings, ai, dropped, blocked, skipped, reports, left)
-    print("\n".join(f"| {line}" for line in text.splitlines()))   # the prefix stops model text acting as a runner command
+    print("\n".join(f"| {line}" for line in text.replace("##[", "# #[").splitlines()))   # keeps model text from being a runner command
     gaps = complete(reports, ai, left)
     fallback = (f"**Tech Head review: {'code rules found a blocker' if blocked else 'finished'}.** {len(findings)} finding(s), "
                 f"{sum(f.get('severity') == 'blocker' for f in findings)} marked blocker. "

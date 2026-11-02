@@ -64,18 +64,23 @@ def measurements(logs):
                                                  "file": name, "line": n})
     return out
 
-PRINTF = re.compile(r"%[-0-9.]*[a-z]")
+TYPED = re.compile(r"[~+\-]?\.?\d[\w.,:%]*[;)]*")      # 35, ~35, 1e5, 5m30s: not $v, [0-9]+, <n2> or %.2f
+
+def constants_in(text):
+    """Names given one literal value and never changed. A counter starts at 0 and is computed, not typed."""
+    return {n for n in {m[1] for m in ASSIGNED.finditer(text)}
+            if len(re.findall(rf"(?<![\w$]){n}\+?=(?!=)", text)) == 1
+            and not re.search(rf"\(\(\s*{n}\b|\b(?:for|read|let)\s+{n}\b", text)}
 
 def typed_values(scripts):
     """{measure id: True} for measurements a script types in instead of computing."""
     typed = {}
     for text in (scripts or {}).values():
-        constants = {m[1] for m in ASSIGNED.finditer(text)}
+        constants = constants_in(text)
         for m in LITERAL.finditer(text):
             value = m[2].strip()
             name = re.fullmatch(r"\$\{?([A-Za-z_]\w*)\}?", value)
-            typed_number = re.search(r"\d", value) and not re.search(r"[$\\{}]", value) and not PRINTF.search(value)
-            if typed_number or (name and name[1] in constants):
+            if TYPED.fullmatch(value) or (name and name[1] in constants):
                 typed[m[1]] = True
     return typed
 

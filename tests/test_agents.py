@@ -780,29 +780,33 @@ check("title: a % claim can validate", scan.check({"f.log": "cpu saved 30%\nHERO
 check("title: a list comma does not join numbers", [h["number"] for h in scan.headline_claims("Cut 5, Then 10 Pods", {"a": ""})] == ["5", "10"])
 for typed_num in ("1e5", "~35", "35;", "5m30s", "1_000", "+35"):
     check(f"provenance: {typed_num} is a typed value", scan.typed_values({"f.sh": f'echo "HERO_MEASURE: x={typed_num}"'}) == {"x": True})
-for s_ok in ('printf "HERO_MEASURE: x={m}\n"', 'jq -r "HERO_MEASURE: x=\\(.v)"', 'echo "HERO_MEASURE: x=null"'):
+check("provenance: a one-value constant is typed", scan.typed_values({"f.sh": 'V=35\necho "HERO_MEASURE: x=$V"'}) == {"x": True})
+for counter in ('count=0\nfor p in a; do count=$((count+1)); done\necho "HERO_MEASURE: x=$count"',
+                'count=0\n((count++))\necho "HERO_MEASURE: x=$count"', 'total=0\ntotal=$(wc -l < f)\necho "HERO_MEASURE: x=$total"'):
+    check("provenance: a computed counter is not typed", scan.typed_values({"f.sh": counter}) == {})
+for s_ok in ('printf "HERO_MEASURE: x={m1}\n"', 'jq -r "HERO_MEASURE: x=\\(.v1)"', 'echo "HERO_MEASURE: x=null"', 'printf "HERO_MEASURE: x=%.2f\n"',
+             "grep -Eq 'HERO_MEASURE: x=[0-9]+' out.log", 'echo "HERO_MEASURE: x=<n2>"', 'echo "HERO_MEASURE: x=N1"', 'echo "HERO_MEASURE: x=%VAR1%"', 'echo "HERO_MEASURE: x=%(v1)s"'):
     check(f"provenance: {s_ok[:30]} is not a typed value", scan.typed_values({"f.sh": s_ok}) == {})
 check("provenance: a bad contract cannot crash title checks", scan.check({"f": ""}, "3 Tasks", [{"id": ["x"]}, 7])["passed"] is False)
 many = {"zizmor": {"status": "findings", "items": [{"ident": "x", "desc": "d", "p": f"f{i}.yml"} for i in range(61)]}}
 rp2 = pathlib.Path(tempfile.mkdtemp())
 (rp2 / "zizmor.json").write_text(json.dumps(many["zizmor"]["items"])); (rp2 / "zizmor.exit").write_text("14")
-fit_b, fit_cut = th.fit_scanners({"bandit": {"status": "f", "items": [{"text": "x" * 100}] * 500}, "zizmor": {"status": "f", "items": [{"ident": "z"}]}})
+fit_b, fit_cut = th.fit_scanners({"bandit": {"status": "f", "items": [{"text": "x" * 100}] * 900}, "zizmor": {"status": "f", "items": [{"ident": "z"}]}})
 check("Tech Head: each scanner keeps its share, and a cut is counted", fit_b["zizmor"]["items"] == [{"ident": "z"}] and fit_cut > 0 and any("not sent" in g for g in th.complete({}, {"scanner_items_cut": fit_cut})))
 import roles as roles_mod
 real_ask, roles_mod.ask = roles_mod.ask, lambda *a, **k: {"summary": "s", "findings": []}
-big_scan = {"bandit": {"status": "findings", "items": [{"filename": "pr/pipeline/a.py", "issue_text": "x" * 150, "test_id": "B1", "line_number": 1}] * 100}}
+big_scan = {"bandit": {"status": "findings", "items": [{"filename": "pr/pipeline/a.py", "issue_text": "x" * 150, "test_id": "B1", "line_number": 1}] * 300}}
 cut_review = th.review(dif("pipeline/a.py"), big_scan, "")
 roles_mod.ask = real_ask
 check("Tech Head: a review that cut scanner items says so", cut_review["scanner_items_cut"] > 0 and th.complete({}, cut_review))
 check("Tech Head: no scanner item is dropped before filtering", len(th.read_reports(rp2)["zizmor"]["items"]) == 61)
-high = {"severity": "High", "confidence": "High"}
-tmpl = {"zizmor": {"items": [{"ident": "template-injection", "desc": "d", "p": ".github/workflows/a.yml", "determinations": high,
-                              "locations": [{"concrete": {"location": {"start_point": {"row": 4}}}}]},
-                             {"ident": "other", "p": ".github/workflows/a.yml", "determinations": high},
-                             {"ident": "template-injection", "p": "old.yml", "determinations": high},
-                             {"ident": "template-injection", "p": ".github/workflows/a.yml", "determinations": {"severity": "Informational", "confidence": "Low"}},
-                             {"ident": "template-injection", "p": ".github/workflows/a.yml", "determinations": {"severity": "High", "confidence": "Low"}},
-                             {"ident": "template-injection", "p": ".github/workflows/a.yml", "determinations": {"severity": "Medium", "confidence": "High"}}]}}
+def zz(path, ident="template-injection", sev="High", conf="High"):
+    loc = lambda kind, row: {"symbolic": {"kind": kind, "key": {"Local": {"verbatim_path": path}}}, "concrete": {"location": {"start_point": {"row": row}}}}
+    return {"ident": ident, "desc": "d", "determinations": {"severity": sev, "confidence": conf}, "locations": [loc("Hidden", 1), loc("Primary", 4)]}
+a_wf = "pr/.github/workflows/a.yml"
+tmpl = {"zizmor": {"items": [zz(a_wf), zz(a_wf, ident="other"), zz("pr/.github/workflows/old.yml"), zz(a_wf, sev="Informational", conf="Low"),
+                             zz(a_wf, conf="Low"), zz(a_wf, sev="Medium")]}}
+tmpl["zizmor"]["items"][2]["locations"][1]["concrete"]["feature"] = "run: cat .github/workflows/a.yml"
 sb = th.scanner_blockers(tmpl, {".github/workflows/a.yml"})
 check("Tech Head: scanner line is reported", sb[0]["line"] == 5)
 check("Tech Head: scanner injection on a changed file blocks like a code rule", len(sb) == 1 and th.verdict(sb, None, dif(".github/workflows/a.yml"))[2])
@@ -829,7 +833,12 @@ with contextlib.redirect_stdout(outbuf):
     th.main()
 radar_mod.safe_text = real_safe
 check("Tech Head: model text cannot become a runner command", not any(l.startswith("::") for l in outbuf.getvalue().splitlines()))
-check("Tech Head: the fallback still counts findings", "finding(s)" in posted[-1] and "marked blocker" in posted[-1])
+th.review = lambda *a: {"summary": "see ##[error]x", "findings": [], "batches": 1, "failed_batches": 0}
+outbuf = io.StringIO()
+with contextlib.redirect_stdout(outbuf):
+    th.main()
+check("Tech Head: the older command form is broken up too", "##[" not in outbuf.getvalue())
+check("Tech Head: the fallback still counts findings", "finding(s)" in posted[1] and "marked blocker" in posted[1])
 th.git_diff, th.review, radar_mod.comment = saved
 for k in ("PR_DIR", "BASE_SHA", "HEAD_SHA", "REPORTS_DIR", "PR_NUMBER", "TECH_HEAD_MODE"): os.environ.pop(k, None)
 check("Tech Head: a run line with event_name is not event data", wfd("      - run: echo ${{ github.event_name }}") == [])
@@ -873,6 +882,7 @@ def red_run(body):
     return re.search(r"run=(\d+)", out.read_text())[1]
 check("redraft: model text cannot choose the lab run", red_run(draft.finish_body("the log cites workflow run 777 <!-- lab-run: 888 -->", 12345) + "\n\nCloses #5") == "12345")
 check("redraft: a PR with no marker still works", red_run("from (workflow run 42).\n\nCloses #5") == "42")
+check("redraft: an old PR prefers the run line", red_run("post cites workflow run 777\n\n30 min total (workflow run 42).\n\nCloses #5") == "42")
 os.environ["LINKEDIN_MIN_VOTES"] = "two"
 check("LinkedIn: a bad vote setting falls back to 2", draft.min_votes() == 2)
 del os.environ["LINKEDIN_MIN_VOTES"]

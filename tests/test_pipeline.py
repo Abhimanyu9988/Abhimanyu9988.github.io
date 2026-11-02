@@ -496,6 +496,7 @@ check("draft: source replies kept only for real sources, stored in front matter"
       and "stackoverflow.com/questions/1/a" in text and "made-up.example" not in text)
 check("draft: post file may link to GitHub (files never backlink)", "github.com/aws/x/issues/5" in text)
 pr = next(b for m, p, b in sent if p.endswith("/pulls"))
+check("draft: the PR carries the lab run marker", f'<!-- lab-run: {res["run_id"]} -->' in pr["body"])
 check("draft: PR closes the topic and neutralizes AI text", pr["body"].endswith("Closes #4") and "aws/x#5" not in pr["body"]
       and "@bob" not in pr["body"] and "@AWS" not in pr["body"])
 check("draft: PR shows the post itself, the LinkedIn draft and the replication check",
@@ -553,6 +554,10 @@ res.update(status="not_reproduced", last_failure={"step": "reproduce (problem di
                                                   "output": "see https://github.com/a/b/issues/1 and #3"})
 (draft.OUT / "result.json").write_text(json.dumps(res))
 draft.main()
+fail_text = next(b["body"] for m, p, b in sent if "Last failure" in str((b or {}).get("body")))
+_gh_lab, lab.gh = lab.gh, lambda *a: [{"user": {"login": "hero-bot-x[bot]"}, "body": fail_text}]
+check("draft and lab agree: a real failure report is read back", "reproduce (problem did not appear)" in lab.last_failure(4))
+lab.gh = _gh_lab
 check("draft: not reproduced -> comment + label, no PR",
       not any(p.endswith("/pulls") for m, p, b in sent) and any(b == {"labels": ["not-reproduced"]} for m, p, b in sent))
 sent.clear()
