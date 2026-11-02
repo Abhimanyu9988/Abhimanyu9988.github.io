@@ -139,3 +139,11 @@ drafts. The searches now skip his own repos, so OpenTelemetry assignments and co
 
 He cares about open source and what goes public, and the first board mixed that with the team's own plumbing. It now shows
 articles and his PRs in other projects. Pipeline PRs, failed runs and agent tasks stay with the CTO and the admin page.
+
+## 2026-11-02: The board is a web page of movable cards
+
+Abhi wanted a page with blocks he can move, opened from Slack. The board now holds only public GitHub items and his topic ideas,
+which are already on the public branch, so the page can be public. It isn't in the site menu or search. A claude.ai artifact
+can't load live data from GitHub, and a GitHub Project needs a new token and can't be tested here. Moves stay in his browser,
+so they don't follow him between devices. Syncing them needs somewhere to save them, such as a Lambda with a passphrase.
+The Slack message now gives counts and a link. `board.json` changes only when a card does, to avoid a commit every 10 minutes.
