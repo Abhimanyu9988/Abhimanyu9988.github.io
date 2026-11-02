@@ -8,7 +8,8 @@
   "urls",
   "needs_abhi",
   "close_prs",
-  "ideas"
+  "ideas",
+  "done_tasks"
  ],
  "properties": {
   "stance": {
@@ -72,6 +73,14 @@
     "type": "string"
    },
    "description": "article topics Abhi asked the team to try, in his words, or empty"
+  },
+  "done_tasks": {
+   "type": "array",
+   "maxItems": 5,
+   "items": {
+    "type": "string"
+   },
+   "description": "exact titles of tasks he says are done or wants removed"
   }
  }
 }
