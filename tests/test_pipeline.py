@@ -200,7 +200,7 @@ sent_issue = []
 r.DRY = False
 real_post_issue = r.post_issue
 r.ensure_label = lambda l: None
-r.post_issue = lambda t, b, label, extra=(): (sent_issue.append((label, tuple(extra))) or {"number": 1})
+r.post_issue = lambda t, b, label, extra=(), assign=True: (sent_issue.append((label, tuple(extra))) or {"number": 1})
 r.add_label = lambda n, l: None
 real_comment = r.comment; r.comment = lambda n, b, own_links=False: None
 r.post_topics(props, items, [], set(), "radar", lambda t, srcs: "x", 3, question=r.BUILD_QUESTION, extra_labels=("build",))

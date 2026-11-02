@@ -272,7 +272,7 @@ def git_diff(repo, base, head):
                           capture_output=True).stdout.decode("utf-8", "replace")
 
 def main():
-    import roles
+    import budget, roles
     from radar import comment, safe_text
     diff = git_diff(os.environ["PR_DIR"], os.environ["BASE_SHA"], os.environ["HEAD_SHA"])
     reports = read_reports(os.environ.get("REPORTS_DIR"))
@@ -282,7 +282,7 @@ def main():
     else:
         try:
             ai = review(diff, reports, roles.data("tech_head").get("agents_md", ""))
-        except Exception as e:                     # no key, budget, or a model outage: code rules still stand
+        except (Exception, budget.BudgetStop) as e:   # no key, budget, or a model outage: code rules still stand
             skipped = str(e)[:200]
     findings, dropped, blocked = verdict(found, ai, diff)
     left = prioritise(diff)[1]

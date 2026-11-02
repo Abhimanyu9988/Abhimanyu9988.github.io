@@ -108,6 +108,38 @@
     "field_notes"
    ],
    "budget": {}
+  },
+  "cto": {
+   "mission": "Run the team, track progress and spending, and answer Abhi with evidence.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "CTO_MODEL",
+   "prompt": "cto.md",
+   "outputs": [
+    "ctoreply"
+   ],
+   "data_sources": [
+    "goals",
+    "plan",
+    "post_mix",
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 12000,
+    "max_calls": 3
+   }
+  },
+  "spend_tracker": {
+   "mission": "Keep every dollar the team spends recorded, and stop new paid work at the monthly limit.",
+   "module": "pipeline/budget.py",
+   "status": "active",
+   "vendor": "code",
+   "model_env": "",
+   "data_sources": [],
+   "budget": {},
+   "outputs": []
   }
  }
 }

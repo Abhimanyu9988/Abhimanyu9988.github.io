@@ -343,11 +343,16 @@ real_pv = llm.panel_votes
 llm.panel_votes = lambda v, q, c="", tier="scout": {x["id"]: {"votes": {w: ("yes", "r") for w in llm.PANEL}, "yes": 3, "accepted": True} for x in v}
 props = [("claude", {"title": "Topic one", "sources": ["https://x.y/1"], "replicability": 9, "audience": 9})]
 os.environ["EDITOR_MODE"] = "shadow"
+import analytics as analytics_s
+saved_briefs, real_w, real_b = [], analytics_s.write_file, analytics_s.ensure_branch
+analytics_s.write_file, analytics_s.ensure_branch = (lambda path, *a: saved_briefs.append(path)), (lambda: None)
 r.post_topics(props, [{"url": "https://x.y/1"}], [], set(), "radar", lambda t, s: "top", 3)
+analytics_s.write_file, analytics_s.ensure_branch = real_w, real_b
 bodies = [x[2] for x in sent if x[1].endswith("/issues")]
 notes = [x[2]["body"] for x in sent if x[1].endswith("/comments")]
 check("shadow: the issue a lab reads holds no brief", "hero-brief" not in bodies[0]["body"] and "Evidence Contract" not in bodies[0]["body"])
-check("shadow: the brief arrives as a comment, after the issue", any("Shadow review" in n for n in notes))
+check("shadow: the brief is saved, not emailed", saved_briefs == ["analytics/brief-7.json"] and not any("Shadow review" in n for n in notes))
+check("emails: a topic is not assigned to Abhi", bodies[0].get("assignees") == [])
 sent.clear()
 def hung(t, d): raise OSError("timed out")
 editor.brief = hung
@@ -955,6 +960,106 @@ llm.call = real_llm_call; llm._models.pop("gemini", None)
 check("goals: a plural still matches", r.goal_score({"goal": "a", "title": "Why Sidecars Eat Memory"}, {"a": {"weight": 5, "focus": ["sidecar"]}}) == 5)
 check("goals: focus matches whole words only", r.goal_score({"goal": "a", "title": "Hotels failed"}, {"a": {"weight": 5, "focus": ["otel", "ai"]}}) == 0)
 check("assistant: a need is never listed twice", len(assistant.clean_plan({"focus": "f", "assignments": [{"role": "nobody", "task": "t"}], "needs": ["a"]})["needs"]) == 2)
+
+# ---------- budget and CTO ----------
+import budget, cto, radar as radar_b
+b_month = budget.month()
+listing = [{"name": f"spend-{b_month}-1-1-9-radar-c1200.json"}, {"name": f"spend-{b_month}-2-1-9-draft-c3850.json"},
+           {"name": "spend-2020-01-1-1-9-radar-c9900.json"}, {"name": "goals.json"}]
+real_rgh, real_read, real_write2 = radar_b.gh, analytics_mod.read_file, analytics_mod.write_file
+radar_b.gh = lambda m, p, b=None: listing if "/contents/analytics" in p else []
+files_b = {}
+analytics_mod.read_file = lambda path, ref="analytics": (files_b.get(path, ""), "sha" if path in files_b else None)
+analytics_mod.write_file = lambda path, text, sha, msg: files_b.__setitem__(path, text)
+check("budget: only this month counts, from names alone", budget.spent() == (50.5, {"radar": 12.0, "draft": 38.5}))
+check("budget: the default limit is 50", budget.limit() == 50)
+env_b = dict(os.environ)
+os.environ.update(GITHUB_ACTIONS="true", GITHUB_WORKFLOW="radar", HERO_PUBLISH="1", BOT_TOKEN="t")
+budget._checked = False
+try:
+    budget.check(); b_stopped = False
+except budget.BudgetStop as e:
+    b_stopped = e.code == 0
+check("budget: paid work stops at the limit, as a clean exit", b_stopped)
+check("budget: a stop is not an Exception, so nothing swallows it", not issubclass(budget.BudgetStop, Exception))
+os.environ["BUDGET_EXEMPT"] = "1"; budget._checked = False; budget.check(); del os.environ["BUDGET_EXEMPT"]
+check("budget: an exempt job keeps running", True)
+budget._checked = False
+files_b[budget.LIMITS] = json.dumps({b_month: 75})
+budget.check()
+check("budget: a raised limit lets work continue", budget.limit() == 75)
+del files_b[budget.LIMITS]
+budget._checked = False
+radar_b.gh = lambda m, p, b=None: (_ for _ in ()).throw(RuntimeError("down"))
+try:
+    budget.check(); b_closed = False
+except budget.BudgetStop:
+    b_closed = True
+check("budget: an unreadable total spends nothing", b_closed)
+radar_b.gh = real_rgh
+budget._checked = False
+os.environ.update(GITHUB_WORKFLOW="tests")
+budget.check()
+check("budget: the test workflow never stops", not budget.in_pipeline())
+os.environ.update(GITHUB_WORKFLOW="replicate"); budget.EXTRA.clear()
+budget.add_lab({"usd": 0.5, "aws_used": True})
+check("budget: a lab counts its models plus the AWS estimate", budget.EXTRA == [1.5])
+os.environ["FROM_RUN"] = "9"; budget.EXTRA.clear(); budget.add_lab({"usd": 0.5, "aws_used": True}); del os.environ["FROM_RUN"]
+check("budget: a redraft from an old lab is not counted twice", budget.EXTRA == [])
+budget.EXTRA.append(1.234)
+saved_ledger = list(llm.LEDGER); llm.LEDGER.clear()
+real_branch2, analytics_mod.ensure_branch = analytics_mod.ensure_branch, lambda: None
+budget.record()
+analytics_mod.ensure_branch = real_branch2
+llm.LEDGER.extend(saved_ledger)
+b_written = [k for k in files_b if k.startswith("analytics/spend-")]
+check("budget: a job records its spend, rounded up", len(b_written) == 1 and budget.SPEND.fullmatch(b_written[0].split("/")[1])[2] == "124")
+budget.EXTRA.clear()
+os.environ.clear(); os.environ.update(env_b)
+for said, want in (("raise budget to 75", 75), ("Please increase the budget to $120 for now", 120), ("set budget 60", 60),
+                   ("should we raise budget to 75?", None), ("the budget was 50", None), ("raise budget to 99999", None), ("I like this", None)):
+    check(f"budget: reads {said!r}", budget.requested_limit(said) == want)
+budget.set_limit(80)
+check("budget: a raise applies to this month only", json.loads(files_b[budget.LIMITS]) == {b_month: 80})
+del files_b[budget.LIMITS]
+ctoy = __import__("yaml").safe_load((ROOT / ".github/workflows/cto.yml").read_text())
+cif = ctoy["jobs"]["cto"]["if"]
+check("cto: only Abhi on the desk issue starts it", "comment.user.login == 'Abhimanyu9988'" in cif and "cto-desk" in cif and "issue.pull_request" in cif)
+check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[True] and ctoy["jobs"]["cto"]["steps"][0]["with"]["ref"] == "main")
+check("cto: its comment reaches code only through env", "${{" not in ctoy["jobs"]["cto"]["steps"][2]["run"])
+replies, real_comment, real_ask2, real_le, real_prog, real_thread = [], cto.comment, roles_mod.ask, cto.link_exists, cto.progress, cto.thread
+cto.comment = lambda n, t: replies.append(t)
+cto.progress = lambda: {"spent": 1}
+cto.thread = lambda n: []
+cto.link_exists = lambda u: u == "https://good.example/bill"
+roles_mod.ask = lambda *a, **k: {"stance": "disagree", "reply": "No, see https://bad.example/x for why.", "goal": "", "task": {"title": "", "owner": ""},
+                                 "urls": ["https://good.example/bill", "https://nope.example/y"]}
+real_data, roles_mod.data = roles_mod.data, lambda r: {}
+cto.answer("monitor my azure bill", 5)
+check("cto: only confirmed links reach Abhi", "good.example" in replies[-1] and "nope.example" not in replies[-1] and "bad.example" not in replies[-1] and "could not be confirmed" in replies[-1])
+roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "Watch the bill", "owner": "spend_tracker"}, "urls": []}
+cto.answer("track spending", 5)
+check("cto: a task reaches an active role", json.loads(files_b[cto.TASKS])["tasks"][0]["owner"] == "spend_tracker" and "Assigned" in replies[-1])
+roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "t", "owner": "ghost"}, "urls": []}
+cto.answer("hire someone", 5)
+check("cto: an unknown role gets no work", "No ghost role exists" in replies[-1])
+limit_calls = []
+roles_mod.ask = lambda *a, **k: limit_calls.append(1)
+cto.answer("raise budget to 75", 5)
+check("cto: a limit change never reaches a model", not limit_calls and "$75" in replies[-1])
+del files_b[budget.LIMITS]
+roles_mod.ask, roles_mod.data = real_ask2, real_data
+cto.comment, cto.link_exists, cto.progress, cto.thread = real_comment, real_le, real_prog, real_thread
+check("cto: plain http is never confirmed", cto.link_exists("http://example.com") is False)
+pub = cto.public_status({"waiting": ["a"], "shipped": ["b"], "spent": 9, "limit": 50, "by_job": {}, "tasks": [{"title": "secret", "owner": "x"}], "failed_runs": ["x"]})
+check("team page: no spending, tasks or failures", "secret" not in json.dumps(pub) and "spent" not in pub and "tasks" not in pub and "failed" not in json.dumps(pub))
+check("team page: the page builds its text safely", "innerHTML" not in (ROOT / "site/team.md").read_text())
+md = cto.digest_md({"waiting": ["Post A"], "shipped": [], "failed_runs": [], "spent": 3.5, "limit": 50, "tasks": [{"title": "t", "owner": "editor"}]})
+check("digest: budget, waiting and work in progress are shown", all(x in md for x in ("$3.50 of $50.00", "Post A", "editor: t")))
+ry = __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())
+rs = ry["jobs"]["radar"]["steps"][-1]
+check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])
+radar_b.gh, analytics_mod.read_file, analytics_mod.write_file = real_rgh, real_read, real_write2
 
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

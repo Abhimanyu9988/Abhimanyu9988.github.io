@@ -32,9 +32,14 @@ Do not add approval requests, manual commands or setup steps for routine decisio
    because no job runs code from the PR. Scanners run in a job with no secrets. See `docs/merge-behavior.md`.
    Manual workflows that hold keys run only from `main`, and check out `main` explicitly.
 10. **Secrets are never committed or printed.** Do not put marketing data or secrets in the lab AWS account.
-11. **People approve** production deploys, paid services, new infrastructure and external publication.
-12. **No agent starts another agent.** The order is fixed in workflows. Editor, Tech Head and Executive Assistant have
+11. **People approve** production deploys, new paid services, major infrastructure, credentials and external publication.
+    Disposable labs run on their own, inside the monthly budget.
+12. **No agent starts another agent.** The order is fixed in workflows. Editor, Tech Head, Executive Assistant and CTO have
     call and input budgets. Older pipeline stages still rely on job timeouts, and web research is capped by `max_uses`.
+13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words in
+    the CTO desk issue can raise the limit, for that month. No model can change it. Costs are list prices plus lab
+    estimates, never invoices, so never present them as billing data.
+14. **Few emails.** Abhi hears about an article once, when its PR is ready. Routine progress belongs in the CTO digest.
 
 ## Map
 
@@ -54,6 +59,8 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/editor.py` | Brief, gates, scorecard | Roles, scan | Nothing |
 | `pipeline/tech_head.py` | Code review | PR diff, scanners | PR comment |
 | `pipeline/assistant.py` | Goals to team plan | `/goal` comments | `analytics/goals.json`, `plan.json` |
+| `pipeline/cto.py` | Talks to Abhi, digest, tasks, public status | CTO desk issue, spend, PRs | One issue, `analytics/tasks.json`, `status.json` |
+| `pipeline/budget.py` | Spend record and monthly stop, code only | `analytics/spend-*` | `analytics/spend-*`, `budget.json` |
 | `pipeline/evaluate.py` | Regression checks on saved cases; separate human calibration | `tests/eval/` | Nothing |
 | `pipeline/live_check.py` | Real API validation, capped at $3 | Provider APIs | One PR comment |
 
@@ -63,6 +70,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | --- | --- | --- | --- |
 | `EDITOR_MODE` | off, shadow, warn, enforce | shadow | shadow reports only and changes no lab, draft or publish behaviour |
 | `EDITOR_REVIEW` | on, off | off | Runs the Editor in shadow or warn. Enforce always requires a successful scorecard |
+| `AUTO_LAB` | on, off | on | on starts a lab for the panel's pick. off waits for an `approve` comment |
 | `TECH_HEAD_MODE` | advisory, blocking | advisory | blocking fails the check on a code-rule or scanner blocker, or an incomplete review. A model's blocker is for a person to judge |
 
 All are repository variables. `docs/merge-behavior.md` lists what changes on merge and how to undo each change.

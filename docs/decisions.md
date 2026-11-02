@@ -64,3 +64,12 @@ The first OpenAI review of Milestone 1 ran on merge. These were judged and left 
 - `live-check` starting on a push to `main` stays, because only an approved merge can change the request file.
 - `docs/merge-behavior.md` keeps the secret names. They are already public in the workflow files.
 - The brief marker stays outside `safe_text`. It is base64 inside an HTML comment, and bot writes are still checked as a whole.
+
+## 2026-11-02: One CTO, one budget, few emails
+
+Abhi set a $50 monthly limit and asked for a CTO he can argue with by email. The CTO lives in one issue, because a reply to
+a GitHub email already becomes a comment, so this needs no new service or credential. The limit stops new paid work at
+the first model call in a job, so a lab stops before it creates anything. With that limit in place, the panel's pick runs
+a lab without an approve reply. Topic issues stay unassigned, so an article reaches him once, as its PR.
+
+The public team page shows the roster and articles only. Spending and his requests stay private.
