@@ -374,6 +374,8 @@ def load_insights():
     except Exception:
         return ""
 
+GATE_SECONDS = 6 * 60                          # the whole radar job has 20 minutes
+
 def goal_weights():
     """{goal id: weight} for active goals. Any failure means no goals, so topic choice falls back to today's."""
     try:
@@ -394,17 +396,37 @@ def mode_enforce():
     import editor
     return editor.mode() == "enforce"
 
+def gate_first():
+    import editor
+    return editor.active()
+
+def shadow_review(opened):
+    """Briefs as issue comments, which a lab never reads. Issues are already open, so a failure here costs nothing."""
+    import editor
+    if editor.mode() != "shadow" or DRY:
+        return
+    briefs = investment_gate([c for c, _ in opened])
+    for c, number in opened:
+        if c["id"] in briefs:
+            try:
+                comment(number, f"**Shadow review, nothing here affects this topic.**\n\n{briefs[c['id']]['md']}")
+            except Exception as e:
+                print(f"::warning title=editor::shadow comment skipped: {' '.join(str(e).split())[:300]}", flush=True)
+
 def investment_gate(ranked):
     """The Editor's brief and Evidence Contract for the top topics. {cand id: {passed, md, reach_lab}}.
     Failures are skipped in every mode except enforce, where a topic without a passing brief cannot be picked."""
     import editor
     if editor.mode() == "off" or DRY:
         return {}
-    out = {}
+    out, stop_at = {}, time.time() + GATE_SECONDS
     for c in ranked[:2]:                        # the budget goes on the likeliest picks, not every candidate
+        if time.time() > stop_at:
+            print("gate 1: out of time for more briefs"); break
         try:
             b = editor.brief(c["title"], c["top"])
             passed, why = editor.gate1(b)
+            b["gate1"] = {"passed": passed, "reasons": why}
             print(f"gate 1 {'pass' if passed else 'fail'}: {c['title']}: {why}")
             md = safe_text(editor.brief_md(b, passed, why), "[brief left out: failed the link-safety check]")
             out[c["id"]] = {"passed": passed, "reach_lab": editor.active(),
@@ -466,7 +488,7 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
     ranked = sorted((c for c in cands if votes[c["id"]]["accepted"]),
                     key=lambda c: (weight.get(c["goal"], 0), votes[c["id"]]["yes"], c["audience"], len(c["by"]), c["score"]),
                     reverse=True)[:limit]
-    briefs = investment_gate(ranked)
+    briefs = investment_gate(ranked) if gate_first() else {}   # shadow runs after posting, so it can never block
     if mode_enforce():
         best = next((c for c in ranked if briefs.get(c["id"], {}).get("passed")), None)
         ranked = [c for c in ranked if briefs.get(c["id"], {}).get("passed")]
@@ -477,7 +499,7 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
     if ranked and not DRY:
         for l in (label, *extra_labels):
             ensure_label(l)
-    made = 0
+    made, opened = 0, []
     for c in ranked:
         gate = briefs.get(c["id"]) or {}
         reach = gate.get("md", "") if gate.get("reach_lab") else ""
@@ -494,13 +516,13 @@ def post_topics(proposals, items, existing, used, label, render, limit, question
             print(f"[dry run] would open{' + replicate' if c is best else ''}: {c['title']}\n{body}\n"); continue
         iss = post_issue(c["title"], body, label, extra_labels)
         made += 1
-        if gate.get("md") and not gate.get("reach_lab"):       # shadow: a comment, which the lab never reads
-            comment(iss["number"], f"**Shadow review, nothing here affects this topic.**\n\n{gate['md']}")
+        opened.append((c, iss["number"]))
         if c is best:
             add_label(iss["number"], "replicate")
             comment(iss["number"], "\u2b50 This is the panel's pick. Reply to this email with **approve** to run its "
                                    "lab (about 30 to 60 minutes, under 1 USD); the draft post comes back by email.")
             print(f"marked #{iss['number']} as the pick")
+    shadow_review(opened)
     print(f"done: {made} issue(s) opened. {llm.usage_summary()}")
 
 # ---------- radar ----------

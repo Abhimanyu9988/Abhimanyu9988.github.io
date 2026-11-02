@@ -325,16 +325,16 @@ def ask(who, system, prompt, schema, tool="submit", tier="write", model=None):
     shaped = f"{prompt}\n\nReply with one JSON object matching this JSON schema:\n{json.dumps(schema)}"
     return gpt_json(system, shaped, model=model) if who == "chatgpt" else gemini_json(system, shaped, model=model)
 
-def web_research(question, max_uses=4):
+def web_research(question, max_uses=4, timeout=120):
     """Real pages for a question, from Claude's web search tool. Returns {"summary", "pages"}, or {} on any failure:
-    a missing search must weaken a brief, never break a topic run."""
+    a missing search must weaken a brief, never break or stall a topic run, so a hung call is not retried."""
     body = {"model": claude_model("write"), "max_tokens": 4000, "messages": [{"role": "user", "content": question}],
             "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": max_uses}]}
     pages, text, searches = {}, [], 0
     try:
         for _ in range(3):                    # the API may pause a long search turn; it resumes when sent back
-            r = _retry(lambda: call("POST", "https://api.anthropic.com/v1/messages", body,
-                                    {**_anthropic_headers(), "User-Agent": "hero-pipeline/1.0"}, timeout=300))
+            r = call("POST", "https://api.anthropic.com/v1/messages", body,
+                     {**_anthropic_headers(), "User-Agent": "hero-pipeline/1.0"}, timeout=timeout)
             u = r.get("usage") or {}
             LEDGER.append({"who": "claude", "model": body["model"], "in": u.get("input_tokens", 0),
                            "out": u.get("output_tokens", 0)})

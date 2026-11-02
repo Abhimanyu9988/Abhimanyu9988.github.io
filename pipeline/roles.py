@@ -37,6 +37,10 @@ def model(role):
     r = get(role)
     return os.environ.get(r["model_env"], "").strip() or r["model"]
 
+def data(role):
+    """{name: value} for the role's registry data sources. This is where changing a source takes effect."""
+    return {s: sources.ADAPTERS[s]() for s in get(role).get("data_sources", []) if s in sources.ADAPTERS}
+
 def estimate_tokens(text):
     return len(text) // 3            # deliberately cautious for code and logs
 

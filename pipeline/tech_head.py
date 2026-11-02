@@ -17,11 +17,12 @@ RULES = (
     ("hard-secret", "blocker", "security", re.compile(r"AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|"
      r"sk-ant-[A-Za-z0-9-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY"),
      "A credential appears in the change.", "Remove it, rotate it, and use a secret.", None),
-    ("pr-target", "blocker", "security", re.compile(r"^\s*pull_request_target\s*:"),
+    ("pr-target", "blocker", "security", re.compile(r"\bpull_request_target\b"),
      "pull_request_target runs with secrets on pull request events.",
      "Use pull_request, or prove no PR code runs in that job.", ".github/workflows/"),
-    ("workflow-injection", "blocker", "security", re.compile(r"\brun:.*\$\{\{\s*github\.(event|head_ref)"),
-     "Event data is expanded inside a shell script.", "Pass it through env and quote it.", ".github/workflows/"),
+    ("workflow-injection", "blocker", "security",
+     re.compile(r"^(?!\s*-?\s*(?!run\b)[A-Za-z_][\w-]*:\s*[\"']?\$\{\{)(?!.*\benv:).*\$\{\{\s*github\.(event|head_ref)"),
+     "Event data may be expanded inside a shell script.", "Pass it through env and quote it.", ".github/workflows/"),
     ("write-all", "major", "security", re.compile(r"permissions:\s*write-all"),
      "The workflow grants every write permission.", "List only the permissions the job needs.", ".github/workflows/"),
     ("shell-true", "major", "security", re.compile(r"shell\s*=\s*True"),
@@ -38,18 +39,26 @@ RULES = (
 )
 
 def added_lines(diff):
-    """[(file, line number in the new file, text)] for every added line of a unified diff."""
-    out, path, n = [], None, 0
+    """[(file, line number in the new file, text)] for every added line of a unified diff. Hunk lengths decide what
+    is a header, so an added line that happens to start with ++ cannot hide the lines after it."""
+    out, path, n, old_left, new_left = [], None, 0, 0, 0
     for line in diff.splitlines():
+        if old_left > 0 or new_left > 0:
+            if line.startswith("+"):
+                if path:
+                    out.append((path, n, line[1:]))
+                n += 1; new_left -= 1
+            elif line.startswith("-"):
+                old_left -= 1
+            elif not line.startswith("\\"):
+                n += 1; old_left -= 1; new_left -= 1
+            continue
         if line.startswith("+++ "):
             path = line[6:] if line.startswith("+++ b/") else None
-        elif line.startswith("@@"):
-            m = re.search(r"\+(\d+)", line)
-            n = int(m[1]) if m else 0
-        elif line.startswith("+") and path:
-            out.append((path, n, line[1:])); n += 1
-        elif not line.startswith("-"):
-            n += 1
+        else:
+            m = re.match(r"@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
+            if m:
+                old_left, n, new_left = int(m[1] or 1), int(m[2]), int(m[3] or 1)
     return out
 
 def files_in(diff):
@@ -58,9 +67,9 @@ def files_in(diff):
 def rules(diff):
     found = []
     for path, n, text in added_lines(diff):
-        if path.startswith("tests/") or path == "pipeline/tech_head.py":
-            continue                               # fixtures and this file's own patterns are not findings
         for rid, sev, cat, rx, problem, fix, only in RULES:
+            if path == "pipeline/tech_head.py" or (path.startswith("tests/") and rid != "hard-secret"):
+                continue                           # this file's patterns and test fixtures are not findings
             if (only is None or path.startswith(only) or path.endswith(only)) and rx.search(text):
                 found.append({"severity": sev, "category": cat, "file": path, "line": n, "problem": problem,
                               "fix": fix, "rule": rid})
@@ -88,7 +97,8 @@ def review(diff, reports, agents_md):
                                   f"{json.dumps(reports)[:8000]}\n\nDIFF:\n{cut}", "techreview")
 
 def verdict(rule_findings, ai, diff):
-    """(findings, dropped count, blocked). The file check stops a model reporting problems in code it never saw."""
+    """(findings, dropped count, blocked). The file check stops a model reporting problems in code it never saw.
+    Only code rules can block. A model's blocker is shown to a person, who decides."""
     allowed, kept, dropped = files_in(diff), list(rule_findings), 0
     for f in (ai or {}).get("findings") or []:
         if f.get("file") in allowed:
@@ -97,10 +107,12 @@ def verdict(rule_findings, ai, diff):
             dropped += 1
     rank = {"blocker": 0, "major": 1, "minor": 2}
     kept.sort(key=lambda f: rank.get(f.get("severity"), 3))
-    return kept, dropped, any(f.get("severity") == "blocker" for f in kept)
+    return kept, dropped, any(f.get("severity") == "blocker" and f.get("rule") for f in kept)
 
 def markdown(findings, ai, dropped, blocked, skipped=""):
-    head = "changes needed before merge" if blocked else ("notes to read" if findings else "no findings")
+    claimed = any(f.get("severity") == "blocker" for f in findings)
+    head = ("code rules found a blocker" if blocked else "the reviewer raised a possible blocker, please judge it" if claimed
+            else "notes to read" if findings else "no findings")
     lines = [f"**Tech Head review: {head}.**", ""]
     if (ai or {}).get("summary"):
         lines += [str(ai["summary"]), ""]
@@ -114,18 +126,21 @@ def markdown(findings, ai, dropped, blocked, skipped=""):
     return "\n".join(lines)
 
 def git_diff(repo, base, head):
-    return subprocess.run(["git", "-C", repo, "diff", "--no-color", f"{base}...{head}"], check=True,
+    return subprocess.run(["git", "-C", repo, "diff", "--no-color", "--text", "--no-ext-diff", "--no-textconv", f"{base}...{head}"], check=True,
                           capture_output=True, text=True).stdout
 
 def main():
-    import sources
+    import roles
     from radar import comment, safe_text
     diff = git_diff(os.environ["PR_DIR"], os.environ["BASE_SHA"], os.environ["HEAD_SHA"])
     found, ai, skipped = rules(diff), None, ""
-    try:
-        ai = review(diff, read_reports(os.environ.get("REPORTS_DIR")), sources.agents_md())
-    except Exception as e:                         # no key, budget, or a model outage: code rules still stand
-        skipped = str(e)[:200]
+    if any(f["rule"] == "hard-secret" for f in found):
+        skipped = "the change appears to contain a credential, so it was not sent to a model"
+    else:
+        try:
+            ai = review(diff, read_reports(os.environ.get("REPORTS_DIR")), roles.data("tech_head").get("agents_md", ""))
+        except Exception as e:                     # no key, budget, or a model outage: code rules still stand
+            skipped = str(e)[:200]
     findings, dropped, blocked = verdict(found, ai, diff)
     comment(int(os.environ["PR_NUMBER"]), safe_text(markdown(findings, ai, dropped, blocked, skipped)))
     if blocked and os.environ.get("TECH_HEAD_MODE", "advisory") == "blocking":

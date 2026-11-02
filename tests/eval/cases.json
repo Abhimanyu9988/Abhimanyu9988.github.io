@@ -453,5 +453,46 @@
   ],
   "should_pass": false,
   "labelled_by": "synthetic"
+ },
+ {
+  "id": "flawed-wrong-unit-of-count",
+  "type": "headline",
+  "title": "Run 12,000 Metric Series on one sidecar",
+  "log_lines": [
+   "found 1,000 series"
+  ],
+  "unsupported": true,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "flawed-step-number",
+  "type": "headline",
+  "title": "3 Splunk Metric Series from one sidecar",
+  "log_lines": [
+   "step 3: list series"
+  ],
+  "unsupported": true,
+  "labelled_by": "synthetic"
+ },
+ {
+  "id": "evidence-error-text",
+  "type": "evidence",
+  "contract": [
+   {
+    "id": "x",
+    "what": "",
+    "kind": "overhead",
+    "unit": "",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "log_lines": [
+   "HERO_MEASURE: x=error: not found"
+  ],
+  "should_pass": false,
+  "labelled_by": "review"
  }
 ]

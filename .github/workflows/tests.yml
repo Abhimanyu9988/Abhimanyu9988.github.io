@@ -18,6 +18,8 @@ jobs:
       - run: python3 tests/test_safety.py
       - run: pip install markdown==3.10.3 matplotlib==3.10.7 python-frontmatter pyyaml
       - run: python3 tests/test_pipeline.py
+      - run: python3 tests/test_pipeline.py
+        env: { TEST_EDITOR_MODE: shadow }      # the default production path
       - run: python3 tests/test_agents.py
       - run: python3 pipeline/evaluate.py
         env: { REPO: "${{ github.repository }}" }

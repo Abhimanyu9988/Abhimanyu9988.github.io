@@ -3,7 +3,7 @@ import io, json, os, pathlib, shutil, sys, tempfile
 HOME = "Abhimanyu9988/Abhimanyu9988.github.io"
 PIPE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline")
 os.environ.update(REPO=HOME, HERO_PUBLISH="1", BOT_TOKEN="test", GH_READ_TOKEN="test", ISSUE="4", RUN_ID="123456789",
-                  EDITOR_MODE="off", MODEL_AUTO="true")
+                  EDITOR_MODE=os.environ.get("TEST_EDITOR_MODE", "off"), MODEL_AUTO="true")
 sys.path.insert(0, PIPE)
 import radar as r, llm, lab, draft, check_plan
 def _no_network(*a, **k):

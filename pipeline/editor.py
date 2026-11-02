@@ -37,12 +37,13 @@ def review_on():
 
 # ---------- Gate 1: Topic Investment Gate and Evidence Contract ----------
 def brief(title, details):
-    """The Editor's brief for one topic, or None if the role is unavailable. Page URLs must come from real searches."""
-    import llm, roles, sources
+    """The Editor's brief for one topic. Raises if the role fails. Page URLs must come from real searches."""
+    import llm, roles
+    data = roles.data("editor")
     found = llm.web_research(f"Find the best existing pages an engineer would read about: {title}")
     pages = found.get("pages") or []
     prompt = (f"Write the reader brief and Evidence Contract for this proposed post.\n\nTOPIC: {title}\n{details}\n\n"
-              f"GOALS:\n{json.dumps(sources.goals())[:3000]}\n\nFIELD NOTES:\n{sources.field_notes()}\n\n"
+              f"GOALS:\n{json.dumps(data.get('goals'))[:3000]}\n\nFIELD NOTES:\n{data.get('field_notes')}\n\n"
               f"PAGES FOUND BY SEARCH (use only these URLs in existing_pages):\n{json.dumps(pages)[:6000]}\n\n"
               f"SEARCH SUMMARY:\n{str(found.get('summary'))[:3000]}")
     got = roles.ask("editor", prompt, "brief")
@@ -114,14 +115,23 @@ merge or reorder):
 - Address every item in EVIDENCE FLAGS. Do not hide a failed or missing measurement; state it plainly.
 - FIELD NOTES are true, first-hand patterns you may use. Nothing else about Abhi's work may be invented."""
 
+def lab_refusal(body):
+    """In enforce, a topic without a passing brief may not spend money, however its lab was started."""
+    if mode() != "enforce":
+        return ""
+    b = parse_brief(body)
+    if not b or not (b.get("gate1") or {}).get("passed"):
+        return "this topic has no passing Topic Investment Gate brief, and EDITOR_MODE is enforce"
+    return ""
+
 def lab_rules(body):
     return "\n\n" + LAB_RULES if active() and parse_brief(body) else ""
 
 def writer_context(b, report):
     if not active():
         return ""
-    import scan, sources
-    return (f"\n\n{WRITER_RULES}\n\nREADER BRIEF:\n{json.dumps(b or {})[:5000]}\n\nFIELD NOTES:\n{sources.field_notes()}"
+    import roles, scan
+    return (f"\n\n{WRITER_RULES}\n\nREADER BRIEF:\n{json.dumps(b or {})[:5000]}\n\nFIELD NOTES:\n{roles.data('writer').get('field_notes')}"
             f"\n\nEVIDENCE FLAGS:\n{scan.markdown(report)}")
 
 # ---------- Gate 2: the Editor's review ----------
@@ -135,10 +145,11 @@ def score(post, context, report, b):
     return card
 
 def decide(card, report, known_urls=()):
-    """pass, revise or stop-worthy reasons, computed by code. Dimensions never average."""
+    """pass or revise, with reasons, computed by code. Dimensions never average. High flags need the Editor's answer
+    when it runs; they stay visible either way, because logs themselves cannot be revised."""
     out = []
     if report and not report.get("passed", True):
-        out.append("the evidence checks did not pass")
+        out.append("the evidence checks did not pass: " + "; ".join(report.get("failures") or [])[:400])
     if card:
         s = card["scores"]
         if s["technical"]["score"] < MIN_TECHNICAL:

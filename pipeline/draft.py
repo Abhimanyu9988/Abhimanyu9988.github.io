@@ -229,13 +229,15 @@ def linkedin_round(post, kind):
                    "others": [f"{o['by']} ({votes[o['id']]['yes']}/3)" for o in cands if o is not c]}
             return {**post, "linkedin": c["text"]}, log
         llm.warn(f"linkedin check: {c['by']}'s post failed: {'; '.join(map(str, chk.get('problems') or []))[:200]}")
-    return post, {"unapproved": True}
+    return {**post, "linkedin": ""}, {"unapproved": True, "candidate": post.get("linkedin", "")}
 
 def linkedin_md(l):
     if not l:
         return ""
     if l.get("unapproved"):
-        return "**LinkedIn round:** no version won 2 of 3 votes and passed the fact check. Rewrite this post before use.\n\n"
+        return ("**LinkedIn round:** no version won 2 of 3 votes and passed the fact check, so no LinkedIn post ships "
+                "with this draft. The writer's unapproved text, if you want a starting point:\n\n"
+                f"> {safe_text(l.get('candidate'), '[left out]')[:1500]}\n\n")
     return (f"**LinkedIn round:** the panel picked {l['by']}'s post ({l['yes']} of 3 votes); Claude checked it against "
             f"the article. Others: {', '.join(l['others'])}.\n\n")
 
@@ -510,13 +512,17 @@ def review_draft(post, context, logs, brief, topic, kind):
     known |= {str(p.get("url")) for p in (brief or {}).get("existing_pages") or []}
     def judge(p):
         report = scan.check(logs, p.get("title", ""), (brief or {}).get("measurements"))
-        card = None
+        card, failed = None, []
         if editor.review_on():
             try:
                 card = editor.score(p, context, report, brief)
             except Exception as e:
                 llm.warn(f"editor review skipped: {str(e)[:300]}")
-        return (report, card, *editor.decide(card, report, known))
+                failed = ["the Editor's review could not run, so this draft has no review"]
+        verdict, reasons = editor.decide(card, report, known)
+        if failed and editor.mode() == "enforce":   # an outage must not read as approval
+            verdict, reasons = "revise", reasons + failed
+        return report, card, verdict, reasons
     report, card, verdict, reasons = judge(post)
     if verdict == "revise" and editor.mode() == "enforce":
         try:
@@ -524,9 +530,14 @@ def review_draft(post, context, logs, brief, topic, kind):
                             "Fix every problem below. Never invent a result: if a result is missing, say so plainly "
                             f"and narrow the claim.\n\nPROBLEMS:\n{json.dumps(reasons)}\n\nPOST:\n{json.dumps(post)}"
                             f"\n\n{context}", POST_SCHEMA, tool="revise")
-            if fixed.get("body"):
-                post = {**post, **{k: v for k, v in fixed.items() if v}}
-                post["body"] = drop_pipeline_lines(fix_output_tabs(post["body"]))
+            if fixed.get("body"):                  # only the article changes; it goes through the fact check again
+                K = KINDS[kind]
+                changed = {**post, **{k: fixed[k] for k in ("title", "description", "body") if fixed.get(k)}}
+                changed, _ = llm.refine("blog article and LinkedIn post", changed, K["rubric"],
+                                        f"RULES:\n{K['rules']}\n\n{context}", POST_SCHEMA, writer="chatgpt",
+                                        reviewer="claude", judge="gemini")
+                changed["linkedin"] = post.get("linkedin", "")
+                post = {**changed, "body": drop_pipeline_lines(fix_output_tabs(changed["body"]))}
                 report, card, verdict, reasons = judge(post)
         except Exception as e:
             llm.warn(f"revision failed: {str(e)[:300]}")
@@ -593,7 +604,7 @@ def add_shots(post, slug):
     for im in (got.get("images") or [])[:3]:
         lines = [str(l).replace("\t", "    ").rstrip() for l in im.get("lines") or []]
         lines = [l for l in lines if l.strip() and re.sub(r"\s+", " ", l).strip() in blob
-                 and not re.search(r"(?i)(secret|token|password|AKIA|ASIA|HERO_RESULT)", l)]
+                 and not re.search(r"(?i)(secret|token|password|AKIA|ASIA|HERO_RESULT|HERO_MEASURE)", l)]
         head = str(im.get("after_heading") or "").strip().lstrip("#").strip()
         m = re.search(rf"^#{{2,3}} +{re.escape(head)}\s*$", post["body"], re.M) if head else None
         if len(lines) < 3 or not m:
@@ -639,8 +650,12 @@ def open_pr(issue_no, res, topic):
         return
     brief = editor.parse_brief(topic.get("body"))
     measures = (brief or {}).get("measurements")
-    logs = scan.read_logs(OUT / "evidence")
+    logs = scan.read_logs(OUT / "evidence", first=res.get("attempt_log_from", 1))   # failed attempts prove nothing
     before = scan.check(logs, "", measures)
+    refused = editor.lab_refusal(topic.get("body"))
+    if refused:
+        comment(issue_no, f"Nothing was drafted: {safe_text(refused)}.")
+        return
     if editor.mode() == "enforce" and before["contract"] and not before["contract"]["passed"]:
         add_label(issue_no, "evidence-failed")     # stop before paying for a draft nobody can stand behind
         comment(issue_no, "The lab ran, but it did not produce what the Evidence Contract required, so nothing was "

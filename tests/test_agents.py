@@ -245,5 +245,152 @@ check("no goals available means today's ranking", r.goal_weights() == {})
 sources.goals = real_goals
 check("Splunk is no longer mandatory in topic votes", "never force it in" in r.BUILD_QUESTION)
 
+# ---------- regressions from the independent review ----------
+import draft, tempfile, time
+L1 = {"a.log": "found 1,000 series\nstep 3: list series\ncold start took 30 seconds"}
+sup = lambda t, logs=L1: [h["supported"] for h in scan.headline_claims(t, logs)]
+check("title: a hyphenated claim is parsed", sup("A 30-second Cold Start") == [True] and sup("A 45-second Cold Start") == [False])
+check("title: a money claim is parsed", sup("Save $40 a Month") == [False])
+check("title: number words are parsed", sup("Two Tasks, Five Series") == [False, False])
+check("title: comma numbers are compared whole", sup("12,000 Metric Series") == [False] and sup("1,000 series") == [True])
+check("title: a step number is not a count", sup("3 Splunk Metric Series") == [False])
+check("title: one and zero stay ordinary words", sup("Trace a service with one annotation, zero code changes") == [])
+c1 = [{"id": "x", "unit": "h", "accept": {"op": "lt", "value": 1}, "min_entities": 1}]
+st = lambda v, c=c1: scan.verify_contract(c, {"a": f"HERO_MEASURE: x={v}"})["results"][0]["status"]
+for bad in ('"null"', "<no value>", "error: not found", "5 (timeout)"):
+    check(f"contract check: {bad} is not a value", st(bad) == "no_value")
+check("contract check: a different unit is refused", st("0.5 m") == "wrong_unit")
+check("contract check: a matching unit is accepted", st("0.5h") == "ok")
+check("contract check: extra text is refused", st("5 maybe") == "wrong_unit" and st("about 5") == "not_numeric")
+c3 = [{"id": "x", "min_entities": 3}]
+check("contract check: entities must be labelled", scan.verify_contract(c3, {"a": "HERO_MEASURE: x=1\nHERO_MEASURE: x=2\nHERO_MEASURE: x=3"})["results"][0]["status"] == "too_few_entities")
+check("contract check: one null among real values fails", scan.verify_contract([{"id": "x", "min_entities": 1}], {"a": "HERO_MEASURE: x=1\nHERO_MEASURE: x=null"})["results"][0]["status"] == "bad_value")
+with tempfile.TemporaryDirectory() as d:
+    (pathlib.Path(d) / "05-fix.log").write_text("HERO_MEASURE: x=1\n")
+    (pathlib.Path(d) / "11-fix.log").write_text("HERO_MEASURE: x=null\n")
+    check("evidence: an earlier attempt's numbers are ignored", list(scan.read_logs(d, first=6)) == ["11-fix.log"])
+    check("evidence: all logs by default", len(scan.read_logs(d)) == 2)
+ok_json = scan.scan({"04-fix.log": '  "finishedAt": null'})
+check("flags: a null field in raw JSON is not an anomaly", ok_json == [])
+check("flags: high flags do not fail checks that logs cannot fix", scan.check(pr88, "Fargate tasks")["passed"])
+check("flags: they stay in the report", scan.check(pr88, "Fargate tasks")["flags"] != [])
+check("flags: the report is capped", len(scan.check({"05-fix.log": "null\n" * 500}, "")["flags"]) == scan.MAX_FLAGS)
+
+os.environ["EDITOR_MODE"] = "enforce"
+good = {**b, "gate1": {"passed": True}}
+check("enforce: no brief, no lab", editor.lab_refusal("plain") != "")
+check("enforce: a failed brief, no lab", editor.lab_refusal(editor.marker({**b, "gate1": {"passed": False}})) != "")
+check("enforce: a passing brief may run", editor.lab_refusal(editor.marker(good)) == "")
+os.environ["EDITOR_MODE"] = "shadow"
+check("shadow: labs are never refused", editor.lab_refusal("plain") == "")
+
+draft.OUT = pathlib.Path(tempfile.mkdtemp())
+os.environ["EDITOR_MODE"] = "enforce"; os.environ["EDITOR_REVIEW"] = "on"
+logs_ok = {"05-fix.log": "ok"}
+real_score, real_ask, real_refine = editor.score, llm.ask, llm.refine
+def bad_score(*a): raise RuntimeError("outage")
+editor.score = bad_score
+refined = []
+llm.ask = lambda *a, **k: {"body": "new body", "title": "t", "linkedin": "unchecked text"}
+def fake_refine(kind, post, *a, **k):
+    refined.append(post); return post, {}
+llm.refine = fake_refine
+g = draft.review_draft({"title": "t", "body": "b", "linkedin": "checked text"}, "ctx", logs_ok, None, {}, "build")
+check("enforce: an Editor outage never reads as approval", g["decision"] == "stop")
+check("enforce: a revision goes back through the fact check", len(refined) == 1)
+check("enforce: revision keeps the checked LinkedIn text", g["post"]["linkedin"] == "checked text")
+editor.score = real_score
+os.environ["EDITOR_REVIEW"] = "off"
+llm.ask = lambda *a, **k: {"body": "new body", "title": "Scale to 500 pods"}
+g = draft.review_draft({"title": "Scale to 500 pods", "body": "b", "linkedin": "x"}, "ctx", logs_ok, None, {}, "build")
+check("enforce: an unsupported title stops after one revision", g["decision"] == "stop")
+os.environ["EDITOR_MODE"] = "shadow"
+g = draft.review_draft({"title": "Scale to 500 pods", "body": "b"}, "ctx", logs_ok, None, {}, "build")
+check("shadow: a failed check only reports", g["decision"] == "revise" and "Shadow review" in draft.gate_md(g))
+llm.ask, llm.refine = real_ask, real_refine
+real_pv, real_lask = llm.panel_votes, llm.ask
+llm.panel_votes = lambda cands, *a, **k: {c["id"]: {"yes": 1, "votes": {}} for c in cands}
+llm.ask = lambda who, s, p, sch, tool="submit", **k: {"linkedin": f"{who} post"} if tool == "submit_linkedin" else {"ok": True, "problems": []}
+pp, lg = draft.linkedin_round({"title": "t", "body": "b", "linkedin": "writer text"}, "build")
+check("LinkedIn: an unchosen post is blank, so it cannot reach the email", pp["linkedin"] == "" and lg["unapproved"])
+check("LinkedIn: the PR keeps the text as a starting point", "writer text" in draft.linkedin_md(lg))
+llm.panel_votes, llm.ask = real_pv, real_lask
+
+# shadow runs after the issues exist, and never touches what a lab reads
+sent = []
+def fake_send(m, u, b=None, h=None, timeout=30):
+    if m == "GET": raise RuntimeError("HTTP 404")
+    sent.append((m, u, b)); return {"number": 7}
+r._send = fake_send
+real_brief = editor.brief
+editor.brief = lambda t, d: dict(b)
+real_pv = llm.panel_votes
+llm.panel_votes = lambda v, q, c="", tier="scout": {x["id"]: {"votes": {w: ("yes", "r") for w in llm.PANEL}, "yes": 3, "accepted": True} for x in v}
+props = [("claude", {"title": "Topic one", "sources": ["https://x.y/1"], "replicability": 9, "audience": 9})]
+os.environ["EDITOR_MODE"] = "shadow"
+r.post_topics(props, [{"url": "https://x.y/1"}], [], set(), "radar", lambda t, s: "top", 3)
+bodies = [x[2] for x in sent if x[1].endswith("/issues")]
+notes = [x[2]["body"] for x in sent if x[1].endswith("/comments")]
+check("shadow: the issue a lab reads holds no brief", "hero-brief" not in bodies[0]["body"] and "Evidence Contract" not in bodies[0]["body"])
+check("shadow: the brief arrives as a comment, after the issue", any("Shadow review" in n for n in notes))
+sent.clear()
+def hung(t, d): raise OSError("timed out")
+editor.brief = hung
+r.post_topics([("claude", {"title": "Topic two", "sources": ["https://x.y/2"], "replicability": 9, "audience": 9})],
+              [{"url": "https://x.y/2"}], [], set(), "radar", lambda t, s: "top", 3)
+check("shadow: a failed brief still opens the topic", any(x[1].endswith("/issues") for x in sent))
+sent.clear()
+real_gate = r.GATE_SECONDS
+r.GATE_SECONDS = -1
+got = r.investment_gate([{"id": "t1", "title": "x", "top": "y"}])
+check("gate 1: the time limit stops further briefs", got == {})
+r.GATE_SECONDS = real_gate
+editor.brief = real_brief; llm.panel_votes = real_pv
+r._send = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("tests must not reach GitHub"))
+
+D2 = """diff --git a/pipeline/x.py b/pipeline/x.py
+--- a/pipeline/x.py
++++ b/pipeline/x.py
+@@ -0,0 +1,3 @@
++++ decoy
++subprocess.run(cmd, shell=True)
++z = 1
+diff --git a/.github/workflows/y.yml b/.github/workflows/y.yml
+--- a/.github/workflows/y.yml
++++ b/.github/workflows/y.yml
+@@ -0,0 +1,6 @@
++on: pull_request_target
++      - run: |
++          echo ${{ github.event.comment.body }}
++      - uses: x
++        with:
++          ref: ${{ github.event.pull_request.head.sha }}
+"""
+ids = {f["rule"]: f for f in th.rules(D2)}
+check("Tech Head: a line starting with ++ cannot hide later lines", "shell-true" in ids and ids["shell-true"]["line"] == 2)
+check("Tech Head: the one-line trigger form is caught", "pr-target" in ids)
+check("Tech Head: injection inside a multi-line run is caught", ids.get("workflow-injection", {}).get("line") == 3)
+check("Tech Head: a plain with: value is not injection", len([f for f in th.rules(D2) if f["rule"] == "workflow-injection"]) == 1)
+check("Tech Head: a secret under tests is still caught", th.rules('+++ b/tests/t.py\n@@ -0,0 +1 @@\n+k = "AKIAABCDEFGHIJKLMNOP"\n') != [])
+ai2 = {"findings": [{"severity": "blocker", "category": "security", "file": "pipeline/x.py", "line": 1, "problem": "p", "fix": "f"}]}
+fs, dr2, bl2 = th.verdict([], ai2, D2)
+check("Tech Head: a model alone cannot block, a person judges it", not bl2 and "please judge" in th.markdown(fs, ai2, dr2, bl2))
+check("field notes: instructions are not read as notes", sources.field_notes() == "")
+check("roles: registry data sources reach the role", "field_notes" in roles.data("editor") and "agents_md" in roles.data("tech_head"))
+real_read = sources._analytics_json
+sources._analytics_json = lambda p: {"goals": [{"id": "a", "weight": 1, "until": "2020-01-01"}, {"id": "b", "weight": 1, "until": ""}]}
+check("goals: an expired goal stops counting", [g["id"] for g in sources.goals()] == ["b"])
+sources._analytics_json = real_read
+files.clear(); posted.clear()
+roles.ask = fake_ea
+real_mp = assistant.make_plan
+assistant.make_plan = lambda active: (_ for _ in ()).throw(RuntimeError("down"))
+assistant.add_goal("same goal", 5)
+check("assistant: a failed plan still replies", "could not update the team plan" in posted[-1])
+assistant.make_plan = real_mp
+assistant.add_goal("same goal", 5)
+check("assistant: a retry does not duplicate the goal", len(json.loads(files["analytics/goals.json"])["goals"]) == 1)
+roles.ask = real_roles_ask
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

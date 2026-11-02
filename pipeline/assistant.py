@@ -49,20 +49,32 @@ def plan_md(plan):
 
 def add_goal(text, issue):
     goals, sha = load()
+    same = next((g for g in goals if g.get("stated") == text[:2000] and g.get("status") == "active"), None)
+    if same:                                       # a retry after a failed plan must not duplicate the goal
+        finish(goals, same, issue); return
     goal = roles.ask("executive_assistant", f"Turn GOAL TEXT into one structured goal.\n\nGOAL TEXT:\n{text[:2000]}\n\n"
                                             f"EXISTING GOALS:\n{json.dumps(goals)[:3000]}", "goal")
     goal.update(id=slug(goal["title"], {g.get("id") for g in goals}), status="active", stated=text[:2000],
                 created=datetime.date.today().isoformat())
     goals.append(goal)
     save(GOALS, {"goals": goals}, sha, f"goals: add {goal['id']}")
-    plan = make_plan([g for g in goals if g.get("status") == "active"])
-    comment(issue, safe_text(f"Goal saved as `{goal['id']}`, weight {goal['weight']} of 10.\n\n{plan_md(plan)}\n\nTopic "
+    finish(goals, goal, issue)
+
+def finish(goals, goal, issue):
+    """Reply even when planning fails: the goal is saved, and topic selection already reads it."""
+    try:
+        text = plan_md(make_plan([g for g in goals if g.get("status") == "active"]))
+    except Exception as e:
+        print(f"plan failed: {str(e)[:300]}")
+        text = "I could not update the team plan just now. Send the same `/goal` again to retry."
+    comment(issue, safe_text(f"Goal saved as `{goal['id']}`, weight {goal['weight']} of 10.\n\n{text}\n\nTopic "
                              "selection follows this from its next run. Drop it with `/goal drop` and the id."))
 
 def make_plan(active):
+    team = roles.data("executive_assistant")
     plan = clean_plan(roles.ask("executive_assistant", "Write a short plan for the team that serves these goals.\n\n"
-                                f"GOALS:\n{json.dumps(active)[:5000]}\n\nROLES:\n{json.dumps(sources.roles())}\n\n"
-                                f"RECENT POST MIX:\n{json.dumps(sources.post_mix())}", "plan"))
+                                f"GOALS:\n{json.dumps(active)[:5000]}\n\nROLES:\n{json.dumps(team['roles'])}\n\n"
+                                f"RECENT POST MIX:\n{json.dumps(team['post_mix'])}", "plan"))
     _, sha = analytics.read_file(PLAN)
     save(PLAN, plan, sha, "goals: update plan")
     return plan

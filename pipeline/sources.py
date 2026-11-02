@@ -5,7 +5,7 @@ To change where a role gets data, change or add one adapter. Roles and prompts s
 Every adapter returns plain text or JSON-ready data, and returns an empty value when the source is unavailable,
 so a missing source degrades a role instead of crashing it.
 """
-import base64, json, pathlib, re
+import base64, datetime, json, pathlib, re
 
 HERE = pathlib.Path(__file__).parent
 ROOT = HERE.parent
@@ -22,9 +22,9 @@ def _analytics_json(path):
 
 def goals():
     """Active goals, highest weight first. Empty until Abhi sets one with `/goal`."""
-    got = _analytics_json(GOALS_PATH).get("goals") or []
-    return sorted((g for g in got if isinstance(g, dict) and g.get("status", "active") == "active"),
-                  key=lambda g: -int(g.get("weight") or 0))
+    got, today = _analytics_json(GOALS_PATH).get("goals") or [], datetime.date.today().isoformat()
+    return sorted((g for g in got if isinstance(g, dict) and g.get("status", "active") == "active"
+                   and (not g.get("until") or g["until"] >= today)), key=lambda g: -int(g.get("weight") or 0))
 
 def plan():
     return _analytics_json(PLAN_PATH)
@@ -33,7 +33,8 @@ def field_notes():
     p = HERE / "field-notes.md"
     if not p.exists():
         return ""
-    return "\n".join(l for l in p.read_text().splitlines() if l.startswith("- "))[:4000]
+    return "\n".join(l for l in p.read_text().split("## Notes", 1)[-1].splitlines() if l.startswith("- "))[:4000] \
+        if "## Notes" in p.read_text() else ""
 
 def post_mix(last=10):
     """How many recent lab posts feature Splunk. Deterministic: read from the post files."""
