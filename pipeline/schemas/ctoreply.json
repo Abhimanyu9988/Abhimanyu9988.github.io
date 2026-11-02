@@ -6,7 +6,9 @@
   "goal",
   "task",
   "urls",
-  "needs_abhi"
+  "needs_abhi",
+  "close_prs",
+  "ideas"
  ],
  "properties": {
   "stance": {
@@ -54,6 +56,22 @@
     "type": "string"
    },
    "description": "exact steps only Abhi can do, or empty"
+  },
+  "close_prs": {
+   "type": "array",
+   "maxItems": 5,
+   "items": {
+    "type": "string"
+   },
+   "description": "exact titles from waiting that Abhi asked to reject or close, or empty"
+  },
+  "ideas": {
+   "type": "array",
+   "maxItems": 4,
+   "items": {
+    "type": "string"
+   },
+   "description": "article topics Abhi asked the team to try, in his words, or empty"
   }
  }
 }

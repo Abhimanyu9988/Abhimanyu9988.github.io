@@ -303,6 +303,27 @@
    },
    "display": "Voice Editor",
    "dept": "Content"
+  },
+  "oss_scout": {
+   "mission": "Tell Abhi where open source projects need him, from his contribution board.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "OSS_SCOUT_MODEL",
+   "prompt": "oss_scout.md",
+   "outputs": [
+    "ctoreply"
+   ],
+   "data_sources": [
+    "goals"
+   ],
+   "budget": {
+    "max_input_tokens": 14000,
+    "max_calls": 3
+   },
+   "display": "OSS Scout",
+   "dept": "Community"
   }
  }
 }

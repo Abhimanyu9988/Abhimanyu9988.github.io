@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """The leadership desk: CEO, CTO, CMO and CFO. Abhi texts them in Slack, and the CTO desk issue works until Slack is on.
 
-A message starting with a title, such as "CMO: ...", goes to that leader. Anything else goes to the CEO.
+A message starting with a title, such as "CMO: ..." or "OSS: ...", goes to that person. Anything else goes to the CEO.
 
   python3 pipeline/cto.py   no input: refresh the public team status, and on Mondays run market research and the digest.
                             POLL=true: answer Abhi's new Slack messages. No server is needed, so replies take minutes.
                             COMMENT_BODY: answer Abhi on the CTO desk issue.
 
-What leaders can do: answer, record a goal he stated, and assign a tracked task to an active role.
+What leaders can do: answer, record a goal he stated, list tasks, close a draft he rejected, and queue a topic he asked for.
+Code carries out those last two, and only when his own words ask for them.
 What it cannot do: publish, spend, deploy, change the budget, or hold a credential. Links are checked by code first.
 """
 import base64, datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
@@ -19,7 +20,12 @@ ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, s
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
 MAX_TASKS = 40
-LEADER = re.compile(r"\s*@?(ceo|cto|cmo|cfo)\b[\s:,-]*", re.I)
+LEADER = re.compile(r"\s*@?(ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-]*", re.I)
+CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
+IDEA_WORDS = re.compile(r"(?i)\b(topic|idea|try|pick|write about|tomorrow)\b")
+IDEAS_HEAD, IDEAS_END = "Abhi's own topic ideas. Put these first:", "End of his ideas."
+PENDING = "analytics/ideas-pending.json"
+BOARD_ISSUE = "/repos/Abhimanyu9988/oss-scout/issues/1"
 STATED_GOAL = re.compile(r"(?i)\b(goals?|targets?|aim|want|objective)\b")
 BRIEF = "analytics/market-brief.md"
 MAX_REPLIES = 5                                # each poll. CTO replies run past the monthly limit, so this bounds them
@@ -225,7 +231,10 @@ def thread(number):
 def route(text):
     """(leader, message). The CEO takes anything not addressed to a leader."""
     hit = LEADER.match(text)
-    return (hit[1].lower(), text[hit.end():].strip() or text) if hit else ("ceo", text)
+    if not hit:
+        return "ceo", text
+    role = "oss_scout" if hit[1].lower().startswith("oss") else hit[1].lower()
+    return role, text[hit.end():].strip() or text
 
 def split_leaders(text):
     """One message can address several leaders, one per line. Each leader gets only its own lines."""
@@ -271,9 +280,41 @@ def research():
     real = [u for u in got.get("sources") or [] if u in urls]
     text = "\n".join(["What worked for others:"] + [f"- {x}" for x in got["what_worked"]] + ["", "Topics to try:"] +
                       [f"- {x}" for x in got["topics_to_try"]] + ["", "Avoid:"] + [f"- {x}" for x in got["avoid"]] + ["", "Sources:"] + [f"- {u}" for u in real])
-    _, sha = analytics.read_file(BRIEF)
-    analytics.write_file(BRIEF, text + "\n", sha, "market: weekly brief")
+    old, sha = analytics.read_file(BRIEF)
+    analytics.write_file(BRIEF, ideas_block(old) + text + "\n", sha, "market: weekly brief")
     return text
+
+def ideas_block(text):
+    """His own ideas survive new research until a Topic Scout run has used them."""
+    return text[:text.index(IDEAS_END) + len(IDEAS_END)] + "\n\n" if text.startswith(IDEAS_HEAD) and IDEAS_END in text else ""
+
+def save_ideas(ideas):
+    """Queues his topics at the top of the brief the Topic Scout reads, and starts a Scout run the next morning."""
+    old, sha = analytics.read_file(BRIEF)
+    kept = ideas_block(old)
+    rows = [l for l in kept.splitlines() if l.startswith("- ")] + [f"- {i}" for i in ideas]
+    head = "\n".join([IDEAS_HEAD, *rows, IDEAS_END]) + "\n\n"
+    analytics.write_file(BRIEF, head + old[len(kept):], sha, "market: Abhi's topic ideas")
+    _, psha = analytics.read_file(PENDING)
+    analytics.write_file(PENDING, json.dumps({"run": True}), psha, "market: start the Topic Scout tomorrow")
+
+def close_drafts(titles):
+    """Only drafts open right now, by exact title. Closing can be undone, and GitHub keeps the branch."""
+    closed = []
+    for p in gh("GET", f"/repos/{HOME_REPO}/pulls?state=open&per_page=50") or []:
+        name = p["title"].removeprefix("Draft: ")
+        if p["head"]["ref"].startswith("draft/") and (p["title"] in titles or name in titles):
+            gh("PATCH", f"/repos/{HOME_REPO}/pulls/{p['number']}", {"state": "closed"})
+            closed.append(name)
+    return closed
+
+def board():
+    """His contribution board. It's public, and a missing board only weakens the answer."""
+    try:
+        return str((gh("GET", BOARD_ISSUE) or {}).get("body", ""))[:9000]
+    except Exception as e:
+        print(f"::warning title=oss::board not read: {' '.join(str(e).split())[:200]}")
+        return ""
 
 def answer(text, talk, role="ceo"):
     wanted = budget.requested_limit(text)
@@ -283,12 +324,19 @@ def answer(text, talk, role="ceo"):
         return
     p, team = progress(), roles.data("cto")
     brief, _ = analytics.read_file(BRIEF)
+    extra = f"\n\nBOARD:\n{board()}" if role == "oss_scout" else ""
     got = roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
                            f"{json.dumps({**p, 'team': roster(p)})[:4000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
-                          f"\n\nMARKET BRIEF:\n{brief[:2500]}", "ctoreply")
+                          f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
     reply = URL.sub("[link removed]", got["reply"])
     good = [u for u in got.get("urls") or [] if link_exists(u)]
     notes = [add_task(got["task"])] if (got.get("task") or {}).get("title") else []
+    if got.get("close_prs") and CLOSE_WORDS.search(text):   # his words decide, never a model's alone
+        closed = close_drafts(got["close_prs"])
+        notes.append(f"Closed: {', '.join(closed)}." if closed else "I found no open draft with that title.")
+    if got.get("ideas") and IDEA_WORDS.search(text):
+        save_ideas(got["ideas"])
+        notes.append("Saved for the Topic Scout. It runs tomorrow morning and starts a lab if a topic clears the bar.")
     bad = len(got.get("urls") or []) - len(good)
     notes += [f"{bad} link(s) could not be confirmed, so I left them out."] if bad else []
     links = "\n".join(f"- {u}" for u in good)
@@ -337,9 +385,16 @@ def main():
     p = progress()
     _, sha = analytics.read_file(STATUS)
     analytics.write_file(STATUS, json.dumps(public_status(p), indent=1), sha, "status: refresh")
-    weekly = datetime.date.today().weekday() == 0 or os.environ.get("DIGEST") == "true"
+    scheduled = os.environ.get("SCHEDULE") == "12 7 * * *"   # a manual run refreshes the page and never repeats the digest
+    weekly = (scheduled and datetime.date.today().weekday() == 0) or os.environ.get("DIGEST") == "true"
+    if scheduled:
+        queued, qsha = analytics.read_file(PENDING)
+        if queued.strip() and json.loads(queued).get("run") and os.environ.get("GITHUB_OUTPUT"):
+            analytics.write_file(PENDING, json.dumps({"run": False}), qsha, "market: Topic Scout started")
+            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                f.write("run_scout=true\n")
     review = manager_review(p) if weekly else ""
-    if datetime.date.today().weekday() == 0:
+    if weekly:
         try:
             brief = research()
             if brief:

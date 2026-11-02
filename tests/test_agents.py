@@ -1049,6 +1049,9 @@ ctoy = __import__("yaml").safe_load((ROOT / ".github/workflows/cto.yml").read_te
 cif = ctoy["jobs"]["cto"]["if"]
 check("cto: only Abhi on the desk issue starts it", "comment.user.login == 'Abhimanyu9988'" in cif and "cto-desk" in cif and "issue.pull_request" in cif)
 check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[True] and ctoy["jobs"]["cto"]["steps"][0]["with"]["ref"] == "main")
+cto_steps = {s.get("name"): s for s in ctoy["jobs"]["cto"]["steps"]}
+check("digest: a manual run never repeats it", cto_steps["cto"]["env"]["SCHEDULE"] == "${{ github.event.schedule }}")
+check("scout: starts only when an idea is queued", cto_steps["start the Topic Scout"]["if"] == "steps.leaders.outputs.run_scout == 'true'")
 check("cto: its comment reaches code only through env", "${{" not in next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("name") == "cto")["run"])
 replies, real_post, real_ask2, real_le, real_prog = [], cto.post, roles_mod.ask, cto.link_exists, cto.progress
 cto.post = lambda t, role="cto": replies.append(t)
@@ -1057,7 +1060,7 @@ real_read_b = analytics_mod.read_file
 cto.progress = lambda: {"spent": 1}
 cto.link_exists = lambda u: u == "https://good.example/bill"
 roles_mod.ask = lambda *a, **k: {"stance": "disagree", "reply": "No, see https://bad.example/x for why.", "goal": "", "task": {"title": "", "owner": ""}, "needs_abhi": [],
-                                 "urls": ["https://good.example/bill", "https://nope.example/y"]}
+                                 "close_prs": [], "ideas": [], "urls": ["https://good.example/bill", "https://nope.example/y"]}
 real_data, roles_mod.data = roles_mod.data, lambda r: {}
 cto.answer("monitor my azure bill", [], "cto")
 check("cto: only confirmed links reach Abhi", "good.example" in replies[-1] and "nope.example" not in replies[-1] and "bad.example" not in replies[-1] and "could not be confirmed" in replies[-1])
@@ -1097,6 +1100,27 @@ old_talk = [{"from": "CTO", "text": "x" * 5000}] * 7 + [{"from": "Topic Scout", 
 kept_talk = cto.recent_talk(old_talk)
 check("leaders: the newest messages always reach the model", kept_talk[-1]["text"] == "Good topic" and kept_talk[-2]["text"].endswith("Prometheus"))
 check("leaders: the talk stays within its limit", len(json.dumps(kept_talk)) < 7000)
+check("oss: reaches OSS Scout", cto.route("OSS: am I needed on 51874?") == ("oss_scout", "am I needed on 51874?") and cto.route("oss-scout: hi")[0] == "oss_scout")
+acted, real_cd, real_si = [], cto.close_drafts, cto.save_ideas
+cto.close_drafts, cto.save_ideas = (lambda t: acted.append(("close", t)) or ["Old post"]), (lambda i: acted.append(("idea", i)))
+roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "OK.", "goal": "", "task": {"title": "", "owner": ""}, "urls": [], "needs_abhi": [], "close_prs": ["Old post"], "ideas": ["Add-on IAM"]}
+cto.answer("how are the drafts doing?", [], "cto")
+check("actions: a model alone cannot close a draft or queue a topic", acted == [])
+cto.answer("Reject that draft", [], "cto")
+check("actions: his words close the draft, and he's told", ("close", ["Old post"]) in acted and "Closed: Old post" in replies[-1])
+cto.answer("Try this topic tomorrow", [], "cmo")
+check("actions: his words queue the topic", ("idea", ["Add-on IAM"]) in acted and "Topic Scout" in replies[-1])
+cto.close_drafts, cto.save_ideas = real_cd, real_si
+pulls, patched = [{"number": 5, "title": "Draft: Old post", "head": {"ref": "draft/old"}}, {"number": 6, "title": "Draft: Other", "head": {"ref": "draft/x"}}, {"number": 7, "title": "Old post", "head": {"ref": "fix/code"}}], []
+real_gh_a, cto.gh = cto.gh, lambda m, p, b=None: pulls if m == "GET" else patched.append(p)
+check("actions: only an open draft with that exact title closes", cto.close_drafts(["Old post"]) == ["Old post"] and len(patched) == 1 and patched[0].endswith("/pulls/5"))
+cto.gh = real_gh_a
+files_b[cto.BRIEF] = "research\n"
+cto.save_ideas(["Add-on IAM"]); cto.save_ideas(["Flow Logs"])
+check("ideas: they lead the brief, and research stays", files_b[cto.BRIEF].startswith(cto.IDEAS_HEAD) and "- Add-on IAM" in files_b[cto.BRIEF] and "- Flow Logs" in files_b[cto.BRIEF] and files_b[cto.BRIEF].endswith("research\n"))
+check("ideas: new research keeps them", "Add-on IAM" in cto.ideas_block(files_b[cto.BRIEF]))
+check("ideas: the Scout runs tomorrow", json.loads(files_b[cto.PENDING])["run"] is True)
+del files_b[cto.BRIEF], files_b[cto.PENDING]
 for leader in ("ceo", "cto", "cmo", "cfo"):
     check(f"leaders: {leader} is on the team", roles_mod.get(leader)["status"] == "active" and roles_mod.get(leader)["display"].lower() == leader)
 assistant.add_goal = real_assistant_goal
