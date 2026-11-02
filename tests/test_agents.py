@@ -962,6 +962,11 @@ check("goals: focus matches whole words only", r.goal_score({"goal": "a", "title
 check("assistant: a need is never listed twice", len(assistant.clean_plan({"focus": "f", "assignments": [{"role": "nobody", "task": "t"}], "needs": ["a"]})["needs"]) == 2)
 
 # ---------- budget and CTO ----------
+def raises_any(fn, *args):
+    try:
+        fn(*args); return False
+    except Exception:
+        return True
 import budget, cto, radar as radar_b
 b_month = budget.month()
 listing = [{"name": f"spend-{b_month}-1-1-9-radar-c1200.json"}, {"name": f"spend-{b_month}-2-1-9-draft-c3850.json"},
@@ -1174,6 +1179,13 @@ check("billing: runs only in a main-only environment, with its own role", bj["en
 billing_sh = (ROOT / "infra/billing-role.sh").read_text()
 check("billing: the AWS role can only read costs", billing_sh.count('"Action": "ce:GetCostAndUsage"') == 1 and "ce:*" not in billing_sh and "environment:live-check" in billing_sh)
 check("editor: drafts get a quality verdict by default", "vars.EDITOR_REVIEW || 'on'" in (ROOT / ".github/workflows/replicate.yml").read_text())
+check("lab: JSON text becomes a lab", lab_mod.as_lab('{"files": []}') == {"files": []})
+check("lab: anything else is refused before AWS", raises_any(lab_mod.as_lab, "not json") and raises_any(lab_mod.as_lab, ["x"]))
+real_out, lab_mod.OUT = lab_mod.OUT, pathlib.Path(tempfile.mkdtemp()) / "o"
+real_ev = list(lab_mod.EVIDENCE); lab_mod.EVIDENCE.clear()
+lab_mod.save({"status": "failed"}, "text, not a lab")
+check("lab: a bad lab still writes its result, so spend and the failure survive", "usd" in json.loads((lab_mod.OUT / "result.json").read_text()))
+lab_mod.OUT = real_out; lab_mod.EVIDENCE.extend(real_ev)
 check("topics: each one needs a hook the docs do not give", "hook" in r.BUILD_SCHEMA["properties"]["topics"]["items"]["required"])
 check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / "pipeline/radar.py").read_text())
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
