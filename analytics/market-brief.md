@@ -1,6 +1,8 @@
 Abhi's own topic ideas. Put these first:
 - Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them
 - VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest
+- Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them
+- VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest
 End of his ideas.
 
 What worked for others:
