@@ -1,0 +1,160 @@
+$ terraform plan -input=false -no-color -out=tfplan
+# exit 0 after 8s
+
+[... earlier output cut ...]
+           = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = "subnet-087fc0254c718cdb3"
+      + tags                                 = {
+          + "Name" = "fix-eks-alb-503s-caused-223292-node-0"
+        }
+      + tags_all                             = {
+          + "Name"     = "fix-eks-alb-503s-caused-223292-node-0"
+          + "hero-lab" = "fix-eks-alb-503s-caused-223292"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = (known after apply)
+      + user_data_base64                     = "TUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvbWl4ZWQ7IGJvdW5kYXJ5PSJMQUJCT1VOREFSWSIKCi0tTEFCQk9VTkRBUlkKQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9ub2RlLmVrcy5hd3MKCi0tLQphcGlWZXJzaW9uOiBub2RlLmVrcy5hd3MvdjFhbHBoYTEKa2luZDogTm9kZUNvbmZpZwpzcGVjOgogIGNsdXN0ZXI6CiAgICBuYW1lOiBmaXgtZWtzLWFsYi01MDNzLWNhdXNlZC0yMjMyOTIKICAgIGFwaVNlcnZlckVuZHBvaW50OiBodHRwczovL0ExRDEzRkQ5N0Y4RkNDQjg5QjIwRjJGNUU0OEY4QjMzLmdyNy5ldS1jZW50cmFsLTEuZWtzLmFtYXpvbmF3cy5jb20KICAgIGNlcnRpZmljYXRlQXV0aG9yaXR5OiBMUzB0TFMxQ1JVZEpUaUJEUlZKVVNVWkpRMEZVUlMwdExTMHRDazFKU1VSTlZFTkRRV2h0WjBGM1NVSkJaMGxSU3psS1ZWSjVUMFpZZEZCclVYTTBVVnAxWVdFemVrRk9RbWRyY1docmFVYzVkekJDUVZGelJrRkVRVzRLVFZKQmQwUm5XVVJXVVZGTFJYZGtRbFl4VFdkU1ZYUlVUVkpOZDBWUldVUldVVkZFUlhkd2NtUlhTbXhqYlRWc1pFZFdlazFDTkZoRVZFa3lUVlJGZHdwTmFrVXlUa1JGZVUxR2IxaEVWRTE0VFZSRmQwMVVSVEpPUkVWNVRVWnZkMHA2UlZGTlFUUkhRVEZWUlVOb1RVaFJWbVJVU1VWV1RGVjZSVlJOUWtWSENrRXhWVVZCZUUxTFlUTldhVnBZU25WYVdGSnNZM3BEUTBGVFNYZEVVVmxLUzI5YVNXaDJZMDVCVVVWQ1FsRkJSR2RuUlZCQlJFTkRRVkZ2UTJkblJVSUtRVTV1Um5GSFMxQTJObVozVm1aNVJubE1SbkIxTTNoak9XbDZValJIVEhaRE1URTNhVk1yT0hCQ1dVdEdVWE0wVVVaS0sxcFNVbkJPUWt0UWVrOWFjQXBvU1hKbFEybzNhM0Z0YzJ3NGFpdFRVVmRQTkVoamIzQlBlbXhZVG1sa01GcHJPVFl6ZUdoUVJIQjJRU3RNWlN0clQydEVaRlU0WmtKT01FMDJTWFpXQ2xkaVdHdHNLMW92ZUhkdVlrbG1WMEZoTlhReVdrMVVhMVZOZDFwalRXcHVSWFp0ZUZNMFZESkRiVGR3VTB4RVVHcFNRMlY0VUZGU1IzSnpOa1pDVEZJS1lqRTVXVWRRTHprelNGZHNOSE5wUVRSd2RVNVJjMmRHT1hSUWQycHlhR0o2Ukc5RlJFRlpWVE5qY0U1WVdXSnBiVmhaYUN0bGRrWkdUVmxpWkRGcllRcHdWa2RGVVhwQk1DdFFNbkJqUzA1UVdXeHVlbVoxTUZscFpFRXJiR0ZTVDNOemNsRm9TemwyYlZoS1QxSlRiV2xCYUV4VU0ySlhUMVZJVkZoc2RHeHpDbTVhUTJGM1JYZGFUMGRMVlRCMFFXNXdjMlExY1ZORlEwRjNSVUZCWVU1YVRVWmpkMFJuV1VSV1VqQlFRVkZJTDBKQlVVUkJaMHRyVFVFNFIwRXhWV1FLUlhkRlFpOTNVVVpOUVUxQ1FXWTRkMGhSV1VSV1VqQlBRa0paUlVaRGRsaHZPR29yUW1wcmRqQnZlSFZ6TkhWUlNVcHdOaXRuY0hwTlFsVkhRVEZWWkFwRlVWRlBUVUY1UTBOdGRERlpiVlo1WW0xV01GcFlUWGRFVVZsS1MyOWFTV2gyWTA1QlVVVk1RbEZCUkdkblJVSkJUWHBwVkc5T1FqRmtWMVoyVlRaMUNqWk5jREEwYmtGV0syaHJNM2hKVmtzMlVEWm1iblZtU0hobFJGaGFhbGxUTDIxYVZtWmtRVVkyTmxWTk1UQnBjblpWWXk5SWFHczJiazlDTVhCaVpUWUtVekpOTkVoTFJqUkdlWFJwZVhkRU9HSTFiMWwzUTA1SFprc3pPVEVyV1dORmF6ZHdTVGxUYVVoVmFEazVMM1JDWVVGSGJrdEpabTlWVGxsNGJHdzBWd3BFWVdKdU4zRllhM1pVWTFKVlVVbE9ZWHA1ZVRsRk9UazBVMFpEYTIxbmRrVmhaREo0TDA1Qk1IQTJjMDFsVkV0UE9XaHJSbWhFUkVRNVdtVm1ZemhDQ2tscmJrSm1iRFZqZDBjd2RrdEVMM1p4UlZwa1NIWnFNR3Q2Tmtab1JFNWlkMlJqZURCek5EQlZXVkZTVkVKVmF6aEJVMnMxUkVvNEwxWm9UWGRxU0hvS1pWRTVUalJEVUhwaWR6TXpVbEZaVjNscFVDOVdiRUZqTlhjd1dTODJRWHBNZW5ndk5uZGhiVXRuYVdSTFprNUpkR05zZGpCRlQwNURWVTkwYW5OeFZncHdWUzlHUVd4RlBRb3RMUzB0TFVWT1JDQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENnPT0KICAgIGNpZHI6IDE3Mi4yMC4wLjAvMTYKCi0tTEFCQk9VTkRBUlktLQo="
+      + user_data_replace_on_change          = false
+      + vpc_security_group_ids               = [
+          + "sg-0114f683fb54a049a",
+        ]
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options {
+          + http_endpoint               = "enabled"
+          + http_protocol_ipv6          = "disabled"
+          + http_put_response_hop_limit = 2
+          + http_tokens                 = "required"
+          + instance_metadata_tags      = (known after apply)
+        }
+
+      + network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device {
+          + delete_on_termination = true
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags_all              = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = 30
+          + volume_type           = "gp3"
+        }
+    }
+
+  # aws_instance.node[1] will be created
+  + resource "aws_instance" "node" {
+      + ami                                  = (sensitive value)
+      + arn                                  = (known after apply)
+      + associate_public_ip_address          = true
+      + availability_zone                    = (known after apply)
+      + cpu_core_count                       = (known after apply)
+      + cpu_threads_per_core                 = (known after apply)
+      + disable_api_stop                     = (known after apply)
+      + disable_api_termination              = (known after apply)
+      + ebs_optimized                        = (known after apply)
+      + enable_primary_ipv6                  = (known after apply)
+      + get_password_data                    = false
+      + host_id                              = (known after apply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = "hero-lab-fix-eks-alb-503s-caused-223292-node"
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.large"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = "subnet-04c75020bad2a62a0"
+      + tags                                 = {
+          + "Name" = "fix-eks-alb-503s-caused-223292-node-1"
+        }
+      + tags_all                             = {
+          + "Name"     = "fix-eks-alb-503s-caused-223292-node-1"
+          + "hero-lab" = "fix-eks-alb-503s-caused-223292"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = (known after apply)
+      + user_data_base64                     = "TUlNRS1WZXJzaW9uOiAxLjAKQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvbWl4ZWQ7IGJvdW5kYXJ5PSJMQUJCT1VOREFSWSIKCi0tTEFCQk9VTkRBUlkKQ29udGVudC1UeXBlOiBhcHBsaWNhdGlvbi9ub2RlLmVrcy5hd3MKCi0tLQphcGlWZXJzaW9uOiBub2RlLmVrcy5hd3MvdjFhbHBoYTEKa2luZDogTm9kZUNvbmZpZwpzcGVjOgogIGNsdXN0ZXI6CiAgICBuYW1lOiBmaXgtZWtzLWFsYi01MDNzLWNhdXNlZC0yMjMyOTIKICAgIGFwaVNlcnZlckVuZHBvaW50OiBodHRwczovL0ExRDEzRkQ5N0Y4RkNDQjg5QjIwRjJGNUU0OEY4QjMzLmdyNy5ldS1jZW50cmFsLTEuZWtzLmFtYXpvbmF3cy5jb20KICAgIGNlcnRpZmljYXRlQXV0aG9yaXR5OiBMUzB0TFMxQ1JVZEpUaUJEUlZKVVNVWkpRMEZVUlMwdExTMHRDazFKU1VSTlZFTkRRV2h0WjBGM1NVSkJaMGxSU3psS1ZWSjVUMFpZZEZCclVYTTBVVnAxWVdFemVrRk9RbWRyY1docmFVYzVkekJDUVZGelJrRkVRVzRLVFZKQmQwUm5XVVJXVVZGTFJYZGtRbFl4VFdkU1ZYUlVUVkpOZDBWUldVUldVVkZFUlhkd2NtUlhTbXhqYlRWc1pFZFdlazFDTkZoRVZFa3lUVlJGZHdwTmFrVXlUa1JGZVUxR2IxaEVWRTE0VFZSRmQwMVVSVEpPUkVWNVRVWnZkMHA2UlZGTlFUUkhRVEZWUlVOb1RVaFJWbVJVU1VWV1RGVjZSVlJOUWtWSENrRXhWVVZCZUUxTFlUTldhVnBZU25WYVdGSnNZM3BEUTBGVFNYZEVVVmxLUzI5YVNXaDJZMDVCVVVWQ1FsRkJSR2RuUlZCQlJFTkRRVkZ2UTJkblJVSUtRVTV1Um5GSFMxQTJObVozVm1aNVJubE1SbkIxTTNoak9XbDZValJIVEhaRE1URTNhVk1yT0hCQ1dVdEdVWE0wVVVaS0sxcFNVbkJPUWt0UWVrOWFjQXBvU1hKbFEybzNhM0Z0YzJ3NGFpdFRVVmRQTkVoamIzQlBlbXhZVG1sa01GcHJPVFl6ZUdoUVJIQjJRU3RNWlN0clQydEVaRlU0WmtKT01FMDJTWFpXQ2xkaVdHdHNLMW92ZUhkdVlrbG1WMEZoTlhReVdrMVVhMVZOZDFwalRXcHVSWFp0ZUZNMFZESkRiVGR3VTB4RVVHcFNRMlY0VUZGU1IzSnpOa1pDVEZJS1lqRTVXVWRRTHprelNGZHNOSE5wUVRSd2RVNVJjMmRHT1hSUWQycHlhR0o2Ukc5RlJFRlpWVE5qY0U1WVdXSnBiVmhaYUN0bGRrWkdUVmxpWkRGcllRcHdWa2RGVVhwQk1DdFFNbkJqUzA1UVdXeHVlbVoxTUZscFpFRXJiR0ZTVDNOemNsRm9TemwyYlZoS1QxSlRiV2xCYUV4VU0ySlhUMVZJVkZoc2RHeHpDbTVhUTJGM1JYZGFUMGRMVlRCMFFXNXdjMlExY1ZORlEwRjNSVUZCWVU1YVRVWmpkMFJuV1VSV1VqQlFRVkZJTDBKQlVVUkJaMHRyVFVFNFIwRXhWV1FLUlhkRlFpOTNVVVpOUVUxQ1FXWTRkMGhSV1VSV1VqQlBRa0paUlVaRGRsaHZPR29yUW1wcmRqQnZlSFZ6TkhWUlNVcHdOaXRuY0hwTlFsVkhRVEZWWkFwRlVWRlBUVUY1UTBOdGRERlpiVlo1WW0xV01GcFlUWGRFVVZsS1MyOWFTV2gyWTA1QlVVVk1RbEZCUkdkblJVSkJUWHBwVkc5T1FqRmtWMVoyVlRaMUNqWk5jREEwYmtGV0syaHJNM2hKVmtzMlVEWm1iblZtU0hobFJGaGFhbGxUTDIxYVZtWmtRVVkyTmxWTk1UQnBjblpWWXk5SWFHczJiazlDTVhCaVpUWUtVekpOTkVoTFJqUkdlWFJwZVhkRU9HSTFiMWwzUTA1SFprc3pPVEVyV1dORmF6ZHdTVGxUYVVoVmFEazVMM1JDWVVGSGJrdEpabTlWVGxsNGJHdzBWd3BFWVdKdU4zRllhM1pVWTFKVlVVbE9ZWHA1ZVRsRk9UazBVMFpEYTIxbmRrVmhaREo0TDA1Qk1IQTJjMDFsVkV0UE9XaHJSbWhFUkVRNVdtVm1ZemhDQ2tscmJrSm1iRFZqZDBjd2RrdEVMM1p4UlZwa1NIWnFNR3Q2Tmtab1JFNWlkMlJqZURCek5EQlZXVkZTVkVKVmF6aEJVMnMxUkVvNEwxWm9UWGRxU0hvS1pWRTVUalJEVUhwaWR6TXpVbEZaVjNscFVDOVdiRUZqTlhjd1dTODJRWHBNZW5ndk5uZGhiVXRuYVdSTFprNUpkR05zZGpCRlQwNURWVTkwYW5OeFZncHdWUzlHUVd4RlBRb3RMUzB0TFVWT1JDQkRSVkpVU1VaSlEwRlVSUzB0TFMwdENnPT0KICAgIGNpZHI6IDE3Mi4yMC4wLjAvMTYKCi0tTEFCQk9VTkRBUlktLQo="
+      + user_data_replace_on_change          = false
+      + vpc_security_group_ids               = [
+          + "sg-0114f683fb54a049a",
+        ]
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options {
+          + http_endpoint               = "enabled"
+          + http_protocol_ipv6          = "disabled"
+          + http_put_response_hop_limit = 2
+          + http_tokens                 = "required"
+          + instance_metadata_tags      = (known after apply)
+        }
+
+      + network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device {
+          + delete_on_termination = true
+          + device_name           = (known after apply)
+          + encrypted             = (known after apply)
+          + iops                  = (known after apply)
+          + kms_key_id            = (known after apply)
+          + tags_all              = (known after apply)
+          + throughput            = (known after apply)
+          + volume_id             = (known after apply)
+          + volume_size           = 30
+          + volume_type           = "gp3"
+        }
+    }
+
+Plan: 5 to add, 0 to change, 0 to destroy.
+Releasing state lock. This may take a few moments...
+
