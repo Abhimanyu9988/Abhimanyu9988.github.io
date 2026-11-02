@@ -156,3 +156,6 @@ and recent merges, and their prompts tell them to find the way forward. They sti
 
 New features are built with Abhi in a Claude chat, not by agents or through the API, because that costs less. A coding agent was
 built for this and removed before merging. Leaders save each feature request as a CTO note, and code lists the notes when he asks.
+
+IT Support checks the notes against merged PRs each morning and whenever he asks for them. A model suggests the match, and code
+closes a note only if the PR really merged, so he never has to mark anything done. FACTS also gives leaders tomorrow's real plan.

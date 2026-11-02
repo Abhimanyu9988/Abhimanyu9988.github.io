@@ -12,7 +12,7 @@ who asks up to two others and gives him one answer.
 What leaders can do: answer, record a goal he stated, list tasks, close a draft he rejected, and queue a topic he asked for.
 Code carries out those last two, and only when his own words ask for them.
 New features are built with Abhi in a Claude chat, not by agents or through the API. Tasks owned by the CTO are his build notes,
-which code lists when he asks for them.
+which code lists when he asks for them. IT Support closes a note only when a merged pull request delivers it.
 What it cannot do: publish, spend, deploy, change the budget, or hold a credential. Links are checked by code first.
 """
 import base64, datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
@@ -27,6 +27,8 @@ MAX_TASKS = 40
 LEADER = re.compile(r"\s*@?(secretary|ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-]*", re.I)
 CONSULT = ("ceo", "cto", "cmo", "cfo", "oss_scout")
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
+NOTES_WORDS = re.compile(r"(?i)\b(feature requests?|build notes|my notes|backlog)\b")
+AUDIT_DAYS = 30
 DONE_WORDS = re.compile(r"(?i)\b(done|finished|complete|completed|remove|close|delete|drop)\b")
 IDEA_WORDS = re.compile(r"(?i)\b(topic|idea|try|pick|write about|tomorrow)\b")
 IDEAS_HEAD, IDEAS_END = "Abhi's own topic ideas. Put these first:", "End of his ideas."
@@ -145,6 +147,22 @@ def link_exists(url):
     except Exception:
         return False
 
+def next_run(today=None):
+    """What really runs next, read from the schedule and his queue. If the queue can't be read, this is left out."""
+    day = (today or datetime.date.today()) + datetime.timedelta(days=1)
+    try:
+        brief, _ = analytics.read_file(BRIEF)
+        queued, _ = analytics.read_file(PENDING)
+        ideas = list(dict.fromkeys(l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")))
+        idea = bool(queued.strip() and json.loads(queued).get("run"))
+    except Exception as e:
+        print(f"::warning title=cto::queue not read: {' '.join(str(e).split())[:200]}")
+        return {}
+    own = day.weekday() in (0, 3)              # Monday and Thursday have their own runs, at their own times
+    daily = idea or training_day(day)
+    return {"date": day.isoformat(), "topic_scout_runs": own or daily, "starts": "07:12 UTC" if daily else ("on its weekly schedule" if own else "no run planned"),
+            "his_ideas_go_first": ideas, "note": "The Topic Scout and panel choose after this run. A topic only reaches a lab if it clears the bar."}
+
 def progress():
     """Facts from GitHub and the spend record. A failed source is left out by the caller, never guessed."""
     since = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()[:19] + "Z"
@@ -155,7 +173,7 @@ def progress():
     picks = gh("GET", f"/repos/{HOME_REPO}/issues?labels=radar&state=open&sort=created&direction=desc&per_page=8") or []
     total, jobs = budget.spent()
     pipeline = [p for p in pulls if not p["head"]["ref"].startswith("draft/")]
-    return {"board_url": live_board.PAGE,
+    return {"tomorrow": next_run(), "board_url": live_board.PAGE,
             "open_pipeline_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in pipeline if p["state"] == "open"],
             "recently_shipped": [p["title"] for p in pipeline if (p.get("merged_at") or "") >= since][:12],
             "newest_topics_first": [{"title": i["title"], "panel_pick": any(l["name"] == "replicate" for l in i["labels"]), "opened": i["created_at"][:10]}
@@ -319,6 +337,52 @@ def finish_tasks(titles):
         return [t["title"] for t in hit]
     return []
 
+def merged_prs():
+    """Pipeline PRs merged lately. These are the only evidence that can close a note, so a read failure closes nothing."""
+    since = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=AUDIT_DAYS)).isoformat()[:19] + "Z"
+    pulls = gh("GET", f"/repos/{HOME_REPO}/pulls?state=closed&sort=updated&direction=desc&per_page=50") or []
+    return [{"title": p["title"], "url": p["html_url"], "about": str(p.get("body") or "")[:400]}
+            for p in pulls if (p.get("merged_at") or "") >= since and not p["head"]["ref"].startswith("draft/")]
+
+def change_log():
+    try:
+        with open("docs/decisions.md") as f:
+            return f.read()[-3000:]
+    except OSError:
+        return ""
+
+def audit_notes():
+    """[(note, PR address)] that IT Support closed. Code checks each one, so a model can't close a note without a real merge."""
+    got, sha = tasks()
+    notes = [t for t in got if t.get("status") == "open" and t.get("owner") == "cto"]
+    merged = merged_prs() if notes else []
+    if not merged:
+        return []
+    found = roles.ask("it", f"NOTES:\n{json.dumps([t['title'] for t in notes])[:5000]}\n\nMERGED:\n{json.dumps(merged)[:9000]}"
+                            f"\n\nCHANGE LOG:\n{change_log()}", "noteaudit")["done"]
+    real, closed = {m["url"] for m in merged}, []
+    for row in found:
+        for t in notes:
+            if t["title"] == row["note"] and row["pr"] in real and t["status"] == "open":
+                t.update(status="done", done_by=row["pr"])
+                closed.append((t["title"], row["pr"]))
+    if closed and not write_private(TASKS, json.dumps({"tasks": got}, indent=1), sha, "tasks: checked by IT Support"):
+        return []
+    return closed
+
+def closed_message(closed):
+    return "Checked against merged pull requests. These are finished:\n" + "\n".join(f"- {note} ({pr})" for note, pr in closed)
+
+def show_notes(role):
+    try:
+        closed = audit_notes()
+        if closed:
+            post(closed_message(closed), "it")
+    except Exception as e:
+        print(f"::warning title=it::notes not checked: {' '.join(str(e).split())[:200]}")
+    for part in build_notes():
+        post(part, role)
+
 def ideas_block(text):
     """His own ideas survive new research until a Topic Scout run has used them."""
     return text[:text.index(IDEAS_END) + len(IDEAS_END)] + "\n\n" if text.startswith(IDEAS_HEAD) and IDEAS_END in text else ""
@@ -423,9 +487,8 @@ def answer(text, talk, role="secretary"):
     notes += [f"{bad} link(s) could not be confirmed, so I left them out."] if bad else []
     links = "\n".join(f"- {u}" for u in good)
     post("\n\n".join(x for x in (reply, links, " ".join(notes), steps_md(got.get("needs_abhi"))) if x), role)
-    if got.get("show_notes"):
-        for part in build_notes():
-            post(part, role)
+    if got.get("show_notes") or NOTES_WORDS.search(text):
+        show_notes(role)
     if got.get("goal") and STATED_GOAL.search(text):   # his words are recorded, and a model's idea never becomes a goal
         import assistant
         assistant.comment = lambda n, t: post(t, "ceo")
@@ -495,6 +558,13 @@ def main():
         if (idea or training_day()) and os.environ.get("GITHUB_OUTPUT"):
             with open(os.environ["GITHUB_OUTPUT"], "a") as f:
                 f.write("run_scout=true\n")
+    if scheduled:
+        try:
+            closed = audit_notes()
+            if closed:
+                post(closed_message(closed), "it")
+        except Exception as e:
+            print(f"::warning title=it::notes not checked: {' '.join(str(e).split())[:200]}")
     review = manager_review(p) if weekly else ""
     if weekly:
         try:

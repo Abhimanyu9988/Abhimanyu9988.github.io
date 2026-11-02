@@ -1,0 +1,31 @@
+{
+ "type": "object",
+ "required": [
+  "done"
+ ],
+ "additionalProperties": false,
+ "properties": {
+  "done": {
+   "type": "array",
+   "maxItems": 20,
+   "items": {
+    "type": "object",
+    "required": [
+     "note",
+     "pr"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "note": {
+      "type": "string",
+      "description": "the note's exact text"
+     },
+     "pr": {
+      "type": "string",
+      "description": "the merged pull request's url, exactly as MERGED gives it"
+     }
+    }
+   }
+  }
+ }
+}

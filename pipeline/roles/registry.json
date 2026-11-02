@@ -348,6 +348,27 @@
    },
    "display": "Secretary",
    "dept": "Office"
+  },
+  "it": {
+   "mission": "Check the CTO's feature notes against merged pull requests, and close the ones that are finished.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-haiku-5-5",
+   "model_env": "IT_MODEL",
+   "prompt": "it.md",
+   "outputs": [
+    "noteaudit"
+   ],
+   "data_sources": [
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 12000,
+    "max_calls": 3
+   },
+   "display": "IT Support",
+   "dept": "Engineering"
   }
  }
 }

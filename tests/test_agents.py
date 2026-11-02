@@ -1330,14 +1330,42 @@ check("notes: a feature request is saved word for word", cto.add_task({"title": 
 check("notes: only open CTO notes are listed", "1. Public board by username" in cto.build_notes()[0] and "2. Add a username box" in cto.build_notes()[0] and "Old" not in cto.build_notes()[0] and "Research" not in cto.build_notes()[0])
 check("notes: a long list splits into several messages, and none is lost", (lambda ps: len(ps) > 1 and all(len(x) < 3400 for x in ps) and all(f"{n}. " in "\n".join(ps) for n in range(1, 41)))((lambda: (setattr(cto, "tasks", lambda: ([{"title": "x" * 290, "owner": "cto", "status": "open"}] * 40, "s")), cto.build_notes())[1])()))
 cto.tasks = lambda: (notes_store["tasks"], "sha")
+real_audit, cto.audit_notes = cto.audit_notes, lambda: []
 roles_mod.ask = lambda role, prompt, out: {**blank, "reply": "Here they are.", "show_notes": True}
 sent.clear()
-cto.answer("CTO, what are my notes?", [], "cto")
+cto.answer("what did I ask you to build?", [], "cto")
 check("notes: he gets them when he asks", len(sent) == 2 and "Public board by username" in sent[1][1])
 sent.clear()
 roles_mod.ask = lambda role, prompt, out: blank
+cto.answer("Feature requests for claude ui", [])
+check("notes: his own words work even if the model misses them", len(sent) == 2 and "Public board by username" in sent[1][1])
+sent.clear()
 cto.answer("how is it going?", [], "cto")
 check("notes: they stay quiet otherwise", len(sent) == 1)
+cto.audit_notes = real_audit
+audit_rows = [{"title": "Note A", "owner": "cto", "status": "open"}, {"title": "Note B", "owner": "cto", "status": "open"}, {"title": "Note C", "owner": "cto", "status": "open"}, {"title": "Other", "owner": "cmo", "status": "open"}]
+written = []
+cto.tasks, cto.write_private = lambda: (audit_rows, "sha"), lambda p, t, s, m: written.append(t) or True
+real_merged, cto.merged_prs = cto.merged_prs, lambda: [{"title": "A", "url": "https://g/1", "about": "did A"}]
+roles_mod.ask = lambda role, prompt, out: {"done": [{"note": "Note A", "pr": "https://g/1"}, {"note": "Note B", "pr": "https://g/fake"}, {"note": "Made up", "pr": "https://g/1"}, {"note": "Other", "pr": "https://g/1"}]}
+check("IT: closes a note only with a real merged PR", cto.audit_notes() == [("Note A", "https://g/1")] and audit_rows[0]["done_by"] == "https://g/1" and audit_rows[1]["status"] == "open" and audit_rows[3]["status"] == "open" and len(written) == 1)
+cto.merged_prs = lambda: []
+roles_mod.ask = lambda *a: (_ for _ in ()).throw(RuntimeError("no model call without evidence"))
+check("IT: nothing merged means no model call", cto.audit_notes() == [])
+cto.merged_prs = real_merged
+real_gpr, cto.gh = cto.gh, lambda m, p, b=None: [{"title": "New", "html_url": "https://g/1", "body": "b", "head": {"ref": "feat/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Article", "html_url": "https://g/2", "head": {"ref": "draft/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Closed", "html_url": "https://g/3", "head": {"ref": "feat/b"}}]
+check("IT: only merged pipeline PRs count as evidence", [m["url"] for m in cto.merged_prs()] == ["https://g/1"])
+cto.gh = real_gpr
+import datetime as _d2
+files_n = {cto.BRIEF: f"{cto.IDEAS_HEAD}\n- IAM\n- IAM\n- Flow Logs\n{cto.IDEAS_END}\n\nrest", cto.PENDING: '{"run": true}'}
+analytics.read_file = lambda p, ref=None: (files_n.get(p, ""), "s")
+plan = cto.next_run(_d2.date(2026, 11, 2))
+check("tomorrow: he gets the date, time and his topics, once each", plan["date"] == "2026-11-03" and plan["topic_scout_runs"] and plan["starts"] == "07:12 UTC" and plan["his_ideas_go_first"] == ["IAM", "Flow Logs"])
+files_n[cto.PENDING] = '{"run": false}'
+check("tomorrow: after training week, a quiet day says so", cto.next_run(_d2.date(2026, 12, 7))["topic_scout_runs"] is False)
+check("tomorrow: Monday and Thursday have their own run", cto.next_run(_d2.date(2026, 12, 9))["starts"] == "on its weekly schedule")
+analytics.read_file = lambda p, ref=None: (_ for _ in ()).throw(RuntimeError("down"))
+check("tomorrow: a failed read is left out, not guessed", cto.next_run() == {})
 cto.tasks, cto.sources.roles, cto.write_private = real_ctk, real_sources, real_wpn
 check("notes: agents can't build through the API", not (ROOT / "pipeline/engineer.py").exists() and not (ROOT / ".github/workflows/engineer.yml").exists())
 roles_mod.ask, cto.progress, cto.post = real_rask, real_pg, real_post
