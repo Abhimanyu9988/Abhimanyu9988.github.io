@@ -87,7 +87,7 @@ def add_task(task):
     keep = [t for t in got if t.get("title") != row["title"]]
     if not write_private(TASKS, json.dumps({"tasks": (keep + [row])[-MAX_TASKS:]}, indent=1), sha, "tasks: add"):
         return "Task not saved, because the private admin repo isn't connected yet."
-    return f"Assigned to {row['owner']}: {row['title']}."
+    return f"Added to the list for {row['owner']}: {row['title']}. Agents don't act on this list by themselves yet."
 
 def public_https(url):
     """Model-written links run on a runner that holds keys, so private and internal addresses are refused."""
@@ -125,8 +125,11 @@ def progress():
     drafts = [p for p in pulls if p["head"]["ref"].startswith("draft/")]
     runs = gh("GET", f"/repos/{HOME_REPO}/actions/runs?status=failure&per_page=50&created=%3E{since[:10]}") or {}
     running = gh("GET", f"/repos/{HOME_REPO}/actions/runs?status=in_progress&per_page=30") or {}
+    picks = gh("GET", f"/repos/{HOME_REPO}/issues?labels=radar&state=open&sort=created&direction=desc&per_page=8") or []
     total, jobs = budget.spent()
-    return {"waiting": [p["title"] for p in drafts if p["state"] == "open"],
+    return {"newest_topics_first": [{"title": i["title"], "panel_pick": any(l["name"] == "replicate" for l in i["labels"]), "opened": i["created_at"][:10]}
+                                    for i in picks if "pull_request" not in i],
+            "waiting": [p["title"] for p in drafts if p["state"] == "open"],
             "shipped": [p["title"] for p in drafts if (p.get("merged_at") or "") >= since],
             "failed_runs": sorted({r.get("name", "?") for r in runs.get("workflow_runs", [])}),
             "running": sorted({r.get("name", "?") for r in running.get("workflow_runs", [])}),
@@ -223,6 +226,27 @@ def route(text):
     hit = LEADER.match(text)
     return (hit[1].lower(), text[hit.end():].strip() or text) if hit else ("ceo", text)
 
+def split_leaders(text):
+    """One message can address several leaders, one per line. Each leader gets only its own lines."""
+    parts = []
+    for line in text.splitlines():
+        if LEADER.match(line) or not parts:
+            parts.append(line)
+        elif line.strip():
+            parts[-1] += "\n" + line
+    return [route(p) for p in parts] or [route(text)]
+
+def recent_talk(talk, limit=6000):
+    """The newest messages win. Long old digests must never push out what was just said."""
+    kept, size = [], 0
+    for m in reversed(talk):
+        row = {**m, "text": str(m.get("text"))[:700]}
+        size += len(json.dumps(row))
+        if size > limit:
+            break
+        kept.append(row)
+    return list(reversed(kept))
+
 def steps_md(steps):
     """Steps may link to a page, but only to one code has confirmed."""
     clean = [URL.sub(lambda m: m[0] if link_exists(m[0]) else "[link removed]", str(s)) for s in steps or []]
@@ -258,7 +282,7 @@ def answer(text, talk, role="ceo"):
         return
     p, team = progress(), roles.data("cto")
     brief, _ = analytics.read_file(BRIEF)
-    got = roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION:\n{json.dumps(talk)[:6000]}\n\nFACTS:\n"
+    got = roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
                            f"{json.dumps({**p, 'team': roster(p)})[:4000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
                           f"\n\nMARKET BRIEF:\n{brief[:2500]}", "ctoreply")
     reply = URL.sub("[link removed]", got["reply"])
@@ -279,10 +303,6 @@ def answer(text, talk, role="ceo"):
         except Exception as e:
             print(f"::warning title=cmo::research skipped: {' '.join(str(e).split())[:200]}")
 
-def routed(text):
-    role, message = route(text)
-    return message, slack.history(), role
-
 def poll():
     """Slack messages since the last run. The cursor moves first, so one bad message cannot repeat every ten minutes."""
     if not slack.enabled():
@@ -297,11 +317,12 @@ def poll():
     if newest != after or not sha:
         analytics.write_file(CURSOR, json.dumps({"ts": newest}), sha, "slack: cursor")
     for m in mine[-MAX_REPLIES:]:
-        try:
-            answer(*routed(m["text"]))
-        except Exception as e:
-            print(f"::warning title=cto::reply failed: {' '.join(str(e).split())[:200]}")
-            post("I could not answer that just now. Please send it again.", "ceo")
+        for role, message in split_leaders(m["text"]):
+            try:
+                answer(message, slack.history(), role)
+            except Exception as e:
+                print(f"::warning title=cto::reply failed: {' '.join(str(e).split())[:200]}")
+                post("I could not answer that just now. Please send it again.", role)
 
 def main():
     if os.environ.get("POLL") == "true":
@@ -309,8 +330,8 @@ def main():
         return
     text = os.environ.get("COMMENT_BODY", "").strip()
     if text:
-        role, message = route(text)
-        answer(message, thread(desk()), role)
+        for role, message in split_leaders(text):
+            answer(message, thread(desk()), role)
         return
     p = progress()
     _, sha = analytics.read_file(STATUS)
