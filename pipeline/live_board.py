@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""The live board: one Slack message the team edits in place, so a pinned message always shows Abhi's outside work.
+"""The live board: a web page of cards for Abhi's outside work, and one Slack message that links to it with today's counts.
 
 It covers open source and public articles only. Pipeline PRs, failed runs and agent tasks belong to the CTO and the admin page.
 Inputs: GitHub pull requests and workflow runs, plus the lists cto.py passes in.
-Outputs: that one message, and its id in analytics/slack-board.json. The id is the only thing saved to the public branch.
+Outputs: analytics/board.json for site/board.html, the Slack message, and its id in analytics/slack-board.json.
+The analytics branch is public, so only public data goes in board.json. Card moves stay in Abhi's browser.
 It must not call a model, post a new message on each refresh, or fill in for a source it could not read.
 """
-import datetime, json
+import datetime, json, re
 from radar import HOME_REPO, gh
 import analytics, slack
 
-STATE = "analytics/slack-board.json"
-MAX_ROWS = 8
+STATE, DATA = "analytics/slack-board.json", "analytics/board.json"
+PAGE = "https://abhimanyu9988.github.io/board/"
 MENTION_DAYS = 14                              # an old mention is history, not a request
 WORK = {"replicate": "Lab Engineer is testing an article", "radar": "Topic Scout is looking for topics",
         "problems": "Topic Scout is looking for failures to test", "publish": "Publisher is publishing"}
@@ -19,8 +20,10 @@ MUST_ACT = {"review_requested_from_him": "Review", "prs_assigned_to_him": "Assig
             "changes_requested_on_his_prs": "Fix your PR"}
 MIGHT_ACT = {"code_owner_team_reviews": "Team review", "pr_mentions": "Mentioned", "mentions": "Mentioned"}
 
-def link(label, url):
-    return f"<{url}|{slack.escape(label[:100])}>"
+def card(kind, title, url=""):
+    """Board cards are shown as plain text by the page, so a title can't inject anything there."""
+    repo = re.search(r"github\.com/[^/]+/([^/]+)", url)
+    return {"id": url or f"{kind}:{title}", "kind": kind, "title": title[:160], "url": url, "where": repo.group(1) if repo else ""}
 
 def iso(moment):
     return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -33,12 +36,12 @@ def wanted_from_him(needed, now):
         for key, word in labels.items():
             got = needed.get(key, "the search failed")
             if not isinstance(got, list):
-                rows.append(f"Could not check {key.replace('_', ' ')}")
+                rows.append(card("Check failed", f"Could not check {key.replace('_', ' ')}"))
                 continue
             for item in got:
                 if item["url"] not in seen and item["updated"] >= fresh:
                     seen.add(item["url"])
-                    rows.append(link(f"{word}: {item['title']}", item["url"]))
+                    rows.append(card(word, item["title"], item["url"]))
     return must, might
 
 def gather(needed, mine, ideas, now):
@@ -50,44 +53,38 @@ def gather(needed, mine, ideas, now):
         running += (gh("GET", f"/repos/{HOME_REPO}/actions/runs?status={state}&per_page=30") or {}).get("workflow_runs", [])
     must, might = wanted_from_him(needed, now)
     articles = [p for p in pulls if p["head"]["ref"].startswith("draft/")]
-    review = [link("Approve or reject: " + p["title"].removeprefix("Draft: "), p["html_url"]) for p in articles if p["state"] == "open"]
-    done = [(p["merged_at"], link("Published: " + p["title"].removeprefix("Draft: "), p["html_url"]))
+    review = [card("Approve or reject", p["title"].removeprefix("Draft: "), p["html_url"]) for p in articles if p["state"] == "open"]
+    done = [(p["merged_at"], card("Published", p["title"].removeprefix("Draft: "), p["html_url"]))
             for p in articles if (p.get("merged_at") or "") >= week]
     work = []
     for r in running:
         if r.get("name") in WORK:
             title = r.get("display_title") or ""
-            work.append(link(WORK[r["name"]] + (f": {title}" if title and title != r["name"] else ""), r["html_url"]))
-    for key, word, rows in (("open", "Your PR: ", work), ("merged", "Merged: ", None)):
+            work.append(card(WORK[r["name"]], title if title != r["name"] else "Running now", r["html_url"]))
+    for key, word, rows in (("open", "Your PR", work), ("merged", "Merged", None)):
         got = mine.get(key, "the search failed")
         if not isinstance(got, list):
-            work.append(f"Could not check your {key} PRs")
+            work.append(card("Check failed", f"Could not check your {key} PRs"))
         elif rows is not None:
-            rows += [link(word + i["title"], i["url"]) for i in got]
+            rows += [card(word, i["title"], i["url"]) for i in got]
         else:
-            done += [(i["closed"], link(word + i["title"], i["url"])) for i in got]
+            done += [(i["closed"], card(word, i["title"], i["url"])) for i in got]
     return {"needs": review + must, "maybe": might, "working": work,
-            "next": [f"Topic idea: {slack.escape(i[:100])}" for i in dict.fromkeys(ideas)],
+            "next": [card("Topic idea", i) for i in dict.fromkeys(ideas)],
             "done": [row for _, row in sorted(done, key=lambda x: x[0], reverse=True)]}
 
-def section(title, rows):
-    if not rows:
-        return f"*{title}*\n_Nothing right now._"
-    more = f"\n_and {len(rows) - MAX_ROWS} more_" if len(rows) > MAX_ROWS else ""
-    return f"*{title} ({len(rows)})*\n" + "\n".join(f"• {r}" for r in rows[:MAX_ROWS]) + more
-
-def render(rows, spent, limit, now):
+def summary(rows, spent, limit, now):
     """The <!date> code shows the time in whoever is reading it's own time zone."""
     stamp = f"<!date^{int(now.timestamp())}^{{date_short_pretty}} {{time}}|{iso(now)}>"
-    parts = [f"*Team board*  ·  updated {stamp}  ·  ${spent:.2f} of ${limit:g} spent this month",
-             section(":red_circle: Needs you", rows["needs"])]
-    if rows["maybe"]:
-        parts.append(section(":eyes: Worth a look", rows["maybe"]))
-    parts.append(section(":large_blue_circle: In progress", rows["working"]))
-    if rows["next"]:
-        parts.append(section(":calendar: Up next", rows["next"]))
-    parts.append(section(":white_check_mark: Done in the last 7 days", rows["done"]))
-    return "\n\n".join(parts)
+    counts = [f"{len(rows['needs'])} need you", f"{len(rows['maybe'])} worth a look", f"{len(rows['working'])} in progress", f"{len(rows['done'])} done this week"]
+    return f"*<{PAGE}|Open your board>*\n{'  ·  '.join(counts)}\nChecked {stamp}  ·  ${spent:.2f} of ${limit:g} spent this month"
+
+def save_cards(rows, now):
+    """Saved only when a card changed, so the public branch doesn't gain a commit every ten minutes."""
+    old, sha = analytics.read_file(DATA)
+    if old.strip() and json.loads(old).get("columns") == rows:
+        return
+    analytics.write_file(DATA, json.dumps({"updated": iso(now), "columns": rows}, indent=1), sha, "board: cards changed")
 
 def refresh(needed, mine, ideas, spent, limit, now=None):
     if not slack.enabled():
@@ -95,8 +92,10 @@ def refresh(needed, mine, ideas, spent, limit, now=None):
     now = now or datetime.datetime.now(datetime.timezone.utc)
     saved, sha = analytics.read_file(STATE)
     ts = json.loads(saved).get("ts") if saved.strip() else None
-    new = slack.keep_updated("manager", render(gather(needed, mine, ideas, now), spent, limit, now), ts)
+    rows = gather(needed, mine, ideas, now)
+    save_cards(rows, now)
+    new = slack.keep_updated("manager", summary(rows, spent, limit, now), ts)
     if new != ts:
         analytics.write_file(STATE, json.dumps({"ts": new}), sha, "slack: board message")
-        slack.say("manager", "That message above is your live board. I'll keep it up to date. Pin it once so it stays easy to "
-                             "find: on your phone, press and hold it and choose Pin to channel.")
+        slack.say("manager", "That message above opens your board, and I'll keep its counts up to date. Pin it once so it stays "
+                             "easy to find: on your phone, press and hold it and choose Pin to channel.")

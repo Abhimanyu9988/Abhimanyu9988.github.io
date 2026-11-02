@@ -1,0 +1,144 @@
+---
+layout: null
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Abhi's board</title>
+<style>
+  /* Terminal look, matching the site's code blocks: black, white text, green for the prompt and live state. */
+  :root { --bg: #000; --lane: #0e110e; --card: #171b17; --line: #2a302a; --fg: #fff; --muted: #a3ada3; --green: #3fb950; --red: #ff7b72; --amber: #e3b341; --blue: #79c0ff;
+          --mono: Menlo, Monaco, Consolas, "Liberation Mono", monospace; --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--fg); font: 15px/1.4 var(--sans); display: flex; flex-direction: column; overflow-x: hidden; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 16px max(16px, env(safe-area-inset-left, 0px)) 12px; padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { font: 600 18px/1.3 var(--mono); margin: 0; }
+  h1 span { color: var(--green); }
+  #status { color: var(--muted); font: 12px/1.4 var(--mono); }
+  #reset { margin-left: auto; background: none; border: 0; color: var(--muted); font: 12px var(--mono); text-decoration: underline; cursor: pointer; padding: 4px 0; }
+  #reset:hover { color: var(--fg); }
+  main { flex: 1; min-height: 0; display: flex; gap: 12px; overflow-x: auto; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); scroll-snap-type: x proximity; scroll-padding-left: 16px; }
+  .lane { flex: 1 0 216px; max-width: 360px; min-width: 0; display: flex; flex-direction: column; background: var(--lane); border: 1px solid var(--line); border-radius: 8px; scroll-snap-align: start; }
+  .lane h2 { display: flex; justify-content: space-between; gap: 8px; margin: 0; padding: 12px 12px 8px; font: 600 13px/1.3 var(--mono); }
+  .lane h2 b { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+  .lane[data-column=needs] h2 span { color: var(--red); }
+  .lane[data-column=maybe] h2 span { color: var(--amber); }
+  .lane[data-column=working] h2 span { color: var(--blue); }
+  .lane[data-column=done] h2 span { color: var(--green); }
+  .cards { flex: 1; min-height: 96px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 8px 8px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 10px; cursor: grab; touch-action: pan-y; }
+  .card:hover { border-color: #4a544a; }
+  .card:focus-within { border-color: var(--green); }
+  .card.sortable-ghost { opacity: .35; }
+  .card.sortable-drag { cursor: grabbing; border-color: var(--green); }
+  .kind { font: 11px/1.3 var(--mono); color: var(--muted); margin-bottom: 4px; overflow-wrap: anywhere; }
+  .title { display: block; color: var(--fg); text-decoration: none; overflow-wrap: anywhere; }
+  a.title:hover { text-decoration: underline; }
+  .card select { margin-top: 8px; width: 100%; background: var(--lane); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; font: 12px var(--mono); padding: 4px; }
+  .cards:empty::before { content: attr(data-empty); color: var(--muted); font: 12px var(--mono); padding: 8px 4px; text-align: center; }
+  @media (min-width: 761px) { .card select { display: none; } .card:hover select, .card:focus-within select { display: block; } }
+  @media (max-width: 760px) { .lane { flex: 0 0 min(84vw, 340px); } body { height: auto; min-height: 100%; } main { align-items: flex-start; } .cards { overflow-y: visible; } }
+  @media (prefers-reduced-motion: reduce) { main { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>~/board $</span> open source and articles</h1>
+  <div id="status">Loading…</div>
+  <button id="reset" type="button" hidden>Undo my moves</button>
+</header>
+<main id="board" aria-live="polite"></main>
+<script src="/assets/sortable.min.js"></script>
+<script>
+  // Cards come from the team's public analytics branch. Nothing here can change GitHub, and moves stay in this browser.
+  var DATA = "https://raw.githubusercontent.com/Abhimanyu9988/Abhimanyu9988.github.io/analytics/analytics/board.json";
+  var KEY = "abhi-board-v1", REFRESH_MS = 5 * 60 * 1000;
+  var LANES = [["needs", "Needs you"], ["maybe", "Worth a look"], ["working", "In progress"], ["next", "Up next"], ["done", "Done this week"], ["parked", "Parked"]];
+  var saved = load(), latest = null, dragging = false;
+
+  function load() {
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.moves && s.order) return s; } catch (e) {}
+    return { moves: {}, order: {} };
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+    document.getElementById("reset").hidden = !Object.keys(saved.moves).length;
+  }
+  function place(cards) {
+    // A card GitHub says is finished goes to Done, wherever it was moved. Cards that left GitHub's lists are forgotten.
+    var lanes = {}, seen = {};
+    LANES.forEach(function (l) { lanes[l[0]] = []; });
+    Object.keys(cards).forEach(function (column) {
+      (cards[column] || []).forEach(function (c) {
+        seen[c.id] = true;
+        var moved = saved.moves[c.id];
+        (lanes[column !== "done" && lanes[moved] ? moved : column] || lanes.parked).push(c);
+      });
+    });
+    Object.keys(saved.moves).forEach(function (id) { if (!seen[id]) delete saved.moves[id]; });
+    Object.keys(lanes).forEach(function (column) {
+      var order = saved.order[column] || [];
+      lanes[column].sort(function (a, b) { return rank(order, a.id) - rank(order, b.id); });
+    });
+    return lanes;
+  }
+  function rank(order, id) { var i = order.indexOf(id); return i < 0 ? -1 : i; }   // new cards go on top
+  function card(c) {
+    var el = document.createElement("article"), kind = document.createElement("div"), title = document.createElement(/^https:\/\//.test(c.url || "") ? "a" : "div"), move = document.createElement("select");
+    el.className = "card"; el.dataset.id = c.id;
+    kind.className = "kind"; kind.textContent = c.where ? c.kind + " · " + c.where : c.kind;
+    title.className = "title"; title.textContent = c.title;
+    if (title.href !== undefined) { title.href = c.url; title.target = "_blank"; title.rel = "noopener"; }
+    move.setAttribute("aria-label", "Move this card");
+    var first = document.createElement("option"); first.textContent = "Move to…"; first.value = ""; move.appendChild(first);
+    LANES.forEach(function (l) { var o = document.createElement("option"); o.value = l[0]; o.textContent = l[1]; move.appendChild(o); });
+    move.addEventListener("change", function () { if (move.value) { saved.moves[c.id] = move.value; saveOrder(); save(); draw(); } });
+    el.append(kind, title, move);
+    return el;
+  }
+  function saveOrder() {
+    document.querySelectorAll(".lane").forEach(function (lane) {
+      saved.order[lane.dataset.column] = Array.prototype.map.call(lane.querySelectorAll(".card"), function (c) { return c.dataset.id; });
+    });
+  }
+  function counts() {
+    document.querySelectorAll(".lane").forEach(function (lane) { lane.querySelector("h2 b").textContent = lane.querySelectorAll(".card").length; });
+  }
+  function draw() {
+    var root = document.getElementById("board"), lanes = place(latest.columns);
+    root.textContent = "";
+    LANES.forEach(function (l) {
+      var lane = document.createElement("section"), head = document.createElement("h2"), name = document.createElement("span"), list = document.createElement("div");
+      lane.className = "lane"; lane.dataset.column = l[0];
+      name.textContent = l[1]; head.append(name, document.createElement("b"));
+      list.className = "cards"; list.dataset.empty = l[0] === "parked" ? "Drag anything here to set it aside" : "Nothing here";   // a CSS label, because a real element would stop drops into an empty lane
+      lanes[l[0]].forEach(function (c) { list.appendChild(card(c)); });
+      lane.append(head, list); root.appendChild(lane);
+      new Sortable(list, { group: "board", animation: 120, draggable: ".card", filter: "select,a", preventOnFilter: false, delay: 180, delayOnTouchOnly: true, ghostClass: "sortable-ghost", dragClass: "sortable-drag", forceFallback: true, fallbackOnBody: true,
+        onStart: function () { dragging = true; },
+        onEnd: function (e) {
+          dragging = false;
+          var to = e.to.closest(".lane").dataset.column;
+          if (e.from !== e.to) saved.moves[e.item.dataset.id] = to;
+          saveOrder(); save(); counts();
+        } });
+    });
+    counts(); save();
+    var when = new Date(latest.updated);
+    document.getElementById("status").textContent = "Last change " + when.toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) + ". Your moves are saved on this device.";
+  }
+  function refresh() {
+    if (dragging) return;
+    fetch(DATA + "?t=" + Math.floor(Date.now() / REFRESH_MS)).then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(function (d) { latest = d; draw(); })
+      .catch(function () { if (!latest) document.getElementById("status").textContent = "The board can't load right now. Try again in a few minutes."; });
+  }
+  document.getElementById("reset").addEventListener("click", function () { saved = { moves: {}, order: {} }; save(); draw(); });
+  refresh(); setInterval(refresh, REFRESH_MS);
+</script>
+</body>
+</html>

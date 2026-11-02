@@ -1325,19 +1325,26 @@ wanted = {"assigned_to_him": [item("Flink", "https://g/9")], "review_requested_f
           item("Old", "https://g/6", "2026-01-01")], "changes_requested_on_his_prs": "the search failed", "code_owner_team_reviews": [], "pr_mentions": [], "prs_assigned_to_him": []}
 mine = {"open": [{"title": "Mine", "url": "https://g/o", "closed": ""}], "merged": [{"title": "Upstream", "url": "https://g/m", "closed": "2026-11-02T00:00:00Z"}]}
 rows = live_board.gather(wanted, mine, ["Splunk add-on", "Splunk add-on"], now)
-check("board: articles ask for approval, pipeline PRs stay with the CTO", rows["needs"][0].endswith("|Approve or reject: T1>") and not any("T2" in x for x in rows["needs"]))
-check("board: GitHub's own needs are listed", any("Assigned: Flink" in x for x in rows["needs"]) and any("Review: Same" in x for x in rows["needs"]))
-check("board: a failed search says so, not 'all clear'", any("Could not check changes requested" in x for x in rows["needs"]))
-check("board: a mention is only worth a look, and only once", [("Same" in x) for x in rows["maybe"]] == [False] and "Ping" in rows["maybe"][0])
-check("board: done is articles and upstream merges, newest first, this week only", [x.split("|")[1].rstrip(">") for x in rows["done"]] == ["Merged: Upstream", "Published: T3"])
-check("board: in progress is article work and his own PRs", len(rows["working"]) == 2 and "Lab Engineer is testing an article: Prometheus lab" in rows["working"][0] and "Your PR: Mine" in rows["working"][1])
-check("board: a repeated idea shows once", rows["next"] == ["Topic idea: Splunk add-on"])
-check("board: a failed PR search says so", any("Could not check your merged PRs" in x for x in live_board.gather(wanted, {"open": []}, [], now)["working"]))
-text = live_board.render(rows, 7.5, 50, now)
-check("board: shows spend and his sections only", "$7.50 of $50" in text and all(w in text for w in ("Needs you", "In progress", "Done in the last 7 days", "Up next")) and not any(w in text for w in ("To do", "Failed", "Shipped")))
-many = live_board.section("X", [f"r{i}" for i in range(12)])
-check("board: a long list stays short", "r7" in many and "r8" not in many and "and 4 more" in many and "(12)" in many)
+show = lambda column: [f"{c['kind']}: {c['title']}" for c in rows[column]]
+check("board: articles ask for approval, pipeline PRs stay with the CTO", show("needs")[0] == "Approve or reject: T1" and not any("T2" in x for x in show("needs")))
+check("board: GitHub's own needs are listed", "Assigned: Flink" in show("needs") and "Review: Same" in show("needs"))
+check("board: a failed search says so, not 'all clear'", "Check failed: Could not check changes requested on his prs" in show("needs"))
+check("board: a mention is only worth a look, and only once", show("maybe") == ["Mentioned: Ping"])
+check("board: done is articles and upstream merges, newest first, this week only", show("done") == ["Merged: Upstream", "Published: T3"])
+check("board: in progress is article work and his own PRs", show("working") == ["Lab Engineer is testing an article: Prometheus lab", "Your PR: Mine"])
+check("board: a repeated idea shows once", show("next") == ["Topic idea: Splunk add-on"])
+check("board: every card has a unique id", len({c["id"] for col in rows.values() for c in col}) == sum(len(col) for col in rows.values()))
+check("board: a card names its project", live_board.card("x", "y", "https://github.com/open-telemetry/opentelemetry-operator/issues/1")["where"] == "opentelemetry-operator")
+check("board: a failed PR search says so", "Could not check your merged PRs" in [c["title"] for c in live_board.gather(wanted, {"open": []}, [], now)["working"]])
+text = live_board.summary(rows, 7.5, 50, now)
+check("board: Slack links to the page with counts and spend", live_board.PAGE in text and "1 worth a look" in text and "$7.50 of $50" in text)
+check("board: public cards hold no spend or team tasks", not any(w in json.dumps(rows) for w in ("7.5", "owner", "cto")))
 live_board.gh = real_lgh
+page = (ROOT / "site/board.html").read_text()
+check("page: reads the file the team writes", "analytics/analytics/board.json" in page and live_board.DATA == "analytics/board.json")
+check("page: stays out of the site menu and search", "layout: null" in page.split("---")[1] and "title:" not in page.split("---")[1] and 'content="noindex"' in page)
+check("page: has a lane for every column the team writes", all(f'["{k}",' in page for k in rows))
+check("page: titles are plain text, so GitHub text can't run", "innerHTML" not in page and "title.textContent = c.title" in page)
 calls, said, wrote = [], [], []
 def board_slack(method, **k):
     calls.append(method)
@@ -1363,11 +1370,15 @@ slack.say = lambda r, t: said.append(t) or True
 analytics.write_file = lambda p, t, s, m: wrote.append((p, t))
 analytics.read_file = lambda p, ref=None: ("", None)
 live_board.refresh({}, [], [], 1, 50, now)
-check("board: first run saves only the message id, and asks him to pin once", wrote == [(live_board.STATE, '{"ts": "new"}')] and len(said) == 1 and "Pin" in said[0])
+check("board: first run saves the cards and the message id, and asks him to pin once", [p for p, _ in wrote] == [live_board.DATA, live_board.STATE] and wrote[1][1] == '{"ts": "new"}' and len(said) == 1 and "Pin" in said[0])
 wrote.clear(); said.clear()
-analytics.read_file = lambda p, ref=None: ('{"ts": "old"}', "sha")
+same = {k: [] for k in ("needs", "maybe", "working", "next", "done")}
+analytics.read_file = lambda p, ref=None: (json.dumps({"columns": same}), "sha") if p == live_board.DATA else ('{"ts": "old"}', "sha")
 live_board.refresh({}, [], [], 1, 50, now)
-check("board: later runs write nothing and say nothing", not wrote and not said)
+check("board: no change writes nothing and says nothing", not wrote and not said)
+live_board.gather = lambda *a: {**same, "needs": [{"id": "x"}]}
+live_board.refresh({}, [], [], 1, 50, now)
+check("board: a changed card is saved once", [p for p, _ in wrote] == [live_board.DATA] and not said)
 analytics.read_file, analytics.write_file, slack.say, live_board.gather, slack.api = real_read, real_write, real_say, real_gather, real_sapi
 del os.environ["SLACK_BOT_TOKEN"]
 def board_boom(*a, **k):
