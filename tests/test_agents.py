@@ -1129,6 +1129,11 @@ check("team page: no spending, tasks or failures", "secret" not in json.dumps(pu
 check("team page: the page builds its text safely", "innerHTML" not in (ROOT / "site/team.md").read_text())
 md = cto.digest_md({"waiting": ["Post A"], "shipped": [], "failed_runs": [], "running": ["replicate"], "spent": 3.5, "limit": 50, "tasks": [{"title": "Check it", "owner": "editor"}]})
 check("digest: budget, waiting and work in progress are shown", all(x in md for x in ("$3.50 of $50.00", "Post A", "Content: Editor: Check it", "Engineering: Lab Engineer: working now", "Finance: Spend Tracker: idle")))
+real_gh_c, cto.gh = cto.gh, lambda m, p, b=None: ({"workflow_runs": [{"name": "replicate"}]} if "status=in_progress" in p else ({"workflow_runs": []} if "actions/runs" in p else []))
+real_sp3, real_lim3, real_tasks3 = budget.spent, budget.limit, cto.tasks
+budget.spent, budget.limit, cto.tasks = (lambda: (1, {})), (lambda: 50), (lambda: ([], None))
+check("leaders: they know when a lab is running", cto.progress()["lab_running_now"] is True)
+cto.gh, budget.spent, budget.limit, cto.tasks = real_gh_c, real_sp3, real_lim3, real_tasks3
 check("team: every active role has a name and a department", all(r.get("display") and r.get("dept") for r in roles_mod.registry().values()))
 check("team: nothing in the registry is broken", roles_mod.check_registry() == [])
 check("cto desk: its label exists, so the desk can be created", "cto-desk" in radar_b.LABELS)

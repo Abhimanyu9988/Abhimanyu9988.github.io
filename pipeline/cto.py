@@ -133,6 +133,7 @@ def progress():
             "shipped": [p["title"] for p in drafts if (p.get("merged_at") or "") >= since],
             "failed_runs": sorted({r.get("name", "?") for r in runs.get("workflow_runs", [])}),
             "running": sorted({r.get("name", "?") for r in running.get("workflow_runs", [])}),
+            "lab_running_now": any(r.get("name") == "replicate" for r in running.get("workflow_runs", [])),
             "spent": total, "limit": budget.limit(), "by_job": jobs, "tasks": [t for t in tasks()[0] if t.get("status") == "open"]}
 
 def roster(p):
