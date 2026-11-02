@@ -83,7 +83,7 @@
    "budget": {},
    "outputs": [],
    "display": "Topic Scout",
-   "dept": "Research"
+   "dept": "Marketing"
   },
   "lab_engineer": {
    "mission": "Run each experiment in a disposable AWS lab.",
@@ -189,6 +189,99 @@
    },
    "display": "Operations Manager",
    "dept": "Office"
+  },
+  "ceo": {
+   "mission": "Turn Abhi's goals and timelines into the team's priorities.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "CEO_MODEL",
+   "prompt": "ceo.md",
+   "outputs": [
+    "ctoreply"
+   ],
+   "data_sources": [
+    "goals",
+    "plan",
+    "post_mix",
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 14000,
+    "max_calls": 4
+   },
+   "display": "CEO",
+   "dept": "Executive"
+  },
+  "cmo": {
+   "mission": "Find out how others reached Abhi's goals, and make sure each article earns attention.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "CMO_MODEL",
+   "prompt": "cmo.md",
+   "outputs": [
+    "ctoreply"
+   ],
+   "data_sources": [
+    "goals",
+    "plan",
+    "post_mix",
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 14000,
+    "max_calls": 4
+   },
+   "display": "CMO",
+   "dept": "Marketing"
+  },
+  "cfo": {
+   "mission": "Own the budget and judge whether spending is worth it.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "CFO_MODEL",
+   "prompt": "cfo.md",
+   "outputs": [
+    "ctoreply"
+   ],
+   "data_sources": [
+    "goals",
+    "plan",
+    "post_mix",
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 14000,
+    "max_calls": 4
+   },
+   "display": "CFO",
+   "dept": "Finance"
+  },
+  "market_research": {
+   "mission": "Research how real people reached each goal.",
+   "module": "pipeline/cto.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "CMO_MODEL",
+   "prompt": "marketbrief.md",
+   "outputs": [
+    "marketbrief"
+   ],
+   "data_sources": [
+    "goals"
+   ],
+   "budget": {
+    "max_input_tokens": 14000,
+    "max_calls": 4
+   },
+   "display": "Market Researcher",
+   "dept": "Marketing"
   }
  }
 }

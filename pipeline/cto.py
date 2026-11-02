@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""CTO: the one place Abhi talks to the team, in Slack once its token is set, and in the CTO desk issue until then.
+"""The leadership desk: CEO, CTO, CMO and CFO. Abhi texts them in Slack, and the CTO desk issue works until Slack is on.
 
-  python3 pipeline/cto.py   no input: refresh the public team status, and on Mondays post the weekly digest.
+A message starting with a title, such as "CMO: ...", goes to that leader. Anything else goes to the CEO.
+
+  python3 pipeline/cto.py   no input: refresh the public team status, and on Mondays run market research and the digest.
                             POLL=true: answer Abhi's new Slack messages. No server is needed, so replies take minutes.
                             COMMENT_BODY: answer Abhi on the CTO desk issue.
 
-What it can do: answer, record a goal he agreed, and assign a tracked task to an active role.
+What leaders can do: answer, record a goal he stated, and assign a tracked task to an active role.
 What it cannot do: publish, spend, deploy, change the budget, or hold a credential. Links are checked by code first.
 """
 import base64, datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
@@ -17,6 +19,9 @@ ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, s
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
 MAX_TASKS = 40
+LEADER = re.compile(r"\s*@?(ceo|cto|cmo|cfo)\b[\s:,-]*", re.I)
+STATED_GOAL = re.compile(r"(?i)\b(goals?|targets?|aim|want|objective)\b")
+BRIEF = "analytics/market-brief.md"
 MAX_REPLIES = 5                                # each poll. CTO replies run past the monthly limit, so this bounds them
 
 def desk():
@@ -213,26 +218,69 @@ def thread(number):
     rows = gh("GET", f"/repos/{HOME_REPO}/issues/{number}/comments?per_page=100") or []
     return [{"from": "Abhi" if c["user"]["login"] == "Abhimanyu9988" else "CTO", "text": c["body"][:1500]} for c in rows[-8:]]
 
-def answer(text, talk):
+def route(text):
+    """(leader, message). The CEO takes anything not addressed to a leader."""
+    hit = LEADER.match(text)
+    return (hit[1].lower(), text[hit.end():].strip() or text) if hit else ("ceo", text)
+
+def steps_md(steps):
+    """Steps may link to a page, but only to one code has confirmed."""
+    clean = [URL.sub(lambda m: m[0] if link_exists(m[0]) else "[link removed]", str(s)) for s in steps or []]
+    return "*What I need from you:*\n" + "\n".join(f"{i}. {s}" for i, s in enumerate(clean, 1)) if clean else ""
+
+def research():
+    """How real people reached the top goal. Only real pages count, and it respects the monthly limit."""
+    active = sources.goals()
+    if not active or budget.spent()[0] >= budget.limit():
+        return ""
+    import llm
+    goal = active[0]
+    found = llm.web_research(f"How did people achieve this, and what did they publish to get there: {goal.get('outcome') or goal.get('title')}. "
+                             "Find real examples, their content and how they became visible.", max_uses=4) or {}
+    pages = found.get("pages") or {}
+    if not pages:
+        return ""
+    got = roles.ask("market_research", f"GOAL:\n{json.dumps(goal)[:1500]}\n\nSUMMARY:\n{str(found.get('summary'))[:5000]}\n\n"
+                                       f"PAGES:\n{json.dumps(pages)[:5000]}", "marketbrief")
+    real = [u for u in got.get("sources") or [] if u in pages]
+    text = "\n".join(["What worked for others:"] + [f"- {x}" for x in got["what_worked"]] + ["", "Topics to try:"] +
+                      [f"- {x}" for x in got["topics_to_try"]] + ["", "Avoid:"] + [f"- {x}" for x in got["avoid"]] + ["", "Sources:"] + [f"- {u}" for u in real])
+    _, sha = analytics.read_file(BRIEF)
+    analytics.write_file(BRIEF, text + "\n", sha, "market: weekly brief")
+    return text
+
+def answer(text, talk, role="ceo"):
     wanted = budget.requested_limit(text)
     if wanted:
         budget.set_limit(wanted)
-        post(f"Done. This month's limit is now ${wanted}. It returns to ${budget.LIMIT_USD} next month.", "spend_tracker")
+        post(f"Done. This month's limit is now ${wanted}. It returns to ${budget.LIMIT_USD} next month.", "cfo")
         return
     p, team = progress(), roles.data("cto")
-    got = roles.ask("cto", f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION:\n{json.dumps(talk)[:6000]}\n\nFACTS:\n"
-                           f"{json.dumps({**p, 'team': roster(p)})[:4000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}", "ctoreply")
+    brief, _ = analytics.read_file(BRIEF)
+    got = roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION:\n{json.dumps(talk)[:6000]}\n\nFACTS:\n"
+                           f"{json.dumps({**p, 'team': roster(p)})[:4000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
+                          f"\n\nMARKET BRIEF:\n{brief[:2500]}", "ctoreply")
     reply = URL.sub("[link removed]", got["reply"])
     good = [u for u in got.get("urls") or [] if link_exists(u)]
     notes = [add_task(got["task"])] if (got.get("task") or {}).get("title") else []
     bad = len(got.get("urls") or []) - len(good)
     notes += [f"{bad} link(s) could not be confirmed, so I left them out."] if bad else []
     links = "\n".join(f"- {u}" for u in good)
-    post("\n\n".join(x for x in (reply, links, " ".join(notes)) if x))
-    if got["stance"] == "agree" and got.get("goal") and re.search(r"(?i)\bgoals?\b", text):   # his word, not a model's idea
+    post("\n\n".join(x for x in (reply, links, " ".join(notes), steps_md(got.get("needs_abhi"))) if x), role)
+    if got.get("goal") and STATED_GOAL.search(text):   # his words are recorded, and a model's idea never becomes a goal
         import assistant
-        assistant.comment = lambda n, t: post(t, "executive_assistant")
-        assistant.add_goal(got["goal"], 0)
+        assistant.comment = lambda n, t: post(t, "ceo")
+        assistant.add_goal(text, 0)
+        try:
+            brief = research()
+            if brief:
+                post(f"Here is how others reached this goal. The Topic Scout now works from it.\n\n{brief[:3000]}", "cmo")
+        except Exception as e:
+            print(f"::warning title=cmo::research skipped: {' '.join(str(e).split())[:200]}")
+
+def routed(text):
+    role, message = route(text)
+    return message, slack.history(), role
 
 def poll():
     """Slack messages since the last run. The cursor moves first, so one bad message cannot repeat every ten minutes."""
@@ -249,10 +297,10 @@ def poll():
         analytics.write_file(CURSOR, json.dumps({"ts": newest}), sha, "slack: cursor")
     for m in mine[-MAX_REPLIES:]:
         try:
-            answer(m["text"], slack.history())
+            answer(*routed(m["text"]))
         except Exception as e:
             print(f"::warning title=cto::reply failed: {' '.join(str(e).split())[:200]}")
-            post("I could not answer that just now. Please send it again.")
+            post("I could not answer that just now. Please send it again.", "ceo")
 
 def main():
     if os.environ.get("POLL") == "true":
@@ -260,13 +308,21 @@ def main():
         return
     text = os.environ.get("COMMENT_BODY", "").strip()
     if text:
-        answer(text, thread(desk()))
+        role, message = route(text)
+        answer(message, thread(desk()), role)
         return
     p = progress()
     _, sha = analytics.read_file(STATUS)
     analytics.write_file(STATUS, json.dumps(public_status(p), indent=1), sha, "status: refresh")
     weekly = datetime.date.today().weekday() == 0 or os.environ.get("DIGEST") == "true"
     review = manager_review(p) if weekly else ""
+    if datetime.date.today().weekday() == 0:
+        try:
+            brief = research()
+            if brief:
+                post(f"This week's market brief. The Topic Scout works from it.\n\n{brief[:3000]}", "cmo")
+        except Exception as e:
+            print(f"::warning title=cmo::research skipped: {' '.join(str(e).split())[:200]}")
     save_admin(p, review)
     if weekly:
         post(f"{digest_md(p)}\n\n{review}")

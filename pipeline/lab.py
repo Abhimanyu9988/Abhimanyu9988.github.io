@@ -508,10 +508,21 @@ def fetch_sources(urls):
             out.append({"url": u, "error": str(e)[:200]})
     return out
 
+def as_lab(got):
+    """A model sometimes returns the lab as JSON text. Anything else stops the lab before AWS is touched."""
+    if isinstance(got, str):
+        try:
+            got = json.loads(got)
+        except ValueError:
+            pass
+    if not isinstance(got, dict):
+        raise ValueError(f"the lab came back as {type(got).__name__}, not an object")
+    return got
+
 # ---------- main ----------
 def save(result, lab=None):
     OUT.mkdir(exist_ok=True)
-    if lab:
+    if isinstance(lab, dict):                      # the result must always be written, or the spend and failure are lost
         d = OUT / "lab"
         shutil.rmtree(d, ignore_errors=True)
         for f in lab.get("files") or []:
@@ -613,7 +624,8 @@ def main():
                               LAB_SCHEMA, tool="submit_lab")
         rubric = LAB_RUBRIC + (" For a BUILD topic, blocking also: fix.sh doesn't print real proof that the build "
                                "works end to end." if kind == "build" else "")
-        lab, review = llm.refine("AWS lab", lab, rubric, f"LAB RULES:\n{rules}\n\n{context}", LAB_SCHEMA)
+        lab, review = llm.refine("AWS lab", as_lab(lab), rubric, f"LAB RULES:\n{rules}\n\n{context}", LAB_SCHEMA)
+        lab = as_lab(lab)
         result.update(review=review, summary=lab.get("summary", ""), expected=lab.get("expected", ""))
         save(result, lab)
         if DRY:
@@ -646,6 +658,7 @@ def main():
                 f"the problem, or for a build topic, show the before-state and prove the build works). Return the full "
                 f"lab.\n\nLAB RULES:\n{rules}\n\n"
                 f"YOUR LAB:\n{json.dumps(lab)}\n\n{context}", LAB_SCHEMA, tool="submit_lab")
+            lab = as_lab(lab)
             result.update(summary=lab.get("summary", ""), expected=lab.get("expected", ""))
     except Exception as e:
         print(f"error: {type(e).__name__}: {e}")

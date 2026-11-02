@@ -794,6 +794,7 @@ def main():
     issue_no = int(os.environ["ISSUE"])
     rf = OUT / "result.json"
     if not rf.exists():
+        slack.say("lab_engineer", "A lab ended without a result, so no draft was written. Nothing is needed from you.")
         comment(issue_no, f"The lab job (workflow run {os.environ.get('RUN_ID', '?')}) ended without a result: it "
                           "was not approved, was cancelled, or crashed before writing output. Nothing was drafted.")
         return

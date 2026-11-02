@@ -34,7 +34,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 10. **Secrets are never committed or printed.** Do not put marketing data or secrets in the lab AWS account.
 11. **People approve** production deploys, new paid services, major infrastructure, credentials and external publication.
     Disposable labs run on their own, inside the monthly budget.
-12. **No agent starts another agent.** The order is fixed in workflows. The one exception is `radar.yml`, which starts
+12. **No agent starts another agent.** The order is fixed in workflows. The one exception is `radar.yml` and `problems.yml`, which start
     `replicate.yml` for the panel's pick, with a numeric issue only, behind the budget and `AUTO_LAB`. Editor, Tech Head, Executive Assistant and CTO have
     call and input budgets. Older pipeline stages still rely on job timeouts, and web research is capped by `max_uses`.
 13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words, in
@@ -62,7 +62,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/editor.py` | Brief, gates, scorecard | Roles, scan | Nothing |
 | `pipeline/tech_head.py` | Code review | PR diff, scanners | PR comment |
 | `pipeline/assistant.py` | Goals to team plan | `/goal` comments | `analytics/goals.json`, `plan.json` |
-| `pipeline/cto.py` | Talks to Abhi, digest, tasks, public status | CTO desk issue, spend, PRs | One issue, `analytics/tasks.json`, `status.json` |
+| `pipeline/cto.py` | CEO, CTO, CMO and CFO: talks to Abhi, market research, digest, tasks, public status | CTO desk issue, spend, PRs | One issue, `analytics/tasks.json`, `status.json` |
 | `Abhimanyu9988/team-admin` | Private admin page and daily log, written by `cto.py` | Spend, runs, ledger | `README.md`, `log-*.md`, `tasks.json` |
 | `pipeline/slack.py` | Team channel, one name per agent | `#general` | Slack messages |
 | `pipeline/budget.py` | Spend record and monthly stop, code only | `analytics/spend-*` | `analytics/spend-*`, `budget.json` |

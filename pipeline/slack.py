@@ -28,7 +28,8 @@ def owner():
 
 def clean(text):
     """Slack control codes start with <, so escaping stops pasted or model text pinging the channel."""
-    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")[:3500]
+    text = str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("**", "*")   # Slack bold is one star
+    return text[:3500]
 
 def display(role):
     import roles

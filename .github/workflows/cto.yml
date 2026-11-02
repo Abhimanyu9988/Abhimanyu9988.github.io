@@ -61,6 +61,9 @@ jobs:
           DIGEST: ${{ inputs.digest }}
           BUDGET_EXEMPT: "1"
           CTO_MODEL: ${{ vars.CTO_MODEL }}
+          CEO_MODEL: ${{ vars.CEO_MODEL }}
+          CMO_MODEL: ${{ vars.CMO_MODEL }}
+          CFO_MODEL: ${{ vars.CFO_MODEL }}
           ASSISTANT_MODEL: ${{ vars.ASSISTANT_MODEL }}
           HERO_PUBLISH: "1"
           BOT_TOKEN: ${{ steps.bot.outputs.token }}

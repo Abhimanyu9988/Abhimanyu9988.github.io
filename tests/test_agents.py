@@ -962,6 +962,11 @@ check("goals: focus matches whole words only", r.goal_score({"goal": "a", "title
 check("assistant: a need is never listed twice", len(assistant.clean_plan({"focus": "f", "assignments": [{"role": "nobody", "task": "t"}], "needs": ["a"]})["needs"]) == 2)
 
 # ---------- budget and CTO ----------
+def raises_any(fn, *args):
+    try:
+        fn(*args); return False
+    except Exception:
+        return True
 import budget, cto, radar as radar_b
 b_month = budget.month()
 listing = [{"name": f"spend-{b_month}-1-1-9-radar-c1200.json"}, {"name": f"spend-{b_month}-2-1-9-draft-c3850.json"},
@@ -1047,12 +1052,14 @@ check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[Tr
 check("cto: its comment reaches code only through env", "${{" not in next(s for s in ctoy["jobs"]["cto"]["steps"] if s.get("name") == "cto")["run"])
 replies, real_post, real_ask2, real_le, real_prog = [], cto.post, roles_mod.ask, cto.link_exists, cto.progress
 cto.post = lambda t, role="cto": replies.append(t)
+real_research, cto.research = cto.research, lambda: ""
+real_read_b = analytics_mod.read_file
 cto.progress = lambda: {"spent": 1}
 cto.link_exists = lambda u: u == "https://good.example/bill"
-roles_mod.ask = lambda *a, **k: {"stance": "disagree", "reply": "No, see https://bad.example/x for why.", "goal": "", "task": {"title": "", "owner": ""},
+roles_mod.ask = lambda *a, **k: {"stance": "disagree", "reply": "No, see https://bad.example/x for why.", "goal": "", "task": {"title": "", "owner": ""}, "needs_abhi": [],
                                  "urls": ["https://good.example/bill", "https://nope.example/y"]}
 real_data, roles_mod.data = roles_mod.data, lambda r: {}
-cto.answer("monitor my azure bill", [])
+cto.answer("monitor my azure bill", [], "cto")
 check("cto: only confirmed links reach Abhi", "good.example" in replies[-1] and "nope.example" not in replies[-1] and "bad.example" not in replies[-1] and "could not be confirmed" in replies[-1])
 roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "", "task": {"title": "Watch the bill", "owner": "spend_tracker"}, "urls": []}
 cto.answer("track spending", [])
@@ -1069,11 +1076,22 @@ cto.answer("hire someone", [])
 real_assistant_goal = assistant.add_goal
 goal_calls = []
 assistant.add_goal = lambda text, n: goal_calls.append(text)
-roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "Invented", "task": {"title": "", "owner": ""}, "urls": []}
+roles_mod.ask = lambda *a, **k: {"stance": "agree", "reply": "Yes.", "goal": "Invented", "task": {"title": "", "owner": ""}, "urls": [], "needs_abhi": []}
 cto.answer("tell me a joke", [])
 check("cto: a model cannot invent a goal", goal_calls == [])
 cto.answer("my new goal is AWS community articles", [])
-check("cto: a goal he states is recorded", goal_calls == ["Invented"])
+check("ceo: his own words become the goal, not a model's", goal_calls == ["my new goal is AWS community articles"])
+roles_mod.ask = lambda *a, **k: {"stance": "need_data", "reply": "Blocked.", "goal": "", "task": {"title": "", "owner": ""}, "urls": [], "needs_abhi": ["Open Settings", "Click Save"]}
+cto.answer("why stuck", [], "cmo")
+real_le2, cto.link_exists = cto.link_exists, lambda u: u == "https://good.example/x"
+check("leaders: a step keeps only confirmed links", "good.example" in cto.steps_md(["Open https://good.example/x"]) and "bad.example" not in cto.steps_md(["Open https://bad.example/x"]))
+cto.link_exists = real_le2
+check("leaders: when they need him, the steps are numbered", "What I need from you" in replies[-1] and "1. Open Settings" in replies[-1] and "2. Click Save" in replies[-1])
+for said, want in (("CMO: how did others do it", ("cmo", "how did others do it")), ("cfo, are we ok", ("cfo", "are we ok")), ("@CTO why", ("cto", "why")),
+                   ("my goal is X", ("ceo", "my goal is X")), ("ceofy this", ("ceo", "ceofy this"))):
+    check(f"leaders: routes {said!r}", cto.route(said) == want)
+for leader in ("ceo", "cto", "cmo", "cfo"):
+    check(f"leaders: {leader} is on the team", roles_mod.get(leader)["status"] == "active" and roles_mod.get(leader)["display"].lower() == leader)
 assistant.add_goal = real_assistant_goal
 check("cto: an unknown role gets no work", any("No ghost role exists" in x for x in replies))
 limit_calls = []
@@ -1083,6 +1101,19 @@ check("cto: a limit change never reaches a model", not limit_calls and "$75" in 
 del files_b[budget.LIMITS]
 roles_mod.ask, roles_mod.data = real_ask2, real_data
 cto.post, cto.link_exists, cto.progress = real_post, real_le, real_prog
+cto.research = real_research
+goals_b, sources.goals = sources.goals, lambda: [{"title": "AWS Hero", "outcome": "Become an AWS Hero", "weight": 8}]
+real_spent, budget.spent = budget.spent, lambda: (1, {})
+real_wr, llm.web_research = llm.web_research, lambda q, max_uses=4: {"summary": "s", "pages": {"https://real.example/a": {"title": "a"}}}
+roles_mod.ask = lambda *a, **k: {"what_worked": ["Spoke at meetups"], "topics_to_try": ["Why X fails"], "avoid": ["Docs repeats"], "sources": ["https://real.example/a", "https://invented.example/b"]}
+brief_text = cto.research()
+check("cmo: research is saved for the Topic Scout", "Spoke at meetups" in files_b[cto.BRIEF] and "Why X fails" in brief_text)
+check("cmo: only real pages count as sources", "real.example" in brief_text and "invented.example" not in brief_text)
+llm.web_research = lambda q, max_uses=4: {}
+check("cmo: no pages means no brief, never a guess", cto.research() == "")
+budget.spent = lambda: (500, {})
+check("cmo: research stops at the monthly limit", cto.research() == "")
+sources.goals, budget.spent, llm.web_research, roles_mod.ask = goals_b, real_spent, real_wr, real_ask2
 check("cto: plain http is never confirmed", cto.link_exists("http://example.com") is False)
 for inner in ("https://127.0.0.1/", "https://169.254.169.254/latest", "https://10.0.0.1/", "https://[::1]/", "https://example.com:8443/"):
     check(f"cto: refuses {inner}", cto.public_https(inner) is False)
@@ -1113,7 +1144,7 @@ check("slack: text cannot ping the channel", "<" not in sent_msg["text"])
 mine, newest = slack.messages("3.0")
 check("slack: only Abhi's own messages count, oldest first", [m["text"] for m in mine] == ["first", "second"] and newest == "8.0")
 heard, real_ans, real_hist = [], cto.answer, slack.history
-cto.answer, slack.history = (lambda t, h: heard.append(t)), (lambda: [])
+cto.answer, slack.history = (lambda t, h, role="ceo": heard.append(t)), (lambda: [])
 files_b[cto.CURSOR] = json.dumps({"ts": "3.0"})
 cto.poll()
 check("slack: the cursor moves and each message is answered", heard == ["first", "second"] and json.loads(files_b[cto.CURSOR])["ts"] == "8.0")
@@ -1127,7 +1158,7 @@ hist = slack.history()
 check("slack: other people stay out of the model's context", [h["text"] for h in hist] == ["reply", "mine"] and hist[1]["from"] == "Abhi")
 slack.api = fake_api
 heard2, real_ans3 = [], cto.answer
-cto.answer = lambda t, h: heard2.append(t)
+cto.answer = lambda t, h, role="ceo": heard2.append(t)
 real_msg, slack.messages = slack.messages, lambda a: ([{"ts": str(i), "text": str(i)} for i in range(9)], "9")
 real_hist3, slack.history = slack.history, lambda: []
 cto.poll()
@@ -1174,6 +1205,18 @@ check("billing: runs only in a main-only environment, with its own role", bj["en
 billing_sh = (ROOT / "infra/billing-role.sh").read_text()
 check("billing: the AWS role can only read costs", billing_sh.count('"Action": "ce:GetCostAndUsage"') == 1 and "ce:*" not in billing_sh and "environment:live-check" in billing_sh)
 check("editor: drafts get a quality verdict by default", "vars.EDITOR_REVIEW || 'on'" in (ROOT / ".github/workflows/replicate.yml").read_text())
+check("lab: JSON text becomes a lab", lab_mod.as_lab('{"files": []}') == {"files": []})
+check("lab: anything else is refused before AWS", raises_any(lab_mod.as_lab, "not json") and raises_any(lab_mod.as_lab, ["x"]))
+real_out, lab_mod.OUT = lab_mod.OUT, pathlib.Path(tempfile.mkdtemp()) / "o"
+real_ev = list(lab_mod.EVIDENCE); lab_mod.EVIDENCE.clear()
+lab_mod.save({"status": "failed"}, "text, not a lab")
+check("lab: a bad lab still writes its result, so spend and the failure survive", "usd" in json.loads((lab_mod.OUT / "result.json").read_text()))
+lab_mod.OUT = real_out; lab_mod.EVIDENCE.extend(real_ev)
+check("topics: each one needs a hook the docs do not give", "hook" in r.BUILD_SCHEMA["properties"]["topics"]["items"]["required"])
+check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / "pipeline/radar.py").read_text())
+py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
+check("topics: Thursday looks for real failures", py[True]["schedule"][0]["cron"] == "0 6 * * 4" and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
+check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
 ry = __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())
 rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])
