@@ -1,0 +1,169 @@
+{
+ "updated": "2026-11-02T21:15:06Z",
+ "columns": {
+  "needs": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
+    "kind": "Assigned",
+    "title": "Opentelemetrycollector crd: Specific receivers do not create services",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
+    "where": "opentelemetry-operator"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
+    "kind": "Assigned",
+    "title": "[receiver/flinkmetrics] Flink 1.20/2.x compatibility audit and metric correctness follow-ups",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-helm-charts/issues/2161",
+    "kind": "Assigned",
+    "title": "[Operator] Cert invalid after cluster restart",
+    "url": "https://github.com/open-telemetry/opentelemetry-helm-charts/issues/2161",
+    "where": "opentelemetry-helm-charts"
+   }
+  ],
+  "maybe": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
+    "kind": "Mentioned",
+    "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
+    "kind": "Mentioned",
+    "title": "[k8s] Promote k8s pod volume metrics to release candidate",
+    "url": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
+    "where": "semantic-conventions"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
+    "kind": "Mentioned",
+    "title": "[receiver/kubeletstats] Add optional per-pod ephemeral-storage inode metrics (InodesUsed / InodesFree / Inodes)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
+    "kind": "Mentioned",
+    "title": "[receiver/kubelet_stats] Add ephemeral and projected volume types to k8s.volume.type",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
+    "where": "opentelemetry-collector-contrib"
+   }
+  ],
+  "working": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
+    "kind": "Your PR",
+    "title": "[chore] Generate a list of collector components with specific operator support",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
+    "where": "opentelemetry-operator"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
+    "kind": "Your PR",
+    "title": "[receiver/flinkmetrics] Record JVM GC metrics for both JobManager and TaskManager",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "kind": "Your PR",
+    "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/Appdynamics/process-monitoring-extension/pull/25",
+    "kind": "Your PR",
+    "title": "Update dependencies to remediate reported vulnerabilities (2.3.6)",
+    "url": "https://github.com/Appdynamics/process-monitoring-extension/pull/25",
+    "where": "process-monitoring-extension"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "kind": "Your PR",
+    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/CiscoDevNet/appdynamics-charts/pull/36",
+    "kind": "Your PR",
+    "title": "ENV variables fix in InfraViz",
+    "url": "https://github.com/CiscoDevNet/appdynamics-charts/pull/36",
+    "where": "appdynamics-charts"
+   }
+  ],
+  "next": [
+   {
+    "id": "Topic idea:Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them",
+    "kind": "Topic idea",
+    "title": "Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them",
+    "url": "",
+    "where": ""
+   },
+   {
+    "id": "Topic idea:VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest",
+    "kind": "Topic idea",
+    "title": "VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest",
+    "url": "",
+    "where": ""
+   }
+  ],
+  "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
+    "kind": "Merged",
+    "title": "[chore] receiver/flinkmetrics: update tested Flink versions and correct README configuration",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/83",
+    "kind": "Published",
+    "title": "October: Kubernetes memory semantics and Collector edge fixes",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/83",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52500",
+    "kind": "Merged",
+    "title": "[exporter/azuredataexplorer] Add Abhimanyu9988 as code owner and restore beta stability",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52500",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-helm-charts/pull/2473",
+    "kind": "Merged",
+    "title": "docs(operator): explain autoGenerateCert behavior with Argo CD",
+    "url": "https://github.com/open-telemetry/opentelemetry-helm-charts/pull/2473",
+    "where": "opentelemetry-helm-charts"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52406",
+    "kind": "Merged",
+    "title": "[chore] receiver/flinkmetrics: match operator metrics on exact suffix",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52406",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/78",
+    "kind": "Published",
+    "title": "EKS App Slow, CPU Fine? Scale on Splunk Latency with KEDA",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/78",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52019",
+    "kind": "Merged",
+    "title": "[chore][receiver/flinkmetrics] Add Abhimanyu9988 as code owner",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52019",
+    "where": "opentelemetry-collector-contrib"
+   }
+  ]
+ }
+}
