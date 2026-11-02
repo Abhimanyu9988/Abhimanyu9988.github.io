@@ -1,21 +1,27 @@
 What worked for others:
-- Splunk MVPs are described as members with consistent participation in at least one community program area; the named examples are answering Splunk SOAR questions in Splunk Answers and leading a Splunk User Group.
-- The first MVP cohort was selected from Splunk Answers participation and top user group leaders, with other community programs added in later rounds.
-- The 2026–27 MVP cohort names Ryan Edwards, Ryan Young, Scott Horton, Somesh Soni, Stefan Katsarov, Steve Baker, Uday Agrawal, Vernon Littlewolf, Wesley Dantas de Moura, William Wilson and Xuan Truong Vu. The pages show no write-ups on how they became visible.
-- On the AWS side, Community Builders reviews applications for evidence and accuracy of technical content (blog posts, open source, presentations). A guide says at least two genuine recent contributions are needed, and applicants stress original, searchable, consistent work, not LLM-generated text.
-- Ana Jovanovska's two-part Splunk Add-on for AWS series on AWS Builder Center (IAM, CloudTrail) sits where both communities overlap. Its sharing reach is unknown. Denis Gladkikh built a Kubernetes/Docker Splunk app that customers used worldwide, but the source doesn't say he is an MVP.
+- I found no documented case of someone becoming a Splunk MVP mainly by publishing articles. The pages describe MVP as based on consistent participation in community programs, with the first cohort picked from Splunk Answers participation and top Splunk User Group leaders.
+- MVPs are selected automatically and notified. Splunk reviews active, consistent contributors at the end of each year and picks those who stand out for quality and impact. The specific criteria are kept secret to avoid gaming. You can't apply, and I couldn't verify the exact bar.
+- Older SplunkTrust documentation says leaders are also identified through outside efforts such as writing blogs, building internal communities or maintaining resource sites. Blogging is a supplement to Answers, user groups and speaking, not the main route.
+- Splunk Lantern is a visible place to publish. In 2025, 109 different Splunkers and SplunkTrust members contributed articles, and Splunk has run features of SplunkTrust and MVP articles. I found no evidence that Lantern articles led to MVP status.
+- On the AWS side, Ana Jovanovska published a two-part series on builder.aws.com, 'Integrating AWS Logs with Splunk'. It covers the Splunk Add-on for AWS, IAM, CloudTrail, VPC Flow Logs and S3 Access Logs, plus problems the team solved. It's a good content model, but the pages don't show how widely it was shared or whether she is an MVP.
 
 Topics to try:
-- Splunk Add-on for AWS: the IAM permission mistakes that stop CloudTrail data arriving, and how to fix them
-- Getting AWS CloudTrail logs into Splunk: a step-by-step how-to that answers questions people actually post in Splunk Answers
-- Which questions in Splunk Answers go unanswered for AWS data, and what a worked solution looks like
-- What does Splunk actually reward for MVP? A checked account of the official criteria and the next selection round, from the Community Champions page
-- Common pitfalls when getting AWS data into Splunk, a practical checklist for engineers
+- Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them
+- CloudTrail into Splunk: what went wrong, what we changed and what we'd do differently
+- VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest
+- Splunk Answers questions on AWS ingestion, turned into a how-to that links back to the answers
+- Is the MVP title possible by January 2027? An honest look at the Splunk community programs, written from your own participation
 
 Avoid:
-- Don't assume that publishing two articles a week leads to a Splunk MVP. No page documents that route, and the criteria are kept secret.
-- Don't plan around a fixed MVP date or threshold. The 2026–27 cohort is already announced, and the next round timing is unconfirmed.
-- Don't use LLM-generated text or code in articles, since an AWS applicant warns against it.
-- Don't claim reach, shares or results for any example. The pages give none.
+- Don't plan around article volume. I found no evidence that two a week leads to MVP or gets shared more. Quality and consistent participation are what the pages point to.
+- Don't assume a January 2027 MVP title. The 2026–2027 cohort was already announced, and I couldn't confirm a selection round before that date. Check the official Splunk source before planning.
+- Don't try to self-nominate or game the criteria. There is no application, and the criteria are deliberately secret.
+- Don't claim AWS recognition criteria or share results that the pages don't show. I didn't verify the AWS Community Builders program or any engagement data.
 
 Sources:
+- https://community.splunk.com/t5/Community-Blog/re-Introducing-the-Splunk-Community-Champions-2026-2027-Splunk/ba-p/762396
+- https://community.splunk.com:443/t5/Community-Blog/Announcing-Our-Splunk-MVPs/ba-p/633063
+- https://www.splunk.com/en_us/blog/learn/splunk-community.html
+- https://community.splunk.com/t5/Community-Blog/Discover-SplunkTrust-and-MVP-Articles-Instant-Translation-and/ba-p/694740
+- https://community.splunk.com/t5/Community-Blog/SplunkTrust-Application-Period-is-Officially-OPEN/ba-p/748146
+- https://community.splunk.com/t5/SplunkTrust/ct-p/splunk-trust
