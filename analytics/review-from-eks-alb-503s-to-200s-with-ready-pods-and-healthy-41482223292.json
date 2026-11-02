@@ -1,0 +1,58 @@
+{
+ "mode": "shadow",
+ "decision": "revise",
+ "reasons": [
+  "the evidence checks did not pass: title claim not found in evidence: 200s with Ready"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [
+   {
+    "id": "f1",
+    "kind": "timed_out",
+    "severity": "medium",
+    "file": "08-reproduce.log",
+    "line": 32,
+    "text": "timed out waiting for the condition on pods/web-59c4d9997-lcxh2",
+    "why": "a step timed out"
+   },
+   {
+    "id": "f2",
+    "kind": "timed_out",
+    "severity": "medium",
+    "file": "08-reproduce.log",
+    "line": 33,
+    "text": "timed out waiting for the condition on pods/web-59c4d9997-nhr8d",
+    "why": "a step timed out"
+   }
+  ],
+  "headline": [
+   {
+    "claim": "503s to",
+    "number": "503",
+    "noun": "s",
+    "supported": true,
+    "where": "05-init.log:1",
+    "basis": "heuristic",
+    "validated": false
+   },
+   {
+    "claim": "200s with Ready",
+    "number": "200",
+    "noun": "s",
+    "supported": false,
+    "where": "",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": null,
+  "failures": [
+   "title claim not found in evidence: 200s with Ready"
+  ],
+  "passed": false
+ },
+ "scorecard": null,
+ "brief": null,
+ "usd": 1.5077
+}
