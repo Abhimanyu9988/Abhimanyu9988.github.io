@@ -134,3 +134,8 @@ Slack permission and costs nothing, because no model runs. It refreshes on every
 GitHub's search needs `is:issue` or `is:pull-request`, and his own repos filled the results with the team's topics and LinkedIn
 drafts. The searches now skip his own repos, so OpenTelemetry assignments and code owner pings show up. A mention stays under
 "Worth a look", because code can't tell whether it waits on him. Leaders still can't write code, and they now say so.
+
+## 2026-11-02: The board is Abhi's outside work only
+
+He cares about open source and what goes public, and the first board mixed that with the team's own plumbing. It now shows
+articles and his PRs in other projects. Pipeline PRs, failed runs and agent tasks stay with the CTO and the admin page.
