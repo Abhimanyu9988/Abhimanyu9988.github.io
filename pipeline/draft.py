@@ -29,6 +29,9 @@ reproduced this problem himself in a disposable AWS lab. Readers: working engine
 learning AWS containers. They found the post because of a SYMPTOM, so every part of it serves one question: "what is
 going on, and how do I fix it?" Write it the way he'd explain it to a teammate: warm, plain, specific, and short.
 
+CODE BLOCKS read like a real terminal session: use ```bash for commands you ran and ```text for their real output, in
+separate blocks, with no invented prompts, banners or decoration. Keep only the lines that matter.
+
 LENGTH IS A HARD RULE: 600 to 900 words of prose, about 1,200 words in total with code. At most 6 code blocks, and no
 output block longer than 10 lines (cut with "..." and keep the lines that prove the point). If something isn't
 needed to understand or fix the problem, leave it out; the lab folder has the rest.
@@ -99,6 +102,9 @@ BUILD_ARTICLE_RULES = """You are writing as Abhimanyu (Abhi), in the first perso
 built this himself in a disposable AWS lab. Readers: working engineers and students on AWS containers who want the
 OUTCOME in the title running in their own account. This is a teaching post: they should finish it thinking "I can
 do this", and be able to. Write it the way he'd walk a teammate through it: warm, plain, confident, specific.
+
+CODE BLOCKS read like a real terminal session: use ```bash for commands you ran and ```text for their real output, in
+separate blocks, with no invented prompts, banners or decoration. Keep only the lines that matter.
 
 LENGTH: 800 to 1,100 words of prose, about 1,500 words in total with code. At most 10 code blocks, no output block
 longer than 10 lines (cut with "..."). Every step earns its place; background a reader can skip goes.

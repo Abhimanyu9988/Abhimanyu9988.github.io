@@ -1,0 +1,38 @@
+<style>
+  .post-content pre, .post-content div.highlight, .post-content .highlight pre, .post-content code.highlighter-rouge { border: 0; }
+  .post-content pre { background: #000; color: #fff; border-radius: 6px; padding: 14px 16px; line-height: 1.5; overflow-x: auto; font-family: Menlo, Monaco, Consolas, monospace; font-size: 14px; }
+  .post-content div.highlight { background: #000; border-radius: 6px; }
+  .post-content pre code, .post-content pre code span { background: none; color: #fff; font-weight: 400; font-style: normal; }
+  .post-content pre .term-dir { color: #3fb950; user-select: none; -webkit-user-select: none; }
+</style>
+<script>
+  // Commands get a green directory prompt, like a real shell. It can't be selected, so copying a block still gives clean commands.
+  function termLines(text) {
+    var rows = [], open = false, heredoc = null;
+    text.replace(/\n$/, "").split("\n").forEach(function (line) {
+      var command = !open && !heredoc && line.trim() !== "" && line.trim()[0] !== "#";
+      rows.push({ line: line.replace(/^\$ /, ""), command: command });
+      if (heredoc) { if (line.trim() === heredoc) heredoc = null; return; }
+      var doc = line.match(/<<-?\s*['"]?(\w+)/);
+      if (doc) heredoc = doc[1];
+      open = /\\$/.test(line);
+    });
+    return rows;
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll('.post-content .language-bash pre, .post-content .language-shell pre, .post-content .language-sh pre, .post-content .language-console pre').forEach(function (pre) {
+      var code = pre.querySelector("code") || pre;
+      var rows = termLines(code.textContent);
+      code.textContent = "";
+      rows.forEach(function (r) {
+        if (r.command) {
+          var dir = document.createElement("span");
+          dir.className = "term-dir";
+          dir.textContent = "~/lab $ ";
+          code.appendChild(dir);
+        }
+        code.appendChild(document.createTextNode(r.line + "\n"));
+      });
+    });
+  });
+</script>

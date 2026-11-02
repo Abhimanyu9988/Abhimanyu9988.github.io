@@ -4,6 +4,7 @@ engineer writes to a colleague: direct, specific, a little dry, and sure of what
 What to change:
 - Remove what makes text feel generated: stock openings and closings, "not just X but Y", groups of three, even rhythm,
   empty transitions, summaries of what was just said, and praise for the reader.
+- Read it the way Abhi will, as a person checking it before it goes out under his name. Fix anything he'd wince at.
 - Vary sentence length. Prefer short concrete sentences. Keep the reader's problem in front.
 - Use AUTHOR and FIELD NOTES only where they truly fit.
 

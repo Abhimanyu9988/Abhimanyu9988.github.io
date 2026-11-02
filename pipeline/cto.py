@@ -26,6 +26,7 @@ IDEA_WORDS = re.compile(r"(?i)\b(topic|idea|try|pick|write about|tomorrow)\b")
 IDEAS_HEAD, IDEAS_END = "Abhi's own topic ideas. Put these first:", "End of his ideas."
 PENDING = "analytics/ideas-pending.json"
 BOARD_ISSUE = "/repos/Abhimanyu9988/oss-scout/issues/1"
+TRAINING_UNTIL = "2026-11-09"                  # one article a day while Abhi trains the team. Then Monday and Thursday only
 STATED_GOAL = re.compile(r"(?i)\b(goals?|targets?|aim|want|objective)\b")
 BRIEF = "analytics/market-brief.md"
 MAX_REPLIES = 5                                # each poll. CTO replies run past the monthly limit, so this bounds them
@@ -373,6 +374,11 @@ def poll():
                 print(f"::warning title=cto::reply failed: {' '.join(str(e).split())[:200]}")
                 post("I could not answer that just now. Please send it again.", role)
 
+def training_day(today=None):
+    """Monday and Thursday already have their own runs."""
+    day = today or datetime.date.today()
+    return day.isoformat() <= TRAINING_UNTIL and day.weekday() not in (0, 3)
+
 def main():
     if os.environ.get("POLL") == "true":
         poll()
@@ -389,8 +395,10 @@ def main():
     weekly = (scheduled and datetime.date.today().weekday() == 0) or os.environ.get("DIGEST") == "true"
     if scheduled:
         queued, qsha = analytics.read_file(PENDING)
-        if queued.strip() and json.loads(queued).get("run") and os.environ.get("GITHUB_OUTPUT"):
+        idea = bool(queued.strip() and json.loads(queued).get("run"))
+        if idea:
             analytics.write_file(PENDING, json.dumps({"run": False}), qsha, "market: Topic Scout started")
+        if (idea or training_day()) and os.environ.get("GITHUB_OUTPUT"):
             with open(os.environ["GITHUB_OUTPUT"], "a") as f:
                 f.write("run_scout=true\n")
     review = manager_review(p) if weekly else ""
