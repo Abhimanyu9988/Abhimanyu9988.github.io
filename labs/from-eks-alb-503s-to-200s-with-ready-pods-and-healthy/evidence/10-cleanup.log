@@ -1,0 +1,9 @@
+$ bash cleanup.sh
+# exit 0 after 64s
+
+deleting the app namespace (ingress -> ALB)
+namespace "lab-web" deleted
+waiting for the ALB to disappear (max 3 min)
+uninstalling Helm releases
+cleanup finished
+
