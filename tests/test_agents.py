@@ -1117,7 +1117,9 @@ cyml = (ROOT / ".github/workflows/cto.yml").read_text()
 bj = ctoy["jobs"]["billing"]
 check("billing: no model key and no PR input", "ANTHROPIC" not in str(bj) and "pull_request" not in str(bj) and bj["steps"][0]["with"]["ref"] == "main")
 check("billing: runs only in a main-only environment, with its own role", bj["environment"] == "live-check" and "BILLING_ROLE_ARN" in str(bj))
-check("billing: the AWS role can only read costs", '"ce:GetCostAndUsage"' in (ROOT / "infra/bootstrap/main.tf").read_text() and "ce:*" not in (ROOT / "infra/bootstrap/main.tf").read_text())
+billing_sh = (ROOT / "infra/billing-role.sh").read_text()
+check("billing: the AWS role can only read costs", billing_sh.count('"Action": "ce:GetCostAndUsage"') == 1 and "ce:*" not in billing_sh and "environment:live-check" in billing_sh)
+check("editor: drafts get a quality verdict by default", "vars.EDITOR_REVIEW || 'on'" in (ROOT / ".github/workflows/replicate.yml").read_text())
 ry = __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())
 rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])

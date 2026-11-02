@@ -71,7 +71,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | Setting | Values | Default | Effect |
 | --- | --- | --- | --- |
 | `EDITOR_MODE` | off, shadow, warn, enforce | shadow | shadow reports only and changes no lab, draft or publish behaviour |
-| `EDITOR_REVIEW` | on, off | off | Runs the Editor in shadow or warn. Enforce always requires a successful scorecard |
+| `EDITOR_REVIEW` | on, off | on | Runs the Editor in shadow or warn. Enforce always requires a successful scorecard |
 | `AUTO_LAB` | on, off | on | on starts a lab for the panel's pick. off waits for an `approve` comment |
 | `TECH_HEAD_MODE` | advisory, blocking | advisory | blocking fails the check on a code-rule or scanner blocker, or an incomplete review. A model's blocker is for a person to judge |
 

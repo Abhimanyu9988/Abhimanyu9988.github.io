@@ -150,7 +150,7 @@ jobs:
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           LINKEDIN_MIN_VOTES: ${{ vars.LINKEDIN_MIN_VOTES }}
           EDITOR_MODE: ${{ vars.EDITOR_MODE }}
-          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW }}
+          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW || 'on' }}
           EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
       # Fresh credentials: the first session may be close to its 2-hour limit by now.
       - if: always() && env.DRY_RUN != 'true'
@@ -233,5 +233,5 @@ jobs:
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           LINKEDIN_MIN_VOTES: ${{ vars.LINKEDIN_MIN_VOTES }}
           EDITOR_MODE: ${{ vars.EDITOR_MODE }}
-          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW }}
+          EDITOR_REVIEW: ${{ vars.EDITOR_REVIEW || 'on' }}
           EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}

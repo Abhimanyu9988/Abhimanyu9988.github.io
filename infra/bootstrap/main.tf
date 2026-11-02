@@ -188,20 +188,3 @@ resource "aws_budgets_budget_action" "pause" {
 output "role_arn" { value = aws_iam_role.lab.arn }
 output "state_bucket" { value = aws_s3_bucket.state.bucket }
 output "region" { value = var.region }
-
-# Read-only billing for the Spend Tracker. It can read costs and nothing else, and only a main-only environment can use it.
-resource "aws_iam_role" "billing_read" {
-  name = "hero-pipeline-billing-read"
-  assume_role_policy = jsonencode({ Version = "2012-10-17", Statement = [{
-    Effect = "Allow", Action = "sts:AssumeRoleWithWebIdentity",
-    Principal = { Federated = aws_iam_openid_connect_provider.gh.arn },
-    Condition = { StringEquals = {
-      "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com",
-      "token.actions.githubusercontent.com:sub" = "${var.github_subject_prefix}:environment:live-check" } }
-  }] })
-}
-resource "aws_iam_role_policy" "billing_read" {
-  role = aws_iam_role.billing_read.id
-  policy = jsonencode({ Version = "2012-10-17", Statement = [{
-    Effect = "Allow", Action = "ce:GetCostAndUsage", Resource = "*" }] })
-}
