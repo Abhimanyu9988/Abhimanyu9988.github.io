@@ -68,12 +68,14 @@ TYPED = re.compile(r"[~+\-<v]?\.?\d[\w.,:%/\-]*[;)]*")   # 35, ~35, 1e5, 35/s, 3
 PRINTF = re.compile(r"%[-0-9.]*[a-z]")
 
 def constants_in(text):
-    """Names given one literal value and never changed. A counter starts at 0 and is computed, not typed."""
+    """Names given one literal value and never changed. A counter starts at 0 and is computed, not typed.
+    When unsure, a name is not constant: a false "typed" fails a paid lab, and no grade proves a value anyway."""
+    code = "\n".join(l for l in text.splitlines() if "HERO_MEASURE" not in l and not l.lstrip().startswith("#"))
     out = set()
-    for n in {m[1] for m in ASSIGNED.finditer(text)}:
-        assigned = re.findall(rf"(?:^|[;&|(]|\bdo\b|\bthen\b)\s*(?:(?:export|readonly|local)\s+)?{n}\+?=(?!=)", text, re.M)
+    for n in {m[1] for m in ASSIGNED.finditer(code)}:
+        assigned = re.findall(rf"(?<![\w$-]){n}\+?=(?!=)", code)
         changed = re.search(rf"\(\([^)\n]*(?:(?:\+\+|--)\s*{n}\b|\b{n}\s*(?:\+\+|--|[-+*/]?=(?!=)))"
-                            rf"|\bread\b[^\n;|<]*\b{n}\b|\bprintf\s+-v\s+{n}\b|\blet\b[^\n]*\b{n}\b|(?:^|[;&|])\s*for\s+{n}\b", text, re.M)
+                            rf"|\bread\b[^\n;|<]*\b{n}\b|\bprintf\s+-v\s+{n}\b|\blet\b[^\n]*\b{n}\b|(?:^|[;&|])\s*for\s+{n}\b", code, re.M)
         if len(assigned) == 1 and not changed:
             out.add(n)
     return out
@@ -85,6 +87,8 @@ def typed_values(scripts):
         constants = constants_in(text)
         for m in LITERAL.finditer(text):
             value = m[2].strip()
+            if re.match(r"[\"']?[$`]", text[m.end():]):
+                continue                           # the value carries on past the quote, so part of it is computed
             name = re.fullmatch(r"\$\{?([A-Za-z_]\w*)\}?", value)
             if (TYPED.fullmatch(value) and not PRINTF.search(value)) or (name and name[1] in constants):
                 typed[m[1]] = True
