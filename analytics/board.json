@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T11:15:12Z",
+ "updated": "2026-11-03T11:22:39Z",
  "columns": {
   "needs": [
    {
@@ -55,13 +55,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41624984446",
-    "kind": "Topic Scout is looking for topics",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41624984446",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
     "kind": "Your PR",
@@ -156,13 +149,6 @@
     "title": "[chore] receiver/flinkmetrics: match operator metrics on exact suffix",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52406",
     "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/78",
-    "kind": "Published",
-    "title": "EKS App Slow, CPU Fine? Scale on Splunk Latency with KEDA",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/78",
-    "where": "Abhimanyu9988.github.io"
    }
   ]
  }
