@@ -4,46 +4,32 @@
  "created": "2026-11-03",
  "topics": [
   {
-   "issue": 115,
-   "title": "Where Fluent Bit logs go when the destination stops accepting them",
+   "issue": 129,
+   "title": "KEDA Splunk ignores AverageValue: 10 replicas in 60s",
    "state": "started",
+   "signal": "3 reactions and 7 comments on a GitHub issue opened in October",
    "model": "claude-sonnet-5-5",
    "started_on": "2026-11-03"
   },
   {
-   "issue": 101,
-   "title": "What OpenTelemetry auto-instrumentation really adds to pod startup time",
+   "issue": 130,
+   "title": "OTel journald retry skips one log on restart",
    "state": "queued",
+   "signal": "1 reaction and 13 comments on a GitHub issue opened in October",
    "model": "claude-opus-5-5"
   },
   {
-   "issue": 119,
-   "title": "KEDA Splunk scaler with a bad token: what happens to your replica count",
+   "issue": 131,
+   "title": "EKS Pod Identity renews creds for deleted pods",
    "state": "queued",
+   "signal": "3 reactions and 3 comments on a GitHub issue opened in September",
    "model": "claude-haiku-5-5"
   },
   {
-   "issue": 120,
-   "title": "OTel Operator down during a deploy: which pods start uninstrumented?",
+   "issue": 132,
+   "title": "OTel Java 2.30 vs 2.29: Redis timeout delta",
    "state": "queued",
-   "model": "claude-sonnet-5-5"
-  },
-  {
-   "issue": 121,
-   "title": "KEDA's Splunk Observability scaler when the metric stops reporting",
-   "state": "queued",
-   "model": "claude-opus-5-5"
-  },
-  {
-   "issue": 122,
-   "title": "Splunk OTel Collector agent memory at 10, 20 and 30 pods per node",
-   "state": "queued",
-   "model": "claude-haiku-5-5"
-  },
-  {
-   "issue": 123,
-   "title": "Java OTel auto-instrumentation: memory added to each EKS pod",
-   "state": "queued",
+   "signal": "10 comments on a GitHub issue opened in August, with no reproduction yet",
    "model": "claude-sonnet-5-5"
   }
  ]
