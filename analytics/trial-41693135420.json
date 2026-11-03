@@ -1,0 +1,10 @@
+{
+ "run": "41693135420",
+ "issue": 129,
+ "title": "KEDA Splunk ignores AverageValue: 10 replicas in 60s",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 2,
+ "minutes": 42.4,
+ "lab_usd": 1.2643
+}
