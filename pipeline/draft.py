@@ -710,6 +710,10 @@ def open_pr(issue_no, res, topic):
     v = llm.verdict(KINDS[kind]["verdict"], context)
     if not v["passed"]:
         add_label(issue_no, "replication-disputed")
+        slack.say("lab_engineer", f"The lab ran, but the review panel didn't accept its proof, so no article was written: {topic.get('title', 'unknown')}. "
+                                  f"{v['yes']} of 3 accepted it.")
+        if budget.in_pipeline():
+            record_trial({**res, "status": "panel_rejected"}, topic)   # a lab the panel refused must not count as finished
         comment(issue_no, "\u26a0\ufe0f The lab reported reproduced-and-fixed, but the panel did not confirm the "
                           f"result, so nothing was drafted.\n\n{verdict_md(v, kind)}\n\nThe lab and raw output are in the "
                           f"`lab` attachment of workflow run {res['run_id']}.")

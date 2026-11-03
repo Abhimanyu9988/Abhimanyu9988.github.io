@@ -193,3 +193,6 @@ Editor a second round with the reasons, and asks for variety, because Abhi rejec
 He should be able to name a subject and have the team do the rest. A leader passes it to `radar.yml`, and `week.py` runs the same checks on
 three angles. Lab Check still decides what a lab can do, but the vote only ranks angles, because he chose the subject. The lab starts straight
 away, ahead of the plan and on top of the week's target. If no lab can do it, he hears why and no lab runs.
+
+A repair that returned only changed files couldn't remove a file, so a banned `sink.py` survived two rewrites and the run stopped with no AWS
+used. Repairs can now list files to delete, and the rules name the allowed file types up front. A lab stopped before apply adds no AWS estimate.
