@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T11:22:39Z",
+ "updated": "2026-11-03T11:32:56Z",
  "columns": {
   "needs": [
    {
@@ -100,15 +100,15 @@
   ],
   "next": [
    {
-    "id": "Topic idea:Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them",
-    "kind": "Topic idea",
+    "id": "Up next:Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them",
+    "kind": "Up next",
     "title": "Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them",
     "url": "",
     "where": ""
    },
    {
-    "id": "Topic idea:VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest",
-    "kind": "Topic idea",
+    "id": "Up next:VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest",
+    "kind": "Up next",
     "title": "VPC Flow Logs and S3 Access Logs in Splunk: the troubleshooting steps that took the longest",
     "url": "",
     "where": ""
