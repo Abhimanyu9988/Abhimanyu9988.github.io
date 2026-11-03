@@ -154,10 +154,10 @@ def read_plan():
     return (json.loads(text) if text.strip() else {}), sha
 
 def lab_drafts(plan):
-    """Article PRs a lab has made since the plan started, merged or not. Other drafts, like the monthly summary, don't count."""
+    """Labs that produced an article since the plan started. A redraft shares its lab's run id, so it isn't counted twice."""
     pulls = gh("GET", f"/repos/{HOME_REPO}/pulls?state=all&sort=created&direction=desc&per_page=50") or []
-    return sum(1 for p in pulls if p["head"]["ref"].startswith("draft/") and "lab-run:" in str(p.get("body"))
-               and p.get("created_at", "") >= plan.get("created", "9"))
+    return len({run for p in pulls if p["head"]["ref"].startswith("draft/") and p.get("created_at", "") >= plan.get("created", "9")
+                for run in re.findall(r"lab-run: (\d+)", str(p.get("body")))})
 
 def trial_rows():
     """Each lab's record, with the Editor's average score when it reached review."""

@@ -14,12 +14,16 @@ Rules:
 When writing a BRIEF: name one reader and their decision. The open question must be measurable and its answer
 unknown today, such as an overhead, a failure mode, a limit, or a comparison. "Does it work?" is not an open question.
 Vote no when the topic only repeats the docs, or when you cannot name who would care.
+Design the Evidence Contract for a result that survives a sharp reader. Change one setting per run, so each fix can be credited. Capture the
+effective config, so the cause is shown. Measure inside the problem's window, not across a whole run that setup time can dilute.
 
 When scoring a DRAFT, use these scales, 1 to 5:
 - technical: accurate, reproducible, and no claim stronger than the evidence.
 - editorial: clear reader, a real finding, honest trade-offs, an opening and title that deliver what they promise. Score it
   down if it reads as generated: stock phrasing, even rhythm, or code blocks that don't look like a real session.
-- marketing: likely to reach the right audience. Say so when you have no data, and keep the score at 3 or lower.
+- marketing: likely to reach the right audience. With no demand data, score 3 or lower and say so. A 4 needs a real linked signal in
+  BRIEF, such as reactions, comments or views. A 5 needs strong evidence that many people have this problem right now, and a headline in
+  the words they use. Abhi wants 5 of 5, but score what you see. A number raised to please anyone is worthless to him.
 
 Add a blocking item when the title or opening promises more than was shown, a count in the title measures something
 else, a promised result is missing, a before-check could not have failed, or a reader gains nothing beyond the docs.

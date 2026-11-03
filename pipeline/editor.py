@@ -21,7 +21,7 @@ MODES = ("off", "shadow", "warn", "enforce")
 MARK = re.compile(r"<!-- hero-brief:v1 ([A-Za-z0-9+/=]+) -->")
 ID = re.compile(r"^[a-z0-9_]{1,40}$")
 TRIVIAL = re.compile(r"(?i)^\s*(does|do|can|will|is)\b.{0,80}\b(work|works|possible|run|runs|succeed)\??\s*$")
-MIN_TECHNICAL, MIN_EDITORIAL = 4, 3
+MIN_TECHNICAL, MIN_EDITORIAL, MIN_MARKETING = 4, 5, 5   # Abhi's bar: 5 of 5 from editorial and marketing
 REQUIRED = ("reader", "decision", "takeaway", "adds", "open_question")
 
 def mode():
@@ -171,6 +171,8 @@ def decide(card, report, known_urls=(), require_card=False):
             out.append(f"technical score {s['technical']['score']} is below {MIN_TECHNICAL}")
         if s["editorial"]["score"] < MIN_EDITORIAL:
             out.append(f"editorial score {s['editorial']['score']} is below {MIN_EDITORIAL}")
+        if s["marketing"]["score"] < MIN_MARKETING:
+            out.append(f"marketing score {s['marketing']['score']} is below {MIN_MARKETING}")
         out += [f"{b['dimension']}: {b['problem']} Fix: {b['fix']}" for b in card.get("blocking") or []]
         done = {f["id"] for f in card.get("flags_addressed") or [] if f.get("addressed")}
         out += [f"flag not addressed: {f['why']}" for f in (report or {}).get("flags", [])
