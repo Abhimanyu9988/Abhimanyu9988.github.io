@@ -200,7 +200,7 @@ def main():
     for _ in range(ROUNDS):
         if len(plan) >= want:
             break
-        new, out = vet(propose(items, existing, want - len(plan) + EXTRA_IDEAS, dropped), existing, allowed, have, want - len(plan))
+        new, out = vet(propose(items, existing, want - len(plan) + EXTRA_IDEAS, dropped), existing, allowed, have, want - len(plan) - SPARES)
         plan, dropped = plan + new, dropped + out
         have |= {norm(t["title"]) for t in new}
     if os.environ.get("DRY_RUN") == "true":

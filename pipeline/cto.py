@@ -572,9 +572,9 @@ def poll():
     """Slack messages since the last run. The cursor moves first, so one bad message cannot repeat every ten minutes."""
     if not slack.enabled():
         return
-    text, sha = analytics.read_file(CURSOR)
-    after = json.loads(text)["ts"] if text.strip() else f"{datetime.datetime.now(datetime.timezone.utc).timestamp():.6f}"
-    try:
+    try:                                       # a GitHub or Slack blip waits for the next run, and the cursor keeps his messages safe
+        text, sha = analytics.read_file(CURSOR)
+        after = json.loads(text)["ts"] if text.strip() else f"{datetime.datetime.now(datetime.timezone.utc).timestamp():.6f}"
         mine, newest = slack.messages(after)
     except Exception as e:
         print(f"::warning title=slack::messages not read: {' '.join(str(e).split())[:200]}")
