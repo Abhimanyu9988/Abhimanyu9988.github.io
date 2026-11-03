@@ -1413,6 +1413,24 @@ check("week: a lab can read the brief", "<!-- m -->" in plan_rows[0]["body"] and
 editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb, real_eg, week_editor_bm, week_editor_mk
 check("week: the Slack plan marks the spare", "2. Two (spare)" in week.plan_message(plan_rows, 1, []))
 check("week: it says when fewer passed", "Only 1 of 3" in week.plan_message(plan_rows[:1], 3, []))
+good_brief = {"reader": "r"}
+real_wgh, week.gh = week.gh, lambda m, p, b=None: [{"title": "Where Fluent Bit logs go when the destination stops", "number": 115, "body": "x", "labels": [{"name": "build"}], "comments": 0},
+                                                   {"title": "Already ran its lab and failed for a reason here", "number": 114, "body": "x", "labels": [], "comments": 2},
+                                                   {"title": "No brief on this older topic from the last weeks", "number": 90, "body": "none", "labels": [], "comments": 0}]
+real_pb, real_g1, editor.parse_brief, editor.gate1 = editor.parse_brief, editor.gate1, (lambda text: good_brief if text == "x" else None), (lambda b: (True, []))
+waiting = week.waiting_topics()
+check("week: a passed topic that never ran is reused, so it isn't paid for twice", [w["issue"] for w in waiting] == [115] and waiting[0]["kind"] == "build")
+editor.parse_brief, editor.gate1, week.gh = real_pb, real_g1, real_wgh
+real_prop, real_vet, real_wait, real_coll, real_ei = week.propose, week.vet, week.waiting_topics, week.collect, week.existing_issues
+rounds = []
+week.existing_issues, week.collect, week.waiting_topics = (lambda: ([], set())), (lambda: [{"url": "https://x.y/a"}]), (lambda: [])
+week.propose = lambda i, e, want, refused=(): rounds.append((want, list(refused))) or [{"title": f"t{len(rounds)}"}]
+week.vet = lambda topics, e, a, h, need: ([{"title": "A", "kind": "build", "yes": 3, "hook": "h", "body": "b"}], [("Bad", "too slow")]) if len(rounds) == 1 else ([{"title": f"B{i}", "kind": "build", "yes": 3, "hook": "h", "body": "b"} for i in range(need)], [])
+os.environ["DRY_RUN"] = "true"
+week.main()
+os.environ.pop("DRY_RUN")
+check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
+week.propose, week.vet, week.waiting_topics, week.collect, week.existing_issues = real_prop, real_vet, real_wait, real_coll, real_ei
 check("headline: steps are refused", week.title_problem("How to deploy Fluent Bit on ECS Fargate with FireLens") != "" and week.title_problem("Setting up Argo CD on EKS for your whole team today") != "")
 check("headline: length is checked", week.title_problem("Short") != "" and week.title_problem("x" * 90) != "")
 check("headline: a symptom passes", week.title_problem("Argo CD is Synced while the ALB has zero healthy targets") == "")

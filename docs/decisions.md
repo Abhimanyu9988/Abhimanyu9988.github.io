@@ -184,3 +184,6 @@ record, and code works out the stats by model. Every article still needs the sam
 
 Topics and headlines matter most to Abhi, so the three-model vote stayed. The Editor writes three headlines for each topic and keeps the
 strongest, code refuses step-style headlines, and two of three models must agree before a topic gets a brief.
+
+The first test plan refused most topics and left two, both on ALB. The plan now reuses passed topics that never ran a lab, then gives the
+Editor a second round with the reasons, and asks for variety, because Abhi rejected repeated ALB posts.

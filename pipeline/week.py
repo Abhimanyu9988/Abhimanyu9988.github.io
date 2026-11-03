@@ -9,13 +9,14 @@ Outputs: one issue per topic, analytics/week-plan.json, a Slack message, and `pi
 cto.py starts one lab a day from the plan until the week's target is met. It must not start a lab for a topic that failed a check.
 """
 import datetime, json, os, re
-from radar import (DOCS_URLS, HOME_REPO, LAB_LIMITS, LABEL, NO_REFS, SKIP_SOURCES, Unsafe, assert_safe, collect, comment, ensure_label,
-                   existing_issues, goals_block, load_insights, market_brief, neutralize, norm, post_issue, safe_text, sources_block, src_marker)
+from radar import (DOCS_URLS, HOME_REPO, LAB_LIMITS, LABEL, NO_REFS, SKIP_SOURCES, Unsafe, assert_safe, collect, ensure_label,
+                   existing_issues, gh, goals_block, load_insights, market_brief, neutralize, norm, post_issue, safe_text, sources_block, src_marker)
 import analytics, roles, slack
 
 PLAN = "analytics/week-plan.json"
 DEFAULT_TARGET = 3
 WEEK_TARGETS = {"2026-W45": 5}                 # Abhi asked for five in his training week
+ROUNDS = 2                                     # a second Editor call, told why the first topics were refused
 SPARES, EXTRA_IDEAS = 1, 3                     # a spare covers a failed lab. Extra ideas cover topics the checks reject
 # Abhi's model trial. Each lab and article uses one, in turn, and the same reviewers judge them all, so the stats compare like with like.
 WEAK_TITLE = re.compile(r"(?i)^(how to|a guide|guide to|the complete|complete guide|getting started|introduction|intro to|setting up|set up|"
@@ -34,8 +35,11 @@ def week_id(day=None):
 def target(day=None):
     return WEEK_TARGETS.get(week_id(day), DEFAULT_TARGET)
 
-def propose(items, existing, want):
+def propose(items, existing, want, refused=()):
+    tried = f"\n\nALREADY REFUSED THIS WEEK. Learn from these reasons, and don't offer the same idea again:\n{json.dumps(list(refused))[:4000]}" if refused else ""
     return roles.ask("editor", f"Plan this week's articles. Give {want} topics, best first. {NO_REFS}\n\n"
+                               f"Vary the week: no two topics on the same service or failure. Abhi has rejected repeated ALB posts, so offer at most one ALB topic, "
+                               f"and cover different ground, such as ECS, logs, OpenTelemetry and Splunk Observability. "
                                f"The topic and headline matter most, so spend your effort there. Write three headlines for each topic and keep the strongest. "
                                f"A headline names the technology and a concrete symptom, surprise or number a busy engineer recognises, in 30 to 75 characters. "
                                f"It never describes steps, never says how to, and never promises more than the proof can show. "
@@ -44,7 +48,7 @@ def propose(items, existing, want):
                                f"a lab can't test them. Don't repeat EXISTING. Use only URLs from ITEMS as sources.\n\n"
                                f"GOALS:\n{goals_block()}\n\nLAB LIMITS:\n{LAB_LIMITS}\n\nWHAT HAS WORKED SO FAR:\n{load_insights() or 'no posts measured yet'}\n\n"
                                f"WHAT MARKETING FOUND:\n{market_brief() or 'no research yet'}\n\n"
-                               f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)[:30000]}", "weekplan")["topics"]
+                               f"EXISTING:\n{json.dumps(existing[:200])}\n\nITEMS:\n{json.dumps(items)[:30000]}{tried}", "weekplan")["topics"]
 
 def lab_check(topics):
     """{index: reason} for topics a lab can't do. One call covers every topic, so nothing is paid for twice."""
@@ -110,11 +114,8 @@ def plan_message(topics, goal, dropped):
     return (f"This week's plan: {goal} articles, one lab a day.\n{rows}" + (f"\n\nDropped before any lab ran:\n{left}" if left else "")
             + ("" if len(topics) >= goal else f"\n\nOnly {len(topics)} of {goal} passed the checks."))
 
-def main():
-    existing, used = existing_issues()
-    items = [i for i in collect() if (i["url"] not in used or i["url"] in DOCS_URLS) and i["url"] not in SKIP_SOURCES]
-    goal = target()
-    topics = propose(items, existing, goal + SPARES + EXTRA_IDEAS)
+def vet(topics, existing, allowed, have, need):
+    """(plan, dropped) for one round of topics, cheapest check first."""
     rejected = {n: title_problem(t["title"]) for n, t in enumerate(topics) if title_problem(t["title"])}
     rejected.update({n: why for n, why in lab_check(topics).items() if n not in rejected})
     votes = panel(topics, rejected, existing)
@@ -124,11 +125,34 @@ def main():
             no = next((why for vote, why in v["votes"].values() if vote == "no"), "")
             rejected[n] = f"the panel voted {v['yes']} of 3: {no}"[:200]
     ranked = sorted(topics, key=lambda t: t.get("yes", 0), reverse=True)     # sorted keeps the Editor's order on a tie
-    plan, dropped = build_plan(ranked, {ranked.index(topics[n]): why for n, why in rejected.items()}, {i["url"] for i in items}, {norm(t) for t in existing}, goal)
+    return build_plan(ranked, {ranked.index(topics[n]): why for n, why in rejected.items()}, allowed, have, need)
+
+def waiting_topics():
+    """Topics the panel already passed that never ran a lab. They're paid for, so they fill the plan before new ones cost more."""
+    import editor
+    out = []
+    for i in gh("GET", f"/repos/{HOME_REPO}/issues?labels={LABEL}&state=open&sort=created&direction=desc&per_page=30") or []:
+        b = editor.parse_brief(i.get("body") or "")
+        if b and "pull_request" not in i and not i.get("comments") and editor.gate1(b)[0] and not title_problem(i["title"]):
+            out.append({"title": i["title"], "issue": i["number"], "kind": "build" if any(l["name"] == "build" for l in i["labels"]) else "problem"})
+    return out
+
+def main():
+    existing, used = existing_issues()
+    items = [i for i in collect() if (i["url"] not in used or i["url"] in DOCS_URLS) and i["url"] not in SKIP_SOURCES]
+    goal, allowed, have = target(), {i["url"] for i in items}, {norm(t) for t in existing}
+    want = goal + SPARES
+    plan, dropped = waiting_topics()[:want], []
+    for _ in range(ROUNDS):
+        if len(plan) >= want:
+            break
+        new, out = vet(propose(items, existing, want - len(plan) + EXTRA_IDEAS, dropped), existing, allowed, have, want - len(plan))
+        plan, dropped = plan + new, dropped + out
+        have |= {norm(t["title"]) for t in new}
     if os.environ.get("DRY_RUN") == "true":
         print(plan_message(plan, goal, dropped))
         for t in plan:
-            print(f"\nTOPIC {t['yes']}/3: {t['title']}\nHOOK: {t['hook']}")
+            print(f"\nTOPIC {t.get('yes', 'already passed')}: {t['title']}\nHOOK: {t.get('hook', 'see its issue')}")
         for title, why in dropped:
             print(f"\nDROPPED: {title}\nWHY: {why}")
         return
@@ -136,8 +160,8 @@ def main():
     for l in (LABEL, "build", "problem"):
         ensure_label(l)
     for t in plan:
-        iss = post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)
-        rows.append({"issue": iss["number"], "title": t["title"], "state": "queued", "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
+        number = t.get("issue") or post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)["number"]
+        rows.append({"issue": number, "title": t["title"], "state": "queued", "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
     if rows:
         rows[0]["state"] = "started"
     _, sha = analytics.read_file(PLAN)
