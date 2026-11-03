@@ -8,7 +8,7 @@ Inputs: new items from radar.collect(), his ideas, existing topics, goals and an
 Outputs: one issue per topic, analytics/week-plan.json, a Slack message, and `pick`, the first lab to start.
 Every planned topic must answer a problem people raised recently, with a real signal behind it. Code checks that link.
 PLAN_JSON set: Claude planned the week in chat, which adds no API cost. Code checks it, one ChatGPT call approves topics and sharpens
-headlines, and the rest is the same. docs/weekly-plan.md is the playbook. `week.py --check FILE` runs the code checks with no model.
+headlines. Marketing and the Editor then confirm each topic and choose its title, and only confirmed topics reach a lab. docs/weekly-plan.md is the playbook. `week.py --check FILE` runs the code checks with no model.
 TOPIC set: Abhi asked for an article on this subject. The same checks run, and its lab starts now, ahead of the plan.
 cto.py starts one lab a day from the plan until the week's target is met. It must not start a lab for a topic that failed a check.
 """
@@ -164,7 +164,7 @@ def build_plan(topics, rejected, allowed, have, goal):
     return plan, dropped
 
 def plan_message(topics, goal, dropped):
-    rows = "\n".join(f"{n}. {t['title']}" + (f" ({t['signal']})" if t.get("signal") else "") + (" (spare)" if n > goal else "") for n, t in enumerate(topics, 1))
+    rows = "\n".join(f"{n}. {t['title']}" + (f" ({t['scores']})" if t.get("scores") else "") + (" (spare)" if n > goal else "") for n, t in enumerate(topics, 1))
     left = "\n".join(f"- {str(title)[:90]}: {str(why)[:140]}" for title, why in dropped[:5])
     return (f"This week's plan: {goal} articles, one lab a day.\n{rows}" + (f"\n\nDropped before any lab ran:\n{left}" if left else "")
             + ("" if len(topics) >= goal else f"\n\nOnly {len(topics)} of {goal} passed the checks."))
@@ -223,7 +223,7 @@ def start_requested(subject):
     text, sha = analytics.read_file(PLAN)
     plan = json.loads(text) if text.strip() else {"week": week_id(), "target": 0, "created": datetime.date.today().isoformat(), "topics": []}
     plan["target"] = plan.get("target", 0) + 1     # it comes on top of the week's target, so a planned article isn't dropped for it
-    plan["topics"].insert(0, {"issue": number, "title": t["title"], "state": "started", "started_on": datetime.date.today().isoformat(), "requested": True})
+    plan["topics"].insert(0, {"issue": number, "title": t["title"], "state": "started", "started_on": datetime.date.today().isoformat(), "requested": True, "confirmed": True})
     analytics.write_file(PLAN, json.dumps(plan, indent=1), sha, "week: Abhi's article")
     slack.say("editor", f"On it. Headline: {t['title']}\n\nThe lab is starting now. It takes up to an hour, and you'll get a PR to approve if it works.")
     if os.environ.get("GITHUB_OUTPUT"):
@@ -258,15 +258,17 @@ def publish(plan, goal, dropped):
         ensure_label(l)
     for t in plan:
         number = t.get("issue") or post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)["number"]
-        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
-    if rows:
-        rows[0].update(state="started", started_on=datetime.date.today().isoformat())
+        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "confirmed": bool(t.get("confirmed")), "scores": t.get("yes"),
+                     "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
+    first = next((r for r in rows if r["confirmed"]), None)     # a lab never starts on a topic they didn't confirm
+    if first:
+        first.update(state="started", started_on=datetime.date.today().isoformat())
     _, sha = analytics.read_file(PLAN)
     analytics.write_file(PLAN, json.dumps({"week": week_id(), "target": goal, "created": datetime.date.today().isoformat(), "topics": rows}, indent=1), sha, "week: new plan")
     slack.say("editor", plan_message(rows, goal, dropped))
-    if rows and os.environ.get("GITHUB_OUTPUT"):
+    if first and os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"pick={int(rows[0]['issue'])}\npick_model={rows[0]['model']}\n")
+            f.write(f"pick={int(first['issue'])}\npick_model={first['model']}\n")
 
 
 def check_plan(topics, have=()):
@@ -276,6 +278,7 @@ def check_plan(topics, have=()):
     for t in topics:
         title, b = neutralize(t.get("title")).strip()[:100], t.get("brief") or {}
         problems = [title_problem(title)] if title_problem(title) else []
+        problems += ["needs at least three title options"] if len(t.get("titles") or []) < 3 else []
         problems += ["this topic already exists"] if norm(title) in have else []
         problems += [f"unknown lane {t.get('lane')}"] if t.get("lane") not in LANES else []
         problems += ["AI monitoring needs the Galileo key"] if t.get("lane") == "ai_monitoring" and not galileo_ready() and os.environ.get("GITHUB_ACTIONS") else []
@@ -304,21 +307,46 @@ def headline_check(topics):
             out[n] = (better if better and not title_problem(better) else t["title"], rows[0]["reason"])
     return out
 
+def confirm_topics(topics):
+    """{index: (title, marketing score, editor score, reason)}. Marketing and the Editor do this analysis only, and both must say yes."""
+    view = [{"id": n, "options": t["titles"], "hook": t.get("hook"), "proof": t.get("proof"), "demand": t.get("signal"), "reader": (t.get("brief") or {}).get("reader")}
+            for n, t in enumerate(topics)]
+    rule = "Do marketing analysis only: is this worth a reader's click, and which title is strongest? Ignore whether a lab can do it.\n\n"
+    marketing = roles.ask("marketing", f"{rule}TOPICS:\n{json.dumps(view)}", "topicconfirm")["verdicts"]
+    editors = roles.ask("editor", f"{rule}Choose from the options, and set confirm to true only if you stand behind it for this reader.\n\nTOPICS:\n{json.dumps(view)}", "topicconfirm")["verdicts"]
+    def yes(rows, n, options):
+        got = [v for v in rows if v["id"] == n]
+        return got[0] if len(got) == 1 and got[0]["confirm"] and got[0]["title"] in options else None
+    out = {}
+    for n, t in enumerate(topics):
+        m, e = yes(marketing, n, t["titles"]), yes(editors, n, t["titles"])
+        if m and e:
+            out[n] = (m["title"], m["score"], e["score"], m["reason"])
+    return out
+
 def plan_from_chat(text):
     existing, _ = existing_issues()
     topics, dropped = check_plan(json.loads(text)["topics"], {norm(t) for t in existing})
-    approved, plan = headline_check(topics) if topics else {}, []
-    goal = target()
+    approved = headline_check(topics) if topics else {}
+    for n, t in enumerate(topics):             # ChatGPT's headline becomes one more option, and Marketing decides
+        t["titles"] = list(dict.fromkeys([t["title"], *t.get("titles", []), *([approved[n][0]] if n in approved else [])]))
+    kept = [t for n, t in enumerate(topics) if n in approved]
+    dropped += [(t["title"], "ChatGPT didn't approve it") for n, t in enumerate(topics) if n not in approved]
+    confirmed = confirm_topics(kept) if kept else {}
+    plan, goal = [], target()
     import editor
-    for n, t in enumerate(topics):
-        if n not in approved:
-            dropped.append((t["title"], "ChatGPT didn't approve it"))
+    for n, t in enumerate(kept):
+        if n not in confirmed:
+            dropped.append((t["title"], "Marketing and the Editor didn't both confirm it"))
         elif len(plan) < goal + SPARES:
-            title, srcs, b = approved[n][0], list(dict.fromkeys([*t.get("sources", []), t["demand_url"]])), t["brief"]
+            title, m_score, e_score, why = confirmed[n]
+            title = neutralize(title).strip()[:100]
+            srcs, b = list(dict.fromkeys([*t.get("sources", []), t["demand_url"]])), t["brief"]
             b["gate1"] = {"passed": True, "reasons": []}
             body = body_for(t, srcs, f"{safe_text(editor.brief_md(b, True, []))}\n\n{editor.marker(b)}")
             assert_safe(title); assert_safe(body)
-            plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": "ChatGPT approved", "signal": t.get("signal")})
+            plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": f"Marketing {m_score}/5, Editor {e_score}/5",
+                         "signal": t.get("signal"), "confirmed": True, "why": why})
     publish(plan, goal, dropped)
 
 if __name__ == "__main__":

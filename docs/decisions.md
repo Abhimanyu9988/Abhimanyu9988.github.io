@@ -217,3 +217,8 @@ endpoint. It needs a `GALILEO_API_KEY` repository secret. Until that exists, the
 
 API calls are most of the spend, and planning cost about $2 a week. A Monday chat session now does the research and writes topics and briefs, using `docs/weekly-plan.md`. Code still checks everything, and one
 ChatGPT call approves topics and sharpens headlines, as Abhi asked. The Monday schedule on `radar.yml` is off. The API planner stays for a manual run, and for articles he requests in Slack.
+
+## 2026-11-03: Marketing and the Editor confirm before any lab
+
+Abhi didn't like the first titles, and a lab started before his marketing team had seen them. Marketing and the Editor now do marketing analysis only: both must confirm a topic, and Marketing picks the title from real options.
+A lab can't start on an unconfirmed topic. An old plan row has no `confirmed` flag, so it can't start either.
