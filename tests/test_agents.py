@@ -1518,6 +1518,8 @@ check("trial: the model only comes from a fixed list", rep[True]["workflow_dispa
 old_lab = {"summary": "s", "files": [{"path": "main.tf", "content": "a"}, {"path": "fix.sh", "content": "b"}]}
 merged_lab = lab_mod.merge_lab(old_lab, {"summary": "new", "files": [{"path": "fix.sh", "content": "c"}]})
 check("lab repair: only changed files are replaced", merged_lab["summary"] == "new" and {f["path"]: f["content"] for f in merged_lab["files"]} == {"main.tf": "a", "fix.sh": "c"})
+moved = lab_mod.merge_lab({"files": [{"path": "sink.py", "content": "x"}, {"path": "main.tf", "content": "a"}]}, {"files": [{"path": "main.tf", "content": "b"}], "delete": ["sink.py"]})
+check("lab repair: a repair can remove a file that isn't allowed", [f["path"] for f in moved["files"]] == ["main.tf"] and "delete" not in moved)
 check("lab: no AWS means no model call", (lambda: (os.environ.pop("AWS_ACCESS_KEY_ID", None), os.environ.pop("AWS_ROLE_ARN", None), setattr(lab_mod, "DRY", False), lab_mod.ready_check(False))[3])() == "the lab has no AWS credentials")
 os.environ.update(AWS_ACCESS_KEY_ID="x", SPLUNK_API_TOKEN="bad", SPLUNK_REALM="us1")
 def refuse(*a, **k):

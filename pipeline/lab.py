@@ -66,6 +66,8 @@ Files you write (flat directory; Kubernetes manifests may go in k8s/):
   everything the scripts or Kubernetes created that makes AWS resources Terraform does not know about (Services of
   type LoadBalancer, Ingresses, PVCs, ECS tasks you started), wait until they are gone, and never fail hard.
 - README.md: what the lab shows and how a reader runs it in their own account.
+Allowed file types are .tf, .sh, .yaml, .yml, .json, .tpl and .md. A helper program, such as a Python script, goes inside a script as a
+heredoc, or in Terraform as a local value. It can't be its own file.
 Plan the clock before you write. reproduce.sh and fix.sh must each finish within 14 minutes, waits included. If the topic
 needs more, shorten each wait or use fewer steps, and say so in README.md. Never leave a value out to fit the time.
 Every loop has a fixed maximum, and every curl sets --max-time.
@@ -158,7 +160,8 @@ LAB_SCHEMA = {"type": "object", "required": ["summary", "expected", "files"], "p
     "summary": {"type": "string", "description": "2-3 sentences: what the lab builds and what it demonstrates"},
     "expected": {"type": "string", "description": "what reproduce.sh prints when the problem reproduces"},
     "files": {"type": "array", "items": {"type": "object", "required": ["path", "content"], "properties": {
-        "path": {"type": "string"}, "content": {"type": "string"}}}}}}
+        "path": {"type": "string"}, "content": {"type": "string"}}}},
+    "delete": {"type": "array", "items": {"type": "string"}, "description": "repairs only: paths of files to remove from the lab"}}}
 
 FILE_RX = re.compile(r"(?:k8s/)?[a-z0-9][a-z0-9_.-]{0,60}\.(?:tf|sh|ya?ml|json|tpl|md)", re.I)
 REQUIRED = ("main.tf", "reproduce.sh", "fix.sh", "cleanup.sh", "README.md")
@@ -318,8 +321,9 @@ def preflight(lab, body=""):
 def merge_lab(old, new):
     """A repair returns only the files it changed. Rewriting a whole lab was the biggest cost of a failed attempt."""
     changed = {str(f.get("path")): f for f in new.get("files") or []}
-    kept = [f for f in old.get("files") or [] if str(f.get("path")) not in changed]
-    return {**old, **new, "files": kept + list(changed.values())}
+    gone = {str(p) for p in new.get("delete") or []} - set(changed)    # a repair can move a file's content elsewhere
+    kept = [f for f in old.get("files") or [] if str(f.get("path")) not in changed and str(f.get("path")) not in gone]
+    return {**{k: v for k, v in {**old, **new}.items() if k != "delete"}, "files": kept + list(changed.values())}
 
 def ready_check(needs_splunk):
     """Free API calls before any model call. If the lab can't start, stopping here costs nothing.
@@ -591,7 +595,7 @@ def save(result, lab=None):
     result["steps"] = [{k: e[k] for k in ("step", "code", "seconds")} for e in EVIDENCE]
     result["usage"] = llm.usage_summary()
     result["usd"] = llm.cost_usd()[0]
-    result["aws_used"] = os.environ.get("DRY_RUN") != "true"
+    result["aws_used"] = bool(result.get("applied"))   # a lab stopped by pre-flight built nothing, so it adds no AWS estimate
     result["minutes"] = round((time.time() - START) / 60, 1)
     (OUT / "result.json").write_text(json.dumps(result, indent=1))
 
@@ -689,7 +693,7 @@ def main():
             if not problems:
                 break
             lab = merge_lab(lab, as_lab(llm.claude_json("You are an AWS container engineer fixing your lab before it runs.",
-                                         "Pre-flight found these problems. Fix each one. Return summary, expected and only the files you changed.\n\n"
+                                         "Pre-flight found these problems. Fix each one. Return summary, expected, only the files you changed, and in delete any file to remove.\n\n"
                                          + "\n".join(problems) + f"\n\nLAB RULES:\n{rules}\n\nYOUR LAB:\n{json.dumps(lab)}\n\n{context}",
                                          LAB_SCHEMA, tool="submit_lab")))
         problems = preflight(lab, issue.get("body") or "")
@@ -727,7 +731,7 @@ def main():
                 f"Attempt {attempt} of {MAX_ATTEMPTS} failed at step: {failed}.\n\nEVIDENCE (output tail):\n"
                 f"{tail(redact(out), 8000)}\n\nFix the lab so it runs and genuinely does what the topic needs (reproduce "
                 f"the problem, or for a build topic, show the before-state and prove the build works). Return summary, "
-                f"expected and only the files you changed. Every other file stays as it is.\n\nLAB RULES:\n{rules}\n\n"
+                f"expected, only the files you changed, and in delete any file to remove. Every other file stays as it is.\n\nLAB RULES:\n{rules}\n\n"
                 f"YOUR LAB:\n{json.dumps(lab)}\n\n{context}", LAB_SCHEMA, tool="submit_lab")
             lab = merge_lab(previous, as_lab(lab))
             result.update(summary=lab.get("summary", ""), expected=lab.get("expected", ""))
