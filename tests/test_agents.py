@@ -1407,13 +1407,13 @@ cto.merged_prs = real_merged
 real_gpr, cto.gh = cto.gh, lambda m, p, b=None: [{"title": "New", "html_url": "https://g/1", "body": "b", "head": {"ref": "feat/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Article", "html_url": "https://g/2", "head": {"ref": "draft/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Closed", "html_url": "https://g/3", "head": {"ref": "feat/b"}}]
 check("IT: only merged pipeline PRs count as evidence", [m["url"] for m in cto.merged_prs()] == ["https://g/1"])
 cto.gh = real_gpr
-analytics.read_file = lambda p, ref=None: (json.dumps({"week": "2026-W45", "target": 5, "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued"}, {"issue": 3, "title": "C", "state": "queued"}]}), "s")
+analytics.read_file = lambda p, ref=None: (json.dumps({"week": "2026-W45", "target": 5, "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued", "confirmed": True}, {"issue": 3, "title": "C", "state": "queued", "confirmed": True}, {"issue": 4, "title": "Old", "state": "queued"}]}), "s")
 plan_now = cto.next_run()
 check("tomorrow: he gets the real next lab, then the rest", plan_now["next_lab"] == "B" and plan_now["queued_after_that"] == ["C"] and plan_now["articles_this_week"] == 5)
 analytics.read_file = lambda p, ref=None: (_ for _ in ()).throw(RuntimeError("down"))
 check("tomorrow: a failed read is left out, not guessed", cto.next_run() == {})
 saved_plan = []
-plan_doc = {"week": "2026-W45", "target": 2, "created": "2026-11-03", "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued"}, {"issue": 3, "title": "C", "state": "queued"}]}
+plan_doc = {"week": "2026-W45", "target": 2, "created": "2026-11-03", "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued", "confirmed": True}, {"issue": 3, "title": "C", "state": "queued", "confirmed": True}]}
 analytics.read_file = lambda p, ref=None: (json.dumps(plan_doc), "s")
 real_wr, analytics.write_file = analytics.write_file, lambda p, t, s, m: saved_plan.append(json.loads(t))
 state = {"drafts": 0, "running": []}
@@ -1429,12 +1429,14 @@ state.update(running=[], drafts=2)
 check("plan: stops at the week's target, so a spare isn't spent", cto.next_lab() is None)
 state["drafts"] = 1
 state.update(drafts=0)
-plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03"}]
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "queued"}]
+check("plan: an unconfirmed topic never starts a lab", cto.next_lab() is None)
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03", "confirmed": True}]
 saved_plan.clear()
 inner_gh = cto.gh
 cto.gh = lambda m, path, b=None: {"comments": 0} if "/issues/1" in path else inner_gh(m, path, b)
 check("plan: a lab that never started goes back in the queue", cto.next_lab("2026-11-04")["issue"] == 1 and saved_plan[-1]["topics"][0]["started_on"] == "2026-11-04")
-plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03"}]
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03", "confirmed": True}]
 cto.gh = lambda m, path, b=None: {"comments": 2} if "/issues/1" in path else inner_gh(m, path, b)
 check("plan: a lab that ran isn't repeated", cto.next_lab("2026-11-04") is None)
 check("plan: a same-day start isn't mistaken for a lost lab", cto.next_lab("2026-11-03") is None)
@@ -1499,7 +1501,7 @@ week.vet([{"title": "Galileo shows token spikes your Splunk dashboard misses", "
 week.lab_check, week.panel, week.build_plan = real_lc3, real_pn3, real_bp3
 check("galileo: no key means no AI monitoring lab", list(gal_rej.values()) == ["AI monitoring needs the Galileo key"])
 check("galileo: the key reaches the lab and is hidden in its logs", "GALILEO_API_KEY" in lab_mod.SECRET_VARS and "GALILEO_API_KEY" in (ROOT / ".github/workflows/replicate.yml").read_text())
-chat_t = lambda **k: {"title": "Java agent hides your pod's first 40 seconds of traces", "hook": "h", "payoff": "p", "proof": "p", "lab": "l", "sources": [], "kind": "build",
+chat_t = lambda **k: {"title": "Java agent hides your pod's first 40 seconds of traces", "titles": ["a", "b", "c"], "hook": "h", "payoff": "p", "proof": "p", "lab": "l", "sources": [], "kind": "build",
                       "lane": "otel_auto_instrumentation", "demand_url": "https://g/1", "signal": "9 reactions", "brief": {"x": 1}, **k}
 real_cv, real_eg4 = week.contract.validate, editor.gate1
 week.contract.validate, editor.gate1 = (lambda o, sc: []), (lambda b: (True, []))
@@ -1513,6 +1515,13 @@ seen_role = []
 hc = week.headline_check([chat_t(), chat_t(title="Second"), chat_t(title="Third keeps its own stronger headline")])
 week.roles.ask = real_ra2
 check("chat plan: ChatGPT approves and sharpens, and a weaker headline is ignored", seen_role == ["headline_check"] and hc[0][0].startswith("Java agent hides the first") and 1 not in hc and hc[2][0] == "Third keeps its own stronger headline")
+conf_t = [{"titles": ["Good one", "Other"]}, {"titles": ["Only marketing"]}, {"titles": ["Made up"]}]
+V = lambda n, c, t: {"id": n, "confirm": c, "title": t, "score": 4, "reason": "r"}
+real_ra3, week.roles.ask = week.roles.ask, lambda role, prompt, out: {"verdicts": [V(0, True, "Good one"), V(1, True, "Only marketing"), V(2, True, "Invented title")] if role == "marketing" else [V(0, True, "Other"), V(1, False, "Only marketing"), V(2, True, "Made up")]}
+confirmed = week.confirm_topics(conf_t)
+week.roles.ask = real_ra3
+check("confirm: both must say yes, Marketing picks the title, and it must be a real option", list(confirmed) == [0] and confirmed[0][0] == "Good one")
+check("confirm: Marketing's job is analysis only", "nothing else" in (ROOT / "pipeline/roles/prompts/marketing.md").read_text() and "nothing else" in (ROOT / "pipeline/roles/prompts/cmo.md").read_text())
 check("chat plan: ChatGPT does the second opinion", roles_mod.get("headline_check")["vendor"] == "chatgpt")
 check("chat plan: no scheduled API plan", "schedule" not in __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())[True])
 check("chat plan: the playbook exists", (ROOT / "docs/weekly-plan.md").exists())

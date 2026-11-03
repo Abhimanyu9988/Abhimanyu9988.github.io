@@ -36,7 +36,8 @@
    "outputs": [
     "brief",
     "scorecard",
-    "weekplan"
+    "weekplan",
+    "topicconfirm"
    ],
    "data_sources": [
     "goals",
@@ -411,6 +412,27 @@
     "max_calls": 2
    },
    "display": "Headline Check",
+   "dept": "Marketing"
+  },
+  "marketing": {
+   "mission": "Do marketing analysis only: confirm each topic and choose its title before a lab runs.",
+   "module": "pipeline/week.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "MARKETING_MODEL",
+   "prompt": "marketing.md",
+   "outputs": [
+    "topicconfirm"
+   ],
+   "data_sources": [
+    "goals"
+   ],
+   "budget": {
+    "max_input_tokens": 12000,
+    "max_calls": 2
+   },
+   "display": "Marketing",
    "dept": "Marketing"
   }
  }

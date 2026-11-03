@@ -200,7 +200,7 @@ def next_lab(today=None):
     if not plan.get("topics") or lab_active() or lab_drafts(plan) >= plan.get("target", 0):
         return None
     requeue_lost(plan, today)
-    queued = [t for t in plan["topics"] if t.get("state") == "queued"]
+    queued = [t for t in plan["topics"] if t.get("state") == "queued" and t.get("confirmed")]   # Marketing and the Editor confirm first
     if not queued:
         return None
     queued[0].update(state="started", started_on=today)
@@ -211,7 +211,7 @@ def next_run():
     """What is really planned, read from the week's plan. If it can't be read, this is left out rather than guessed."""
     try:
         plan, _ = read_plan()
-        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued"]
+        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed")]
         return {"week": plan.get("week"), "articles_this_week": plan.get("target"), "next_lab": queued[0] if queued else "nothing queued",
                 "next_lab_starts": "07:12 UTC tomorrow" if queued else "the next plan, on Monday at 06:00 UTC", "queued_after_that": queued[1:],
                 "note": "One lab a day. A lab can still fail, and an article needs your approval."}
@@ -594,7 +594,7 @@ def refresh_board():
     try:
         brief, _ = analytics.read_file(BRIEF)
         ideas = [l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")]
-        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued"]
+        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued" and t.get("confirmed")]
         live_board.refresh(needed(), own_prs(), planned + ideas, budget.spent()[0], budget.limit())
     except Exception as e:
         print(f"::warning title=board::not refreshed: {' '.join(str(e).split())[:200]}")
