@@ -58,6 +58,7 @@
      },
      "lane": {
       "enum": [
+       "otel_auto_instrumentation",
        "ai_monitoring",
        "kubernetes",
        "aws",

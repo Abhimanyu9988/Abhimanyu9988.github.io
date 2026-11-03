@@ -54,6 +54,8 @@ GitHub Actions job (about 60 minutes of wall time, under 1 USD per run).
   EventBridge, Application Auto Scaling, SSM parameters (read). Not available: RDS, S3 buckets, Lambda, Route 53, KMS.
 - IAM: only roles named hero-lab-* that carry the permissions boundary. EKS Pod Identity and IRSA both work.
 - Tools in the lab sandbox: terraform, aws CLI v2, kubectl, helm, jq, curl, git, openssl (no docker).
+- Galileo is available for AI monitoring when $GALILEO_API_KEY is set. Set $GALILEO_PROJECT and $GALILEO_LOG_STREAM in the scripts. Traces go to
+  https://api.galileo.ai/otel/traces. There is no paid AI API key, so run a small open model on the lab's EC2 instance.
 - Splunk Observability Cloud is available. The realm is in $SPLUNK_REALM, an ingest token (send data only) in
   $SPLUNK_ACCESS_TOKEN and a read-only API token in $SPLUNK_API_TOKEN. Install the Splunk Distribution of the
   OpenTelemetry Collector with its Helm chart (repo https://signalfx.github.io/splunk-otel-collector-chart, chart

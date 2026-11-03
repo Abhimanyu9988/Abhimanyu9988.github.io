@@ -34,8 +34,9 @@ MAX_ATTEMPTS, MAX_SWEEP = 4, 2      # the work deadline still stops attempts in 
 HIDE = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GH_READ_TOKEN", "BOT_TOKEN", "GITHUB_TOKEN",
         "ACTIONS_RUNTIME_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL")
 SPLUNK_VARS = ("SPLUNK_REALM", "SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN")    # passed into the sandbox by name
+GALILEO_VARS = ("GALILEO_API_KEY",)              # passed into the sandbox by name, when saved
 SECRET_VARS = HIDE + ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
-                      "SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN")
+                      "SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN") + GALILEO_VARS
 AWS_VARS = ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN")
 MAINTAINERS = {"OWNER", "MEMBER", "COLLABORATOR"}
 EVIDENCE = []
@@ -207,7 +208,7 @@ def run(step, cmd, timeout, cwd=None, env=None, record=True, sandbox=False):
                 "-v", f"{cwd.resolve()}:/lab", "-v", f"{TFCACHE.resolve()}:/tfcache", "-w", "/lab",
                 "-e", "HOME=/lab/.home", "-e", "TF_IN_AUTOMATION=1", "-e", "TF_PLUGIN_CACHE_DIR=/tfcache",
                 "-e", f"AWS_REGION={REGION}", "-e", f"AWS_DEFAULT_REGION={REGION}"]
-        full += [x for k in AWS_VARS + SPLUNK_VARS if k in os.environ for x in ("-e", k)]   # inherited, not on argv
+        full += [x for k in AWS_VARS + SPLUNK_VARS + GALILEO_VARS if os.environ.get(k) for x in ("-e", k)]   # inherited, not on argv
         full += [x for k, v in (env or {}).items() for x in ("-e", f"{k}={v}")]
         full += [IMAGE, *cmd]
     else:

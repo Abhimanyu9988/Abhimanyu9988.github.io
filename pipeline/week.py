@@ -20,8 +20,11 @@ DEFAULT_TARGET = 3
 WEEK_TARGETS = {"2026-W45": 5}                 # Abhi asked for five in his training week
 HOT_REPOS = ["fluent/fluent-bit", "open-telemetry/opentelemetry-collector-contrib", "open-telemetry/opentelemetry-operator",
              "signalfx/splunk-otel-collector-chart", "kedacore/keda", "argoproj/argo-cd",
-             "open-telemetry/opentelemetry-python-contrib", "open-telemetry/semantic-conventions", "traceloop/openllmetry"]
-LANES = {"ai_monitoring": "AI monitoring: LLM and agent tracing, tokens, latency and cost, OpenTelemetry GenAI",
+             "open-telemetry/opentelemetry-python-contrib", "open-telemetry/opentelemetry-java-instrumentation",
+             "open-telemetry/opentelemetry-js-contrib", "open-telemetry/semantic-conventions", "traceloop/openllmetry"]
+GOALS = "Abhi's goals right now: be known for OpenTelemetry auto-instrumentation, become a Splunk MVP, and earn AWS Hero recognition. Every topic must serve one of them."
+LANES = {"otel_auto_instrumentation": "OpenTelemetry auto-instrumentation, the Operator and zero-code agents",
+         "ai_monitoring": "AI monitoring with Galileo: LLM and agent tracing, tokens, latency, cost and OpenTelemetry GenAI",
          "kubernetes": "Kubernetes operations and failures", "aws": "AWS services, especially containers",
          "splunk_observability": "Observability on Splunk Observability Cloud"}
 MAX_PER_LANE = 2                               # no lane fills a week, so the plan keeps its variety
@@ -45,6 +48,9 @@ def week_id(day=None):
 
 def target(day=None):
     return WEEK_TARGETS.get(week_id(day), DEFAULT_TARGET)
+
+def galileo_ready():
+    return os.environ.get("GALILEO_READY") == "true"
 
 def hot_items():
     """{url: signal} and a short list for the Editor. Free API calls, and real counts, so demand is shown instead of guessed."""
@@ -70,8 +76,8 @@ def propose(items, existing, want, refused=(), hot=()):
     return roles.ask("editor", f"Plan this week's articles. Give {want} topics, best first. {NO_REFS}\n\n"
                                f"Every topic must solve one problem from HOT PROBLEMS, which are real complaints from the last 30 days. Put its url in demand_url, "
                                f"and use the reader's own words for the symptom. "
-                               f"Abhi wants this order of focus, and every topic must sit in one lane, given in lane: {json.dumps(LANES)}. Include at least one ai_monitoring "
-                               f"topic if a real complaint supports it. An AI monitoring lab can run a small open model on EC2, because the lab has no paid AI API. "
+                               f"{GOALS} Every topic must sit in one lane, given in lane: {json.dumps(LANES)}. "
+                               f"{'Include at least one ai_monitoring topic if a real complaint supports it. It must use Galileo, with a small open model on EC2, because the lab has no paid AI API. ' if galileo_ready() else 'Offer no ai_monitoring topics yet, because the lab has no Galileo key. '}"
                                f"Vary the week: no two topics on the same service or failure. Abhi has rejected repeated ALB posts, so offer at most one ALB topic, "
                                f"and cover different ground, such as ECS, logs, OpenTelemetry and Splunk Observability. "
                                f"The topic and headline matter most, so spend your effort there. Write three headlines for each topic and keep the strongest. "
@@ -167,6 +173,7 @@ def vet(topics, existing, allowed, have, need, hot):
         t["signal"] = hot.get(t.get("demand_url"), "")
         t["sources"] = [*(t.get("sources") or []), *([t["demand_url"]] if t["signal"] else [])]
     rejected = {n: "no real recent complaint behind it" for n, t in enumerate(topics) if not t["signal"]}
+    rejected.update({n: "AI monitoring needs the Galileo key" for n, t in enumerate(topics) if t.get("lane") == "ai_monitoring" and not galileo_ready() and n not in rejected})
     rejected.update({n: title_problem(t["title"]) for n, t in enumerate(topics) if title_problem(t["title"]) and n not in rejected})
     rejected.update({n: why for n, why in lab_check(topics).items() if n not in rejected})
     votes = panel(topics, rejected, existing)
