@@ -1236,6 +1236,12 @@ slack.messages, slack.history, cto.answer = real_msg, real_hist3, real_ans3
 check("slack: replies are capped per run", len(heard2) == cto.MAX_REPLIES)
 slack.api = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down"))
 check("slack: an outage never stops the work", slack.say("cto", "hi") is False)
+real_cread, analytics.read_file = analytics.read_file, lambda p, ref=None: (_ for _ in ()).throw(RuntimeError("HTTP 500"))
+real_tok = os.environ.get("SLACK_BOT_TOKEN"); os.environ["SLACK_BOT_TOKEN"] = "t"
+cto.poll()
+check("poll: a GitHub blip waits for the next run instead of failing", True)
+analytics.read_file = real_cread
+os.environ.pop("SLACK_BOT_TOKEN") if real_tok is None else os.environ.update(SLACK_BOT_TOKEN=real_tok)
 cursor_before = files_b[cto.CURSOR]
 cto.poll()
 check("slack: a failed read keeps the cursor", files_b[cto.CURSOR] == cursor_before)
@@ -1459,11 +1465,13 @@ real_prop, real_vet, real_wait, real_coll, real_ei = week.propose, week.vet, wee
 rounds = []
 week.existing_issues, week.collect, week.waiting_topics = (lambda: ([], set())), (lambda: [{"url": "https://x.y/a"}]), (lambda: [])
 week.propose = lambda i, e, want, refused=(): rounds.append((want, list(refused))) or [{"title": f"t{len(rounds)}"}]
-week.vet = lambda topics, e, a, h, need: ([{"title": "A", "kind": "build", "yes": 3, "hook": "h", "body": "b"}], [("Bad", "too slow")]) if len(rounds) == 1 else ([{"title": f"B{i}", "kind": "build", "yes": 3, "hook": "h", "body": "b"} for i in range(need)], [])
+needs = []
+week.vet = lambda topics, e, a, h, need: needs.append(need) or ([{"title": "A", "kind": "build", "yes": 3, "hook": "h", "body": "b"}], [("Bad", "too slow")]) if len(rounds) == 1 else ([{"title": f"B{i}", "kind": "build", "yes": 3, "hook": "h", "body": "b"} for i in range(need)], [])
 os.environ["DRY_RUN"] = "true"
 week.main()
 os.environ.pop("DRY_RUN")
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
+check("week: a spare is counted once", needs == [5])
 week.propose, week.vet, week.waiting_topics, week.collect, week.existing_issues = real_prop, real_vet, real_wait, real_coll, real_ei
 brief_ok = {"existing_pages": [{"url": "https://x.y/page"}]}
 real_ra, real_eb2, real_eg2, real_bm, real_mk, real_lc, real_pn = week.roles.ask, editor.brief, editor.gate1, editor.brief_md, editor.marker, week.lab_check, week.panel
