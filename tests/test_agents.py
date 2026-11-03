@@ -1308,6 +1308,7 @@ check("topics: each one needs a hook the docs do not give", "hook" in r.BUILD_SC
 check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / "pipeline/radar.py").read_text())
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
 check("topics: the failure finder only runs when asked, because the weekly plan replaced its schedule", "schedule" not in py[True] and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
+check("panel: a refused lab reaches Slack and the model stats", "the review panel didn't accept its proof" in (ROOT / "pipeline/draft.py").read_text() and '"status": "panel_rejected"' in (ROOT / "pipeline/draft.py").read_text())
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
 
 # ---------- lab pre-flight ----------
