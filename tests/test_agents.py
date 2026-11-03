@@ -1306,6 +1306,24 @@ py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read
 check("topics: Thursday looks for real failures", py[True]["schedule"][0]["cron"] == "0 6 * * 4" and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
 
+# ---------- lab pre-flight ----------
+import lab as lab_mod
+def lab_files(tf='resource "aws_iam_instance_profile" "n" {\n  name = "hero-lab-${var.lab_name}-node"\n}\n', rep="echo ok\nHERO=1\n"):
+    return {"files": [{"path": "main.tf", "content": tf}, {"path": "reproduce.sh", "content": rep}, {"path": "fix.sh", "content": "echo ok"},
+                      {"path": "cleanup.sh", "content": "true"}, {"path": "README.md", "content": "x"}]}
+real_validate, lab_mod.validate = lab_mod.validate, lambda l: []
+check("pre-flight: a clean lab passes", lab_mod.preflight(lab_files()) == [])
+check("pre-flight: catches the instance profile name AWS refused", any("hero-lab-" in e for e in lab_mod.preflight(lab_files('resource "aws_iam_instance_profile" "n" {\n  name = "${var.lab_name}-node"\n}\n'))))
+check("pre-flight: catches a loop that can run forever", any("while true" in e for e in lab_mod.preflight(lab_files(rep="while true; do\n  x\ndone\n"))))
+check("pre-flight: catches curl with no time limit", any("--max-time" in e for e in lab_mod.preflight(lab_files(rep="curl https://x\n"))))
+check("pre-flight: curl with a time limit passes", lab_mod.preflight(lab_files(rep="curl --max-time 20 https://x\n")) == [])
+check("pre-flight: catches waits longer than a script may run", any("sleeps add up" in e for e in lab_mod.preflight(lab_files(rep="sleep 600\nsleep 600\n"))))
+check("pre-flight: a comment doesn't count as code", lab_mod.preflight(lab_files(rep="# curl and sleep 9999\n")) == [])
+lab_mod.validate = real_validate
+slow_brief = {"measurements": [{"id": "stale", "unit": "count"}, {"id": "ratio", "what": "steady-state hourly count"}, {"id": "after", "what": "still active 1 hour after the rollout"}, {"id": "fast", "what": "drain time in seconds"}]}
+check("gate: a contract that needs an hour's wait is caught before AWS", editor.slow_measures(slow_brief) == ["ratio", "after"])
+check("gate: such a topic fails the Topic Investment Gate", any("longer wait" in r for r in editor.gate1(slow_brief)[1]))
+
 # ---------- secretary and build notes ----------
 live_board_url = "https://abhimanyu9988.github.io/board/"
 asked, sent = [], []

@@ -159,3 +159,11 @@ built for this and removed before merging. Leaders save each feature request as 
 
 IT Support checks the notes against merged PRs each morning and whenever he asks for them. A model suggests the match, and code
 closes a note only if the PR really merged, so he never has to mark anything done. FACTS also gives leaders tomorrow's real plan.
+
+## 2026-11-03: Labs get a pre-flight check before AWS
+
+The rolling-deploy lab failed three times, and each cause could have been found first. IAM refused an instance profile without the
+`hero-lab-` prefix, an API loop ran until its 16-minute limit, and the contract asked for a count one hour later in a 14-minute script.
+Pre-flight now checks for these with no AWS, and gives the lab up to two rewrites. The topic gate rejects contracts that need an
+hour's wait. Lab rules also cover Splunk's series lag, which showed 207 new series on one rollout and zero on the other four.
+This can't promise success, because some failures only appear on real infrastructure. It stops the failures we can predict.

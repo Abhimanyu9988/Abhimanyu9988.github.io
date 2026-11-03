@@ -858,7 +858,9 @@ def main():
                                           else "\U0001f9ea The lab reproduced the problem, but the fix did not work."),
                 "failed": "❌ The lab did not get to a result."}.get(res["status"], res["status"])
         clean = "AWS was cleaned up." if res.get("destroyed") else "Check AWS: cleanup didn't confirm."
-        slack.say("lab_engineer", f"Lab failed, so no article was written: {topic.get('title', 'unknown')}. {clean}")
+        cause = safe_text(lf.get("step") or res.get("error") or "before the lab ran")[:160]
+        slack.say("lab_engineer", f"Lab failed, so no article was written: {topic.get('title', 'unknown')}. Stopped at: {cause}. "
+                                  f"{res.get('attempts')} attempt(s), {res.get('minutes')} min. {clean}")
         msg = (f"{nice} {res.get('attempts')} attempt(s), {res.get('minutes')} min, workflow run {res['run_id']}."
                f"{warn}\n\n**Last failure:** {safe_text(lf.get('step') or 'before the lab ran')}\n```\n{out}\n```\n\n"
                f"{_cleanup_md(res)}**Lab:** {safe_text(res.get('summary') or 'not written')}\n\nThe lab files and raw output are in the run's `lab` "
