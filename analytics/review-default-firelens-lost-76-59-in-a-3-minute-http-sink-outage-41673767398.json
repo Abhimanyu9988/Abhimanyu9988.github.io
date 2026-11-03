@@ -1,0 +1,354 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "technical: The headline 76.59% is diluted by records written before the outage, so it depends on how long steady state ran, not only on the outage. The loss inside the outage window is about 95%, and that is the number a reader can scale to their own outage. Fix: Lead with 'lost 95% (36,131 of 38,017) of records written during a 3-minute outage', or put both numbers in the title and the TL;DR, and explain that the overall percentage depends on how long the steady-state window ran.",
+  "technical: The hardened configs change Retry_Limit, scheduler.base/cap, buffer type and the whole config source at once. Nothing shows which change prevented the loss. The likely cause, Retry_Limit, is never isolated. Fix: Add a run that keeps the default memory buffering and changes only Retry_Limit (for example to 60 with scheduler.cap 20). Otherwise, say plainly that the result supports 'more retries fixed it', not 'buffering fixed it'.",
+  "technical: Neither buffer limit was reached, so the post says nothing about Mem_Buf_Limit, pause behaviour, filesystem vs memory, or how big a buffer should be. That leaves the brief's sizing decision unanswered. Fix: Run mem with a Mem_Buf_Limit below the backlog (for example 5MB), or a longer outage, and report loss, pause and stdout latency. Then give the sizing formula with numbers: 200 lines/s \u00d7 170 B \u00d7 180 s \u2248 6.1 MB generated, against about 11.7 MiB of observed router memory growth.",
+  "technical: The post presents a single maximum stdout write (73.39 ms) as the cost of memory buffering. No pause happened, so backpressure can't be the cause, and one max sample from one run can't separate the configs. Fix: Report p50/p99 write latency across repeated runs, or drop the causal claim and say the maxima are single samples with no pause observed.",
+  "technical: The default config and its behaviour are never shown. The reader doesn't see the effective Retry_Limit, and the 69 records lost before the outage are reported without explanation. Fix: Print the FireLens-generated fluent-bit.conf from the default task and state its Retry_Limit and input limits. Then either explain the 69 pre-outage losses (for example, startup lines sent before the router was ready, or chunks dropped at the outage boundary) or investigate them.",
+  "technical: The build steps don't work as written. The README says region, lab_name and permissions_boundary must be declared in vars.tf and passed, but the post only exports TF_VAR_lab_name. Fix: Ship vars.tf in the lab repo, or add it and the -var region/permissions_boundary flags to the post, and set AWS_REGION before reproduce.sh.",
+  "editorial: The post states as fact a claim the lab never checked: that no ECS-level signal shows the loss. Fix: Either check the available signals (the Fluent Bit metrics endpoint, the CloudWatch router-log 'cannot be retried' count the lab already collects, ECS task health) and report what showed the loss, or reword it as 'task status stayed RUNNING; only the router's own logs showed the drops'.",
+  "editorial: The prose reads as templated, which costs it credibility with senior readers. Fix: Remove the boilerplate intro and the 'trick' framing. Open with the router log sequence (retry in 11 s \u2192 chunk dropped) and the 95% in-outage loss, then say what to change.",
+  "outside claim without a known source: The ECS FireLens Docker buffer limit setting controls the log driver buffer between the container and FireLens"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "76.59%",
+    "number": "76.59",
+    "noun": "%",
+    "supported": true,
+    "where": "04-reproduce.log:50",
+    "basis": "heuristic",
+    "validated": false
+   },
+   {
+    "claim": "3-Minute HTTP Sink",
+    "number": "3",
+    "noun": "minute",
+    "supported": true,
+    "where": "04-reproduce.log:51",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "records_lost_pct",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:36"
+    },
+    {
+     "id": "records_delivered_after_recovery",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:38"
+    },
+    {
+     "id": "drain_time_s",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:40"
+    },
+    {
+     "id": "fluentbit_peak_memory_mib",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:42"
+    },
+    {
+     "id": "app_stdout_max_write_ms",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:44"
+    },
+    {
+     "id": "loss_by_config_comparison",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:141"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The counts are real. The sink tracks each sequence number, the drain gate waits for 60 s with no new records, and 04-reproduce.log/05-fix.log back every table value.",
+     "The hardened configs change several things at once: Retry_Limit 1\u219260, scheduler.base/cap, buffer type, and a hand-written config in place of the FireLens-generated one. The 0% result can't be credited to any single setting.",
+     "Neither buffer limit was reached. Router peak was 16.6\u201318.3 MiB against Mem_Buf_Limit 64MB, and roughly 6.5 MB of outage data was generated. Pause and backpressure never happened, so the mem-vs-fs and sizing claims go beyond the evidence.",
+     "The Step 1 commands leave out the region and permissions_boundary variables that the README says you must declare and pass, so the build doesn't reproduce as written."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader is clear, and the post has a real number the docs lack: the default FireLens path dropped about 95% of the records generated during the outage (36,131 of 38,017).",
+     "The post never explains why. The default http output's Retry_Limit gives one retry about 10 s later and then drops the chunk, as the 'retry in 11 seconds' \u2192 'cannot be retried' log lines show. That mechanism is the actionable finding, and it's missing.",
+     "The brief promised a config choice and a buffer size for the reader's own log rate. Neither buffer was ever stressed, so the reader can't choose between mem and fs or size either one.",
+     "It reads as generated: TL;DR template, 'The trick:', 'Before I write about a problem, I reproduce it myself\u2026' boilerplate, and the even 'There is a cost.' rhythm."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "Demand evidence is weak. The search found only docs pages and one vendor article. There is no data on search volume, rankings or community questions.",
+     "The title number is specific, and 'FireLens' plus 'HTTP outage' fits what Fargate platform engineers would search for. Without data, that's a guess.",
+     "Splunk isn't mentioned in the post. That's correct, because the lab didn't use it and the result applies to any HTTP output, so Splunk isn't forced in."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The headline 76.59% is diluted by records written before the outage, so it depends on how long steady state ran, not only on the outage. The loss inside the outage window is about 95%, and that is the number a reader can scale to their own outage.",
+    "evidence": "04-reproduce.log: 'generated=47266 delivered=11066 lost=36200 (76.59%) | generated during outage=38017 ... lost in outage window=36131'",
+    "fix": "Lead with 'lost 95% (36,131 of 38,017) of records written during a 3-minute outage', or put both numbers in the title and the TL;DR, and explain that the overall percentage depends on how long the steady-state window ran."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The hardened configs change Retry_Limit, scheduler.base/cap, buffer type and the whole config source at once. Nothing shows which change prevented the loss. The likely cause, Retry_Limit, is never isolated.",
+    "evidence": "main.tf conf_mem/conf_fs: 'Retry_Limit 60', 'scheduler.base 2', 'scheduler.cap 20', plus entryPoint override; README: 'the configs are not FireLens-generated ones'",
+    "fix": "Add a run that keeps the default memory buffering and changes only Retry_Limit (for example to 60 with scheduler.cap 20). Otherwise, say plainly that the result supports 'more retries fixed it', not 'buffering fixed it'."
+   },
+   {
+    "dimension": "technical",
+    "problem": "Neither buffer limit was reached, so the post says nothing about Mem_Buf_Limit, pause behaviour, filesystem vs memory, or how big a buffer should be. That leaves the brief's sizing decision unanswered.",
+    "evidence": "Table: 'mem 4.9 \u2192 16.6 MiB', 'fs 4.9 \u2192 18.3 MiB' vs 'Mem_Buf_Limit 64MB'; post: 'Size the buffer from your outage math.'",
+    "fix": "Run mem with a Mem_Buf_Limit below the backlog (for example 5MB), or a longer outage, and report loss, pause and stdout latency. Then give the sizing formula with numbers: 200 lines/s \u00d7 170 B \u00d7 180 s \u2248 6.1 MB generated, against about 11.7 MiB of observed router memory growth."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The post presents a single maximum stdout write (73.39 ms) as the cost of memory buffering. No pause happened, so backpressure can't be the cause, and one max sample from one run can't separate the configs.",
+    "evidence": "'The memory config saved the logs, but stdout write latency peaked at 73.39 ms.'",
+    "fix": "Report p50/p99 write latency across repeated runs, or drop the causal claim and say the maxima are single samples with no pause observed."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The default config and its behaviour are never shown. The reader doesn't see the effective Retry_Limit, and the 69 records lost before the outage are reported without explanation.",
+    "evidence": "'The default's 36,200 lost records include 69 lost before the outage window started.'",
+    "fix": "Print the FireLens-generated fluent-bit.conf from the default task and state its Retry_Limit and input limits. Then either explain the 69 pre-outage losses (for example, startup lines sent before the router was ready, or chunks dropped at the outage boundary) or investigate them."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The build steps don't work as written. The README says region, lab_name and permissions_boundary must be declared in vars.tf and passed, but the post only exports TF_VAR_lab_name.",
+    "evidence": "Post Step 1: 'export TF_VAR_lab_name=fb-outage\\nterraform init && terraform apply'; README: 'terraform apply -var region=eu-central-1 -var lab_name=fb-outage -var permissions_boundary=null' and 'declare them in a small vars.tf'",
+    "fix": "Ship vars.tf in the lab repo, or add it and the -var region/permissions_boundary flags to the post, and set AWS_REGION before reproduce.sh."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The post states as fact a claim the lab never checked: that no ECS-level signal shows the loss.",
+    "evidence": "'The task is healthy and the logs are going nowhere. Nothing at the ECS level tells you.'",
+    "fix": "Either check the available signals (the Fluent Bit metrics endpoint, the CloudWatch router-log 'cannot be retried' count the lab already collects, ECS task health) and report what showed the loss, or reword it as 'task status stayed RUNNING; only the router's own logs showed the drops'."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The prose reads as templated, which costs it credibility with senior readers.",
+    "evidence": "'> **TL;DR** ... **The trick:**', 'Before I write about a problem, I reproduce it myself in a throwaway AWS account', '## The trick: keep the FireLens socket'",
+    "fix": "Remove the boilerplate intro and the 'trick' framing. Open with the router log sequence (retry in 11 s \u2192 chunk dropped) and the 95% in-outage loss, then say what to change."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The Fluent Bit backpressure docs explain memory limits, pause behavior and retry behavior setting by setting, but not the combined Fargate result",
+    "class": "sourced",
+    "source_ref": "https://docs.fluentbit.io/manual/administration/backpressure"
+   },
+   {
+    "text": "Nothing at the ECS level tells you that logs are being dropped",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Custom config can be delivered with the ECS FireLens config-file option or baked into an image",
+    "class": "sourced",
+    "source_ref": "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html"
+   },
+   {
+    "text": "AWS for Fluent Bit 3.0.0 is based on Fluent Bit 4.1.1",
+    "class": "sourced",
+    "source_ref": "https://aws.amazon.com/about-aws/whats-new/2025/10/aws-fluent-bit-3-0-0-based-4-1-1"
+   },
+   {
+    "text": "Lab cost is well under 1 USD (one t3.medium for about an hour plus a few Fargate task-minutes)",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "Filesystem buffering on Fargate uses task ephemeral storage, which rides out an output outage but won't survive a task stop",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Without scheduler.cap, stale chunks sit behind exponential retry backoff (default cap 2000 s) after the destination returns",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The ECS FireLens Docker buffer limit setting controls the log driver buffer between the container and FireLens",
+    "class": "sourced",
+    "source_ref": "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/firelens-docker-buffer-limit.html"
+   },
+   {
+    "text": "Filesystem buffering is described in the Fluent Bit buffering and storage docs",
+    "class": "sourced",
+    "source_ref": "https://docs.fluentbit.io/manual/administration/buffering-and-storage"
+   },
+   {
+    "text": "Whatever you set, you are trading log loss against memory, ephemeral storage and app-side latency",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The 73.39 ms stdout write peak is a cost of the memory-buffer config",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/70076909cd"
+ },
+ "brief": {
+  "reader": "Platform engineer running log-heavy ECS Fargate services with FireLens (AWS for Fluent Bit), shipping to an HTTP destination such as Splunk HEC, who has never seen what happens during a destination outage",
+  "decision": "Whether the default FireLens/Fluent Bit settings are good enough for a log-heavy Fargate task, or whether to change Retry_Limit, mem_buf_limit and filesystem buffering (and size the task's memory and ephemeral storage for it) before relying on the pipeline through a destination outage",
+  "question": "If my log destination is down for five minutes, how many log lines from my Fargate task are actually lost, and which Fluent Bit settings change that?",
+  "takeaway": "Given a steady log rate and a fixed outage length, the reader knows the measured loss for the default FireLens config and for two hardened configs, how long the backlog takes to drain after recovery, what it costs in Fluent Bit memory, and whether the application's stdout writes stall. From that they can pick a config and a buffer size for their own log rate.",
+  "adds": "The Fluent Bit docs explain retries, mem_buf_limit, pause behaviour and filesystem buffering one setting at a time, in general terms. They do not give numbers for the FireLens path on Fargate, where the input is the forward socket fed by the awsfirelens log driver, storage is ephemeral task storage, and memory is capped by the task size. This post measures end-to-end loss, drain time, memory and app-side blocking on that path under a timed outage, so readers get the combined result the docs leave them to work out.",
+  "open_question": "For a fixed log rate (e.g. 1,000 lines/s) and a 5-minute HTTP destination outage on Fargate, what percentage of generated records never reaches the destination under (a) the default FireLens config, (b) memory buffering with a raised Retry_Limit, and (c) filesystem buffering with storage.total_limit_size, and how long does each take to drain after recovery?",
+  "tradeoffs": [
+   "Filesystem buffering on Fargate uses ephemeral task storage. It survives the outage but not a task stop, so it is not durable the way a host-mounted volume is",
+   "Unlimited or high Retry_Limit avoids discards, but it can keep stale chunks queued and delays fresh logs during the drain",
+   "Raising mem_buf_limit protects logs at the cost of task memory, and the Fluent Bit container can be OOM-killed if it isn't sized for it",
+   "When FireLens pauses, the pressure moves upstream. Depending on the log driver mode, the app either blocks on stdout or the driver drops lines, so you are trading data loss against app latency",
+   "Alternatives to weigh: Retry_Limit plus a DLQ (storage.keep.rejected), or a durable intermediate such as Firehose/Kinesis in front of the HTTP destination"
+  ],
+  "existing_pages": [
+   {
+    "title": "Backpressure (Fluent Bit manual)",
+    "url": "https://docs.fluentbit.io/manual/administration/backpressure",
+    "covers": "What mem_buf_limit and storage.pause_on_chunks_overlimit do when output can't keep up; listening inputs accept and close connections when paused; worked example with backend down and 10s retry"
+   },
+   {
+    "title": "Buffering and storage (Fluent Bit manual)",
+    "url": "https://docs.fluentbit.io/manual/administration/buffering-and-storage",
+    "covers": "Memory vs filesystem buffering, backlog chunks picked up on restart, filesystem buffering recommended for data safety"
+   },
+   {
+    "title": "Avoiding data loss and backpressure problems with Fluent Bit",
+    "url": "https://chronosphere.io/learn/avoiding-data-loss-and-backpressure-problems-with-fluent-bit/",
+    "covers": "Vendor explainer of backpressure and buffering settings to avoid data loss; general guidance, not tied to ECS Fargate measurements"
+   },
+   {
+    "title": "FireLens Docker buffer limit (Amazon ECS developer guide)",
+    "url": "https://docs.aws.amazon.com/ru_ru/AmazonECS/latest/developerguide/firelens-docker-buffer-limit.html",
+    "covers": "ECS setting for the log driver buffer between the container and FireLens (Russian-locale URL of the AWS page)"
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "The search found official Fluent Bit backpressure and buffering pages, an AWS ECS page on the FireLens buffer limit, and one vendor article (Chronosphere) on avoiding data loss, so the problem is recognised. No search volume, ranking or community-question data was found."
+  },
+  "splunk_fit": "optional",
+  "measurements": [
+   {
+    "id": "records_lost_pct",
+    "what": "Percentage of generated records (by sequence number) that never reach the destination, measured per configuration for the same timed outage",
+    "kind": "failure",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "records_delivered_after_recovery",
+    "what": "Number of records that were generated during the outage and arrived after the endpoint came back",
+    "kind": "count",
+    "unit": "records",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "drain_time_s",
+    "what": "Time from endpoint restart until the destination's record count stops rising (backlog fully delivered or abandoned)",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "fluentbit_peak_memory_mib",
+    "what": "Peak memory of the log_router container during the outage, compared with its baseline",
+    "kind": "overhead",
+    "unit": "MiB",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "app_stdout_max_write_ms",
+    "what": "Maximum stdout write latency seen by the log generator during the outage, which shows whether backpressure reached the application",
+    "kind": "latency",
+    "unit": "ms",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "loss_by_config_comparison",
+    "what": "Lost-record percentage of the default config minus each hardened config (memory with raised Retry_Limit, and filesystem buffering) for the same log rate and outage",
+    "kind": "comparison",
+    "unit": "percentage points",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   }
+  ],
+  "verdict": "go",
+  "reasons": [
+   "There is a clear reader and decision: whether to harden FireLens buffering, and how to size the task for it, before trusting log delivery",
+   "The open question is measurable and unknown today. The docs describe each mechanism but give no end-to-end loss, drain time or app-blocking numbers for the FireLens forward path on Fargate",
+   "The contract needs failure, latency, overhead and comparison measurements, not just counts, so it can't pass by proving that logs simply flow",
+   "Splunk fits as an optional destination. A stalled Splunk HEC is a realistic outage, but the finding has to hold for any HTTP output and the post shouldn't depend on Splunk",
+   "Demand evidence is weak (pages exist, no volume data). The post has to earn its audience by giving numbers the docs don't have, not by restating the backpressure page"
+  ],
+  "goal_id": "splunk-mvp-aws-community-visibility",
+  "search_ran": true,
+  "prompt_version": "editor/70076909cd",
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 2.2751
+}
