@@ -1,0 +1,10 @@
+{
+ "run": "41694858919",
+ "issue": 134,
+ "title": "You Set AverageValue. KEDA's Splunk Scaler Ignored It.",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 3,
+ "minutes": 40.4,
+ "lab_usd": 1.2491
+}
