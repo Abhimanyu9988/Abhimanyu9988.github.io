@@ -1,0 +1,248 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 63s
+
+[... earlier output cut ...]
+     - self             = false
+              - to_port          = 8081
+                # (1 unchanged attribute hidden)
+            },
+        ] -> null
+      - name                   = "where-fluent-bit-logs-go-767398-sink" -> null
+      - owner_id               = "<account-id>" -> null
+      - revoke_rules_on_delete = false -> null
+      - tags                   = {} -> null
+      - tags_all               = {
+          - "hero-lab" = "where-fluent-bit-logs-go-767398"
+        } -> null
+      - vpc_id                 = "vpc-05bdc26f0bf34a627" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_security_group.tasks will be destroyed
+  - resource "aws_security_group" "tasks" {
+      - arn                    = "arn:aws:ec2:eu-central-1:<account-id>:security-group/sg-05680c6369c2bafb2" -> null
+      - description            = "Fargate tasks: egress only" -> null
+      - egress                 = [
+          - {
+              - cidr_blocks      = [
+                  - "0.0.0.0/0",
+                ]
+              - from_port        = 0
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "-1"
+              - security_groups  = []
+              - self             = false
+              - to_port          = 0
+                # (1 unchanged attribute hidden)
+            },
+        ] -> null
+      - id                     = "sg-05680c6369c2bafb2" -> null
+      - ingress                = [] -> null
+      - name                   = "where-fluent-bit-logs-go-767398-tasks" -> null
+      - owner_id               = "<account-id>" -> null
+      - revoke_rules_on_delete = false -> null
+      - tags                   = {} -> null
+      - tags_all               = {
+          - "hero-lab" = "where-fluent-bit-logs-go-767398"
+        } -> null
+      - vpc_id                 = "vpc-05bdc26f0bf34a627" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_subnet.public will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0853aa91c09e91082" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1a" -> null
+      - availability_zone_id                           = "euc1-az2" -> null
+      - cidr_block                                     = "10.42.1.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0853aa91c09e91082" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "where-fluent-bit-logs-go-767398-public"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "where-fluent-bit-logs-go-767398-public"
+          - "hero-lab" = "where-fluent-bit-logs-go-767398"
+        } -> null
+      - vpc_id                                         = "vpc-05bdc26f0bf34a627" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_vpc.lab will be destroyed
+  - resource "aws_vpc" "lab" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-05bdc26f0bf34a627" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.42.0.0/16" -> null
+      - default_network_acl_id               = "acl-0d0bdd48c2c8a7e26" -> null
+      - default_route_table_id               = "rtb-08c776983645d49b4" -> null
+      - default_security_group_id            = "sg-0da0cdaa316ef39d2" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-05bdc26f0bf34a627" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-08c776983645d49b4" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "where-fluent-bit-logs-go-767398-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "where-fluent-bit-logs-go-767398-vpc"
+          - "hero-lab" = "where-fluent-bit-logs-go-767398"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # random_password.admin will be destroyed
+  - resource "random_password" "admin" {
+      - bcrypt_hash = (sensitive value) -> null
+      - id          = "none" -> null
+      - length      = 24 -> null
+      - lower       = true -> null
+      - min_lower   = 0 -> null
+      - min_numeric = 0 -> null
+      - min_special = 0 -> null
+      - min_upper   = 0 -> null
+      - number      = true -> null
+      - numeric     = true -> null
+      - result      = (sensitive value) -> null
+      - special     = false -> null
+      - upper       = true -> null
+    }
+
+Plan: 0 to add, 0 to change, 16 to destroy.
+
+Changes to Outputs:
+  - cluster_name           = "where-fluent-bit-logs-go-767398" -> null
+  - fluentbit_image        = "public.ecr.aws/aws-observability/aws-for-fluent-bit:3.0.0" -> null
+  - log_group              = "/where-fluent-bit-logs-go-767398/log-router" -> null
+  - router_conf_fs         = <<-EOT
+        [SERVICE]
+            Flush                     1
+            Grace                     30
+            Log_Level                 info
+            scheduler.base            2
+            scheduler.cap             20
+            storage.path              /var/fb-storage
+            storage.sync              normal
+            storage.max_chunks_up     128
+            storage.backlog.mem_limit 64M
+        
+        [INPUT]
+            Name         forward
+            unix_path    /var/run/fluent.sock
+            storage.type filesystem
+        
+        [INPUT]
+            Name         forward
+            Listen       127.0.0.1
+            Port         24224
+            storage.type filesystem
+        
+        [OUTPUT]
+            Name                     http
+            Match                    *
+            Host                     63.181.32.176
+            Port                     8080
+            URI                      /ingest/fs
+            Format                   json_lines
+            tls                      Off
+            Retry_Limit              60
+            storage.total_limit_size 512M
+    EOT -> null
+  - router_conf_mem        = <<-EOT
+        [SERVICE]
+            Flush          1
+            Grace          30
+            Log_Level      info
+            scheduler.base 2
+            scheduler.cap  20
+        
+        [INPUT]
+            Name          forward
+            unix_path     /var/run/fluent.sock
+            Mem_Buf_Limit 64MB
+        
+        [INPUT]
+            Name          forward
+            Listen        127.0.0.1
+            Port          24224
+            Mem_Buf_Limit 64MB
+        
+        [OUTPUT]
+            Name        http
+            Match       *
+            Host        63.181.32.176
+            Port        8080
+            URI         /ingest/mem
+            Format      json_lines
+            tls         Off
+            Retry_Limit 60
+    EOT -> null
+  - sink_admin_token       = (sensitive value) -> null
+  - sink_public_ip         = "63.181.32.176" -> null
+  - subnet_id              = "subnet-0853aa91c09e91082" -> null
+  - task_def_default       = "arn:aws:ecs:eu-central-1:<account-id>:task-definition/where-fluent-bit-logs-go-767398-default:1" -> null
+  - task_def_fs            = "arn:aws:ecs:eu-central-1:<account-id>:task-definition/where-fluent-bit-logs-go-767398-fs:1" -> null
+  - task_def_mem           = "arn:aws:ecs:eu-central-1:<account-id>:task-definition/where-fluent-bit-logs-go-767398-mem:1" -> null
+  - task_security_group_id = "sg-05680c6369c2bafb2" -> null
+aws_iam_role_policy.exec_logs: Destroying... [id=hero-lab-where-fluent-bit-logs-go-767398-exec:router-logs]
+aws_security_group.tasks: Destroying... [id=sg-05680c6369c2bafb2]
+aws_route_table_association.public: Destroying... [id=rtbassoc-04521e504e4cb861d]
+aws_ecs_task_definition.cfg["mem"]: Destroying... [id=where-fluent-bit-logs-go-767398-mem]
+aws_ecs_task_definition.cfg["default"]: Destroying... [id=where-fluent-bit-logs-go-767398-default]
+aws_ecs_cluster.lab: Destroying... [id=arn:aws:ecs:eu-central-1:<account-id>:cluster/where-fluent-bit-logs-go-767398]
+aws_ecs_task_definition.cfg["fs"]: Destroying... [id=where-fluent-bit-logs-go-767398-fs]
+aws_iam_role_policy.exec_logs: Destruction complete after 0s
+aws_ecs_task_definition.cfg["mem"]: Destruction complete after 0s
+aws_ecs_task_definition.cfg["fs"]: Destruction complete after 0s
+aws_ecs_task_definition.cfg["default"]: Destruction complete after 0s
+aws_cloudwatch_log_group.router: Destroying... [id=/where-fluent-bit-logs-go-767398/log-router]
+aws_iam_role.exec: Destroying... [id=hero-lab-where-fluent-bit-logs-go-767398-exec]
+aws_instance.sink: Destroying... [id=i-0504a9ed4716e226a]
+aws_ecs_cluster.lab: Destruction complete after 0s
+aws_iam_role.exec: Destruction complete after 1s
+aws_route_table_association.public: Destruction complete after 1s
+aws_route_table.public: Destroying... [id=rtb-04225487d5c65dc4d]
+aws_cloudwatch_log_group.router: Destruction complete after 1s
+aws_route_table.public: Destruction complete after 1s
+aws_internet_gateway.lab: Destroying... [id=igw-0bba65f2c07d80a2c]
+aws_security_group.tasks: Still destroying... [id=sg-05680c6369c2bafb2, 00m10s elapsed]
+aws_instance.sink: Still destroying... [id=i-0504a9ed4716e226a, 00m10s elapsed]
+aws_internet_gateway.lab: Still destroying... [id=igw-0bba65f2c07d80a2c, 00m10s elapsed]
+aws_security_group.tasks: Still destroying... [id=sg-05680c6369c2bafb2, 00m20s elapsed]
+aws_instance.sink: Still destroying... [id=i-0504a9ed4716e226a, 00m20s elapsed]
+aws_internet_gateway.lab: Still destroying... [id=igw-0bba65f2c07d80a2c, 00m20s elapsed]
+aws_security_group.tasks: Still destroying... [id=sg-05680c6369c2bafb2, 00m30s elapsed]
+aws_instance.sink: Still destroying... [id=i-0504a9ed4716e226a, 00m30s elapsed]
+aws_internet_gateway.lab: Still destroying... [id=igw-0bba65f2c07d80a2c, 00m30s elapsed]
+aws_instance.sink: Destruction complete after 32s
+random_password.admin: Destroying... [id=none]
+aws_security_group.sink: Destroying... [id=sg-0ec042ae1436ada03]
+aws_subnet.public: Destroying... [id=subnet-0853aa91c09e91082]
+random_password.admin: Destruction complete after 0s
+aws_security_group.sink: Destruction complete after 1s
+aws_security_group.tasks: Still destroying... [id=sg-05680c6369c2bafb2, 00m40s elapsed]
+aws_internet_gateway.lab: Still destroying... [id=igw-0bba65f2c07d80a2c, 00m40s elapsed]
+aws_internet_gateway.lab: Destruction complete after 40s
+aws_subnet.public: Still destroying... [id=subnet-0853aa91c09e91082, 00m10s elapsed]
+aws_security_group.tasks: Still destroying... [id=sg-05680c6369c2bafb2, 00m50s elapsed]
+aws_security_group.tasks: Destruction complete after 51s
+aws_subnet.public: Destruction complete after 18s
+aws_vpc.lab: Destroying... [id=vpc-05bdc26f0bf34a627]
+aws_vpc.lab: Destruction complete after 1s
+
+Destroy complete! Resources: 16 destroyed.
+
