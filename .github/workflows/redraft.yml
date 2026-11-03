@@ -69,6 +69,7 @@ jobs:
           MONTH: ${{ steps.pr.outputs.month }}
           REDRAFT_NOTES: ${{ github.event.comment.body }}
           HERO_PUBLISH: "1"
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
