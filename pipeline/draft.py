@@ -701,6 +701,15 @@ def finish_body(body, run_id):
     """A refused PR would strand the branch, so the cap comes first. /redraft reads the marker, which follows all model text."""
     return f"{body[:64000]}\n\n<!-- lab-run: {run_id} -->"
 
+def ready_message(title, number, gate):
+    """Approving publishes, so he hears the Editor's view before he opens the PR."""
+    link = f"https://github.com/{HOME_REPO}/pull/{number}"
+    scores = (gate.get("card") or {}).get("scores") or {}
+    marks = ", ".join(f"{k} {v.get('score')}/5" for k, v in scores.items() if isinstance(v, dict))
+    if gate.get("decision") == "revise":
+        return f"Draft ready, but the Editor wants changes before it publishes: {title}\n{marks}\nRead it first, because approving publishes it.\n{link}"
+    return f"Draft ready for your decision: {title}\n{marks}\n{link}".replace("\n\n", "\n")
+
 def open_pr(issue_no, res, topic):
     slug = res["slug"][:60].strip("-")
     if on_main(f"labs/{slug}"):                    # already published: the new post needs its own name
@@ -828,7 +837,7 @@ def open_pr(issue_no, res, topic):
     pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": title, "head": branch, "base": "main",
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
-    slack.say("writer", f"Draft ready for your decision: {post['title']}\nhttps://github.com/{HOME_REPO}/pull/{pr['number']}")
+    slack.say("writer", ready_message(post["title"], pr["number"], gate))
     if (log.get("question") if isinstance(log, dict) else ""):
         slack.say("voice_editor", f"Optional, but this is what makes a post truly yours: {log['question']}\n"
                                   "To add your answer, comment /redraft with it on the PR.")

@@ -1309,6 +1309,12 @@ check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / 
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
 check("topics: the failure finder only runs when asked, because the weekly plan replaced its schedule", "schedule" not in py[True] and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
 check("panel: a refused lab reaches Slack and the model stats", "the review panel didn't accept its proof" in (ROOT / "pipeline/draft.py").read_text() and '"status": "panel_rejected"' in (ROOT / "pipeline/draft.py").read_text())
+import draft as draft_mod
+revise_msg = draft_mod.ready_message("T", 9, {"decision": "revise", "card": {"scores": {"technical": {"score": 3}}}})
+check("draft: Slack warns when the Editor wants changes, because approving publishes", "wants changes" in revise_msg and "technical 3/5" in revise_msg and "approving publishes" in revise_msg)
+check("draft: a passed draft stays simple, even with no scorecard", draft_mod.ready_message("T", 9, {"decision": "pass"}).startswith("Draft ready for your decision: T\nhttps://"))
+redraft_yaml = __import__("yaml").safe_load((ROOT / ".github/workflows/redraft.yml").read_text())
+check("redraft: its finished draft reaches Slack", any("SLACK_BOT_TOKEN" in (st.get("env") or {}) for st in redraft_yaml["jobs"]["redraft"]["steps"]))
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
 
 # ---------- lab pre-flight ----------
