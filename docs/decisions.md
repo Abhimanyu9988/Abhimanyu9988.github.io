@@ -196,3 +196,6 @@ away, ahead of the plan and on top of the week's target. If no lab can do it, he
 
 A repair that returned only changed files couldn't remove a file, so a banned `sink.py` survived two rewrites and the run stopped with no AWS
 used. Repairs can now list files to delete, and the rules name the allowed file types up front. A lab stopped before apply adds no AWS estimate.
+
+The third Fluent Bit run measured every config, but a comparison came out null because `reproduce.sh` kept its result in /tmp, and each script runs in
+a fresh container. The rules now say so, and pre-flight refuses a /tmp path shared by both scripts.

@@ -68,6 +68,8 @@ Files you write (flat directory; Kubernetes manifests may go in k8s/):
 - README.md: what the lab shows and how a reader runs it in their own account.
 Allowed file types are .tf, .sh, .yaml, .yml, .json, .tpl and .md. A helper program, such as a Python script, goes inside a script as a
 heredoc, or in Terraform as a local value. It can't be its own file.
+Each script runs in a fresh container, so /tmp is gone when it ends. Anything fix.sh needs from reproduce.sh must be saved in the lab
+directory, which is the current directory.
 Plan the clock before you write. reproduce.sh and fix.sh must each finish within 14 minutes, waits included. If the topic
 needs more, shorten each wait or use fewer steps, and say so in README.md. Never leave a value out to fit the time.
 Every loop has a fixed maximum, and every curl sets --max-time.
@@ -316,6 +318,9 @@ def preflight(lab, body=""):
             waited = sum(int(n) for n in re.findall(r"(?m)^[^#\n]*\bsleep\s+(\d+)\b", text))
             if path in ("reproduce.sh", "fix.sh") and waited > MAX_SCRIPT_S:
                 errs.append(f"{path}: its sleeps add up to {waited}s, over the {MAX_SCRIPT_S}s limit")
+    texts = {str(f.get("path")): str(f.get("content", "")) for f in lab.get("files") or []}
+    shared = set(re.findall(r"/tmp/[\w./-]+", texts.get("reproduce.sh", ""))) & set(re.findall(r"/tmp/[\w./-]+", texts.get("fix.sh", "")))
+    errs += [f"fix.sh reads {p} from reproduce.sh, but /tmp is gone when a script ends. Save it in the lab directory" for p in sorted(shared)]
     return errs
 
 def merge_lab(old, new):
