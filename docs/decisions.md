@@ -209,3 +209,6 @@ Drafts below the bar get one automatic revision. In warn mode the PR still opens
 
 Abhi set the focus: AI monitoring, Kubernetes, AWS services, and observability on Splunk Observability Cloud. Every planned topic names one of these lanes, and no lane
 takes more than two topics in a week. AI monitoring labs run a small open model, because the lab has no paid AI API key.
+
+Abhi's current goals are OpenTelemetry auto-instrumentation, Splunk MVP and AWS Hero, so auto-instrumentation has its own lane. AI monitoring uses Galileo, through its OpenTelemetry
+endpoint. It needs a `GALILEO_API_KEY` repository secret. Until that exists, the planner offers no AI monitoring topics, and nothing else changes.

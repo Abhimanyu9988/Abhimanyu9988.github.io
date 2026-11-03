@@ -1486,10 +1486,19 @@ lane_t = lambda t, l: {"title": t, "hook": "h", "payoff": "p", "proof": "p", "la
 lane_plan, lane_drop = week.build_plan([lane_t("One", "kubernetes"), lane_t("Two", "kubernetes"), lane_t("Three", "kubernetes"), lane_t("Four", "ai_monitoring")], {}, {"https://x.y/a"}, set(), 5)
 editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb3, real_eg3, real_bm3, real_mk3
 check("lanes: no lane takes more than two topics", [p["title"] for p in lane_plan] == ["One", "Two", "Four"] and lane_drop[0][0] == "Three")
-check("lanes: Abhi's focus is the only allowed set", set(week.LANES) == {"ai_monitoring", "kubernetes", "aws", "splunk_observability"} and set(json.load(open(ROOT / "pipeline/schemas/weekplan.json"))["properties"]["topics"]["items"]["properties"]["lane"]["enum"]) == set(week.LANES))
+check("lanes: Abhi's focus is the only allowed set", set(week.LANES) == {"otel_auto_instrumentation", "ai_monitoring", "kubernetes", "aws", "splunk_observability"} and set(json.load(open(ROOT / "pipeline/schemas/weekplan.json"))["properties"]["topics"]["items"]["properties"]["lane"]["enum"]) == set(week.LANES))
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
 check("week: a spare is counted once", needs == [5])
 week.propose, week.vet, week.hot_items, week.collect, week.existing_issues = real_prop, real_vet, real_hot, real_coll, real_ei
+os.environ.pop("GALILEO_READY", None)
+real_lc3, real_pn3, real_bp3 = week.lab_check, week.panel, week.build_plan
+week.lab_check, week.panel = (lambda ts: {}), (lambda ts, rej, ex: {})
+gal_rej = {}
+week.build_plan = lambda ranked, rejected, allowed, have, need: (gal_rej.update(rejected), ([], []))[1]
+week.vet([{"title": "Galileo shows token spikes your Splunk dashboard misses", "demand_url": "https://g/1", "lane": "ai_monitoring"}], [], set(), set(), 1, {"https://g/1": "signal"})
+week.lab_check, week.panel, week.build_plan = real_lc3, real_pn3, real_bp3
+check("galileo: no key means no AI monitoring lab", list(gal_rej.values()) == ["AI monitoring needs the Galileo key"])
+check("galileo: the key reaches the lab and is hidden in its logs", "GALILEO_API_KEY" in lab_mod.SECRET_VARS and "GALILEO_API_KEY" in (ROOT / ".github/workflows/replicate.yml").read_text())
 import problems as prob_mod
 real_pc, prob_mod.collect = prob_mod.collect, lambda: [{"src": "github", "title": "Hot", "url": "https://g/1", "reactions": 9, "comments": [1, 2], "reporter_says": "x"},
                                                        {"src": "github", "title": "Cold", "url": "https://g/2", "reactions": 0, "comments": []}, {"src": "github", "title": "[EKS] [request]: new thing", "url": "https://g/3", "reactions": 30, "comments": []},

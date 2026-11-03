@@ -42,6 +42,7 @@ jobs:
           HERO_PUBLISH: "1"
           TOPIC: ${{ inputs.topic }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          GALILEO_READY: ${{ secrets.GALILEO_API_KEY != '' }}
           SPLUNK_READY: ${{ vars.SPLUNK_REALM != '' && secrets.SPLUNK_ACCESS_TOKEN != '' && secrets.SPLUNK_API_TOKEN != '' }}
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}
