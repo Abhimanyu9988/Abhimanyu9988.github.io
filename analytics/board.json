@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T18:26:45Z",
+ "updated": "2026-11-03T18:34:46Z",
  "columns": {
   "needs": [
    {
@@ -121,23 +121,23 @@
   ],
   "next": [
    {
-    "id": "Up next:OTel journald retry skips one log on restart",
+    "id": "Up next:file_storage Won't Save Your journald Logs From This Restart",
     "kind": "Up next",
-    "title": "OTel journald retry skips one log on restart",
+    "title": "file_storage Won't Save Your journald Logs From This Restart",
     "url": "",
     "where": ""
    },
    {
-    "id": "Up next:EKS Pod Identity renews creds for deleted pods",
+    "id": "Up next:Your Deleted Pods Are Still Renewing AWS Credentials",
     "kind": "Up next",
-    "title": "EKS Pod Identity renews creds for deleted pods",
+    "title": "Your Deleted Pods Are Still Renewing AWS Credentials",
     "url": "",
     "where": ""
    },
    {
-    "id": "Up next:OTel Java 2.30 vs 2.29: Redis timeout delta",
+    "id": "Up next:Did the OTel Java Agent Break Your Redis? I Tested Four Versions.",
     "kind": "Up next",
-    "title": "OTel Java 2.30 vs 2.29: Redis timeout delta",
+    "title": "Did the OTel Java Agent Break Your Redis? I Tested Four Versions.",
     "url": "",
     "where": ""
    },
