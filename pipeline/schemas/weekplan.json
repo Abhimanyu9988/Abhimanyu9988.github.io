@@ -1,0 +1,58 @@
+{
+ "type": "object",
+ "required": [
+  "topics"
+ ],
+ "properties": {
+  "topics": {
+   "type": "array",
+   "minItems": 1,
+   "maxItems": 12,
+   "items": {
+    "type": "object",
+    "required": [
+     "title",
+     "hook",
+     "payoff",
+     "proof",
+     "lab",
+     "sources",
+     "kind"
+    ],
+    "properties": {
+     "title": {
+      "type": "string"
+     },
+     "hook": {
+      "type": "string",
+      "description": "why an engineer would read it"
+     },
+     "payoff": {
+      "type": "string",
+      "description": "what they end up with"
+     },
+     "proof": {
+      "type": "string",
+      "description": "the output that proves it"
+     },
+     "lab": {
+      "type": "string",
+      "description": "BEFORE and BUILD steps, naming each service used"
+     },
+     "sources": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "kind": {
+      "enum": [
+       "build",
+       "problem"
+      ]
+     }
+    }
+   }
+  }
+ }
+}

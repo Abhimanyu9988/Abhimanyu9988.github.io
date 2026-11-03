@@ -22,7 +22,7 @@ permissions:
   contents: read
   issues: read
   pull-requests: read
-  actions: write                       # only to start the Topic Scout for an idea you queued
+  actions: write                       # only to start the next lab in the week's plan
 concurrency: cto
 jobs:
   cto:
@@ -82,11 +82,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
-      - name: start the Topic Scout
-        if: steps.leaders.outputs.run_scout == 'true'
+      - name: start the next lab
+        if: steps.leaders.outputs.run_lab != '' && vars.AUTO_LAB != 'off'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run radar.yml --repo "$GITHUB_REPOSITORY" --ref main
+          ISSUE: ${{ steps.leaders.outputs.run_lab }}
+          MODEL: ${{ steps.leaders.outputs.run_model }}
+        run: gh workflow run replicate.yml --repo "$GITHUB_REPOSITORY" --ref main -f issue="$ISSUE" -f model="$MODEL"
   # AWS's own month-to-date figure, once a day. It holds no model key, reads no PR, and uses a role that can only read costs.
   billing:
     if: >-

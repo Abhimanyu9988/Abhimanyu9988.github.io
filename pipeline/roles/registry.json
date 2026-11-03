@@ -35,7 +35,8 @@
    "prompt": "editor.md",
    "outputs": [
     "brief",
-    "scorecard"
+    "scorecard",
+    "weekplan"
    ],
    "data_sources": [
     "goals",
@@ -45,7 +46,7 @@
    ],
    "budget": {
     "max_input_tokens": 60000,
-    "max_calls": 8
+    "max_calls": 14
    },
    "display": "Editor",
    "dept": "Content"
@@ -368,6 +369,27 @@
     "max_calls": 3
    },
    "display": "IT Support",
+   "dept": "Engineering"
+  },
+  "lab_check": {
+   "mission": "Check the week's topics against the lab's limits before any lab money is spent.",
+   "module": "pipeline/week.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-sonnet-5-5",
+   "model_env": "LAB_CHECK_MODEL",
+   "prompt": "lab_check.md",
+   "outputs": [
+    "labcheck"
+   ],
+   "data_sources": [
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 12000,
+    "max_calls": 2
+   },
+   "display": "Lab Check",
    "dept": "Engineering"
   }
  }

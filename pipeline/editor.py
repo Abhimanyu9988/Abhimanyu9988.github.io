@@ -54,6 +54,12 @@ def brief(title, details):
     got["prompt_version"] = roles.prompt_version("editor")
     return got
 
+SLOW = re.compile(r"(?i)\b(\d+\s*(hours?|days?)|one hour|an hour|overnight|next day|hourly)\b")
+
+def slow_measures(b):
+    """Measurements that need a longer wait than a lab run allows. A lab that can't reach them fails however good it is."""
+    return [str(m.get("id")) for m in b.get("measurements") or [] if SLOW.search(json.dumps(m))]
+
 def gate1(b):
     """(passed, reasons), computed by code from the brief."""
     bad = [f"missing {k}" for k in REQUIRED if not str(b.get(k) or "").strip()]
@@ -69,6 +75,7 @@ def gate1(b):
     elif all(m.get("kind") == "count" for m in ms):
         bad.append("the contract only counts things, so it can prove existence but not value")
     bad += [f"bad measurement id {m.get('id')!r}" for m in ms if not ID.fullmatch(str(m.get("id") or ""))]
+    bad += [f"measurement {i!r} needs a longer wait than a lab run allows" for i in slow_measures(b)]
     import scan
     bad += [f"measurement {m.get('id')!r}: {scan.bad_measure(m)}" for m in ms if scan.bad_measure(m)]
     return not bad, bad

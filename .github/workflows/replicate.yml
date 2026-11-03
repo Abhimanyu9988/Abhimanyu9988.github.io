@@ -20,6 +20,12 @@ on:
         description: "Redraft only: id of an earlier replicate run whose lab output to reuse (no AWS)"
         required: false
         type: string
+      model:
+        description: "Model trial: the Claude model that writes this lab and article"
+        required: false
+        type: choice
+        default: ""
+        options: ["", claude-sonnet-5-5, claude-opus-5-5, claude-haiku-5-5]
 permissions:
   contents: read
   issues: read
@@ -144,7 +150,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          CLAUDE_MODEL: ${{ inputs.model || vars.CLAUDE_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
@@ -227,7 +233,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          CLAUDE_MODEL: ${{ inputs.model || vars.CLAUDE_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}

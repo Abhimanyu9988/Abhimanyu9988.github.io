@@ -32,7 +32,7 @@ jobs:
           permission-contents: write
       - name: radar
         id: radar
-        run: python3 pipeline/radar.py
+        run: python3 pipeline/week.py
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           HERO_PUBLISH: "1"
@@ -47,14 +47,16 @@ jobs:
           RADAR_MODEL: ${{ vars.RADAR_MODEL }}
           EDITOR_MODE: ${{ vars.EDITOR_MODE }}
           EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
+          LAB_CHECK_MODEL: ${{ vars.LAB_CHECK_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
           GOAL_RANKING: ${{ vars.GOAL_RANKING }}
-      # The panel's pick goes straight to a lab. The monthly budget is the limit. AUTO_LAB=off restores your approve reply.
+      # The plan's first topic goes straight to a lab. The monthly budget is the limit. AUTO_LAB=off restores your approve reply.
       - name: start the lab
         if: steps.radar.outputs.pick != '' && vars.AUTO_LAB != 'off'
         env:
           GH_TOKEN: ${{ github.token }}
           PICK: ${{ steps.radar.outputs.pick }}
-        run: gh workflow run replicate.yml --repo "$GITHUB_REPOSITORY" --ref main -f issue="$PICK"
+          MODEL: ${{ steps.radar.outputs.pick_model }}
+        run: gh workflow run replicate.yml --repo "$GITHUB_REPOSITORY" --ref main -f issue="$PICK" -f model="$MODEL"

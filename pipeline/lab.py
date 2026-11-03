@@ -15,7 +15,7 @@ only the AWS credentials and lab variables, as the runner's uid, with no access 
 files or GitHub tokens. The model keys stay in this orchestrator process.
 Everything the draft job needs is written to out/.  `lab.py --destroy-only` is the safety-net step.
 """
-import html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time
+import html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time, urllib.error, urllib.request
 from radar import HOME_REPO, LAB_LIMITS, call, gh, used_sources
 import check_plan, llm
 
@@ -29,6 +29,7 @@ BUCKET = os.environ.get("TF_STATE_BUCKET", "")
 START = time.time()
 WORK_END = START + 60 * 60      # no new attempt or step starts after this
 HARD_END = START + 106 * 60     # nothing runs past this (the workflow step is killed at 112 minutes)
+MAX_SCRIPT_S, MAX_PREFLIGHT = 14 * 60, 2       # the longest a script may wait, and rewrites allowed before touching AWS
 MAX_ATTEMPTS, MAX_SWEEP = 4, 2      # the work deadline still stops attempts in time for cleanup
 HIDE = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GH_READ_TOKEN", "BOT_TOKEN", "GITHUB_TOKEN",
         "ACTIONS_RUNTIME_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_TOKEN", "ACTIONS_ID_TOKEN_REQUEST_URL")
@@ -47,6 +48,7 @@ Files you write (flat directory; Kubernetes manifests may go in k8s/):
   `permissions_boundary`. Do NOT declare a backend, an unaliased aws provider, or those variables. Prefix every
   resource name with var.lab_name. IAM roles must be named "hero-lab-${{var.lab_name}}-<purpose>" (max 64
   characters) and set permissions_boundary = var.permissions_boundary (readers' copies set it to null).
+  IAM instance profiles need the same "hero-lab-" prefix, or AWS refuses them.
   Pin provider versions in required_providers. Expose what the scripts need as outputs.
   For EKS set access_config {{ authentication_mode = "API", bootstrap_cluster_creator_admin_permissions = true }}
   so kubectl in the scripts works, and give self-managed nodes an aws_eks_access_entry of type EC2_LINUX.
@@ -64,7 +66,12 @@ Files you write (flat directory; Kubernetes manifests may go in k8s/):
   everything the scripts or Kubernetes created that makes AWS resources Terraform does not know about (Services of
   type LoadBalancer, Ingresses, PVCs, ECS tasks you started), wait until they are gone, and never fail hard.
 - README.md: what the lab shows and how a reader runs it in their own account.
-Each script must finish within 15 minutes. AWS_REGION and LAB_NAME are set in the environment. Never print
+Plan the clock before you write. reproduce.sh and fix.sh must each finish within 14 minutes, waits included. If the topic
+needs more, shorten each wait or use fewer steps, and say so in README.md. Never leave a value out to fit the time.
+Every loop has a fixed maximum, and every curl sets --max-time.
+Splunk's series API lags by minutes and adds new series in batches, so a count taken right after a step can read zero. Wait once
+after the last step, then count everything from creation times. Never decide HERO_RESULT from a count that lag can change.
+AWS_REGION and LAB_NAME are set in the environment. Never print
 credentials. Use the cheapest design that genuinely reproduces the problem: a single EC2 instance with k3s, or ECS,
 beats EKS when the problem is not EKS-specific. EKS control plane creation takes about 10 minutes."""
 
@@ -143,7 +150,8 @@ fix.sh prints the installed version of each chart it installs (for example with 
 
 LAB_RUBRIC = """Blocking problems: the lab would fail to apply (breaks a LAB LIMIT or a file rule, IAM naming or
 boundary missing, invalid Terraform or provider usage), would not actually reproduce the problem described in the
-topic and sources, a script could hang or never print its HERO_RESULT line, or cleanup.sh would leave AWS
+topic and sources, a script could hang or never print its HERO_RESULT line, its steps can't finish within the time limit,
+its result depends on a count that API lag can change, or cleanup.sh would leave AWS
 resources that block terraform destroy or keep costing money. Minor: clarity, cost trims, README wording."""
 
 LAB_SCHEMA = {"type": "object", "required": ["summary", "expected", "files"], "properties": {
@@ -283,6 +291,52 @@ def validate(lab):
     if size > 200_000:
         errs.append("lab is over 200 KB")
     return errs
+
+def preflight(lab, body=""):
+    """Problems that would fail a lab for certain, found before AWS is touched. Each came from a real failed run.
+    Passing this doesn't promise success, because some failures only show up on real infrastructure."""
+    import editor
+    errs = validate(lab)
+    brief = editor.parse_brief(body)
+    errs += [f"the contract can't be measured inside a lab run: {m}" for m in editor.slow_measures(brief or {})]
+    for f in lab.get("files") or []:
+        path, text = str(f.get("path", "")), str(f.get("content", ""))
+        if path.endswith(".tf"):
+            for block in _blocks(_strip_comments(text), r'resource\s+"aws_iam_instance_profile"\s+"[^"]+"'):
+                if not re.search(r'(?m)^\s*name(_prefix)?\s*=\s*"hero-lab-', block):
+                    errs.append(f'{path}: instance profile names must start with "hero-lab-", or AWS refuses them')
+        if path.endswith(".sh"):
+            if re.search(r"(?m)^\s*while\s+(true|:)\b", text):
+                errs.append(f"{path}: `while true` can run forever. Use a loop with a fixed maximum")
+            if re.search(r"(?m)^[^#\n]*\bcurl\b", text) and not re.search(r"--max-time|(?<=\s)-m\s*\d", text):
+                errs.append(f"{path}: curl needs --max-time, or one stalled call uses up the whole run")
+            waited = sum(int(n) for n in re.findall(r"(?m)^[^#\n]*\bsleep\s+(\d+)\b", text))
+            if path in ("reproduce.sh", "fix.sh") and waited > MAX_SCRIPT_S:
+                errs.append(f"{path}: its sleeps add up to {waited}s, over the {MAX_SCRIPT_S}s limit")
+    return errs
+
+def merge_lab(old, new):
+    """A repair returns only the files it changed. Rewriting a whole lab was the biggest cost of a failed attempt."""
+    changed = {str(f.get("path")): f for f in new.get("files") or []}
+    kept = [f for f in old.get("files") or [] if str(f.get("path")) not in changed]
+    return {**old, **new, "files": kept + list(changed.values())}
+
+def ready_check(needs_splunk):
+    """Free API calls before any model call. If the lab can't start, stopping here costs nothing.
+    Returns what's wrong, or "". Only a clear refusal stops a lab, so a slow network doesn't cost a run."""
+    if not os.environ.get("AWS_ACCESS_KEY_ID") and not os.environ.get("AWS_ROLE_ARN") and not DRY:
+        return "the lab has no AWS credentials"
+    if needs_splunk and os.environ.get("SPLUNK_API_TOKEN"):
+        url = f"https://api.{os.environ.get('SPLUNK_REALM')}.signalfx.com/v2/metric?limit=1"
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"X-SF-Token": os.environ["SPLUNK_API_TOKEN"]}), timeout=20):
+                pass
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                return f"Splunk refused the API token (HTTP {e.code})"
+        except OSError as e:
+            print(f"::warning title=lab::Splunk check skipped: {' '.join(str(e).split())[:200]}")
+    return ""
 
 def _clear(where, keep=(".terraform", ".home")):
     if where.exists():
@@ -597,6 +651,10 @@ def main():
                 os.environ.get(k) for k in SPLUNK_VARS):
             raise RuntimeError("this topic monitors with Splunk Observability Cloud, but SPLUNK_REALM, "
                                "SPLUNK_ACCESS_TOKEN and SPLUNK_API_TOKEN are not all saved for the aws-lab environment")
+        not_ready = ready_check(bool(re.search(r"(?i)splunk", f"{issue['title']} {issue.get('body')}")))
+        if not_ready:                               # free checks first, so a lab that can't start costs nothing
+            result["last_failure"] = {"step": "ready check (no models or AWS used)", "output": not_ready}
+            raise RuntimeError(not_ready)
         import editor
         refused = editor.lab_refusal(issue.get("body"))
         if refused:                                 # before any model or AWS money is spent
@@ -626,8 +684,20 @@ def main():
                                "works end to end." if kind == "build" else "")
         lab, review = llm.refine("AWS lab", as_lab(lab), rubric, f"LAB RULES:\n{rules}\n\n{context}", LAB_SCHEMA)
         lab = as_lab(lab)
+        for _ in range(MAX_PREFLIGHT):
+            problems = preflight(lab, issue.get("body") or "")
+            if not problems:
+                break
+            lab = merge_lab(lab, as_lab(llm.claude_json("You are an AWS container engineer fixing your lab before it runs.",
+                                         "Pre-flight found these problems. Fix each one. Return summary, expected and only the files you changed.\n\n"
+                                         + "\n".join(problems) + f"\n\nLAB RULES:\n{rules}\n\nYOUR LAB:\n{json.dumps(lab)}\n\n{context}",
+                                         LAB_SCHEMA, tool="submit_lab")))
+        problems = preflight(lab, issue.get("body") or "")
         result.update(review=review, summary=lab.get("summary", ""), expected=lab.get("expected", ""))
         save(result, lab)
+        if problems:
+            result["last_failure"] = {"step": "pre-flight (AWS was not touched)", "output": "\n".join(problems)[:3000]}
+            raise RuntimeError("pre-flight failed, so AWS was not touched")
         if DRY:
             result["status"] = "dry_run"
             print(f"dry run: lab written and reviewed, AWS not touched. {llm.usage_summary()}")
@@ -651,14 +721,15 @@ def main():
             result["last_failure"] = {"step": failed, "output": tail(redact(out), 3000)}
             if attempt == MAX_ATTEMPTS or remaining(WORK_END) < 10 * 60 or failed == "deadline":
                 break
+            previous = lab
             lab = llm.claude_json(
                 "You are an AWS container engineer fixing your own lab after a failed run.",
                 f"Attempt {attempt} of {MAX_ATTEMPTS} failed at step: {failed}.\n\nEVIDENCE (output tail):\n"
                 f"{tail(redact(out), 8000)}\n\nFix the lab so it runs and genuinely does what the topic needs (reproduce "
-                f"the problem, or for a build topic, show the before-state and prove the build works). Return the full "
-                f"lab.\n\nLAB RULES:\n{rules}\n\n"
+                f"the problem, or for a build topic, show the before-state and prove the build works). Return summary, "
+                f"expected and only the files you changed. Every other file stays as it is.\n\nLAB RULES:\n{rules}\n\n"
                 f"YOUR LAB:\n{json.dumps(lab)}\n\n{context}", LAB_SCHEMA, tool="submit_lab")
-            lab = as_lab(lab)
+            lab = merge_lab(previous, as_lab(lab))
             result.update(summary=lab.get("summary", ""), expected=lab.get("expected", ""))
     except Exception as e:
         print(f"error: {type(e).__name__}: {e}")

@@ -159,3 +159,31 @@ built for this and removed before merging. Leaders save each feature request as 
 
 IT Support checks the notes against merged PRs each morning and whenever he asks for them. A model suggests the match, and code
 closes a note only if the PR really merged, so he never has to mark anything done. FACTS also gives leaders tomorrow's real plan.
+
+## 2026-11-03: Labs get a pre-flight check before AWS
+
+The rolling-deploy lab failed three times, and each cause could have been found first. IAM refused an instance profile without the
+`hero-lab-` prefix, an API loop ran until its 16-minute limit, and the contract asked for a count one hour later in a 14-minute script.
+Pre-flight now checks for these with no AWS, and gives the lab up to two rewrites. The topic gate rejects contracts that need an
+hour's wait. Lab rules also cover Splunk's series lag, which showed 207 new series on one rollout and zero on the other four.
+This can't promise success, because some failures only appear on real infrastructure. It stops the failures we can predict.
+
+## 2026-11-03: One weekly plan replaces daily topic runs
+
+Abhi wants three articles a week, five this week, from one planning step. Topic runs cost about $0.80 each. The Editor now proposes
+the week in one call, Lab Check reviews all topics in one call, and code applies the rules. Only survivors get the searched brief
+and Evidence Contract, so review quality stays. `cto.py` starts one lab a day from the plan until the target is met. One spare
+covers a failed lab. The Thursday finder and training-week runs are off, and `radar.py` remains as a library.
+
+A lab's model cost was about $1.70, of which $1.40 was output. Prompt caching only discounts input, so it would save little.
+Repairs now return only changed files. Free API checks run before any model call, so a lab that can't start costs nothing.
+
+Abhi wants quality kept and models compared with real numbers. `week.py` rotates Sonnet, Opus and Haiku as the model that writes each
+lab and article. The reviewers and the Editor's scoring stay the same, so the scores compare like with like. Each lab saves a trial
+record, and code works out the stats by model. Every article still needs the same gates and his approval.
+
+Topics and headlines matter most to Abhi, so the three-model vote stayed. The Editor writes three headlines for each topic and keeps the
+strongest, code refuses step-style headlines, and two of three models must agree before a topic gets a brief.
+
+The first test plan refused most topics and left two, both on ALB. The plan now reuses passed topics that never ran a lab, then gives the
+Editor a second round with the reasons, and asks for variety, because Abhi rejected repeated ALB posts.
