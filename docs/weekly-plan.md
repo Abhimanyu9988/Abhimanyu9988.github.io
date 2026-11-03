@@ -11,4 +11,6 @@ Planning here adds no API cost. A chat session does the research and writing, an
 7. Run `REPO=Abhimanyu9988/Abhimanyu9988.github.io BOT_TOKEN=x GH_READ_TOKEN=x python3 pipeline/week.py --check plan.json` and fix everything it refuses.
 8. Start it with `gh workflow run radar.yml --repo Abhimanyu9988/Abhimanyu9988.github.io --ref main -f plan_json="$(cat plan.json)"`. ChatGPT approves topics and adds a headline option. Marketing and the Editor then do marketing analysis only: both must confirm a topic, and Marketing chooses its title. Code opens the issues, and the first confirmed lab starts.
 
+Every measurement in a contract must be a number, because the evidence scanner refuses words.
+
 Never invent a count, a page or a result. If fewer topics pass, send fewer and say so.

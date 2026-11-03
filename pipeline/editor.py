@@ -54,6 +54,12 @@ def brief(title, details):
     got["prompt_version"] = roles.prompt_version("editor")
     return got
 
+WORD_UNIT = re.compile(r"(?i)^\s*(type|name|status|state|label|string|text|yes/no|boolean|bool|enum)\s*$")
+
+def word_measures(b):
+    """Measurements that would print a word. The scanner only accepts numbers, so these fail after the lab has been paid for."""
+    return [str(m.get("id")) for m in b.get("measurements") or [] if WORD_UNIT.match(str(m.get("unit") or ""))]
+
 SLOW = re.compile(r"(?i)\b(\d+\s*(hours?|days?)|one hour|an hour|overnight|next day|hourly)\b")
 
 def slow_measures(b):
@@ -76,6 +82,7 @@ def gate1(b):
         bad.append("the contract only counts things, so it can prove existence but not value")
     bad += [f"bad measurement id {m.get('id')!r}" for m in ms if not ID.fullmatch(str(m.get("id") or ""))]
     bad += [f"measurement {i!r} needs a longer wait than a lab run allows" for i in slow_measures(b)]
+    bad += [f"measurement {i!r} must be a number, not a word" for i in word_measures(b)]
     import scan
     bad += [f"measurement {m.get('id')!r}: {scan.bad_measure(m)}" for m in ms if scan.bad_measure(m)]
     return not bad, bad

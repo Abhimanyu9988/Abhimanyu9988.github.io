@@ -1340,6 +1340,7 @@ check("pre-flight: a comment doesn't count as code", lab_mod.preflight(lab_files
 lab_mod.validate = real_validate
 slow_brief = {"measurements": [{"id": "stale", "unit": "count"}, {"id": "ratio", "what": "steady-state hourly count"}, {"id": "after", "what": "still active 1 hour after the rollout"}, {"id": "fast", "what": "drain time in seconds"}]}
 check("gate: a contract that needs an hour's wait is caught before AWS", editor.slow_measures(slow_brief) == ["ratio", "after"])
+check("gate: a measurement must be a number", editor.word_measures({"measurements": [{"id": "hpa", "unit": "type"}, {"id": "secs", "unit": "seconds"}]}) == ["hpa"])
 check("gate: such a topic fails the Topic Investment Gate", any("longer wait" in r for r in editor.gate1(slow_brief)[1]))
 
 # ---------- secretary and build notes ----------

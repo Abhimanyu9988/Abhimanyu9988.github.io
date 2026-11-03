@@ -222,3 +222,6 @@ ChatGPT call approves topics and sharpens headlines, as Abhi asked. The Monday s
 
 Abhi didn't like the first titles, and a lab started before his marketing team had seen them. Marketing and the Editor now do marketing analysis only: both must confirm a topic, and Marketing picks the title from real options.
 A lab can't start on an unconfirmed topic. An old plan row has no `confirmed` flag, so it can't start either.
+
+The KEDA lab worked, but `hpa_target_type` was a word in a contract I wrote in chat, and the scanner only accepts numbers, so no PR opened. The topic gate now refuses word measurements before a lab is paid for.
+Cancelling a run does not stop a lab quickly, because its cleanup steps always run, so a lab that has started should be treated as spent.

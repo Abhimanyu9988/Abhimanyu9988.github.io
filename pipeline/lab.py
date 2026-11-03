@@ -71,6 +71,7 @@ Allowed file types are .tf, .sh, .yaml, .yml, .json, .tpl and .md. A helper prog
 heredoc, or in Terraform as a local value. It can't be its own file.
 Each script runs in a fresh container, so /tmp is gone when it ends. Anything fix.sh needs from reproduce.sh must be saved in the lab
 directory, which is the current directory.
+Every HERO_MEASURE value must be a number. Print a word, such as an HPA target type, in the raw output and record a count or 1 or 0 as its measure.
 Plan the clock before you write. reproduce.sh and fix.sh must each finish within 14 minutes, waits included. If the topic
 needs more, shorten each wait or use fewer steps, and say so in README.md. Never leave a value out to fit the time.
 Every loop has a fixed maximum, and every curl sets --max-time.
