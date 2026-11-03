@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T19:23:12Z",
+ "updated": "2026-11-03T19:33:06Z",
  "columns": {
   "needs": [
    {
@@ -69,13 +69,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41702767831",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Refuse word measurements before a lab is paid for",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41702767831",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41694858919",
     "kind": "Lab Engineer is testing an article",
