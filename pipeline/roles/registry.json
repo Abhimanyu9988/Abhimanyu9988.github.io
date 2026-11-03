@@ -391,6 +391,27 @@
    },
    "display": "Lab Check",
    "dept": "Engineering"
+  },
+  "headline_check": {
+   "mission": "Give a second opinion on the weekly plan, and sharpen each headline.",
+   "module": "pipeline/week.py",
+   "status": "active",
+   "vendor": "chatgpt",
+   "model": "gpt-5.5",
+   "model_env": "HEADLINE_MODEL",
+   "prompt": "headline_check.md",
+   "outputs": [
+    "headlinecheck"
+   ],
+   "data_sources": [
+    "roles"
+   ],
+   "budget": {
+    "max_input_tokens": 12000,
+    "max_calls": 2
+   },
+   "display": "Headline Check",
+   "dept": "Marketing"
   }
  }
 }

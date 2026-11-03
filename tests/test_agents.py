@@ -1499,6 +1499,23 @@ week.vet([{"title": "Galileo shows token spikes your Splunk dashboard misses", "
 week.lab_check, week.panel, week.build_plan = real_lc3, real_pn3, real_bp3
 check("galileo: no key means no AI monitoring lab", list(gal_rej.values()) == ["AI monitoring needs the Galileo key"])
 check("galileo: the key reaches the lab and is hidden in its logs", "GALILEO_API_KEY" in lab_mod.SECRET_VARS and "GALILEO_API_KEY" in (ROOT / ".github/workflows/replicate.yml").read_text())
+chat_t = lambda **k: {"title": "Java agent hides your pod's first 40 seconds of traces", "hook": "h", "payoff": "p", "proof": "p", "lab": "l", "sources": [], "kind": "build",
+                      "lane": "otel_auto_instrumentation", "demand_url": "https://g/1", "signal": "9 reactions", "brief": {"x": 1}, **k}
+real_cv, real_eg4 = week.contract.validate, editor.gate1
+week.contract.validate, editor.gate1 = (lambda o, sc: []), (lambda b: (True, []))
+ok_t, bad_t = week.check_plan([chat_t(), chat_t(title="How to install the Java agent on your EKS cluster"), chat_t(title="Old topic that already exists on the blog"), chat_t(title="A topic with no complaint linked to it at all", signal=""), chat_t(title="A topic in a lane Abhi did not choose today", lane="cooking")], {r.norm("Old topic that already exists on the blog")})
+check("chat plan: code refuses slips, with a reason for each", len(ok_t) == 1 and len(bad_t) == 4)
+week.contract.validate = lambda o, sc: ["$.verdict: required"]
+check("chat plan: a brief must match its contract", "brief:" in week.check_plan([chat_t()])[1][0][1])
+week.contract.validate, editor.gate1 = real_cv, real_eg4
+real_ra2, week.roles.ask = week.roles.ask, lambda role, prompt, out: seen_role.append(role) or {"verdicts": [{"id": 0, "approve": True, "headline": "Java agent hides the first 40 seconds of your pod's traces", "reason": "r"}, {"id": 1, "approve": False, "headline": "x", "reason": "no"}, {"id": 2, "approve": True, "headline": "How to fix it", "reason": "r"}]}
+seen_role = []
+hc = week.headline_check([chat_t(), chat_t(title="Second"), chat_t(title="Third keeps its own stronger headline")])
+week.roles.ask = real_ra2
+check("chat plan: ChatGPT approves and sharpens, and a weaker headline is ignored", seen_role == ["headline_check"] and hc[0][0].startswith("Java agent hides the first") and 1 not in hc and hc[2][0] == "Third keeps its own stronger headline")
+check("chat plan: ChatGPT does the second opinion", roles_mod.get("headline_check")["vendor"] == "chatgpt")
+check("chat plan: no scheduled API plan", "schedule" not in __import__("yaml").safe_load((ROOT / ".github/workflows/radar.yml").read_text())[True])
+check("chat plan: the playbook exists", (ROOT / "docs/weekly-plan.md").exists())
 import problems as prob_mod
 real_pc, prob_mod.collect = prob_mod.collect, lambda: [{"src": "github", "title": "Hot", "url": "https://g/1", "reactions": 9, "comments": [1, 2], "reporter_says": "x"},
                                                        {"src": "github", "title": "Cold", "url": "https://g/2", "reactions": 0, "comments": []}, {"src": "github", "title": "[EKS] [request]: new thing", "url": "https://g/3", "reactions": 30, "comments": []},

@@ -212,3 +212,8 @@ takes more than two topics in a week. AI monitoring labs run a small open model,
 
 Abhi's current goals are OpenTelemetry auto-instrumentation, Splunk MVP and AWS Hero, so auto-instrumentation has its own lane. AI monitoring uses Galileo, through its OpenTelemetry
 endpoint. It needs a `GALILEO_API_KEY` repository secret. Until that exists, the planner offers no AI monitoring topics, and nothing else changes.
+
+## 2026-11-03: The weekly plan moves to Claude chat
+
+API calls are most of the spend, and planning cost about $2 a week. A Monday chat session now does the research and writes topics and briefs, using `docs/weekly-plan.md`. Code still checks everything, and one
+ChatGPT call approves topics and sharpens headlines, as Abhi asked. The Monday schedule on `radar.yml` is off. The API planner stays for a manual run, and for articles he requests in Slack.
