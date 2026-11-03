@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-02T21:15:06Z",
+ "updated": "2026-11-03T00:09:54Z",
  "columns": {
   "needs": [
    {
@@ -156,13 +156,6 @@
     "title": "EKS App Slow, CPU Fine? Scale on Splunk Latency with KEDA",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/78",
     "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52019",
-    "kind": "Merged",
-    "title": "[chore][receiver/flinkmetrics] Add Abhimanyu9988 as code owner",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52019",
-    "where": "opentelemetry-collector-contrib"
    }
   ]
  }
