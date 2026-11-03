@@ -206,3 +206,6 @@ Abhi wants hot topics and 5 of 5 from editorial and marketing. Every planned top
 calls from GitHub issues and Stack Overflow, and code checks the link. Marketing above 3 needs that evidence, so a 5 can't come from a guess. Evidence
 Contracts must change one setting per run, show the effective config and measure inside the problem's window, which is what held the FireLens post at 3 of 5.
 Drafts below the bar get one automatic revision. In warn mode the PR still opens, because the lab is already paid for, and Slack says not to approve it.
+
+Abhi set the focus: AI monitoring, Kubernetes, AWS services, and observability on Splunk Observability Cloud. Every planned topic names one of these lanes, and no lane
+takes more than two topics in a week. AI monitoring labs run a small open model, because the lab has no paid AI API key.

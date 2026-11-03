@@ -1480,6 +1480,13 @@ week.vet = lambda topics, e, a, h, need, hot_map: needs.append(need) or ([{"titl
 os.environ["DRY_RUN"] = "true"
 week.main()
 os.environ.pop("DRY_RUN")
+real_eb3, real_eg3, real_bm3, real_mk3 = editor.brief, editor.gate1, editor.brief_md, editor.marker
+editor.brief, editor.gate1, editor.brief_md, editor.marker = (lambda t, d: {}), (lambda b: (True, [])), (lambda b, p, w: "brief"), (lambda b: "<!-- m -->")
+lane_t = lambda t, l: {"title": t, "hook": "h", "payoff": "p", "proof": "p", "lab": "l", "sources": ["https://x.y/a"], "kind": "build", "lane": l}
+lane_plan, lane_drop = week.build_plan([lane_t("One", "kubernetes"), lane_t("Two", "kubernetes"), lane_t("Three", "kubernetes"), lane_t("Four", "ai_monitoring")], {}, {"https://x.y/a"}, set(), 5)
+editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb3, real_eg3, real_bm3, real_mk3
+check("lanes: no lane takes more than two topics", [p["title"] for p in lane_plan] == ["One", "Two", "Four"] and lane_drop[0][0] == "Three")
+check("lanes: Abhi's focus is the only allowed set", set(week.LANES) == {"ai_monitoring", "kubernetes", "aws", "splunk_observability"} and set(json.load(open(ROOT / "pipeline/schemas/weekplan.json"))["properties"]["topics"]["items"]["properties"]["lane"]["enum"]) == set(week.LANES))
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
 check("week: a spare is counted once", needs == [5])
 week.propose, week.vet, week.hot_items, week.collect, week.existing_issues = real_prop, real_vet, real_hot, real_coll, real_ei
