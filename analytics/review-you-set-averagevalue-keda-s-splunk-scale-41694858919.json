@@ -1,0 +1,259 @@
+{
+ "mode": "warn",
+ "decision": "stop",
+ "reasons": [
+  "the evidence checks did not pass: measurement hpa_target_type: no_value",
+  "technical score 3 is below 4",
+  "editorial score 3 is below 5",
+  "marketing score 2 is below 5",
+  "technical: The contract measurement hpa_target_type returned no value, and an external metrics API timeout error is flagged in the same log. The post states the HPA target type without mentioning that the final read failed. Fix: Re-run until the final `kubectl get hpa keda-hpa-app -o jsonpath=...` read returns a value for both configs, and quote that raw output. Or say plainly that the type comes from the first-sight read at t=1s and explain the line-83 timeout and whether it affected the metric reads.",
+  "technical: The settled replica count is a single sample at 304s, and the timelines are cut with '...'. So the scale-down from 10 to 5 under scalingModifiers is never shown, and 'settle' is not shown either. Fix: Publish the full 15-second timeline for both runs, either as a table or a linked raw log. Extend the workaround window (for example to 10 minutes) so several samples after the default 300s scale-down stabilization show replicas holding at 5.",
+  "editorial: The TL;DR and the section heading call scalingModifiers a fix, but the lab shows it still ran to maxReplicaCount in 47s. Runaway to max is exactly what this reader is worried about. Fix: Rename it 'Workaround'. Add to the TL;DR: 'still spiked to 10 replicas at 47s before dropping to 5 by 304s in my run'. Answer the brief's decision directly: whether to add it now, given the spike.",
+  "editorial: The reader learns little that issue #8297 doesn't already say. The issue already shows the Value target and the climb to 10 in under a minute. The one new observation, the overshoot under scalingModifiers, is left unexplained. Fix: Run the workaround again capturing HPA status.currentMetrics, status.desiredReplicas, conditions and per-sync external metric values (plus the KEDA metrics-apiserver log). Explain the spike, for example a transient metric value or ready-vs-spec pod counts. Change one setting per run, for instance scalingModifiers with an explicit behavior.scaleUp policy, so the cause can be credited.",
+  "technical: The reproduction commands won't run as written. They leave out the region variable and AWS_REGION that the README needs, and they reuse the author's lab name. Fix: Add `export AWS_REGION=...`, use `-var region=$AWS_REGION` in apply and destroy, and replace LAB_NAME with a placeholder such as `keda-splunk-$(whoami)`. Also swap the single-HPA check for the README's cluster-wide jq check so readers can audit every ScaledObject.",
+  "flag not addressed: a value is missing",
+  "outside claim without a known source: KEDA PR 8327 implements the fix",
+  "outside claim without a known source: KEDA docs PR 1921 documents the change",
+  "outside claim without a known source: AverageValue treats the external metric per pod; Value treats it as a total (HPA semantics, not cited in the post)"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [
+   {
+    "id": "f1",
+    "kind": "missing_value",
+    "severity": "high",
+    "file": "14-reproduce.log",
+    "line": 83,
+    "text": "E1103 19:35:23.035729       1 timeout.go:140] \"Post-timeout activity\" logger=\"UnhandledError\" timeElapsed=\"3.218038ms\" method=\"GET\" path=\"/apis/external.metrics",
+    "why": "a value is missing"
+   }
+  ],
+  "headline": [],
+  "contract": {
+   "passed": false,
+   "results": [
+    {
+     "id": "hpa_target_type",
+     "status": "no_value",
+     "values": 2,
+     "needed": 2,
+     "provenance": "self_reported",
+     "where": "14-reproduce.log:95"
+    },
+    {
+     "id": "seconds_to_max_replicas",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "14-reproduce.log:100"
+    },
+    {
+     "id": "settled_replicas",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "self_reported",
+     "where": "14-reproduce.log:103"
+    },
+    {
+     "id": "expected_replicas",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "14-reproduce.log:106"
+    }
+   ]
+  },
+  "failures": [
+   "measurement hpa_target_type: no_value"
+  ],
+  "passed": false
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The Evidence Contract failed: hpa_target_type is no_value at 14-reproduce.log:95, and there is an unaddressed external-metrics 'Post-timeout activity' error at line 83. The post still states the HPA type as settled fact, using only the first-sight hpa[...] line.",
+     "settled_replicas is one sample at t=304s, and both timelines are cut with '...'. The drop from 10 to 5 is never shown, so the reader can't check when or whether replicas really settled. That timing matters because the default scale-down stabilization window is 300s.",
+     "The workaround run still hit maxReplicaCount at 47s. The post is honest that this is unexplained, but the HPA status needed to explain it (currentMetrics, desiredReplicas, conditions) was never captured.",
+     "The Try-it block leaves out AWS_REGION and the region variable that the lab README needs, and it hardcodes the author's LAB_NAME."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "Clear reader and an accurate title. The 'When Value is not wrong' paragraph and the 'What I didn't test' list are honest trade-offs.",
+     "The main finding mostly repeats issue #8297, which already shows {\"type\":\"Value\"} and '1 \u2192 5 \u2192 10 in under a minute' on kind. The only new fact is that scalingModifiers still overshoots to 10, and the post leaves that unexplained.",
+     "The TL;DR and the 'The fix' heading present scalingModifiers as a fix. The overshoot caveat comes only later, so a reader who skims would take away the wrong answer.",
+     "Some stock phrasing ('That hurts because', 'The difference matters:', 'That is exactly what my lab confirmed'). The '...'-elided code blocks don't look like a real session."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "Demand evidence is weak: one GitHub issue with 3 reactions and 7 comments, and no search data.",
+     "The audience is narrow: KEDA users running the splunk-observability scaler with an explicit metricType.",
+     "The title uses the issue's own wording (metricType/AverageValue/Value), which helps people searching for this bug find it. Even so, without real demand data the score can't go above 3, and I'm giving 2 because the signal is this small."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The contract measurement hpa_target_type returned no value, and an external metrics API timeout error is flagged in the same log. The post states the HPA target type without mentioning that the final read failed.",
+    "evidence": "EVIDENCE REPORT: hpa_target_type status no_value at 14-reproduce.log:95; flag f1 at 14-reproduce.log:83 'Post-timeout activity ... path=\"/apis/external.metrics'",
+    "fix": "Re-run until the final `kubectl get hpa keda-hpa-app -o jsonpath=...` read returns a value for both configs, and quote that raw output. Or say plainly that the type comes from the first-sight read at t=1s and explain the line-83 timeout and whether it affected the metric reads."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The settled replica count is a single sample at 304s, and the timelines are cut with '...'. So the scale-down from 10 to 5 under scalingModifiers is never shown, and 'settle' is not shown either.",
+    "evidence": "\"max replicas reached t=47s: app spec=10 ready=8\\n...\\ntimeline[scalingModifiers] t=304s app spec=5 ready=5\"",
+    "fix": "Publish the full 15-second timeline for both runs, either as a table or a linked raw log. Extend the workaround window (for example to 10 minutes) so several samples after the default 300s scale-down stabilization show replicas holding at 5."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The TL;DR and the section heading call scalingModifiers a fix, but the lab shows it still ran to maxReplicaCount in 47s. Runaway to max is exactly what this reader is worried about.",
+    "evidence": "\"Fix for now: add `advanced.scalingModifiers.metricType: AverageValue`\" and heading \"## The fix: force AverageValue through scalingModifiers\" vs \"max replicas reached t=47s: app spec=10\"",
+    "fix": "Rename it 'Workaround'. Add to the TL;DR: 'still spiked to 10 replicas at 47s before dropping to 5 by 304s in my run'. Answer the brief's decision directly: whether to add it now, given the spike."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The reader learns little that issue #8297 doesn't already say. The issue already shows the Value target and the climb to 10 in under a minute. The one new observation, the overshoot under scalingModifiers, is left unexplained.",
+    "evidence": "Issue #8297: \"Here the HPA scaled 1 \u2192 5 \u2192 10 (`maxReplicaCount`) in under a minute\"; post: \"I did not collect enough `status.currentMetrics`, `status.desiredReplicas`, HPA conditions...\"",
+    "fix": "Run the workaround again capturing HPA status.currentMetrics, status.desiredReplicas, conditions and per-sync external metric values (plus the KEDA metrics-apiserver log). Explain the spike, for example a transient metric value or ready-vs-spec pod counts. Change one setting per run, for instance scalingModifiers with an explicit behavior.scaleUp policy, so the cause can be credited."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The reproduction commands won't run as written. They leave out the region variable and AWS_REGION that the README needs, and they reuse the author's lab name.",
+    "evidence": "\"export LAB_NAME=you-set-averagevalue-ked-858919 ... terraform apply -var lab_name=$LAB_NAME\" vs README \"terraform apply -var lab_name=$LAB_NAME -var region=$AWS_REGION -var permissions_boundary=null\"",
+    "fix": "Add `export AWS_REGION=...`, use `-var region=$AWS_REGION` in apply and destroy, and replace LAB_NAME with a placeholder such as `keda-splunk-$(whoami)`. Also swap the single-HPA check for the README's cluster-wide jq check so readers can audit every ScaledObject."
+   }
+  ],
+  "flags_addressed": [
+   {
+    "id": "f1",
+    "addressed": false,
+    "how": "The post never mentions the external.metrics 'Post-timeout activity' error at 14-reproduce.log:83, or the failed hpa_target_type read that follows it, and does not say whether either affected the reported values."
+   }
+  ],
+  "claims": [
+   {
+    "text": "The splunk-observability scaler builds the HPA metric target with Value and does not read the trigger's metricType",
+    "class": "sourced",
+    "source_ref": "https://github.com/kedacore/keda/issues/8297"
+   },
+   {
+    "text": "The upstream direction is non-breaking: omitted metricType stays Value, explicit Value/AverageValue is honored, Utilization is rejected",
+    "class": "sourced",
+    "source_ref": "https://github.com/kedacore/keda/issues/8297"
+   },
+   {
+    "text": "KEDA PR 8327 implements the fix",
+    "class": "sourced",
+    "source_ref": "https://github.com/kedacore/keda/pull/8327"
+   },
+   {
+    "text": "KEDA docs PR 1921 documents the change",
+    "class": "sourced",
+    "source_ref": "https://github.com/kedacore/keda-docs/pull/1921"
+   },
+   {
+    "text": "AverageValue treats the external metric per pod; Value treats it as a total (HPA semantics, not cited in the post)",
+    "class": "sourced",
+    "source_ref": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"
+   },
+   {
+    "text": "Value is correct for an aggregate metric that represents the whole scaled target",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Readers on EKS are affected the same way as this k3s lab",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/a09601e08b"
+ },
+ "brief": {
+  "reader": "Platform engineer autoscaling EKS or Kubernetes workloads with KEDA on Splunk Observability metrics",
+  "decision": "Whether their ScaledObjects scale as configured, and whether to add scalingModifiers before the scaler is fixed",
+  "question": "Why does my KEDA Splunk scaler jump to maxReplicaCount when I set AverageValue?",
+  "takeaway": "The reader sees how fast replicas climb when metricType is ignored, whether scalingModifiers restores AverageValue, and how to check their own HPA.",
+  "adds": "The scaler docs list parameters. They don't show that metricType is ignored, or the measured replica timeline with and without the workaround.",
+  "open_question": "With a fixed Splunk metric above target and metricType AverageValue, how many seconds does KEDA 2.21 take to reach maxReplicaCount, and where do replicas settle with scalingModifiers?",
+  "tradeoffs": [
+   "scalingModifiers restores AverageValue but adds config that may be unneeded once the scaler is fixed",
+   "Value-type scaling fits some aggregate metrics, so the post must say when it isn't a bug for the reader",
+   "A future fix may change the default for an omitted metricType"
+  ],
+  "existing_pages": [
+   {
+    "title": "Splunk Observability scaler",
+    "url": "https://keda.sh/docs/2.21/scalers/splunk-observability/",
+    "covers": "trigger parameters and an example"
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "kedacore/keda issue 8297: 3 reactions and 7 comments, opened October 2026, reproduced on EKS and kind. No search data."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "splunk-mvp-aws-community-visibility",
+  "verdict": "go",
+  "reasons": [
+   "A deterministic, reported bug at the point where Splunk metrics and Kubernetes scaling meet"
+  ],
+  "measurements": [
+   {
+    "id": "hpa_target_type",
+    "what": "Metric target type in the generated HPA, once for each config",
+    "kind": "comparison",
+    "unit": "type",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "seconds_to_max_replicas",
+    "what": "Seconds from ScaledObject creation until replicas reach maxReplicaCount with metricType alone",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "settled_replicas",
+    "what": "Replicas after the same 5-minute window with metricType alone and with scalingModifiers",
+    "kind": "comparison",
+    "unit": "replicas",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "expected_replicas",
+    "what": "Replicas that AverageValue arithmetic predicts for the fixed metric",
+    "kind": "comparison",
+    "unit": "replicas",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 2.8727
+}
