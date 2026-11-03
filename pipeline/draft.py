@@ -549,7 +549,7 @@ def write_post(context, kind="problem", extra=""):
     return post, log
 
 def review_draft(post, context, logs, brief, topic, kind, scripts=None):
-    """Evidence checks, then the Editor if enabled. Enforce allows one revision, then stops. Other modes only report."""
+    """Evidence checks, then the Editor if enabled. A draft below the bar gets one revision. Enforce then stops, and warn reports."""
     if editor.mode() == "off":
         return {"decision": "pass", "reasons": [], "post": post, "report": None, "card": None}
     known = {str(s.get("url")) for s in topic.get("sources") or [] if isinstance(s, dict)}
@@ -566,7 +566,7 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
         verdict, reasons = editor.decide(card, report, known, require_card=enforce)   # an outage is never approval
         return report, card, verdict, reasons
     report, card, verdict, reasons = judge(post)
-    if verdict == "revise" and editor.mode() == "enforce":
+    if verdict == "revise" and editor.mode() in ("warn", "enforce"):
         try:
             fixed = llm.ask("chatgpt", "You revise hands-on articles without inventing anything.",
                             "Fix every problem below. Never invent a result: if a result is missing, say so plainly "
@@ -707,7 +707,7 @@ def ready_message(title, number, gate):
     scores = (gate.get("card") or {}).get("scores") or {}
     marks = ", ".join(f"{k} {v.get('score')}/5" for k, v in scores.items() if isinstance(v, dict))
     if gate.get("decision") == "revise":
-        return f"Draft ready, but the Editor wants changes before it publishes: {title}\n{marks}\nRead it first, because approving publishes it.\n{link}"
+        return f"Draft below the 5/5 bar: {title}\n{marks}\nDon't approve it yet, because approving publishes it. Comment /redraft with what to change.\n{link}"
     return f"Draft ready for your decision: {title}\n{marks}\n{link}".replace("\n\n", "\n")
 
 def open_pr(issue_no, res, topic):

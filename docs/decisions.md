@@ -199,3 +199,10 @@ used. Repairs can now list files to delete, and the rules name the allowed file 
 
 The third Fluent Bit run measured every config, but a comparison came out null because `reproduce.sh` kept its result in /tmp, and each script runs in
 a fresh container. The rules now say so, and pre-flight refuses a /tmp path shared by both scripts.
+
+## 2026-11-03: Hot problems and a 5 of 5 bar
+
+Abhi wants hot topics and 5 of 5 from editorial and marketing. Every planned topic must now answer a recent real complaint, taken with free API
+calls from GitHub issues and Stack Overflow, and code checks the link. Marketing above 3 needs that evidence, so a 5 can't come from a guess. Evidence
+Contracts must change one setting per run, show the effective config and measure inside the problem's window, which is what held the FireLens post at 3 of 5.
+Drafts below the bar get one automatic revision. In warn mode the PR still opens, because the lab is already paid for, and Slack says not to approve it.

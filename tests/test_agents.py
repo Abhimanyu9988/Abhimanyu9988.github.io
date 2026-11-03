@@ -151,8 +151,12 @@ card = {"scores": {"technical": {"score": 5, "reasons": []}, "editorial": {"scor
                    "marketing": {"score": 5, "reasons": []}}, "blocking": [], "flags_addressed": [], "claims": []}
 check("a 5 on technical cannot offset a 2 on editorial", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
 card["scores"]["editorial"]["score"] = 4
-card["scores"]["marketing"]["score"] = 1
-check("marketing never blocks", editor.decide(card, {"passed": True, "flags": []})[0] == "pass")
+check("a 4 on editorial is below Abhi's bar", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
+card["scores"]["editorial"]["score"] = 5
+card["scores"]["marketing"]["score"] = 4
+check("a 4 on marketing is below Abhi's bar", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
+card["scores"]["marketing"]["score"] = 5
+check("5 of 5 from both passes", editor.decide(card, {"passed": True, "flags": []})[0] == "pass")
 check("evidence failure blocks whatever the Editor thinks", editor.decide(card, {"passed": False, "flags": []})[0] == "revise")
 card["claims"] = [{"text": "x", "class": "sourced", "source_ref": "https://made/up"}]
 check("an outside claim needs a known source", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
@@ -1311,7 +1315,7 @@ check("topics: the failure finder only runs when asked, because the weekly plan 
 check("panel: a refused lab reaches Slack and the model stats", "the review panel didn't accept its proof" in (ROOT / "pipeline/draft.py").read_text() and '"status": "panel_rejected"' in (ROOT / "pipeline/draft.py").read_text())
 import draft as draft_mod
 revise_msg = draft_mod.ready_message("T", 9, {"decision": "revise", "card": {"scores": {"technical": {"score": 3}}}})
-check("draft: Slack warns when the Editor wants changes, because approving publishes", "wants changes" in revise_msg and "technical 3/5" in revise_msg and "approving publishes" in revise_msg)
+check("draft: Slack warns when a draft is below the bar, because approving publishes", "below the 5/5 bar" in revise_msg and "technical 3/5" in revise_msg and "approving publishes" in revise_msg)
 check("draft: a passed draft stays simple, even with no scorecard", draft_mod.ready_message("T", 9, {"decision": "pass"}).startswith("Draft ready for your decision: T\nhttps://"))
 redraft_yaml = __import__("yaml").safe_load((ROOT / ".github/workflows/redraft.yml").read_text())
 check("redraft: its finished draft reaches Slack", any("SLACK_BOT_TOKEN" in (st.get("env") or {}) for st in redraft_yaml["jobs"]["redraft"]["steps"]))
@@ -1415,7 +1419,7 @@ real_wr, analytics.write_file = analytics.write_file, lambda p, t, s, m: saved_p
 state = {"drafts": 0, "running": []}
 def plan_gh(m, path, b=None):
     if "/pulls" in path:
-        return [{"head": {"ref": "draft/x"}, "body": "<!-- lab-run: 1 -->", "created_at": "2026-11-04T00:00:00Z"}] * state["drafts"] + [{"head": {"ref": "draft/open-source-summary"}, "body": "monthly", "created_at": "2026-11-04T00:00:00Z"}, {"head": {"ref": "feat/x"}, "body": "lab-run:", "created_at": "2026-11-04T00:00:00Z"}]
+        return [{"head": {"ref": "draft/x"}, "body": f"<!-- lab-run: {n} -->", "created_at": "2026-11-04T00:00:00Z"} for n in range(state["drafts"])] + [{"head": {"ref": "draft/open-source-summary"}, "body": "monthly", "created_at": "2026-11-04T00:00:00Z"}, {"head": {"ref": "feat/x"}, "body": "lab-run:", "created_at": "2026-11-04T00:00:00Z"}]
     return {"workflow_runs": state["running"]}
 real_gp, cto.gh = cto.gh, plan_gh
 check("plan: the next queued topic starts", cto.next_lab()["issue"] == 2 and saved_plan[-1]["topics"][1]["state"] == "started")
@@ -1438,6 +1442,10 @@ cto.gh = lambda m, path, b=None: {"workflow_runs": [{"name": "replicate"}]} if "
 check("plan: a lab waiting to start also blocks the next one", cto.lab_active())
 cto.gh = inner_gh
 state["drafts"] = 1
+real_gpd = cto.gh
+cto.gh = lambda m, path, b=None: [{"head": {"ref": "draft/a"}, "body": "<!-- lab-run: 7 -->", "created_at": "2026-11-04T00:00:00Z"}, {"head": {"ref": "draft/b"}, "body": "<!-- lab-run: 7 -->", "created_at": "2026-11-04T00:00:00Z"}]
+check("plan: a redraft doesn't count as a second article", cto.lab_drafts(plan_doc) == 1)
+cto.gh = real_gpd
 check("plan: other drafts don't count toward the target", cto.lab_drafts(plan_doc) == 1)
 cto.gh, analytics.write_file, analytics.read_file = real_gp, real_wr, real_ar
 import week
@@ -1463,26 +1471,33 @@ check("week: a lab can read the brief", "<!-- m -->" in plan_rows[0]["body"] and
 editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb, real_eg, week_editor_bm, week_editor_mk
 check("week: the Slack plan marks the spare", "2. Two (spare)" in week.plan_message(plan_rows, 1, []))
 check("week: it says when fewer passed", "Only 1 of 3" in week.plan_message(plan_rows[:1], 3, []))
-good_brief = {"reader": "r"}
-real_wgh, week.gh = week.gh, lambda m, p, b=None: [{"title": "Where Fluent Bit logs go when the destination stops", "number": 115, "body": "x", "labels": [{"name": "build"}], "comments": 0},
-                                                   {"title": "Already ran its lab and failed for a reason here", "number": 114, "body": "x", "labels": [], "comments": 2},
-                                                   {"title": "No brief on this older topic from the last weeks", "number": 90, "body": "none", "labels": [], "comments": 0}]
-real_pb, real_g1, editor.parse_brief, editor.gate1 = editor.parse_brief, editor.gate1, (lambda text: good_brief if text == "x" else None), (lambda b: (True, []))
-waiting = week.waiting_topics()
-check("week: a passed topic that never ran is reused, so it isn't paid for twice", [w["issue"] for w in waiting] == [115] and waiting[0]["kind"] == "build")
-editor.parse_brief, editor.gate1, week.gh = real_pb, real_g1, real_wgh
-real_prop, real_vet, real_wait, real_coll, real_ei = week.propose, week.vet, week.waiting_topics, week.collect, week.existing_issues
+real_prop, real_vet, real_hot, real_coll, real_ei = week.propose, week.vet, week.hot_items, week.collect, week.existing_issues
 rounds = []
 week.existing_issues, week.collect, week.waiting_topics = (lambda: ([], set())), (lambda: [{"url": "https://x.y/a"}]), (lambda: [])
-week.propose = lambda i, e, want, refused=(): rounds.append((want, list(refused))) or [{"title": f"t{len(rounds)}"}]
+week.propose = lambda i, e, want, refused=(), hot=(): rounds.append((want, list(refused))) or [{"title": f"t{len(rounds)}"}]
 needs = []
-week.vet = lambda topics, e, a, h, need: needs.append(need) or ([{"title": "A", "kind": "build", "yes": 3, "hook": "h", "body": "b"}], [("Bad", "too slow")]) if len(rounds) == 1 else ([{"title": f"B{i}", "kind": "build", "yes": 3, "hook": "h", "body": "b"} for i in range(need)], [])
+week.vet = lambda topics, e, a, h, need, hot_map: needs.append(need) or ([{"title": "A", "kind": "build", "yes": 3, "hook": "h", "body": "b"}], [("Bad", "too slow")]) if len(rounds) == 1 else ([{"title": f"B{i}", "kind": "build", "yes": 3, "hook": "h", "body": "b"} for i in range(need)], [])
 os.environ["DRY_RUN"] = "true"
 week.main()
 os.environ.pop("DRY_RUN")
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
 check("week: a spare is counted once", needs == [5])
-week.propose, week.vet, week.waiting_topics, week.collect, week.existing_issues = real_prop, real_vet, real_wait, real_coll, real_ei
+week.propose, week.vet, week.hot_items, week.collect, week.existing_issues = real_prop, real_vet, real_hot, real_coll, real_ei
+import problems as prob_mod
+real_pc, prob_mod.collect = prob_mod.collect, lambda: [{"src": "github", "title": "Hot", "url": "https://g/1", "reactions": 9, "comments": [1, 2], "reporter_says": "x"},
+                                                       {"src": "github", "title": "Cold", "url": "https://g/2", "reactions": 0, "comments": []}, {"src": "github", "title": "[EKS] [request]: new thing", "url": "https://g/3", "reactions": 30, "comments": []},
+                                                       {"src": "stackoverflow", "title": "Asked", "url": "https://s/1", "views": 500, "score": 4}, {"src": "stackoverflow", "title": "Quiet", "url": "https://s/2", "views": 5, "score": 1}]
+hot_map, hot_view = week.hot_items()
+prob_mod.collect = real_pc
+check("hot: only real signals count, with the real numbers", set(hot_map) == {"https://g/1", "https://s/1"} and "9 reactions and 2 comments" in hot_map["https://g/1"] and "500 views" in hot_map["https://s/1"])
+check("hot: its repos are watched too", "fluent/fluent-bit" in prob_mod.WATCH)
+real_lc2, real_pn2, real_bp = week.lab_check, week.panel, week.build_plan
+week.lab_check, week.panel = (lambda ts: {}), (lambda ts, rej, ex: {})
+seen_rej = {}
+week.build_plan = lambda ranked, rejected, allowed, have, need: (seen_rej.update(rejected), ([], []))[1]
+week.vet([{"title": "Made-up demand with a long enough headline", "demand_url": "https://fake/"}], [], set(), set(), 1, {"https://g/1": "signal"})
+week.lab_check, week.panel, week.build_plan = real_lc2, real_pn2, real_bp
+check("hot: a topic with no real complaint is refused before anything is paid for", list(seen_rej.values()) == ["no real recent complaint behind it"])
 brief_ok = {"existing_pages": [{"url": "https://x.y/page"}]}
 real_ra, real_eb2, real_eg2, real_bm, real_mk, real_lc, real_pn = week.roles.ask, editor.brief, editor.gate1, editor.brief_md, editor.marker, week.lab_check, week.panel
 angle = lambda t: {"title": t, "hook": "h", "payoff": "p", "proof": "p", "lab": "l", "sources": [], "kind": "build"}

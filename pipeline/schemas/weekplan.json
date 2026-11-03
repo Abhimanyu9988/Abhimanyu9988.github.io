@@ -50,6 +50,10 @@
        "build",
        "problem"
       ]
+     },
+     "demand_url": {
+      "type": "string",
+      "description": "the url from HOT PROBLEMS this topic answers. Leave empty for a topic Abhi asked for"
      }
     }
    }
