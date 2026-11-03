@@ -1323,6 +1323,9 @@ check("pre-flight: catches a loop that can run forever", any("while true" in e f
 check("pre-flight: catches curl with no time limit", any("--max-time" in e for e in lab_mod.preflight(lab_files(rep="curl https://x\n"))))
 check("pre-flight: curl with a time limit passes", lab_mod.preflight(lab_files(rep="curl --max-time 20 https://x\n")) == [])
 check("pre-flight: catches waits longer than a script may run", any("sleeps add up" in e for e in lab_mod.preflight(lab_files(rep="sleep 600\nsleep 600\n"))))
+shared_lab = lab_files(rep="echo 1 > /tmp/default.json\n")
+shared_lab["files"][2]["content"] = "cat /tmp/default.json\n"
+check("pre-flight: catches results left in /tmp between scripts", any("/tmp/default.json" in e for e in lab_mod.preflight(shared_lab)))
 check("pre-flight: a comment doesn't count as code", lab_mod.preflight(lab_files(rep="# curl and sleep 9999\n")) == [])
 lab_mod.validate = real_validate
 slow_brief = {"measurements": [{"id": "stale", "unit": "count"}, {"id": "ratio", "what": "steady-state hourly count"}, {"id": "after", "what": "still active 1 hour after the rollout"}, {"id": "fast", "what": "drain time in seconds"}]}
