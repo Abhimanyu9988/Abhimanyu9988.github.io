@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T17:32:54Z",
+ "updated": "2026-11-03T18:26:45Z",
  "columns": {
   "needs": [
    {
@@ -70,6 +70,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41693135420",
+    "kind": "Lab Engineer is testing an article",
+    "title": "Running now",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41693135420",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
     "kind": "Your PR",
     "title": "[chore] Generate a list of collector components with specific operator support",
@@ -114,44 +121,23 @@
   ],
   "next": [
    {
-    "id": "Up next:What OpenTelemetry auto-instrumentation really adds to pod startup time",
+    "id": "Up next:OTel journald retry skips one log on restart",
     "kind": "Up next",
-    "title": "What OpenTelemetry auto-instrumentation really adds to pod startup time",
+    "title": "OTel journald retry skips one log on restart",
     "url": "",
     "where": ""
    },
    {
-    "id": "Up next:KEDA Splunk scaler with a bad token: what happens to your replica count",
+    "id": "Up next:EKS Pod Identity renews creds for deleted pods",
     "kind": "Up next",
-    "title": "KEDA Splunk scaler with a bad token: what happens to your replica count",
+    "title": "EKS Pod Identity renews creds for deleted pods",
     "url": "",
     "where": ""
    },
    {
-    "id": "Up next:OTel Operator down during a deploy: which pods start uninstrumented?",
+    "id": "Up next:OTel Java 2.30 vs 2.29: Redis timeout delta",
     "kind": "Up next",
-    "title": "OTel Operator down during a deploy: which pods start uninstrumented?",
-    "url": "",
-    "where": ""
-   },
-   {
-    "id": "Up next:KEDA's Splunk Observability scaler when the metric stops reporting",
-    "kind": "Up next",
-    "title": "KEDA's Splunk Observability scaler when the metric stops reporting",
-    "url": "",
-    "where": ""
-   },
-   {
-    "id": "Up next:Splunk OTel Collector agent memory at 10, 20 and 30 pods per node",
-    "kind": "Up next",
-    "title": "Splunk OTel Collector agent memory at 10, 20 and 30 pods per node",
-    "url": "",
-    "where": ""
-   },
-   {
-    "id": "Up next:Java OTel auto-instrumentation: memory added to each EKS pod",
-    "kind": "Up next",
-    "title": "Java OTel auto-instrumentation: memory added to each EKS pod",
+    "title": "OTel Java 2.30 vs 2.29: Redis timeout delta",
     "url": "",
     "where": ""
    },
