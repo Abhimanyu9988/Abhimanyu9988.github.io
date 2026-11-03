@@ -1413,6 +1413,15 @@ check("week: a lab can read the brief", "<!-- m -->" in plan_rows[0]["body"] and
 editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb, real_eg, week_editor_bm, week_editor_mk
 check("week: the Slack plan marks the spare", "2. Two (spare)" in week.plan_message(plan_rows, 1, []))
 check("week: it says when fewer passed", "Only 1 of 3" in week.plan_message(plan_rows[:1], 3, []))
+check("headline: steps are refused", week.title_problem("How to deploy Fluent Bit on ECS Fargate with FireLens") != "" and week.title_problem("Setting up Argo CD on EKS for your whole team today") != "")
+check("headline: length is checked", week.title_problem("Short") != "" and week.title_problem("x" * 90) != "")
+check("headline: a symptom passes", week.title_problem("Argo CD is Synced while the ALB has zero healthy targets") == "")
+real_pv, week_llm = None, __import__("llm")
+real_pv, week_llm.panel_votes = week_llm.panel_votes, lambda view, q, ctx, tier="scout": seen_votes.append((view, tier)) or {"t1": {"yes": 3, "accepted": True, "votes": {}}}
+seen_votes = []
+got_votes = week.panel([{"title": "a", "hook": "h", "payoff": "p", "proof": "p"}, {"title": "b", "hook": "h", "payoff": "p", "proof": "p"}], {0: "refused"}, [])
+week_llm.panel_votes = real_pv
+check("panel: it votes on headlines, skips refused topics, and uses the stronger models", got_votes == {1: {"yes": 3, "accepted": True, "votes": {}}} and [c["id"] for c in seen_votes[0][0]] == ["t1"] and seen_votes[0][1] == "write" and "headline" in seen_votes[0][0][0])
 check("trial: models take turns, with a default that exists", week.TRIAL_MODELS[0] == "claude-sonnet-5-5" and all(m in __import__("json").load(open(ROOT / "pipeline/prices.json")) or True for m in week.TRIAL_MODELS))
 trial = cto.trial_stats([{"model": "a", "status": "reproduced_and_fixed", "editor_score": 4.0, "attempts": 1, "minutes": 30, "lab_usd": 1.0},
                          {"model": "a", "status": "failed", "editor_score": None, "attempts": 3, "minutes": 50, "lab_usd": 2.0}, {"model": "b", "status": "failed", "editor_score": None}])

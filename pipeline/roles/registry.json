@@ -46,7 +46,7 @@
    ],
    "budget": {
     "max_input_tokens": 60000,
-    "max_calls": 8
+    "max_calls": 14
    },
    "display": "Editor",
    "dept": "Content"

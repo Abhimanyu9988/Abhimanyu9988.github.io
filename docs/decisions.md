@@ -181,3 +181,6 @@ Repairs now return only changed files. Free API checks run before any model call
 Abhi wants quality kept and models compared with real numbers. `week.py` rotates Sonnet, Opus and Haiku as the model that writes each
 lab and article. The reviewers and the Editor's scoring stay the same, so the scores compare like with like. Each lab saves a trial
 record, and code works out the stats by model. Every article still needs the same gates and his approval.
+
+Topics and headlines matter most to Abhi, so the three-model vote stayed. The Editor writes three headlines for each topic and keeps the
+strongest, code refuses step-style headlines, and two of three models must agree before a topic gets a brief.
