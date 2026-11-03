@@ -82,6 +82,12 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      - name: start the article he asked for
+        if: steps.leaders.outputs.article_topic != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TOPIC: ${{ steps.leaders.outputs.article_topic }}
+        run: gh workflow run radar.yml --repo "$GITHUB_REPOSITORY" --ref main -f topic="$TOPIC"
       - name: start the next lab
         if: steps.leaders.outputs.run_lab != '' && vars.AUTO_LAB != 'off'
         env:
