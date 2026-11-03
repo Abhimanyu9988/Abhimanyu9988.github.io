@@ -1392,12 +1392,29 @@ check("plan: never two labs at once", cto.next_lab() is None)
 state.update(running=[], drafts=2)
 check("plan: stops at the week's target, so a spare isn't spent", cto.next_lab() is None)
 state["drafts"] = 1
+state.update(drafts=0)
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03"}]
+saved_plan.clear()
+inner_gh = cto.gh
+cto.gh = lambda m, path, b=None: {"comments": 0} if "/issues/1" in path else inner_gh(m, path, b)
+check("plan: a lab that never started goes back in the queue", cto.next_lab("2026-11-04")["issue"] == 1 and saved_plan[-1]["topics"][0]["started_on"] == "2026-11-04")
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03"}]
+cto.gh = lambda m, path, b=None: {"comments": 2} if "/issues/1" in path else inner_gh(m, path, b)
+check("plan: a lab that ran isn't repeated", cto.next_lab("2026-11-04") is None)
+check("plan: a same-day start isn't mistaken for a lost lab", cto.next_lab("2026-11-03") is None)
+cto.gh = lambda m, path, b=None: {"workflow_runs": [{"name": "replicate"}]} if "status=waiting" in path else inner_gh(m, path, b)
+check("plan: a lab waiting to start also blocks the next one", cto.lab_active())
+cto.gh = inner_gh
 check("plan: other drafts don't count toward the target", cto.lab_drafts(plan_doc) == 1)
 cto.gh, analytics.write_file, analytics.read_file = real_gp, real_wr, real_ar
 import week
 check("week: three a week, five this week", week.target(_dt_w.date(2026, 11, 3)) == 5 and week.target(_dt_w.date(2026, 11, 10)) == 3)
 real_wask, week.roles.ask = week.roles.ask, lambda role, prompt, out: {"verdicts": [{"id": 0, "doable": True, "reason": "ok"}, {"id": 1, "doable": False, "reason": "needs Splunk Enterprise"}]}
-check("week: Lab Check's refusals are kept with the reason", week.lab_check([{"title": "a", "lab": "l", "proof": "p"}, {"title": "b", "lab": "l", "proof": "p"}]) == {1: "needs Splunk Enterprise"})
+lab_view = {"title": "a", "lab": "l", "proof": "p"}
+check("week: Lab Check's refusals are kept with the reason", week.lab_check([lab_view, lab_view]) == {1: "needs Splunk Enterprise"})
+check("week: a topic Lab Check skipped doesn't pass", 2 in week.lab_check([lab_view, lab_view, lab_view]))
+week.roles.ask = lambda role, prompt, out: {"verdicts": [{"id": 0, "doable": True, "reason": "ok"}, {"id": 0, "doable": False, "reason": "no"}]}
+check("week: two answers on one topic don't pass", 0 in week.lab_check([lab_view]))
 week.roles.ask = real_wask
 briefed = []
 real_eb, real_eg, week_editor_bm, week_editor_mk = editor.brief, editor.gate1, editor.brief_md, editor.marker

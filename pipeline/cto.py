@@ -180,14 +180,28 @@ def trial_stats(rows):
                       "avg_attempts": mean("attempts"), "avg_minutes": mean("minutes"), "avg_lab_model_usd": mean("lab_usd")}
     return {"models": out, "note": "A small sample, with a different topic for each lab. Don't call a winner from a few labs."}
 
-def next_lab():
+def lab_active():
+    """Every state a run can wait in, so a lab that is only queued still blocks the next one."""
+    return any(r.get("name") == "replicate" for state in ("in_progress", "queued", "waiting", "requested")
+               for r in (gh("GET", f"/repos/{HOME_REPO}/actions/runs?status={state}&per_page=30") or {}).get("workflow_runs", []))
+
+def requeue_lost(plan, today):
+    """A lab always comments on its issue. No comment a day later means the lab never started, so the topic goes back in the queue."""
+    for t in plan.get("topics") or []:
+        if t.get("state") == "started" and t.get("started_on", today) < today and not (gh("GET", f"/repos/{HOME_REPO}/issues/{t['issue']}") or {}).get("comments", 1):
+            t["state"] = "queued"
+
+def next_lab(today=None):
     """One lab a day from the plan, until the week's target is met. A spare only runs if a lab failed."""
+    today = today or datetime.date.today().isoformat()
     plan, sha = read_plan()
-    queued = [t for t in plan.get("topics") or [] if t.get("state") == "queued"]
-    running = (gh("GET", f"/repos/{HOME_REPO}/actions/runs?status=in_progress&per_page=30") or {}).get("workflow_runs", [])
-    if not queued or lab_drafts(plan) >= plan.get("target", 0) or any(r.get("name") == "replicate" for r in running):
+    if not plan.get("topics") or lab_active() or lab_drafts(plan) >= plan.get("target", 0):
         return None
-    queued[0]["state"] = "started"
+    requeue_lost(plan, today)
+    queued = [t for t in plan["topics"] if t.get("state") == "queued"]
+    if not queued:
+        return None
+    queued[0].update(state="started", started_on=today)
     analytics.write_file(PLAN, json.dumps(plan, indent=1), sha, "week: next lab")
     return queued[0]
 

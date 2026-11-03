@@ -54,7 +54,17 @@ def lab_check(topics):
     """{index: reason} for topics a lab can't do. One call covers every topic, so nothing is paid for twice."""
     view = [{"id": n, "title": t["title"], "lab": t["lab"], "proof": t["proof"]} for n, t in enumerate(topics)]
     got = roles.ask("lab_check", f"LAB LIMITS:\n{LAB_LIMITS}\n\nTOPICS:\n{json.dumps(view)}", "labcheck")["verdicts"]
-    return {v["id"]: v["reason"] for v in got if not v["doable"]}
+    said = {}
+    for v in got:
+        said.setdefault(v["id"], []).append(v)
+    out = {}
+    for n in range(len(topics)):                # no clear yes means no, so a skipped topic can't reach a lab unchecked
+        rows = said.get(n, [])
+        if len(rows) != 1:
+            out[n] = "Lab Check gave no clear answer on this topic"
+        elif not rows[0]["doable"]:
+            out[n] = rows[0]["reason"]
+    return out
 
 def title_problem(title):
     """A plain reason, or "". These are cheap checks, and the panel judges the rest."""
@@ -119,6 +129,7 @@ def vet(topics, existing, allowed, have, need):
     rejected = {n: title_problem(t["title"]) for n, t in enumerate(topics) if title_problem(t["title"])}
     rejected.update({n: why for n, why in lab_check(topics).items() if n not in rejected})
     votes = panel(topics, rejected, existing)
+    rejected.update({n: "the panel didn't vote on this topic" for n in range(len(topics)) if n not in rejected and n not in votes})
     for n, v in votes.items():
         topics[n]["yes"] = v["yes"]
         if not v["accepted"]:
@@ -163,7 +174,7 @@ def main():
         number = t.get("issue") or post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)["number"]
         rows.append({"issue": number, "title": t["title"], "state": "queued", "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
     if rows:
-        rows[0]["state"] = "started"
+        rows[0].update(state="started", started_on=datetime.date.today().isoformat())
     _, sha = analytics.read_file(PLAN)
     analytics.write_file(PLAN, json.dumps({"week": week_id(), "target": goal, "created": datetime.date.today().isoformat(), "topics": rows}, indent=1), sha, "week: new plan")
     slack.say("editor", plan_message(rows, goal, dropped))
