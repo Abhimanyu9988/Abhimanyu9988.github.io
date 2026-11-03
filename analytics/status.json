@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-02",
+ "updated": "2026-11-03",
  "team": [
   {
    "role": "Executive Assistant",
@@ -80,12 +80,24 @@
    "role": "Voice Editor",
    "dept": "Content",
    "mission": "Make each reviewed draft read like an engineer wrote it, without changing a fact."
+  },
+  {
+   "role": "OSS Scout",
+   "dept": "Community",
+   "mission": "Tell Abhi where open source projects need him, from his contribution board."
+  },
+  {
+   "role": "Secretary",
+   "dept": "Office",
+   "mission": "Take every message Abhi sends without a name, ask the right people, and give him one answer."
+  },
+  {
+   "role": "IT Support",
+   "dept": "Engineering",
+   "mission": "Check the CTO's feature notes against merged pull requests, and close the ones that are finished."
   }
  ],
- "in_review": [
-  "Draft: From EKS ALB 503s to 200s with Ready Pods and Healthy Targets",
-  "Draft: ECS Fargate: 3 Tasks, 3 Splunk Metric Series, One OTel Sidecar"
- ],
+ "in_review": [],
  "published": [
   "Draft: October: Kubernetes memory semantics and Collector edge fixes",
   "Draft: EKS App Slow, CPU Fine? Scale on Splunk Latency with KEDA"
