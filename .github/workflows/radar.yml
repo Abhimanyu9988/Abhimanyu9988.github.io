@@ -1,7 +1,5 @@
 name: radar
 on:
-  schedule:
-    - cron: "0 6 * * 1"     # Monday
   workflow_dispatch:
     inputs:
       dry_run:
@@ -10,6 +8,10 @@ on:
         default: false
       topic:
         description: "An article Abhi asked for. Its lab starts now, ahead of the plan"
+        required: false
+        type: string
+      plan_json:
+        description: "The week's plan, written in Claude chat. See docs/weekly-plan.md"
         required: false
         type: string
 permissions:
@@ -41,6 +43,8 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           HERO_PUBLISH: "1"
           TOPIC: ${{ inputs.topic }}
+          PLAN_JSON: ${{ inputs.plan_json }}
+          HEADLINE_MODEL: ${{ vars.HEADLINE_MODEL }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
           GALILEO_READY: ${{ secrets.GALILEO_API_KEY != '' }}
           SPLUNK_READY: ${{ vars.SPLUNK_REALM != '' && secrets.SPLUNK_ACCESS_TOKEN != '' && secrets.SPLUNK_API_TOKEN != '' }}

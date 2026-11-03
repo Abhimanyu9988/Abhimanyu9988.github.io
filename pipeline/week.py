@@ -7,13 +7,15 @@ that survive get a full brief, which is the Editor's searched brief and Evidence
 Inputs: new items from radar.collect(), his ideas, existing topics, goals and analytics.
 Outputs: one issue per topic, analytics/week-plan.json, a Slack message, and `pick`, the first lab to start.
 Every planned topic must answer a problem people raised recently, with a real signal behind it. Code checks that link.
+PLAN_JSON set: Claude planned the week in chat, which adds no API cost. Code checks it, one ChatGPT call approves topics and sharpens
+headlines, and the rest is the same. docs/weekly-plan.md is the playbook. `week.py --check FILE` runs the code checks with no model.
 TOPIC set: Abhi asked for an article on this subject. The same checks run, and its lab starts now, ahead of the plan.
 cto.py starts one lab a day from the plan until the week's target is met. It must not start a lab for a topic that failed a check.
 """
 import datetime, json, os, re
 from radar import (DOCS_URLS, HOME_REPO, LAB_LIMITS, LABEL, NO_REFS, SKIP_SOURCES, Unsafe, assert_safe, collect, ensure_label,
                    existing_issues, gh, goals_block, load_insights, market_brief, neutralize, norm, post_issue, safe_text, sources_block, src_marker)
-import analytics, roles, slack
+import analytics, contract, roles, slack
 
 PLAN = "analytics/week-plan.json"
 DEFAULT_TARGET = 3
@@ -241,6 +243,9 @@ def main():
         new, out = vet(propose(items, existing, want - len(plan) + EXTRA_IDEAS, dropped, hot_view), existing, allowed, have, want - len(plan) - SPARES, hot)
         plan, dropped = plan + new, dropped + out
         have |= {norm(t["title"]) for t in new}
+    publish(plan, goal, dropped)
+
+def publish(plan, goal, dropped):
     if os.environ.get("DRY_RUN") == "true":
         print(plan_message(plan, goal, dropped))
         for t in plan:
@@ -263,6 +268,72 @@ def main():
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
             f.write(f"pick={int(rows[0]['issue'])}\npick_model={rows[0]['model']}\n")
 
+
+def check_plan(topics, have=()):
+    """(usable topics, [(title, why)]) by code alone, so a slip in chat can't reach a lab."""
+    import editor
+    good, dropped = [], []
+    for t in topics:
+        title, b = neutralize(t.get("title")).strip()[:100], t.get("brief") or {}
+        problems = [title_problem(title)] if title_problem(title) else []
+        problems += ["this topic already exists"] if norm(title) in have else []
+        problems += [f"unknown lane {t.get('lane')}"] if t.get("lane") not in LANES else []
+        problems += ["AI monitoring needs the Galileo key"] if t.get("lane") == "ai_monitoring" and not galileo_ready() and os.environ.get("GITHUB_ACTIONS") else []
+        problems += ["no real complaint linked"] if not (str(t.get("demand_url", "")).startswith("https://") and t.get("signal")) else []
+        problems += [f"brief: {p}" for p in contract.validate(b, contract.schema("brief"))][:3]
+        if not any(p.startswith("brief") for p in problems):
+            problems += [str(p) for p in editor.gate1(b)[1]]
+        if problems:
+            dropped.append((title, "; ".join(problems)[:300]))
+        else:
+            good.append({**t, "title": title})
+    return good, dropped
+
+def headline_check(topics):
+    """{index: (headline, reason)} for approved topics. No clear yes means no, and a weaker headline is ignored."""
+    view = [{"id": n, "title": t["title"], "hook": t.get("hook"), "proof": t.get("proof"), "lab": t.get("lab"), "demand": t.get("signal")} for n, t in enumerate(topics)]
+    got = roles.ask("headline_check", f"LAB LIMITS:\n{LAB_LIMITS}\n\nTOPICS:\n{json.dumps(view)}", "headlinecheck")["verdicts"]
+    said = {}
+    for v in got:
+        said.setdefault(v["id"], []).append(v)
+    out = {}
+    for n, t in enumerate(topics):
+        rows = said.get(n, [])
+        if len(rows) == 1 and rows[0]["approve"]:
+            better = neutralize(rows[0]["headline"]).strip()
+            out[n] = (better if better and not title_problem(better) else t["title"], rows[0]["reason"])
+    return out
+
+def plan_from_chat(text):
+    existing, _ = existing_issues()
+    topics, dropped = check_plan(json.loads(text)["topics"], {norm(t) for t in existing})
+    approved, plan = headline_check(topics) if topics else {}, []
+    goal = target()
+    import editor
+    for n, t in enumerate(topics):
+        if n not in approved:
+            dropped.append((t["title"], "ChatGPT didn't approve it"))
+        elif len(plan) < goal + SPARES:
+            title, srcs, b = approved[n][0], list(dict.fromkeys([*t.get("sources", []), t["demand_url"]])), t["brief"]
+            b["gate1"] = {"passed": True, "reasons": []}
+            body = body_for(t, srcs, f"{safe_text(editor.brief_md(b, True, []))}\n\n{editor.marker(b)}")
+            assert_safe(title); assert_safe(body)
+            plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": "ChatGPT approved", "signal": t.get("signal")})
+    publish(plan, goal, dropped)
+
 if __name__ == "__main__":
+    import sys
+    if sys.argv[1:2] == ["--check"]:           # for the chat: a plan's mistakes, for free, before anything runs
+        with open(sys.argv[2]) as f:
+            good, out = check_plan(json.load(f)["topics"])
+        print(f"{len(good)} topics pass")
+        for title, why in out:
+            print(f"REFUSED: {title}: {why}")
+        sys.exit(1 if out else 0)
     analytics.ensure_branch()
-    start_requested(os.environ["TOPIC"]) if os.environ.get("TOPIC", "").strip() else main()
+    if os.environ.get("PLAN_JSON", "").strip():
+        plan_from_chat(os.environ["PLAN_JSON"])
+    elif os.environ.get("TOPIC", "").strip():
+        start_requested(os.environ["TOPIC"])
+    else:
+        main()
