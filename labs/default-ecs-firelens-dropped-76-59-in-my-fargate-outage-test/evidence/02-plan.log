@@ -1,0 +1,292 @@
+$ terraform plan -input=false -no-color -out=tfplan
+# exit 0 after 6s
+
+[... earlier output cut ...]
+pply)
+      + host_resource_group_arn              = (known after apply)
+      + iam_instance_profile                 = (known after apply)
+      + id                                   = (known after apply)
+      + instance_initiated_shutdown_behavior = (known after apply)
+      + instance_lifecycle                   = (known after apply)
+      + instance_state                       = (known after apply)
+      + instance_type                        = "t3.medium"
+      + ipv6_address_count                   = (known after apply)
+      + ipv6_addresses                       = (known after apply)
+      + key_name                             = (known after apply)
+      + monitoring                           = (known after apply)
+      + outpost_arn                          = (known after apply)
+      + password_data                        = (known after apply)
+      + placement_group                      = (known after apply)
+      + placement_partition_number           = (known after apply)
+      + primary_network_interface_id         = (known after apply)
+      + private_dns                          = (known after apply)
+      + private_ip                           = (known after apply)
+      + public_dns                           = (known after apply)
+      + public_ip                            = (known after apply)
+      + secondary_private_ips                = (known after apply)
+      + security_groups                      = (known after apply)
+      + source_dest_check                    = true
+      + spot_instance_request_id             = (known after apply)
+      + subnet_id                            = (known after apply)
+      + tags                                 = {
+          + "Name" = "where-fluent-bit-logs-go-767398-sink"
+        }
+      + tags_all                             = {
+          + "Name"     = "where-fluent-bit-logs-go-767398-sink"
+          + "hero-lab" = "where-fluent-bit-logs-go-767398"
+        }
+      + tenancy                              = (known after apply)
+      + user_data                            = (sensitive value)
+      + user_data_base64                     = (known after apply)
+      + user_data_replace_on_change          = true
+      + vpc_security_group_ids               = (known after apply)
+
+      + capacity_reservation_specification (known after apply)
+
+      + cpu_options (known after apply)
+
+      + ebs_block_device (known after apply)
+
+      + enclave_options (known after apply)
+
+      + ephemeral_block_device (known after apply)
+
+      + instance_market_options (known after apply)
+
+      + maintenance_options (known after apply)
+
+      + metadata_options {
+          + http_endpoint               = "enabled"
+          + http_protocol_ipv6          = "disabled"
+          + http_put_response_hop_limit = (known after apply)
+          + http_tokens                 = "required"
+          + instance_metadata_tags      = (known after apply)
+        }
+
+      + network_interface (known after apply)
+
+      + private_dns_name_options (known after apply)
+
+      + root_block_device (known after apply)
+    }
+
+  # aws_internet_gateway.lab will be created
+  + resource "aws_internet_gateway" "lab" {
+      + arn      = (known after apply)
+      + id       = (known after apply)
+      + owner_id = (known after apply)
+      + tags     = {
+          + "Name" = "where-fluent-bit-logs-go-767398-igw"
+        }
+      + tags_all = {
+          + "Name"     = "where-fluent-bit-logs-go-767398-igw"
+          + "hero-lab" = "where-fluent-bit-logs-go-767398"
+        }
+      + vpc_id   = (known after apply)
+    }
+
+  # aws_route_table.public will be created
+  + resource "aws_route_table" "public" {
+      + arn              = (known after apply)
+      + id               = (known after apply)
+      + owner_id         = (known after apply)
+      + propagating_vgws = (known after apply)
+      + route            = [
+          + {
+              + cidr_block                 = "0.0.0.0/0"
+              + gateway_id                 = (known after apply)
+                # (11 unchanged attributes hidden)
+            },
+        ]
+      + tags             = {
+          + "Name" = "where-fluent-bit-logs-go-767398-public"
+        }
+      + tags_all         = {
+          + "Name"     = "where-fluent-bit-logs-go-767398-public"
+          + "hero-lab" = "where-fluent-bit-logs-go-767398"
+        }
+      + vpc_id           = (known after apply)
+    }
+
+  # aws_route_table_association.public will be created
+  + resource "aws_route_table_association" "public" {
+      + id             = (known after apply)
+      + route_table_id = (known after apply)
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_security_group.sink will be created
+  + resource "aws_security_group" "sink" {
+      + arn                    = (known after apply)
+      + description            = "HTTP sink: 8080 ingest (stoppable), 8081 admin (token protected)"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+                # (1 unchanged attribute hidden)
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + from_port        = 8080
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 8080
+                # (1 unchanged attribute hidden)
+            },
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + from_port        = 8081
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 8081
+                # (1 unchanged attribute hidden)
+            },
+        ]
+      + name                   = "where-fluent-bit-logs-go-767398-sink"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags_all               = {
+          + "hero-lab" = "where-fluent-bit-logs-go-767398"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # aws_security_group.tasks will be created
+  + resource "aws_security_group" "tasks" {
+      + arn                    = (known after apply)
+      + description            = "Fargate tasks: egress only"
+      + egress                 = [
+          + {
+              + cidr_blocks      = [
+                  + "0.0.0.0/0",
+                ]
+              + from_port        = 0
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "-1"
+              + security_groups  = []
+              + self             = false
+              + to_port          = 0
+                # (1 unchanged attribute hidden)
+            },
+        ]
+      + id                     = (known after apply)
+      + ingress                = (known after apply)
+      + name                   = "where-fluent-bit-logs-go-767398-tasks"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags_all               = {
+          + "hero-lab" = "where-fluent-bit-logs-go-767398"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # aws_subnet.public will be created
+  + resource "aws_subnet" "public" {
+      + arn                                            = (known after apply)
+      + assign_ipv6_address_on_creation                = false
+      + availability_zone                              = "eu-central-1a"
+      + availability_zone_id                           = (known after apply)
+      + cidr_block                                     = "10.42.1.0/24"
+      + enable_dns64                                   = false
+      + enable_resource_name_dns_a_record_on_launch    = false
+      + enable_resource_name_dns_aaaa_record_on_launch = false
+      + id                                             = (known after apply)
+      + ipv6_cidr_block_association_id                 = (known after apply)
+      + ipv6_native                                    = false
+      + map_public_ip_on_launch                        = true
+      + owner_id                                       = (known after apply)
+      + private_dns_hostname_type_on_launch            = (known after apply)
+      + tags                                           = {
+          + "Name" = "where-fluent-bit-logs-go-767398-public"
+        }
+      + tags_all                                       = {
+          + "Name"     = "where-fluent-bit-logs-go-767398-public"
+          + "hero-lab" = "where-fluent-bit-logs-go-767398"
+        }
+      + vpc_id                                         = (known after apply)
+    }
+
+  # aws_vpc.lab will be created
+  + resource "aws_vpc" "lab" {
+      + arn                                  = (known after apply)
+      + cidr_block                           = "10.42.0.0/16"
+      + default_network_acl_id               = (known after apply)
+      + default_route_table_id               = (known after apply)
+      + default_security_group_id            = (known after apply)
+      + dhcp_options_id                      = (known after apply)
+      + enable_dns_hostnames                 = true
+      + enable_dns_support                   = true
+      + enable_network_address_usage_metrics = (known after apply)
+      + id                                   = (known after apply)
+      + instance_tenancy                     = "default"
+      + ipv6_association_id                  = (known after apply)
+      + ipv6_cidr_block                      = (known after apply)
+      + ipv6_cidr_block_network_border_group = (known after apply)
+      + main_route_table_id                  = (known after apply)
+      + owner_id                             = (known after apply)
+      + tags                                 = {
+          + "Name" = "where-fluent-bit-logs-go-767398-vpc"
+        }
+      + tags_all                             = {
+          + "Name"     = "where-fluent-bit-logs-go-767398-vpc"
+          + "hero-lab" = "where-fluent-bit-logs-go-767398"
+        }
+    }
+
+  # random_password.admin will be created
+  + resource "random_password" "admin" {
+      + bcrypt_hash = (sensitive value)
+      + id          = (known after apply)
+      + length      = 24
+      + lower       = true
+      + min_lower   = 0
+      + min_numeric = 0
+      + min_special = 0
+      + min_upper   = 0
+      + number      = true
+      + numeric     = true
+      + result      = (sensitive value)
+      + special     = false
+      + upper       = true
+    }
+
+Plan: 16 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + cluster_name           = "where-fluent-bit-logs-go-767398"
+  + fluentbit_image        = "public.ecr.aws/aws-observability/aws-for-fluent-bit:3.0.0"
+  + log_group              = "/where-fluent-bit-logs-go-767398/log-router"
+  + router_conf_fs         = (known after apply)
+  + router_conf_mem        = (known after apply)
+  + sink_admin_token       = (sensitive value)
+  + sink_public_ip         = (known after apply)
+  + subnet_id              = (known after apply)
+  + task_def_default       = (known after apply)
+  + task_def_fs            = (known after apply)
+  + task_def_mem           = (known after apply)
+  + task_security_group_id = (known after apply)
+

@@ -1,0 +1,120 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 43s
+
+random_password.admin: Creating...
+random_password.admin: Creation complete after 0s [id=none]
+aws_cloudwatch_log_group.router: Creating...
+aws_vpc.lab: Creating...
+aws_ecs_cluster.lab: Creating...
+aws_iam_role.exec: Creating...
+aws_iam_role.exec: Creation complete after 0s [id=hero-lab-where-fluent-bit-logs-go-767398-exec]
+aws_cloudwatch_log_group.router: Creation complete after 1s [id=/where-fluent-bit-logs-go-767398/log-router]
+aws_iam_role_policy.exec_logs: Creating...
+aws_iam_role_policy.exec_logs: Creation complete after 0s [id=hero-lab-where-fluent-bit-logs-go-767398-exec:router-logs]
+aws_vpc.lab: Still creating... [00m10s elapsed]
+aws_ecs_cluster.lab: Still creating... [00m10s elapsed]
+aws_ecs_cluster.lab: Creation complete after 11s [id=arn:aws:ecs:eu-central-1:<account-id>:cluster/where-fluent-bit-logs-go-767398]
+aws_vpc.lab: Creation complete after 13s [id=vpc-05bdc26f0bf34a627]
+aws_subnet.public: Creating...
+aws_internet_gateway.lab: Creating...
+aws_security_group.tasks: Creating...
+aws_security_group.sink: Creating...
+aws_internet_gateway.lab: Creation complete after 0s [id=igw-0bba65f2c07d80a2c]
+aws_route_table.public: Creating...
+aws_route_table.public: Creation complete after 2s [id=rtb-04225487d5c65dc4d]
+aws_security_group.tasks: Creation complete after 3s [id=sg-05680c6369c2bafb2]
+aws_security_group.sink: Creation complete after 3s [id=sg-0ec042ae1436ada03]
+aws_subnet.public: Still creating... [00m10s elapsed]
+aws_subnet.public: Creation complete after 11s [id=subnet-0853aa91c09e91082]
+aws_route_table_association.public: Creating...
+aws_instance.sink: Creating...
+aws_route_table_association.public: Creation complete after 0s [id=rtbassoc-04521e504e4cb861d]
+aws_instance.sink: Still creating... [00m10s elapsed]
+aws_instance.sink: Creation complete after 13s [id=i-0504a9ed4716e226a]
+aws_ecs_task_definition.cfg["default"]: Creating...
+aws_ecs_task_definition.cfg["mem"]: Creating...
+aws_ecs_task_definition.cfg["fs"]: Creating...
+aws_ecs_task_definition.cfg["fs"]: Creation complete after 1s [id=where-fluent-bit-logs-go-767398-fs]
+aws_ecs_task_definition.cfg["mem"]: Creation complete after 1s [id=where-fluent-bit-logs-go-767398-mem]
+aws_ecs_task_definition.cfg["default"]: Creation complete after 1s [id=where-fluent-bit-logs-go-767398-default]
+
+Apply complete! Resources: 16 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "where-fluent-bit-logs-go-767398"
+fluentbit_image = "public.ecr.aws/aws-observability/aws-for-fluent-bit:3.0.0"
+log_group = "/where-fluent-bit-logs-go-767398/log-router"
+router_conf_fs = <<EOT
+[SERVICE]
+    Flush                     1
+    Grace                     30
+    Log_Level                 info
+    scheduler.base            2
+    scheduler.cap             20
+    storage.path              /var/fb-storage
+    storage.sync              normal
+    storage.max_chunks_up     128
+    storage.backlog.mem_limit 64M
+
+[INPUT]
+    Name         forward
+    unix_path    /var/run/fluent.sock
+    storage.type filesystem
+
+[INPUT]
+    Name         forward
+    Listen       127.0.0.1
+    Port         24224
+    storage.type filesystem
+
+[OUTPUT]
+    Name                     http
+    Match                    *
+    Host                     63.181.32.176
+    Port                     8080
+    URI                      /ingest/fs
+    Format                   json_lines
+    tls                      Off
+    Retry_Limit              60
+    storage.total_limit_size 512M
+
+EOT
+router_conf_mem = <<EOT
+[SERVICE]
+    Flush          1
+    Grace          30
+    Log_Level      info
+    scheduler.base 2
+    scheduler.cap  20
+
+[INPUT]
+    Name          forward
+    unix_path     /var/run/fluent.sock
+    Mem_Buf_Limit 64MB
+
+[INPUT]
+    Name          forward
+    Listen        127.0.0.1
+    Port          24224
+    Mem_Buf_Limit 64MB
+
+[OUTPUT]
+    Name        http
+    Match       *
+    Host        63.181.32.176
+    Port        8080
+    URI         /ingest/mem
+    Format      json_lines
+    tls         Off
+    Retry_Limit 60
+
+EOT
+sink_admin_token = <sensitive>
+sink_public_ip = "63.181.32.176"
+subnet_id = "subnet-0853aa91c09e91082"
+task_def_default = "arn:aws:ecs:eu-central-1:<account-id>:task-definition/where-fluent-bit-logs-go-767398-default:1"
+task_def_fs = "arn:aws:ecs:eu-central-1:<account-id>:task-definition/where-fluent-bit-logs-go-767398-fs:1"
+task_def_mem = "arn:aws:ecs:eu-central-1:<account-id>:task-definition/where-fluent-bit-logs-go-767398-mem:1"
+task_security_group_id = "sg-05680c6369c2bafb2"
+
