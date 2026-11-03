@@ -1,14 +1,7 @@
 {
- "updated": "2026-11-03T08:32:56Z",
+ "updated": "2026-11-03T11:04:35Z",
  "columns": {
   "needs": [
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52654",
-    "kind": "Review",
-    "title": "[chore][exporter/azuredataexplorer] Add tanmaya-panda1 as code owner",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52654",
-    "where": "opentelemetry-collector-contrib"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
     "kind": "Assigned",
@@ -62,6 +55,13 @@
    }
   ],
   "working": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41623685854",
+    "kind": "Topic Scout is looking for topics",
+    "title": "Running now",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41623685854",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
     "kind": "Your PR",
