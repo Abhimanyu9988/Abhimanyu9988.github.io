@@ -1471,7 +1471,7 @@ os.environ["DRY_RUN"] = "true"
 week.main()
 os.environ.pop("DRY_RUN")
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
-check("week: the second round asks only for what's missing", needs == [5, 4])
+check("week: a spare is counted once", needs == [5])
 week.propose, week.vet, week.waiting_topics, week.collect, week.existing_issues = real_prop, real_vet, real_wait, real_coll, real_ei
 brief_ok = {"existing_pages": [{"url": "https://x.y/page"}]}
 real_ra, real_eb2, real_eg2, real_bm, real_mk, real_lc, real_pn = week.roles.ask, editor.brief, editor.gate1, editor.brief_md, editor.marker, week.lab_check, week.panel
