@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-03T00:09:54Z",
+ "updated": "2026-11-03T06:06:43Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52654",
+    "kind": "Review",
+    "title": "[chore][exporter/azuredataexplorer] Add tanmaya-panda1 as code owner",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52654",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
     "kind": "Assigned",
