@@ -1,0 +1,10 @@
+{
+ "run": "41644475630",
+ "issue": 115,
+ "title": "Where Fluent Bit logs go when the destination stops accepting them",
+ "model": "claude-sonnet-5-5",
+ "status": "failed",
+ "attempts": 0,
+ "minutes": 25.3,
+ "lab_usd": 2.2445
+}
