@@ -70,7 +70,7 @@ def gather(needed, mine, ideas, now):
         else:
             done += [(i["closed"], card(word, i["title"], i["url"])) for i in got]
     return {"needs": review + must, "maybe": might, "working": work,
-            "next": [card("Topic idea", i) for i in dict.fromkeys(ideas)],
+            "next": [card("Up next", i) for i in dict.fromkeys(ideas)],
             "done": [row for _, row in sorted(done, key=lambda x: x[0], reverse=True)]}
 
 def summary(rows, spent, limit, now):

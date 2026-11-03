@@ -587,6 +587,19 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
             return {"decision": "stop", "reasons": reasons, "post": post, "report": report, "card": card}
     return {"decision": verdict, "reasons": reasons, "post": post, "report": report, "card": card}
 
+def record_trial(res, topic):
+    """One record per lab, for the model trial. The Editor's score is joined later from the review saved under the same run."""
+    import analytics
+    try:
+        analytics.ensure_branch()
+        path = f"analytics/trial-{res['run_id']}.json"
+        _, sha = analytics.read_file(path)
+        analytics.write_file(path, json.dumps({"run": res["run_id"], "issue": res.get("issue"), "title": topic.get("title"), "model": llm.claude_model("write"),
+                                               "status": res["status"], "attempts": res.get("attempts"), "minutes": res.get("minutes"),
+                                               "lab_usd": res.get("usd")}, indent=1), sha, "analytics: model trial")
+    except Exception as e:
+        llm.warn(f"trial not recorded: {str(e)[:300]}")
+
 def record_review(slug, gate, brief):
     """Keep every gate result for evaluation, on the analytics branch, so reviews never touch a published file."""
     import analytics
@@ -836,6 +849,8 @@ def main():
     res = json.loads(rf.read_text())
     budget.add_lab(res)
     topic = json.loads((OUT / "topic.json").read_text()) if (OUT / "topic.json").exists() else {}
+    if res["status"] != "dry_run" and budget.in_pipeline():
+        record_trial(res, topic)
     if res["status"] == "reproduced_and_fixed":
         try:
             open_pr(issue_no, res, topic)

@@ -15,7 +15,7 @@ only the AWS credentials and lab variables, as the runner's uid, with no access 
 files or GitHub tokens. The model keys stay in this orchestrator process.
 Everything the draft job needs is written to out/.  `lab.py --destroy-only` is the safety-net step.
 """
-import html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time
+import html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time, urllib.error, urllib.request
 from radar import HOME_REPO, LAB_LIMITS, call, gh, used_sources
 import check_plan, llm
 
@@ -314,6 +314,29 @@ def preflight(lab, body=""):
             if path in ("reproduce.sh", "fix.sh") and waited > MAX_SCRIPT_S:
                 errs.append(f"{path}: its sleeps add up to {waited}s, over the {MAX_SCRIPT_S}s limit")
     return errs
+
+def merge_lab(old, new):
+    """A repair returns only the files it changed. Rewriting a whole lab was the biggest cost of a failed attempt."""
+    changed = {str(f.get("path")): f for f in new.get("files") or []}
+    kept = [f for f in old.get("files") or [] if str(f.get("path")) not in changed]
+    return {**old, **new, "files": kept + list(changed.values())}
+
+def ready_check(needs_splunk):
+    """Free API calls before any model call. If the lab can't start, stopping here costs nothing.
+    Returns what's wrong, or "". Only a clear refusal stops a lab, so a slow network doesn't cost a run."""
+    if not os.environ.get("AWS_ACCESS_KEY_ID") and not os.environ.get("AWS_ROLE_ARN") and not DRY:
+        return "the lab has no AWS credentials"
+    if needs_splunk and os.environ.get("SPLUNK_API_TOKEN"):
+        url = f"https://api.{os.environ.get('SPLUNK_REALM')}.signalfx.com/v2/metric?limit=1"
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"X-SF-Token": os.environ["SPLUNK_API_TOKEN"]}), timeout=20):
+                pass
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                return f"Splunk refused the API token (HTTP {e.code})"
+        except OSError as e:
+            print(f"::warning title=lab::Splunk check skipped: {' '.join(str(e).split())[:200]}")
+    return ""
 
 def _clear(where, keep=(".terraform", ".home")):
     if where.exists():
@@ -628,6 +651,10 @@ def main():
                 os.environ.get(k) for k in SPLUNK_VARS):
             raise RuntimeError("this topic monitors with Splunk Observability Cloud, but SPLUNK_REALM, "
                                "SPLUNK_ACCESS_TOKEN and SPLUNK_API_TOKEN are not all saved for the aws-lab environment")
+        not_ready = ready_check(bool(re.search(r"(?i)splunk", f"{issue['title']} {issue.get('body')}")))
+        if not_ready:                               # free checks first, so a lab that can't start costs nothing
+            result["last_failure"] = {"step": "ready check (no models or AWS used)", "output": not_ready}
+            raise RuntimeError(not_ready)
         import editor
         refused = editor.lab_refusal(issue.get("body"))
         if refused:                                 # before any model or AWS money is spent
@@ -661,10 +688,10 @@ def main():
             problems = preflight(lab, issue.get("body") or "")
             if not problems:
                 break
-            lab = as_lab(llm.claude_json("You are an AWS container engineer fixing your lab before it runs.",
-                                         "Pre-flight found these problems. Fix each one and return the full lab.\n\n"
+            lab = merge_lab(lab, as_lab(llm.claude_json("You are an AWS container engineer fixing your lab before it runs.",
+                                         "Pre-flight found these problems. Fix each one. Return summary, expected and only the files you changed.\n\n"
                                          + "\n".join(problems) + f"\n\nLAB RULES:\n{rules}\n\nYOUR LAB:\n{json.dumps(lab)}\n\n{context}",
-                                         LAB_SCHEMA, tool="submit_lab"))
+                                         LAB_SCHEMA, tool="submit_lab")))
         problems = preflight(lab, issue.get("body") or "")
         result.update(review=review, summary=lab.get("summary", ""), expected=lab.get("expected", ""))
         save(result, lab)
@@ -694,14 +721,15 @@ def main():
             result["last_failure"] = {"step": failed, "output": tail(redact(out), 3000)}
             if attempt == MAX_ATTEMPTS or remaining(WORK_END) < 10 * 60 or failed == "deadline":
                 break
+            previous = lab
             lab = llm.claude_json(
                 "You are an AWS container engineer fixing your own lab after a failed run.",
                 f"Attempt {attempt} of {MAX_ATTEMPTS} failed at step: {failed}.\n\nEVIDENCE (output tail):\n"
                 f"{tail(redact(out), 8000)}\n\nFix the lab so it runs and genuinely does what the topic needs (reproduce "
-                f"the problem, or for a build topic, show the before-state and prove the build works). Return the full "
-                f"lab.\n\nLAB RULES:\n{rules}\n\n"
+                f"the problem, or for a build topic, show the before-state and prove the build works). Return summary, "
+                f"expected and only the files you changed. Every other file stays as it is.\n\nLAB RULES:\n{rules}\n\n"
                 f"YOUR LAB:\n{json.dumps(lab)}\n\n{context}", LAB_SCHEMA, tool="submit_lab")
-            lab = as_lab(lab)
+            lab = merge_lab(previous, as_lab(lab))
             result.update(summary=lab.get("summary", ""), expected=lab.get("expected", ""))
     except Exception as e:
         print(f"error: {type(e).__name__}: {e}")

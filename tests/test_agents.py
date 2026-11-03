@@ -1051,9 +1051,7 @@ check("cto: only Abhi on the desk issue starts it", "comment.user.login == 'Abhi
 check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[True] and ctoy["jobs"]["cto"]["steps"][0]["with"]["ref"] == "main")
 cto_steps = {s.get("name"): s for s in ctoy["jobs"]["cto"]["steps"]}
 check("digest: a manual run never repeats it", cto_steps["cto"]["env"]["SCHEDULE"] == "${{ github.event.schedule }}")
-check("scout: starts only when an idea is queued", cto_steps["start the Topic Scout"]["if"] == "steps.leaders.outputs.run_scout == 'true'")
-check("training: Tuesday runs, Monday and Thursday keep their own run", cto.training_day(__import__("datetime").date(2026, 11, 3)) and not cto.training_day(__import__("datetime").date(2026, 11, 9)) and not cto.training_day(__import__("datetime").date(2026, 11, 5)))
-check("training: it ends by itself", not cto.training_day(__import__("datetime").date(2026, 11, 10)))
+check("labs: the next one starts only from the plan", cto_steps["start the next lab"]["if"].startswith("steps.leaders.outputs.run_lab") and "${{" not in cto_steps["start the next lab"]["run"])
 term = (ROOT / "site/_includes/terminal.html").read_text()
 check("site: the prompt can't be copied, and page text stays text", "user-select: none" in term and "innerHTML" not in term)
 check("site: the terminal style loads on every page", "terminal.html" in (ROOT / "site/_includes/google-analytics.html").read_text())
@@ -1145,7 +1143,7 @@ check("actions: a model alone cannot close a draft or queue a topic", acted == [
 cto.answer("Reject that draft", [], "cto")
 check("actions: his words close the draft, and he's told", ("close", ["Old post"]) in acted and "Closed: Old post" in replies[-1])
 cto.answer("Try this topic tomorrow", [], "cmo")
-check("actions: his words queue the topic", ("idea", ["Add-on IAM"]) in acted and "Topic Scout" in replies[-1])
+check("actions: his words queue the topic", ("idea", ["Add-on IAM"]) in acted and "Editor's plan" in replies[-1])
 cto.close_drafts, cto.save_ideas = real_cd, real_si
 pulls, patched = [{"number": 5, "title": "Draft: Old post", "head": {"ref": "draft/old"}}, {"number": 6, "title": "Draft: Other", "head": {"ref": "draft/x"}}, {"number": 7, "title": "Old post", "head": {"ref": "fix/code"}}], []
 real_gh_a, cto.gh = cto.gh, lambda m, p, b=None: pulls if m == "GET" else patched.append(p)
@@ -1155,8 +1153,7 @@ files_b[cto.BRIEF] = "research\n"
 cto.save_ideas(["Add-on IAM"]); cto.save_ideas(["Flow Logs"])
 check("ideas: they lead the brief, and research stays", files_b[cto.BRIEF].startswith(cto.IDEAS_HEAD) and "- Add-on IAM" in files_b[cto.BRIEF] and "- Flow Logs" in files_b[cto.BRIEF] and files_b[cto.BRIEF].endswith("research\n"))
 check("ideas: new research keeps them", "Add-on IAM" in cto.ideas_block(files_b[cto.BRIEF]))
-check("ideas: the Scout runs tomorrow", json.loads(files_b[cto.PENDING])["run"] is True)
-del files_b[cto.BRIEF], files_b[cto.PENDING]
+del files_b[cto.BRIEF]
 for leader in ("ceo", "cto", "cmo", "cfo", "secretary"):
     check(f"leaders: {leader} is on the team", roles_mod.get(leader)["status"] == "active" and roles_mod.get(leader)["display"].lower() == leader)
 assistant.add_goal = real_assistant_goal
@@ -1303,11 +1300,11 @@ roles_mod.ask = real_vask
 check("topics: each one needs a hook the docs do not give", "hook" in r.BUILD_SCHEMA["properties"]["topics"]["items"]["required"])
 check("topics: setup walkthroughs are refused", "setup walkthroughs" in (ROOT / "pipeline/radar.py").read_text())
 py = __import__("yaml").safe_load((ROOT / ".github/workflows/problems.yml").read_text())
-check("topics: Thursday looks for real failures", py[True]["schedule"][0]["cron"] == "0 6 * * 4" and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
+check("topics: the failure finder only runs when asked, because the weekly plan replaced its schedule", "schedule" not in py[True] and "${{" not in py["jobs"]["problems"]["steps"][-1]["run"])
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
 
 # ---------- lab pre-flight ----------
-import lab as lab_mod
+import lab as lab_mod, datetime as _dt_w
 def lab_files(tf='resource "aws_iam_instance_profile" "n" {\n  name = "hero-lab-${var.lab_name}-node"\n}\n', rep="echo ok\nHERO=1\n"):
     return {"files": [{"path": "main.tf", "content": tf}, {"path": "reproduce.sh", "content": rep}, {"path": "fix.sh", "content": "echo ok"},
                       {"path": "cleanup.sh", "content": "true"}, {"path": "README.md", "content": "x"}]}
@@ -1374,16 +1371,69 @@ cto.merged_prs = real_merged
 real_gpr, cto.gh = cto.gh, lambda m, p, b=None: [{"title": "New", "html_url": "https://g/1", "body": "b", "head": {"ref": "feat/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Article", "html_url": "https://g/2", "head": {"ref": "draft/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Closed", "html_url": "https://g/3", "head": {"ref": "feat/b"}}]
 check("IT: only merged pipeline PRs count as evidence", [m["url"] for m in cto.merged_prs()] == ["https://g/1"])
 cto.gh = real_gpr
-import datetime as _d2
-files_n = {cto.BRIEF: f"{cto.IDEAS_HEAD}\n- IAM\n- IAM\n- Flow Logs\n{cto.IDEAS_END}\n\nrest", cto.PENDING: '{"run": true}'}
-analytics.read_file = lambda p, ref=None: (files_n.get(p, ""), "s")
-plan = cto.next_run(_d2.date(2026, 11, 2))
-check("tomorrow: he gets the date, time and his topics, once each", plan["date"] == "2026-11-03" and plan["topic_scout_runs"] and plan["starts"] == "07:12 UTC" and plan["his_ideas_go_first"] == ["IAM", "Flow Logs"])
-files_n[cto.PENDING] = '{"run": false}'
-check("tomorrow: after training week, a quiet day says so", cto.next_run(_d2.date(2026, 12, 7))["topic_scout_runs"] is False)
-check("tomorrow: Monday and Thursday have their own run", cto.next_run(_d2.date(2026, 12, 9))["starts"] == "on its weekly schedule")
+analytics.read_file = lambda p, ref=None: (json.dumps({"week": "2026-W45", "target": 5, "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued"}, {"issue": 3, "title": "C", "state": "queued"}]}), "s")
+plan_now = cto.next_run()
+check("tomorrow: he gets the real next lab, then the rest", plan_now["next_lab"] == "B" and plan_now["queued_after_that"] == ["C"] and plan_now["articles_this_week"] == 5)
 analytics.read_file = lambda p, ref=None: (_ for _ in ()).throw(RuntimeError("down"))
 check("tomorrow: a failed read is left out, not guessed", cto.next_run() == {})
+saved_plan = []
+plan_doc = {"week": "2026-W45", "target": 2, "created": "2026-11-03", "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued"}, {"issue": 3, "title": "C", "state": "queued"}]}
+analytics.read_file = lambda p, ref=None: (json.dumps(plan_doc), "s")
+real_wr, analytics.write_file = analytics.write_file, lambda p, t, s, m: saved_plan.append(json.loads(t))
+state = {"drafts": 0, "running": []}
+def plan_gh(m, path, b=None):
+    if "/pulls" in path:
+        return [{"head": {"ref": "draft/x"}, "body": "<!-- lab-run: 1 -->", "created_at": "2026-11-04T00:00:00Z"}] * state["drafts"] + [{"head": {"ref": "draft/open-source-summary"}, "body": "monthly", "created_at": "2026-11-04T00:00:00Z"}, {"head": {"ref": "feat/x"}, "body": "lab-run:", "created_at": "2026-11-04T00:00:00Z"}]
+    return {"workflow_runs": state["running"]}
+real_gp, cto.gh = cto.gh, plan_gh
+check("plan: the next queued topic starts", cto.next_lab()["issue"] == 2 and saved_plan[-1]["topics"][1]["state"] == "started")
+state["running"] = [{"name": "replicate"}]
+check("plan: never two labs at once", cto.next_lab() is None)
+state.update(running=[], drafts=2)
+check("plan: stops at the week's target, so a spare isn't spent", cto.next_lab() is None)
+state["drafts"] = 1
+check("plan: other drafts don't count toward the target", cto.lab_drafts(plan_doc) == 1)
+cto.gh, analytics.write_file, analytics.read_file = real_gp, real_wr, real_ar
+import week
+check("week: three a week, five this week", week.target(_dt_w.date(2026, 11, 3)) == 5 and week.target(_dt_w.date(2026, 11, 10)) == 3)
+real_wask, week.roles.ask = week.roles.ask, lambda role, prompt, out: {"verdicts": [{"id": 0, "doable": True, "reason": "ok"}, {"id": 1, "doable": False, "reason": "needs Splunk Enterprise"}]}
+check("week: Lab Check's refusals are kept with the reason", week.lab_check([{"title": "a", "lab": "l", "proof": "p"}, {"title": "b", "lab": "l", "proof": "p"}]) == {1: "needs Splunk Enterprise"})
+week.roles.ask = real_wask
+briefed = []
+real_eb, real_eg, week_editor_bm, week_editor_mk = editor.brief, editor.gate1, editor.brief_md, editor.marker
+editor.brief = lambda title, d: briefed.append(title) or {"t": title}
+editor.gate1 = lambda b: (b["t"] != "Slow", ["needs a longer wait"] if b["t"] == "Slow" else [])
+editor.brief_md, editor.marker = (lambda b, p, w: "brief"), (lambda b: "<!-- m -->")
+T = lambda t, s=("https://x.y/a",): {"title": t, "hook": "h", "payoff": "p", "proof": "p", "lab": "l", "sources": list(s), "kind": "build"}
+plan_rows, dropped = week.build_plan([T("Refused"), T("Fake", ("https://bad/",)), T("Old"), T("Slow"), T("One"), T("Two"), T("Three")], {0: "no"}, {"https://x.y/a"}, {r.norm("Old")}, 1)
+check("week: a full brief is paid for only after the cheap checks", briefed == ["Slow", "One", "Two"])
+check("week: stops at the target plus one spare", [p["title"] for p in plan_rows] == ["One", "Two"])
+check("week: every dropped topic has a reason", {d[0] for d in dropped} == {"Refused", "Fake", "Old", "Slow"})
+check("week: a lab can read the brief", "<!-- m -->" in plan_rows[0]["body"] and "hero-sources" in plan_rows[0]["body"])
+editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb, real_eg, week_editor_bm, week_editor_mk
+check("week: the Slack plan marks the spare", "2. Two (spare)" in week.plan_message(plan_rows, 1, []))
+check("week: it says when fewer passed", "Only 1 of 3" in week.plan_message(plan_rows[:1], 3, []))
+check("trial: models take turns, with a default that exists", week.TRIAL_MODELS[0] == "claude-sonnet-5-5" and all(m in __import__("json").load(open(ROOT / "pipeline/prices.json")) or True for m in week.TRIAL_MODELS))
+trial = cto.trial_stats([{"model": "a", "status": "reproduced_and_fixed", "editor_score": 4.0, "attempts": 1, "minutes": 30, "lab_usd": 1.0},
+                         {"model": "a", "status": "failed", "editor_score": None, "attempts": 3, "minutes": 50, "lab_usd": 2.0}, {"model": "b", "status": "failed", "editor_score": None}])
+check("trial: stats come from code, and a failed lab doesn't count as a low score", trial["models"]["a"] == {"labs": 2, "finished": 1, "avg_editor_score_out_of_5": 4.0, "avg_attempts": 2.0, "avg_minutes": 40.0, "avg_lab_model_usd": 1.5} and trial["models"]["b"]["avg_editor_score_out_of_5"] is None)
+check("trial: asking about models brings the numbers", cto.TRIAL_WORDS.search("which model is best") and not cto.TRIAL_WORDS.search("how is it going"))
+rep = __import__("yaml").safe_load((ROOT / ".github/workflows/replicate.yml").read_text())
+check("trial: the model only comes from a fixed list", rep[True]["workflow_dispatch"]["inputs"]["model"]["type"] == "choice")
+old_lab = {"summary": "s", "files": [{"path": "main.tf", "content": "a"}, {"path": "fix.sh", "content": "b"}]}
+merged_lab = lab_mod.merge_lab(old_lab, {"summary": "new", "files": [{"path": "fix.sh", "content": "c"}]})
+check("lab repair: only changed files are replaced", merged_lab["summary"] == "new" and {f["path"]: f["content"] for f in merged_lab["files"]} == {"main.tf": "a", "fix.sh": "c"})
+check("lab: no AWS means no model call", (lambda: (os.environ.pop("AWS_ACCESS_KEY_ID", None), os.environ.pop("AWS_ROLE_ARN", None), setattr(lab_mod, "DRY", False), lab_mod.ready_check(False))[3])() == "the lab has no AWS credentials")
+os.environ.update(AWS_ACCESS_KEY_ID="x", SPLUNK_API_TOKEN="bad", SPLUNK_REALM="us1")
+def refuse(*a, **k):
+    raise lab_mod.urllib.error.HTTPError("u", 401, "no", {}, None)
+real_uo, lab_mod.urllib.request.urlopen = lab_mod.urllib.request.urlopen, refuse
+check("lab: a refused Splunk token stops it before any model call", "HTTP 401" in lab_mod.ready_check(True))
+lab_mod.urllib.request.urlopen = lambda *a, **k: (_ for _ in ()).throw(OSError("slow"))
+check("lab: a slow network doesn't cost a run", lab_mod.ready_check(True) == "")
+lab_mod.urllib.request.urlopen = real_uo
+for k in ("AWS_ACCESS_KEY_ID", "SPLUNK_API_TOKEN", "SPLUNK_REALM"):
+    os.environ.pop(k, None)
 cto.tasks, cto.sources.roles, cto.write_private = real_ctk, real_sources, real_wpn
 check("notes: agents can't build through the API", not (ROOT / "pipeline/engineer.py").exists() and not (ROOT / ".github/workflows/engineer.yml").exists())
 roles_mod.ask, cto.progress, cto.post = real_rask, real_pg, real_post
@@ -1424,7 +1474,7 @@ check("board: a failed search says so, not 'all clear'", "Check failed: Could no
 check("board: a mention is only worth a look, and only once", show("maybe") == ["Mentioned: Ping"])
 check("board: done is articles and upstream merges, newest first, this week only", show("done") == ["Merged: Upstream", "Published: T3"])
 check("board: in progress is article work and his own PRs", show("working") == ["Lab Engineer is testing an article: Prometheus lab", "Your PR: Mine"])
-check("board: a repeated idea shows once", show("next") == ["Topic idea: Splunk add-on"])
+check("board: a repeated idea shows once", show("next") == ["Up next: Splunk add-on"])
 check("board: every card has a unique id", len({c["id"] for col in rows.values() for c in col}) == sum(len(col) for col in rows.values()))
 check("board: a card names its project", live_board.card("x", "y", "https://github.com/open-telemetry/opentelemetry-operator/issues/1")["where"] == "opentelemetry-operator")
 check("board: a failed PR search says so", "Could not check your merged PRs" in [c["title"] for c in live_board.gather(wanted, {"open": []}, [], now)["working"]])

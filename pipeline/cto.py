@@ -29,12 +29,12 @@ CONSULT = ("ceo", "cto", "cmo", "cfo", "oss_scout")
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
 NOTES_WORDS = re.compile(r"(?i)\b(feature requests?|build notes|my notes|backlog)\b")
 AUDIT_DAYS = 30
+TRIAL_WORDS = re.compile(r"(?i)\b(models?|stats?|experiment|trial)\b")
 DONE_WORDS = re.compile(r"(?i)\b(done|finished|complete|completed|remove|close|delete|drop)\b")
 IDEA_WORDS = re.compile(r"(?i)\b(topic|idea|try|pick|write about|tomorrow)\b")
 IDEAS_HEAD, IDEAS_END = "Abhi's own topic ideas. Put these first:", "End of his ideas."
-PENDING = "analytics/ideas-pending.json"
+PLAN = "analytics/week-plan.json"
 BOARD_ISSUE = "/repos/Abhimanyu9988/oss-scout/issues/1"
-TRAINING_UNTIL = "2026-11-09"                  # one article a day while Abhi trains the team. Then Monday and Thursday only
 STATED_GOAL = re.compile(r"(?i)\b(goals?|targets?|aim|want|objective)\b")
 BRIEF = "analytics/market-brief.md"
 MAX_REPLIES = 5                                # each poll. CTO replies run past the monthly limit, so this bounds them
@@ -147,21 +147,61 @@ def link_exists(url):
     except Exception:
         return False
 
-def next_run(today=None):
-    """What really runs next, read from the schedule and his queue. If the queue can't be read, this is left out."""
-    day = (today or datetime.date.today()) + datetime.timedelta(days=1)
+def read_plan():
+    text, sha = analytics.read_file(PLAN)
+    return (json.loads(text) if text.strip() else {}), sha
+
+def lab_drafts(plan):
+    """Article PRs a lab has made since the plan started, merged or not. Other drafts, like the monthly summary, don't count."""
+    pulls = gh("GET", f"/repos/{HOME_REPO}/pulls?state=all&sort=created&direction=desc&per_page=50") or []
+    return sum(1 for p in pulls if p["head"]["ref"].startswith("draft/") and "lab-run:" in str(p.get("body"))
+               and p.get("created_at", "") >= plan.get("created", "9"))
+
+def trial_rows():
+    """Each lab's record, with the Editor's average score when it reached review."""
+    names = [f["name"] for f in gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []]
+    rows = []
+    for name in (n for n in names if re.fullmatch(r"trial-\d+\.json", n)):
+        row = json.loads(analytics.read_file(f"analytics/{name}")[0])
+        review = next((n for n in names if n.startswith("review-") and n.endswith(f"-{row['run']}.json")), None)
+        card = (json.loads(analytics.read_file(f"analytics/{review}")[0]).get("scorecard") or {}) if review else {}
+        marks = [v.get("score") if isinstance(v, dict) else v for v in (card.get("scores") or {}).values()]
+        marks = [m for m in marks if isinstance(m, (int, float))]
+        rows.append({**row, "editor_score": sum(marks) / len(marks) if marks else None})
+    return rows
+
+def trial_stats(rows):
+    """Computed by code, per model, so a leader can't round a result up. Averages leave out labs with nothing to measure."""
+    out = {}
+    for model in sorted({r.get("model") for r in rows}):
+        mine = [r for r in rows if r.get("model") == model]
+        mean = lambda key: (lambda got: round(sum(got) / len(got), 2) if got else None)([r[key] for r in mine if r.get(key) is not None])
+        out[model] = {"labs": len(mine), "finished": sum(r.get("status") == "reproduced_and_fixed" for r in mine), "avg_editor_score_out_of_5": mean("editor_score"),
+                      "avg_attempts": mean("attempts"), "avg_minutes": mean("minutes"), "avg_lab_model_usd": mean("lab_usd")}
+    return {"models": out, "note": "A small sample, with a different topic for each lab. Don't call a winner from a few labs."}
+
+def next_lab():
+    """One lab a day from the plan, until the week's target is met. A spare only runs if a lab failed."""
+    plan, sha = read_plan()
+    queued = [t for t in plan.get("topics") or [] if t.get("state") == "queued"]
+    running = (gh("GET", f"/repos/{HOME_REPO}/actions/runs?status=in_progress&per_page=30") or {}).get("workflow_runs", [])
+    if not queued or lab_drafts(plan) >= plan.get("target", 0) or any(r.get("name") == "replicate" for r in running):
+        return None
+    queued[0]["state"] = "started"
+    analytics.write_file(PLAN, json.dumps(plan, indent=1), sha, "week: next lab")
+    return queued[0]
+
+def next_run():
+    """What is really planned, read from the week's plan. If it can't be read, this is left out rather than guessed."""
     try:
-        brief, _ = analytics.read_file(BRIEF)
-        queued, _ = analytics.read_file(PENDING)
-        ideas = list(dict.fromkeys(l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")))
-        idea = bool(queued.strip() and json.loads(queued).get("run"))
+        plan, _ = read_plan()
+        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued"]
+        return {"week": plan.get("week"), "articles_this_week": plan.get("target"), "next_lab": queued[0] if queued else "nothing queued",
+                "next_lab_starts": "07:12 UTC tomorrow" if queued else "the next plan, on Monday at 06:00 UTC", "queued_after_that": queued[1:],
+                "note": "One lab a day. A lab can still fail, and an article needs your approval."}
     except Exception as e:
-        print(f"::warning title=cto::queue not read: {' '.join(str(e).split())[:200]}")
+        print(f"::warning title=cto::plan not read: {' '.join(str(e).split())[:200]}")
         return {}
-    own = day.weekday() in (0, 3)              # Monday and Thursday have their own runs, at their own times
-    daily = idea or training_day(day)
-    return {"date": day.isoformat(), "topic_scout_runs": own or daily, "starts": "07:12 UTC" if daily else ("on its weekly schedule" if own else "no run planned"),
-            "his_ideas_go_first": ideas, "note": "The Topic Scout and panel choose after this run. A topic only reaches a lab if it clears the bar."}
 
 def progress():
     """Facts from GitHub and the spend record. A failed source is left out by the caller, never guessed."""
@@ -388,14 +428,12 @@ def ideas_block(text):
     return text[:text.index(IDEAS_END) + len(IDEAS_END)] + "\n\n" if text.startswith(IDEAS_HEAD) and IDEAS_END in text else ""
 
 def save_ideas(ideas):
-    """Queues his topics at the top of the brief the Topic Scout reads, and starts a Scout run the next morning."""
+    """Queues his topics at the top of the brief the Editor reads when it plans the week."""
     old, sha = analytics.read_file(BRIEF)
     kept = ideas_block(old)
     rows = list(dict.fromkeys([l for l in kept.splitlines() if l.startswith("- ")] + [f"- {i}" for i in ideas]))
     head = "\n".join([IDEAS_HEAD, *rows, IDEAS_END]) + "\n\n"
     analytics.write_file(BRIEF, head + old[len(kept):], sha, "market: Abhi's topic ideas")
-    _, psha = analytics.read_file(PENDING)
-    analytics.write_file(PENDING, json.dumps({"run": True}), psha, "market: start the Topic Scout tomorrow")
 
 def close_drafts(titles):
     """Only drafts open right now, by exact title. Closing can be undone, and GitHub keeps the branch."""
@@ -455,6 +493,11 @@ def ask_role(role, text, talk, p, heard=None):
     team, (brief, _) = roles.data("cto"), analytics.read_file(BRIEF)
     extra = f"\n\nGITHUB:\n{json.dumps(needed())[:9000]}\n\nBOARD:\n{board()[:3000]}" if role == "oss_scout" else ""
     extra += f"\n\nTEAM ANSWERS:\n{json.dumps(heard)[:5000]}" if heard else ""
+    if TRIAL_WORDS.search(text):
+        try:
+            extra += f"\n\nMODEL TRIAL:\n{json.dumps(trial_stats(trial_rows()))[:3000]}"
+        except Exception as e:
+            print(f"::warning title=cto::trial not read: {' '.join(str(e).split())[:200]}")
     return roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
                            f"{json.dumps({**p, 'team': roster(p)})[:6000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
                            f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
@@ -482,7 +525,7 @@ def answer(text, talk, role="secretary"):
         notes.append(f"Marked done: {', '.join(finished)}." if finished else "I found no open task with that title.")
     if got.get("ideas") and IDEA_WORDS.search(text):
         save_ideas(got["ideas"])
-        notes.append("Saved for the Topic Scout. It runs tomorrow morning and starts a lab if a topic clears the bar.")
+        notes.append("Saved for the Editor's plan on Monday, ahead of other topics.")
     bad = len(got.get("urls") or []) - len(good)
     notes += [f"{bad} link(s) could not be confirmed, so I left them out."] if bad else []
     links = "\n".join(f"- {u}" for u in good)
@@ -526,14 +569,10 @@ def refresh_board():
     try:
         brief, _ = analytics.read_file(BRIEF)
         ideas = [l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")]
-        live_board.refresh(needed(), own_prs(), ideas, budget.spent()[0], budget.limit())
+        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued"]
+        live_board.refresh(needed(), own_prs(), planned + ideas, budget.spent()[0], budget.limit())
     except Exception as e:
         print(f"::warning title=board::not refreshed: {' '.join(str(e).split())[:200]}")
-
-def training_day(today=None):
-    """Monday and Thursday already have their own runs."""
-    day = today or datetime.date.today()
-    return day.isoformat() <= TRAINING_UNTIL and day.weekday() not in (0, 3)
 
 def main():
     if os.environ.get("POLL") == "true":
@@ -551,13 +590,13 @@ def main():
     scheduled = os.environ.get("SCHEDULE") == "12 7 * * *"   # a manual run refreshes the page and never repeats the digest
     weekly = (scheduled and datetime.date.today().weekday() == 0) or os.environ.get("DIGEST") == "true"
     if scheduled:
-        queued, qsha = analytics.read_file(PENDING)
-        idea = bool(queued.strip() and json.loads(queued).get("run"))
-        if idea:
-            analytics.write_file(PENDING, json.dumps({"run": False}), qsha, "market: Topic Scout started")
-        if (idea or training_day()) and os.environ.get("GITHUB_OUTPUT"):
-            with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-                f.write("run_scout=true\n")
+        try:
+            lab = next_lab()
+            if lab and os.environ.get("GITHUB_OUTPUT"):
+                with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+                    f.write(f"run_lab={int(lab['issue'])}\nrun_model={lab.get('model', '')}\n")
+        except Exception as e:
+            print(f"::warning title=cto::next lab not started: {' '.join(str(e).split())[:200]}")
     if scheduled:
         try:
             closed = audit_notes()

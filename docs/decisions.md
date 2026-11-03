@@ -167,3 +167,17 @@ The rolling-deploy lab failed three times, and each cause could have been found 
 Pre-flight now checks for these with no AWS, and gives the lab up to two rewrites. The topic gate rejects contracts that need an
 hour's wait. Lab rules also cover Splunk's series lag, which showed 207 new series on one rollout and zero on the other four.
 This can't promise success, because some failures only appear on real infrastructure. It stops the failures we can predict.
+
+## 2026-11-03: One weekly plan replaces daily topic runs
+
+Abhi wants three articles a week, five this week, from one planning step. Topic runs cost about $0.80 each. The Editor now proposes
+the week in one call, Lab Check reviews all topics in one call, and code applies the rules. Only survivors get the searched brief
+and Evidence Contract, so review quality stays. `cto.py` starts one lab a day from the plan until the target is met. One spare
+covers a failed lab. The Thursday finder and training-week runs are off, and `radar.py` remains as a library.
+
+A lab's model cost was about $1.70, of which $1.40 was output. Prompt caching only discounts input, so it would save little.
+Repairs now return only changed files. Free API checks run before any model call, so a lab that can't start costs nothing.
+
+Abhi wants quality kept and models compared with real numbers. `week.py` rotates Sonnet, Opus and Haiku as the model that writes each
+lab and article. The reviewers and the Editor's scoring stay the same, so the scores compare like with like. Each lab saves a trial
+record, and code works out the stats by model. Every article still needs the same gates and his approval.

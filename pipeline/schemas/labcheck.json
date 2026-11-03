@@ -1,0 +1,30 @@
+{
+ "type": "object",
+ "required": [
+  "verdicts"
+ ],
+ "properties": {
+  "verdicts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "doable",
+     "reason"
+    ],
+    "properties": {
+     "id": {
+      "type": "integer"
+     },
+     "doable": {
+      "type": "boolean"
+     },
+     "reason": {
+      "type": "string"
+     }
+    }
+   }
+  }
+ }
+}

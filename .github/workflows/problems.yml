@@ -1,7 +1,5 @@
 name: problems
 on:
-  schedule:
-    - cron: "0 6 * * 4"     # Thursday: real failures people hit, alongside Monday's topics
   workflow_dispatch:
     inputs:
       dry_run:
