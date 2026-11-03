@@ -1,0 +1,264 @@
+{
+ "mode": "warn",
+ "decision": "stop",
+ "reasons": [
+  "the evidence checks did not pass: measurement hpa_target_type: no_value",
+  "technical score 3 is below 4",
+  "editorial score 3 is below 5",
+  "marketing score 2 is below 5",
+  "technical: The evidence check failed. The headline measurement hpa_target_type came back with no value, so the claim 'KEDA 2.21.0 created an HPA target type of Value' has no verified measurement behind it. Fix: Change the HERO_MEASURE output in reproduce.sh and fix.sh so the scanner reads hpa_target_type for both configs, then rerun. Until then, quote the raw `kubectl get hpa -o jsonpath` lines with their log line numbers in the post.",
+  "technical: The 'verified workaround' changed two settings at once: scalingModifiers and a new HPA name. The 5-replica result can't be credited to scalingModifiers alone. The same-name run, described as reaching 5 at t=293s with FailedGetExternalMetric, isn't in the shown evidence. Fix: Add a control run with the fresh HPA name but no scalingModifiers. It should still show Value and 10 replicas, which credits the fix to scalingModifiers. Publish the same-name run's log with line numbers, or drop the caveat's numbers.",
+  "technical: The scale-up timeline is unexplained and doesn't match the stated arithmetic. With Value, the HPA should compute ceil(1\u00d710/2)=5, but the log shows 4 at 48s and 8 at 107s. At t=166s the HPA wanted 8 while the Deployment had 10. The issue reports reaching max in under a minute, and the post never says why this lab took 166s. Fix: Capture the HPA's events and conditions (`kubectl describe hpa`, ScalingLimited) inside the window. Then explain the pace with HPA scale-up policy, KEDA pollingInterval and the 30s query duration (the issue used 10s), or say plainly that it is unexplained. Don't let readers treat 166s as typical.",
+  "editorial: The brief promised readers a way to check their own HPA. The lab ships check-affected.sh, but the post never mentions it or any by-hand check. Fix: Add a short 'Is your cluster affected?' section with `kubectl get hpa keda-hpa-<name> -n <ns> -o jsonpath='{.spec.metrics[*].external.target}'`, `bash check-affected.sh`, and the AFFECTED/OK output from the run.",
+  "editorial: The post doesn't answer the reader's decision about the fix. It links PR 8327 but doesn't say what it changes (omitted metricType stays Value, explicit AverageValue is honoured, Utilization is rejected). It also doesn't say when scalingModifiers becomes removable, or that removing it renames the metric back. Fix: Add a paragraph: after upgrading to a release that contains PR 8327, keep metricType: AverageValue on the trigger and remove scalingModifiers. Expect the HPA metric name to change back from composite-metric. Say that if metricType is omitted, you still get Value.",
+  "editorial: The repro section asks readers to write their own Terraform provider and variables file before init. That is friction for something that should be one command. Fix: Commit providers.tf and variables.tf (region, lab_name, permissions_boundary with defaults) to the lab, and remove the sentence. Also rename SPLUNK_ACCESS_TOKEN to SPLUNK_INGEST_TOKEN, since that is what it is.",
+  "outside claim without a known source: An upstream fix exists in KEDA PR 8327 with a matching docs PR 1921"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [
+   {
+    "id": "f1",
+    "kind": "weak_control",
+    "severity": "low",
+    "file": "10-reproduce.log",
+    "line": 57,
+    "text": "splunk series with k8s.cluster.name=keda-splunk-ignores-aver-135420 (informational, lag can change it): 0",
+    "why": "a zero before anything sends data may be unable to fail; check it can"
+   }
+  ],
+  "headline": [],
+  "contract": {
+   "passed": false,
+   "results": [
+    {
+     "id": "hpa_target_type",
+     "status": "no_value",
+     "values": 2,
+     "needed": 2,
+     "provenance": "self_reported",
+     "where": "10-reproduce.log:30"
+    },
+    {
+     "id": "seconds_to_max_replicas",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "10-reproduce.log:49"
+    },
+    {
+     "id": "settled_replicas",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "10-reproduce.log:51"
+    },
+    {
+     "id": "expected_replicas",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "10-reproduce.log:54"
+    }
+   ]
+  },
+  "failures": [
+   "measurement hpa_target_type: no_value"
+  ],
+  "passed": false
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "Raw output shows a Value HPA target and 10 replicas settled against an expected 5. This is a credible reproduction of the core bug on KEDA 2.21.0 with k3s.",
+     "The evidence check failed: hpa_target_type came back with no value at 10-reproduce.log:30, so the headline type claim has no verified measurement.",
+     "The workaround run changed scalingModifiers and the HPA name together, so the result can't be credited to scalingModifiers. The same-name run is described but not shown.",
+     "The climb to max (4\u21928\u219210 over 166s, deployment 10 while hpa_desired 8) doesn't match the issue's 1\u21925\u219210 in under a minute, and the post doesn't explain why."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader and the bug are clear, and the post says when Value is legitimate. It also admits k3s rather than EKS.",
+     "The self-check the brief promised is missing from the post, even though check-affected.sh is in the lab.",
+     "It doesn't answer the reader's decision after the fix: PR 8327 keeps Value when metricType is omitted and honours an explicit one. The post never says this or when to remove scalingModifiers.",
+     "The repro needs readers to write their own provider/variables file, and the 300s claim is attributed to 'the lab README' instead of a source."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "The only demand signal is kedacore/keda issue 8297 with 3 reactions and 7 comments. There is no search or traffic data.",
+     "The audience is narrow: KEDA users scaling on Splunk Observability metrics.",
+     "An open fix PR (8327) shortens how long the post stays useful.",
+     "The title matches the issue's wording, which helps people who search GitHub find it."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The evidence check failed. The headline measurement hpa_target_type came back with no value, so the claim 'KEDA 2.21.0 created an HPA target type of Value' has no verified measurement behind it.",
+    "evidence": "EVIDENCE REPORT: hpa_target_type status no_value at 10-reproduce.log:30; failures: [\"measurement hpa_target_type: no_value\"]",
+    "fix": "Change the HERO_MEASURE output in reproduce.sh and fix.sh so the scanner reads hpa_target_type for both configs, then rerun. Until then, quote the raw `kubectl get hpa -o jsonpath` lines with their log line numbers in the post."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The 'verified workaround' changed two settings at once: scalingModifiers and a new HPA name. The 5-replica result can't be credited to scalingModifiers alone. The same-name run, described as reaching 5 at t=293s with FailedGetExternalMetric, isn't in the shown evidence.",
+    "evidence": "\"the clean passing run also used a fresh HPA name and settled at 5 replicas\"; k8s/scaledobject-scalingmodifiers.yaml sets both horizontalPodAutoscalerConfig.name and scalingModifiers",
+    "fix": "Add a control run with the fresh HPA name but no scalingModifiers. It should still show Value and 10 replicas, which credits the fix to scalingModifiers. Publish the same-name run's log with line numbers, or drop the caveat's numbers."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The scale-up timeline is unexplained and doesn't match the stated arithmetic. With Value, the HPA should compute ceil(1\u00d710/2)=5, but the log shows 4 at 48s and 8 at 107s. At t=166s the HPA wanted 8 while the Deployment had 10. The issue reports reaching max in under a minute, and the post never says why this lab took 166s.",
+    "evidence": "timeline[metricType-only] t=48s deployment_replicas=4; t=107s =8; t=166s deployment_replicas=10 hpa_desired=8",
+    "fix": "Capture the HPA's events and conditions (`kubectl describe hpa`, ScalingLimited) inside the window. Then explain the pace with HPA scale-up policy, KEDA pollingInterval and the 30s query duration (the issue used 10s), or say plainly that it is unexplained. Don't let readers treat 166s as typical."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The brief promised readers a way to check their own HPA. The lab ships check-affected.sh, but the post never mentions it or any by-hand check.",
+    "evidence": "BRIEF takeaway: \"and how to check their own HPA\"; the post has no check-affected.sh or jsonpath command",
+    "fix": "Add a short 'Is your cluster affected?' section with `kubectl get hpa keda-hpa-<name> -n <ns> -o jsonpath='{.spec.metrics[*].external.target}'`, `bash check-affected.sh`, and the AFFECTED/OK output from the run."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The post doesn't answer the reader's decision about the fix. It links PR 8327 but doesn't say what it changes (omitted metricType stays Value, explicit AverageValue is honoured, Utilization is rejected). It also doesn't say when scalingModifiers becomes removable, or that removing it renames the metric back.",
+    "evidence": "Sources list 'KEDA PR 8327' with no explanation; brief trade-off 'A future fix may change the default for an omitted metricType' is not addressed",
+    "fix": "Add a paragraph: after upgrading to a release that contains PR 8327, keep metricType: AverageValue on the trigger and remove scalingModifiers. Expect the HPA metric name to change back from composite-metric. Say that if metricType is omitted, you still get Value."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The repro section asks readers to write their own Terraform provider and variables file before init. That is friction for something that should be one command.",
+    "evidence": "\"The README currently says to add a small provider/variable file before `terraform init`\"",
+    "fix": "Commit providers.tf and variables.tf (region, lab_name, permissions_boundary with defaults) to the lab, and remove the sentence. Also rename SPLUNK_ACCESS_TOKEN to SPLUNK_INGEST_TOKEN, since that is what it is."
+   }
+  ],
+  "flags_addressed": [
+   {
+    "id": "f1",
+    "addressed": true,
+    "how": "The post makes no claim from the zero series count, so this check that couldn't fail does no harm. The Splunk OTel Collector it checks 'did not finish' installing and adds nothing to the finding (forced Splunk in the lab). Remove it from reproduce.sh or show what it adds."
+   }
+  ],
+  "claims": [
+   {
+    "text": "The Splunk Observability scaler builds the HPA metric target with v2.ValueMetricType instead of reading the trigger's metricType",
+    "class": "sourced",
+    "source_ref": "https://github.com/kedacore/keda/issues/8297"
+   },
+   {
+    "text": "The parser does not read config.MetricType for this scaler",
+    "class": "sourced",
+    "source_ref": "https://github.com/kedacore/keda/issues/8297"
+   },
+   {
+    "text": "The HPA controller keeps scale recommendations per HPA name for 300 seconds, so same-name migrations can stay high",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Value is right for a fleet-wide aggregate that falls as pods are added, or a metric that is already per-pod",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "If you change the HPA name in production, dashboards and alerts need checking because the metric becomes composite-metric",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "An upstream fix exists in KEDA PR 8327 with a matching docs PR 1921",
+    "class": "sourced",
+    "source_ref": "https://github.com/kedacore/keda/pull/8327"
+   },
+   {
+    "text": "The Splunk Observability scaler docs list trigger parameters",
+    "class": "sourced",
+    "source_ref": "https://keda.sh/docs/2.21/scalers/splunk-observability/"
+   }
+  ],
+  "prompt_version": "editor/a09601e08b"
+ },
+ "brief": {
+  "reader": "Platform engineer autoscaling EKS or Kubernetes workloads with KEDA on Splunk Observability metrics",
+  "decision": "Whether their ScaledObjects scale as configured, and whether to add scalingModifiers before the scaler is fixed",
+  "question": "Why does my KEDA Splunk scaler jump to maxReplicaCount when I set AverageValue?",
+  "takeaway": "The reader sees how fast replicas climb when metricType is ignored, whether scalingModifiers restores AverageValue, and how to check their own HPA.",
+  "adds": "The scaler docs list parameters. They don't show that metricType is ignored, or the measured replica timeline with and without the workaround.",
+  "open_question": "With a fixed Splunk metric above target and metricType AverageValue, how many seconds does KEDA 2.21 take to reach maxReplicaCount, and where do replicas settle with scalingModifiers?",
+  "tradeoffs": [
+   "scalingModifiers restores AverageValue but adds config that may be unneeded once the scaler is fixed",
+   "Value-type scaling fits some aggregate metrics, so the post must say when it isn't a bug for the reader",
+   "A future fix may change the default for an omitted metricType"
+  ],
+  "existing_pages": [
+   {
+    "title": "Splunk Observability scaler",
+    "url": "https://keda.sh/docs/2.21/scalers/splunk-observability/",
+    "covers": "trigger parameters and an example"
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "kedacore/keda issue 8297: 3 reactions and 7 comments, opened October 2026, reproduced on EKS and kind. No search data."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "splunk-mvp-aws-community-visibility",
+  "verdict": "go",
+  "reasons": [
+   "A deterministic, reported bug at the point where Splunk metrics and Kubernetes scaling meet"
+  ],
+  "measurements": [
+   {
+    "id": "hpa_target_type",
+    "what": "Metric target type in the generated HPA, once for each config",
+    "kind": "comparison",
+    "unit": "type",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "seconds_to_max_replicas",
+    "what": "Seconds from ScaledObject creation until replicas reach maxReplicaCount with metricType alone",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "settled_replicas",
+    "what": "Replicas after the same 5-minute window with metricType alone and with scalingModifiers",
+    "kind": "comparison",
+    "unit": "replicas",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "expected_replicas",
+    "what": "Replicas that AverageValue arithmetic predicts for the fixed metric",
+    "kind": "comparison",
+    "unit": "replicas",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 2.938
+}
