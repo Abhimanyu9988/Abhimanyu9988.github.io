@@ -11,7 +11,8 @@
   "ideas",
   "done_tasks",
   "consult",
-  "show_notes"
+  "show_notes",
+  "article"
  ],
  "properties": {
   "stance": {
@@ -101,6 +102,10 @@
   "show_notes": {
    "type": "boolean",
    "description": "true when Abhi asks to see the CTO's build notes"
+  },
+  "article": {
+   "type": "string",
+   "description": "the subject, in his words, when he asks for an article now, or empty"
   }
  }
 }

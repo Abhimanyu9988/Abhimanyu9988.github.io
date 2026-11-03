@@ -6,6 +6,7 @@ reviews them all. Claude, ChatGPT and Gemini then vote on each topic and headlin
 that survive get a full brief, which is the Editor's searched brief and Evidence Contract, the same as before.
 Inputs: new items from radar.collect(), his ideas, existing topics, goals and analytics.
 Outputs: one issue per topic, analytics/week-plan.json, a Slack message, and `pick`, the first lab to start.
+TOPIC set: Abhi asked for an article on this subject. The same checks run, and its lab starts now, ahead of the plan.
 cto.py starts one lab a day from the plan until the week's target is met. It must not start a lab for a topic that failed a check.
 """
 import datetime, json, os, re
@@ -138,6 +139,48 @@ def vet(topics, existing, allowed, have, need):
     ranked = sorted(topics, key=lambda t: t.get("yes", 0), reverse=True)     # sorted keeps the Editor's order on a tie
     return build_plan(ranked, {ranked.index(topics[n]): why for n, why in rejected.items()}, allowed, have, need)
 
+def requested(subject):
+    """His subject, three angles, the same checks. The vote only ranks angles, because he chose the subject. Returns (topic, why not)."""
+    import editor, llm
+    topics = roles.ask("editor", f"Abhi asked for an article on this subject. Stay on his subject. Give three angles, best first, each with its strongest "
+                                 f"headline. A headline names the technology and a concrete symptom, surprise or number, in 30 to 75 characters. It never describes "
+                                 f"steps. {NO_REFS}\n\nHIS SUBJECT:\n{subject[:800]}\n\nGOALS:\n{goals_block()}\n\nLAB LIMITS:\n{LAB_LIMITS}", "weekplan")["topics"][:3]
+    rejected = {n: title_problem(t["title"]) for n, t in enumerate(topics) if title_problem(t["title"])}
+    rejected.update({n: why for n, why in lab_check(topics).items() if n not in rejected})
+    votes = panel(topics, rejected, [])
+    order = sorted((n for n in range(len(topics)) if n not in rejected), key=lambda n: votes.get(n, {}).get("yes", 0), reverse=True)
+    for n in order:
+        t = topics[n]
+        title = neutralize(t.get("title")).strip()[:100]
+        b = editor.brief(title, f"Requested by Abhi: {subject[:400]}\n{t.get('hook')}\n{t.get('proof')}\n{t.get('lab')}")
+        passed, why = editor.gate1(b)
+        if not passed:
+            rejected[n] = "; ".join(map(str, why))[:200]
+            continue
+        b["gate1"] = {"passed": True, "reasons": []}
+        srcs = [p["url"] for p in b.get("existing_pages") or [] if p.get("url")][:5]
+        body = body_for(t, srcs, f"{safe_text(editor.brief_md(b, True, []))}\n\n{editor.marker(b)}")
+        assert_safe(title); assert_safe(body)
+        return {"title": title, "body": body, "kind": t.get("kind") or "build"}, ""
+    return None, "; ".join(str(w)[:160] for w in list(rejected.values())[:3]) or "the team couldn't form a topic from it"
+
+def start_requested(subject):
+    t, why = requested(subject)
+    if not t:
+        slack.say("editor", f"I can't run this one yet: {subject[:200]}\n\nWhy: {why}\n\nNo lab ran. Tell me another angle, or say what you'd like changed.")
+        return
+    ensure_label(LABEL); ensure_label(t["kind"])
+    number = post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)["number"]
+    text, sha = analytics.read_file(PLAN)
+    plan = json.loads(text) if text.strip() else {"week": week_id(), "target": 0, "created": datetime.date.today().isoformat(), "topics": []}
+    plan["target"] = plan.get("target", 0) + 1     # it comes on top of the week's target, so a planned article isn't dropped for it
+    plan["topics"].insert(0, {"issue": number, "title": t["title"], "state": "started", "started_on": datetime.date.today().isoformat(), "requested": True})
+    analytics.write_file(PLAN, json.dumps(plan, indent=1), sha, "week: Abhi's article")
+    slack.say("editor", f"On it. Headline: {t['title']}\n\nThe lab is starting now. It takes up to an hour, and you'll get a PR to approve if it works.")
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+            f.write(f"pick={int(number)}\npick_model=\n")
+
 def waiting_topics():
     """Topics the panel already passed that never ran a lab. They're paid for, so they fill the plan before new ones cost more."""
     import editor
@@ -184,4 +227,4 @@ def main():
 
 if __name__ == "__main__":
     analytics.ensure_branch()
-    main()
+    start_requested(os.environ["TOPIC"]) if os.environ.get("TOPIC", "").strip() else main()

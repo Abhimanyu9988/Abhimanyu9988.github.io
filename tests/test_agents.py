@@ -1051,6 +1051,7 @@ check("cto: only Abhi on the desk issue starts it", "comment.user.login == 'Abhi
 check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[True] and ctoy["jobs"]["cto"]["steps"][0]["with"]["ref"] == "main")
 cto_steps = {s.get("name"): s for s in ctoy["jobs"]["cto"]["steps"]}
 check("digest: a manual run never repeats it", cto_steps["cto"]["env"]["SCHEDULE"] == "${{ github.event.schedule }}")
+check("article: his subject reaches the shell only through env", "${{" not in cto_steps["start the article he asked for"]["run"])
 check("labs: the next one starts only from the plan", cto_steps["start the next lab"]["if"].startswith("steps.leaders.outputs.run_lab") and "${{" not in cto_steps["start the next lab"]["run"])
 term = (ROOT / "site/_includes/terminal.html").read_text()
 check("site: the prompt can't be copied, and page text stays text", "user-select: none" in term and "innerHTML" not in term)
@@ -1325,7 +1326,7 @@ check("gate: such a topic fails the Topic Investment Gate", any("longer wait" in
 live_board_url = "https://abhimanyu9988.github.io/board/"
 asked, sent = [], []
 real_rask, real_pg, real_post = roles_mod.ask, cto.progress, cto.post
-blank = {"reply": "x", "stance": "agree", "goal": "", "task": {}, "urls": [], "needs_abhi": [], "close_prs": [], "ideas": [], "done_tasks": [], "consult": [], "show_notes": False}
+blank = {"reply": "x", "stance": "agree", "goal": "", "task": {}, "urls": [], "needs_abhi": [], "close_prs": [], "ideas": [], "done_tasks": [], "consult": [], "show_notes": False, "article": ""}
 def fake_ask(role, prompt, out):
     asked.append((role, "TEAM ANSWERS" in prompt))
     if role == "secretary" and "TEAM ANSWERS" not in prompt:
@@ -1358,6 +1359,21 @@ sent.clear()
 cto.answer("how is it going?", [], "cto")
 check("notes: they stay quiet otherwise", len(sent) == 1)
 cto.audit_notes = real_audit
+started_art = []
+real_sa, cto.start_article = cto.start_article, lambda s: started_art.append(s)
+roles_mod.ask = lambda role, prompt, out: {**blank, "article": "Fluent Bit retries"}
+cto.answer("how are things?", [], "cto")
+check("article: a model alone can't start one", not started_art)
+cto.answer("write an article on Fluent Bit retries", [], "oss_scout")
+check("article: only the right leaders can start one", not started_art)
+sent.clear()
+cto.answer("I need an article on Fluent Bit retries", [])
+check("article: his words start it, and he's told", started_art == ["Fluent Bit retries"] and "Started" in sent[-1][1])
+cto.start_article = real_sa
+out_art = tempfile.mktemp(); os.environ["GITHUB_OUTPUT"] = out_art
+cto.start_article("line one\nline two")
+os.environ.pop("GITHUB_OUTPUT")
+check("article: the subject reaches the workflow on one line", "line one line two" in open(out_art).read())
 audit_rows = [{"title": "Note A", "owner": "cto", "status": "open"}, {"title": "Note B", "owner": "cto", "status": "open"}, {"title": "Note C", "owner": "cto", "status": "open"}, {"title": "Other", "owner": "cmo", "status": "open"}]
 written = []
 cto.tasks, cto.write_private = lambda: (audit_rows, "sha"), lambda p, t, s, m: written.append(t) or True
@@ -1449,6 +1465,31 @@ week.main()
 os.environ.pop("DRY_RUN")
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
 week.propose, week.vet, week.waiting_topics, week.collect, week.existing_issues = real_prop, real_vet, real_wait, real_coll, real_ei
+brief_ok = {"existing_pages": [{"url": "https://x.y/page"}]}
+real_ra, real_eb2, real_eg2, real_bm, real_mk, real_lc, real_pn = week.roles.ask, editor.brief, editor.gate1, editor.brief_md, editor.marker, week.lab_check, week.panel
+angle = lambda t: {"title": t, "hook": "h", "payoff": "p", "proof": "p", "lab": "l", "sources": [], "kind": "build"}
+week.roles.ask = lambda role, prompt, out: {"topics": [angle("How to set it up on EKS for your whole team"), angle("Angle two: the lab can't do this one at all"), angle("Angle three: this one is a real measured surprise")]}
+week.lab_check = lambda ts: {1: "needs Splunk Enterprise"}
+week.panel = lambda ts, rej, ex: {2: {"yes": 1, "accepted": False, "votes": {}}}
+editor.brief, editor.gate1, editor.brief_md, editor.marker = (lambda t, d: dict(brief_ok)), (lambda b: (True, [])), (lambda b, p, w: "brief"), (lambda b: "<!-- m -->")
+pick_req, why_req = week.requested("what happens when X fails")
+check("request: the vote ranks angles but can't veto his subject, and a lab must be able to do it", pick_req["title"].startswith("Angle three") and "<!-- m -->" in pick_req["body"] and "https://x.y/page" in pick_req["body"])
+week.lab_check = lambda ts: {1: "needs Splunk Enterprise", 2: "no"}
+none_req, why_none = week.requested("add-on on Splunk Enterprise")
+check("request: if no lab can do it, he's told why and no lab runs", none_req is None and "Splunk Enterprise" in why_none)
+said_req, opened_req, wrote_req = [], [], []
+real_say, real_pi, real_el, real_rf, real_wf, real_req = week.slack.say, week.post_issue, week.ensure_label, analytics.read_file, analytics.write_file, week.requested
+week.slack.say, week.post_issue, week.ensure_label = (lambda r, t: said_req.append(t)), (lambda *a, **k: opened_req.append(a) or {"number": 200}), (lambda l: None)
+analytics.read_file, analytics.write_file = (lambda p, ref=None: (json.dumps({"target": 5, "topics": [{"issue": 1, "state": "queued"}]}), "s")), (lambda p, t, s, m: wrote_req.append(json.loads(t)))
+week.start_requested("subject")
+check("request: no lab means no issue", not opened_req and "can't run this one" in said_req[-1])
+week.requested = lambda s: ({"title": "T", "body": "b", "kind": "build"}, "")
+outreq = tempfile.mktemp(); os.environ["GITHUB_OUTPUT"] = outreq
+week.start_requested("subject")
+os.environ.pop("GITHUB_OUTPUT")
+check("request: it goes first, adds to the week's target, and starts its lab", wrote_req[-1]["topics"][0]["issue"] == 200 and wrote_req[-1]["target"] == 6 and "pick=200" in open(outreq).read() and "On it" in said_req[-1])
+week.slack.say, week.post_issue, week.ensure_label, analytics.read_file, analytics.write_file, week.requested = real_say, real_pi, real_el, real_rf, real_wf, real_req
+week.roles.ask, editor.brief, editor.gate1, editor.brief_md, editor.marker, week.lab_check, week.panel = real_ra, real_eb2, real_eg2, real_bm, real_mk, real_lc, real_pn
 check("headline: steps are refused", week.title_problem("How to deploy Fluent Bit on ECS Fargate with FireLens") != "" and week.title_problem("Setting up Argo CD on EKS for your whole team today") != "")
 check("headline: length is checked", week.title_problem("Short") != "" and week.title_problem("x" * 90) != "")
 check("headline: a symptom passes", week.title_problem("Argo CD is Synced while the ALB has zero healthy targets") == "")

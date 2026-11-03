@@ -187,3 +187,9 @@ strongest, code refuses step-style headlines, and two of three models must agree
 
 The first test plan refused most topics and left two, both on ALB. The plan now reuses passed topics that never ran a lab, then gives the
 Editor a second round with the reasons, and asks for variety, because Abhi rejected repeated ALB posts.
+
+## 2026-11-03: Abhi can ask for an article
+
+He should be able to name a subject and have the team do the rest. A leader passes it to `radar.yml`, and `week.py` runs the same checks on
+three angles. Lab Check still decides what a lab can do, but the vote only ranks angles, because he chose the subject. The lab starts straight
+away, ahead of the plan and on top of the week's target. If no lab can do it, he hears why and no lab runs.
