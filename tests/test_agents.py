@@ -1405,6 +1405,7 @@ check("plan: a same-day start isn't mistaken for a lost lab", cto.next_lab("2026
 cto.gh = lambda m, path, b=None: {"workflow_runs": [{"name": "replicate"}]} if "status=waiting" in path else inner_gh(m, path, b)
 check("plan: a lab waiting to start also blocks the next one", cto.lab_active())
 cto.gh = inner_gh
+state["drafts"] = 1
 check("plan: other drafts don't count toward the target", cto.lab_drafts(plan_doc) == 1)
 cto.gh, analytics.write_file, analytics.read_file = real_gp, real_wr, real_ar
 import week
