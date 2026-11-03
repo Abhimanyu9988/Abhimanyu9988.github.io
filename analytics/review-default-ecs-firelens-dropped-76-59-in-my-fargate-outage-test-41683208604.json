@@ -1,0 +1,314 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "technical: The headline percentage is diluted by however long the lab ran before the outage. Its denominator includes about 9k records generated before the outage, so the number would change with a longer or shorter warm-up and doesn't describe the outage itself. Fix: Lead with the loss inside the outage window: 36,131 of 38,017 records, which is 95.0%, or about 190 records lost per outage second at 200 lines/s. Update the title and TL;DR to match, and keep 76.59% only as the whole-run figure with its denominator stated.",
+  "technical: The cause of the default loss is implied but never shown. The reader can't tell which default (Retry_Limit, the backoff, or the input limit) is responsible. Fix: Print the generated config from the default task (for example via an exec or startup cat of the FireLens-generated fluent-bit.conf) and quote its retry_limit, Mem_Buf_Limit and scheduler settings. Then state the cause with that evidence. Until then, treat 'default Retry_Limit is 1' as a hypothesis.",
+  "editorial: The deployable fix was never tested, and the brief's question 'which settings change that' is unanswered. Both hardened configs replace the FireLens config through an entryPoint override and change four or more settings together. Fix: Add a fourth run: the FireLens-generated default with only \"Retry_Limit\": \"60\" (or no_limits) added to logConfiguration.options, under the same 200 lines/s and 3-minute outage. Report its loss and drain time. If it gets to roughly 0%, that is the actionable finding. If not, the scheduler cap or buffering is what matters, and the draft should say so.",
+  "technical: The memory-cost claim compares containers with very different baselines and never comes near the configured limit, so it can't support the sizing advice. Fix: Explain the 21.1 vs 4.9 MiB baseline gap (the generated config adds inputs and the init process, while the override doesn't), or report only growth over baseline with that caveat. State plainly that no run exercised Mem_Buf_Limit or the 256 MiB container limit, so OOM risk is untested at this rate.",
+  "editorial: Generated-sounding filler, a heading that only restates the title, and an unexplained anomaly in the data. Fix: Cut the 'My week' paragraph. Rename the results heading to describe what the table shows (for example 'Loss, drain and memory per config'). Explain or flag the 69 records lost before the outage in the default run: start-up loss, or something else?",
+  "outside claim without a known source: The ECS docs describe a FireLens Docker buffer limit between the app container and FireLens"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "76.59%",
+    "number": "76.59",
+    "noun": "%",
+    "supported": true,
+    "where": "04-reproduce.log:50",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "records_lost_pct",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:36"
+    },
+    {
+     "id": "records_delivered_after_recovery",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:38"
+    },
+    {
+     "id": "drain_time_s",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:40"
+    },
+    {
+     "id": "fluentbit_peak_memory_mib",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:42"
+    },
+    {
+     "id": "app_stdout_max_write_ms",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:44"
+    },
+    {
+     "id": "loss_by_config_comparison",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:141"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The sequence-number accounting is solid. The sink really refused connections (curl exit 7), and drain was counted only after 60s with no new records, so records still in flight are not reported as lost.",
+     "The 76.59% headline uses every record of the run as the denominator, including the arbitrary steady-state period before the outage. The lab's own numbers give 36,131 lost out of 38,017 generated during the outage, which is 95.0%.",
+     "The hardened configs change Retry_Limit, the scheduler backoff, Mem_Buf_Limit and storage all at once, and they replace the FireLens-generated config through an entryPoint override. So the draft cannot say which setting fixes the loss, even though the brief asks exactly that.",
+     "Router memory baselines differ (21.1 MiB for the default, 4.9 MiB for the hardened configs) and the draft doesn't explain why. The 64MB Mem_Buf_Limit was never reached, so the memory-cost and sizing claims are weak."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader is clear and the draft is honest about its limits: one sample, settings changed together, no task-stop test, no real HEC endpoint.",
+     "The draft never says why the default config drops chunks. 189 'failed to flush' lines against 181 'cannot be retried' lines points to a very low default Retry_Limit, but the post doesn't name or show it, so the reader can't act on it.",
+     "The fix a reader would actually deploy is setting Retry_Limit in the FireLens logConfiguration options. That was never tested. The tested configs bypass FireLens config generation, which nobody does in production.",
+     "Some of it reads as generated: the 'My week is mostly spent on\u2026' paragraph, the heading 'Results: 76.59 percentage points less loss' that repeats the title, and an even TL;DR rhythm. The terminal output blocks do look like real output."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "There is no demand data. The brief rates demand as weak: the official pages exist, but no search volume or community-question data was found.",
+     "A specific percentage in the title should catch FireLens users, but that number depends on how long the lab ran before the outage, so it will not survive scrutiny from a careful reader.",
+     "No Splunk HEC run, so it won't reach Splunk-specific searchers. That is honest, and Splunk is not forced into the post."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The headline percentage is diluted by however long the lab ran before the outage. Its denominator includes about 9k records generated before the outage, so the number would change with a longer or shorter warm-up and doesn't describe the outage itself.",
+    "evidence": "04-reproduce.log: 'generated=47266 delivered=11066 lost=36200 (76.59%) | generated during outage=38017, arrived after recovery=1886, lost in outage window=36131'",
+    "fix": "Lead with the loss inside the outage window: 36,131 of 38,017 records, which is 95.0%, or about 190 records lost per outage second at 200 lines/s. Update the title and TL;DR to match, and keep 76.59% only as the whole-run figure with its denominator stated."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The cause of the default loss is implied but never shown. The reader can't tell which default (Retry_Limit, the backoff, or the input limit) is responsible.",
+    "evidence": "\"'failed to flush chunk' (retry scheduled) lines: 189 ... 'chunk cannot be retried' (chunk DROPPED) lines: 181\"",
+    "fix": "Print the generated config from the default task (for example via an exec or startup cat of the FireLens-generated fluent-bit.conf) and quote its retry_limit, Mem_Buf_Limit and scheduler settings. Then state the cause with that evidence. Until then, treat 'default Retry_Limit is 1' as a hypothesis."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The deployable fix was never tested, and the brief's question 'which settings change that' is unanswered. Both hardened configs replace the FireLens config through an entryPoint override and change four or more settings together.",
+    "evidence": "\"I changed these settings together and did not test them one by one\"; README: 'the router container's entryPoint/command write the config above ... the configs are not FireLens-generated ones'",
+    "fix": "Add a fourth run: the FireLens-generated default with only \"Retry_Limit\": \"60\" (or no_limits) added to logConfiguration.options, under the same 200 lines/s and 3-minute outage. Report its loss and drain time. If it gets to roughly 0%, that is the actionable finding. If not, the scheduler cap or buffering is what matters, and the draft should say so."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The memory-cost claim compares containers with very different baselines and never comes near the configured limit, so it can't support the sizing advice.",
+    "evidence": "\"default 21.1 -> 22.6 MiB\" vs \"mem 4.9 -> 16.6 MiB\"; \"The hardened configs grew about 12 to 13 MiB over 3 minutes\"",
+    "fix": "Explain the 21.1 vs 4.9 MiB baseline gap (the generated config adds inputs and the init process, while the override doesn't), or report only growth over baseline with that caveat. State plainly that no run exercised Mem_Buf_Limit or the 256 MiB container limit, so OOM risk is untested at this rate."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "Generated-sounding filler, a heading that only restates the title, and an unexplained anomaly in the data.",
+    "evidence": "\"My week is mostly spent on why something that looks correctly configured doesn't work in a real cluster.\"; heading 'Results: 76.59 percentage points less loss'; 'lost before outage=69' is never mentioned",
+    "fix": "Cut the 'My week' paragraph. Rename the results heading to describe what the table shows (for example 'Loss, drain and memory per config'). Explain or flag the 69 records lost before the outage in the default run: start-up loss, or something else?"
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The Fluent Bit backpressure docs explain mem_buf_limit and pause behaviour in general terms",
+    "class": "sourced",
+    "source_ref": "https://docs.fluentbit.io/manual/administration/backpressure"
+   },
+   {
+    "text": "The buffering and storage docs cover memory and filesystem buffering",
+    "class": "sourced",
+    "source_ref": "https://docs.fluentbit.io/manual/administration/buffering-and-storage"
+   },
+   {
+    "text": "The ECS docs describe a FireLens Docker buffer limit between the app container and FireLens",
+    "class": "sourced",
+    "source_ref": "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/firelens-docker-buffer-limit.html"
+   },
+   {
+    "text": "The Fluent Bit docs say buffering and pause behaviour move pressure upstream; depending on mode and buffer size you may trade dropped logs for app-side blocking",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Fargate filesystem buffering uses task ephemeral storage and is not durable across task stop",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "A durable intermediate such as Firehose or Kinesis gives a stronger boundary before the HTTP destination",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Cost is well under 1 USD: one t3.medium for about an hour plus a few Fargate task-minutes",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "AWS for Fluent Bit 3.0.0 is based on Fluent Bit 4.1.1",
+    "class": "sourced",
+    "source_ref": "https://aws.amazon.com/about-aws/whats-new/2025/10/aws-fluent-bit-3-0-0-based-4-1-1"
+   },
+   {
+    "text": "Neither doc measures the whole FireLens path on Fargate",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/70076909cd"
+ },
+ "brief": {
+  "reader": "Platform engineer running log-heavy ECS Fargate services with FireLens (AWS for Fluent Bit), shipping to an HTTP destination such as Splunk HEC, who has never seen what happens during a destination outage",
+  "decision": "Whether the default FireLens/Fluent Bit settings are good enough for a log-heavy Fargate task, or whether to change Retry_Limit, mem_buf_limit and filesystem buffering (and size the task's memory and ephemeral storage for it) before relying on the pipeline through a destination outage",
+  "question": "If my log destination is down for five minutes, how many log lines from my Fargate task are actually lost, and which Fluent Bit settings change that?",
+  "takeaway": "Given a steady log rate and a fixed outage length, the reader knows the measured loss for the default FireLens config and for two hardened configs, how long the backlog takes to drain after recovery, what it costs in Fluent Bit memory, and whether the application's stdout writes stall. From that they can pick a config and a buffer size for their own log rate.",
+  "adds": "The Fluent Bit docs explain retries, mem_buf_limit, pause behaviour and filesystem buffering one setting at a time, in general terms. They do not give numbers for the FireLens path on Fargate, where the input is the forward socket fed by the awsfirelens log driver, storage is ephemeral task storage, and memory is capped by the task size. This post measures end-to-end loss, drain time, memory and app-side blocking on that path under a timed outage, so readers get the combined result the docs leave them to work out.",
+  "open_question": "For a fixed log rate (e.g. 1,000 lines/s) and a 5-minute HTTP destination outage on Fargate, what percentage of generated records never reaches the destination under (a) the default FireLens config, (b) memory buffering with a raised Retry_Limit, and (c) filesystem buffering with storage.total_limit_size, and how long does each take to drain after recovery?",
+  "tradeoffs": [
+   "Filesystem buffering on Fargate uses ephemeral task storage. It survives the outage but not a task stop, so it is not durable the way a host-mounted volume is",
+   "Unlimited or high Retry_Limit avoids discards, but it can keep stale chunks queued and delays fresh logs during the drain",
+   "Raising mem_buf_limit protects logs at the cost of task memory, and the Fluent Bit container can be OOM-killed if it isn't sized for it",
+   "When FireLens pauses, the pressure moves upstream. Depending on the log driver mode, the app either blocks on stdout or the driver drops lines, so you are trading data loss against app latency",
+   "Alternatives to weigh: Retry_Limit plus a DLQ (storage.keep.rejected), or a durable intermediate such as Firehose/Kinesis in front of the HTTP destination"
+  ],
+  "existing_pages": [
+   {
+    "title": "Backpressure (Fluent Bit manual)",
+    "url": "https://docs.fluentbit.io/manual/administration/backpressure",
+    "covers": "What mem_buf_limit and storage.pause_on_chunks_overlimit do when output can't keep up; listening inputs accept and close connections when paused; worked example with backend down and 10s retry"
+   },
+   {
+    "title": "Buffering and storage (Fluent Bit manual)",
+    "url": "https://docs.fluentbit.io/manual/administration/buffering-and-storage",
+    "covers": "Memory vs filesystem buffering, backlog chunks picked up on restart, filesystem buffering recommended for data safety"
+   },
+   {
+    "title": "Avoiding data loss and backpressure problems with Fluent Bit",
+    "url": "https://chronosphere.io/learn/avoiding-data-loss-and-backpressure-problems-with-fluent-bit/",
+    "covers": "Vendor explainer of backpressure and buffering settings to avoid data loss; general guidance, not tied to ECS Fargate measurements"
+   },
+   {
+    "title": "FireLens Docker buffer limit (Amazon ECS developer guide)",
+    "url": "https://docs.aws.amazon.com/ru_ru/AmazonECS/latest/developerguide/firelens-docker-buffer-limit.html",
+    "covers": "ECS setting for the log driver buffer between the container and FireLens (Russian-locale URL of the AWS page)"
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "The search found official Fluent Bit backpressure and buffering pages, an AWS ECS page on the FireLens buffer limit, and one vendor article (Chronosphere) on avoiding data loss, so the problem is recognised. No search volume, ranking or community-question data was found."
+  },
+  "splunk_fit": "optional",
+  "measurements": [
+   {
+    "id": "records_lost_pct",
+    "what": "Percentage of generated records (by sequence number) that never reach the destination, measured per configuration for the same timed outage",
+    "kind": "failure",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "records_delivered_after_recovery",
+    "what": "Number of records that were generated during the outage and arrived after the endpoint came back",
+    "kind": "count",
+    "unit": "records",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "drain_time_s",
+    "what": "Time from endpoint restart until the destination's record count stops rising (backlog fully delivered or abandoned)",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "fluentbit_peak_memory_mib",
+    "what": "Peak memory of the log_router container during the outage, compared with its baseline",
+    "kind": "overhead",
+    "unit": "MiB",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "app_stdout_max_write_ms",
+    "what": "Maximum stdout write latency seen by the log generator during the outage, which shows whether backpressure reached the application",
+    "kind": "latency",
+    "unit": "ms",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "loss_by_config_comparison",
+    "what": "Lost-record percentage of the default config minus each hardened config (memory with raised Retry_Limit, and filesystem buffering) for the same log rate and outage",
+    "kind": "comparison",
+    "unit": "percentage points",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   }
+  ],
+  "verdict": "go",
+  "reasons": [
+   "There is a clear reader and decision: whether to harden FireLens buffering, and how to size the task for it, before trusting log delivery",
+   "The open question is measurable and unknown today. The docs describe each mechanism but give no end-to-end loss, drain time or app-blocking numbers for the FireLens forward path on Fargate",
+   "The contract needs failure, latency, overhead and comparison measurements, not just counts, so it can't pass by proving that logs simply flow",
+   "Splunk fits as an optional destination. A stalled Splunk HEC is a realistic outage, but the finding has to hold for any HTTP output and the post shouldn't depend on Splunk",
+   "Demand evidence is weak (pages exist, no volume data). The post has to earn its audience by giving numbers the docs don't have, not by restating the backpressure page"
+  ],
+  "goal_id": "splunk-mvp-aws-community-visibility",
+  "search_ran": true,
+  "prompt_version": "editor/70076909cd",
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 2.1551
+}
