@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T12:34:06Z",
+ "updated": "2026-11-03T12:44:56Z",
  "columns": {
   "needs": [
    {
@@ -56,10 +56,10 @@
   ],
   "working": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41636134299",
-    "kind": "Topic Scout is looking for topics",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41637905749",
+    "kind": "Lab Engineer is testing an article",
     "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41636134299",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41637905749",
     "where": "Abhimanyu9988.github.io"
    },
    {
@@ -106,6 +106,48 @@
    }
   ],
   "next": [
+   {
+    "id": "Up next:What OpenTelemetry auto-instrumentation really adds to pod startup time",
+    "kind": "Up next",
+    "title": "What OpenTelemetry auto-instrumentation really adds to pod startup time",
+    "url": "",
+    "where": ""
+   },
+   {
+    "id": "Up next:KEDA Splunk scaler with a bad token: what happens to your replica count",
+    "kind": "Up next",
+    "title": "KEDA Splunk scaler with a bad token: what happens to your replica count",
+    "url": "",
+    "where": ""
+   },
+   {
+    "id": "Up next:OTel Operator down during a deploy: which pods start uninstrumented?",
+    "kind": "Up next",
+    "title": "OTel Operator down during a deploy: which pods start uninstrumented?",
+    "url": "",
+    "where": ""
+   },
+   {
+    "id": "Up next:KEDA's Splunk Observability scaler when the metric stops reporting",
+    "kind": "Up next",
+    "title": "KEDA's Splunk Observability scaler when the metric stops reporting",
+    "url": "",
+    "where": ""
+   },
+   {
+    "id": "Up next:Splunk OTel Collector agent memory at 10, 20 and 30 pods per node",
+    "kind": "Up next",
+    "title": "Splunk OTel Collector agent memory at 10, 20 and 30 pods per node",
+    "url": "",
+    "where": ""
+   },
+   {
+    "id": "Up next:Java OTel auto-instrumentation: memory added to each EKS pod",
+    "kind": "Up next",
+    "title": "Java OTel auto-instrumentation: memory added to each EKS pod",
+    "url": "",
+    "where": ""
+   },
    {
     "id": "Up next:Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them",
     "kind": "Up next",
