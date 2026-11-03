@@ -19,7 +19,12 @@ PLAN = "analytics/week-plan.json"
 DEFAULT_TARGET = 3
 WEEK_TARGETS = {"2026-W45": 5}                 # Abhi asked for five in his training week
 HOT_REPOS = ["fluent/fluent-bit", "open-telemetry/opentelemetry-collector-contrib", "open-telemetry/opentelemetry-operator",
-             "signalfx/splunk-otel-collector-chart", "kedacore/keda", "argoproj/argo-cd"]
+             "signalfx/splunk-otel-collector-chart", "kedacore/keda", "argoproj/argo-cd",
+             "open-telemetry/opentelemetry-python-contrib", "open-telemetry/semantic-conventions", "traceloop/openllmetry"]
+LANES = {"ai_monitoring": "AI monitoring: LLM and agent tracing, tokens, latency and cost, OpenTelemetry GenAI",
+         "kubernetes": "Kubernetes operations and failures", "aws": "AWS services, especially containers",
+         "splunk_observability": "Observability on Splunk Observability Cloud"}
+MAX_PER_LANE = 2                               # no lane fills a week, so the plan keeps its variety
 WISHLIST = re.compile(r"(?i)\b(request|enhancement|feature|proposal|roadmap)\b")   # someone wanting something new isn't someone stuck
 MIN_REACTIONS, MIN_VIEWS = 3, 100               # below this, one person's question isn't yet a hot problem
 ROUNDS = 2                                     # a second Editor call, told why the first topics were refused
@@ -65,6 +70,8 @@ def propose(items, existing, want, refused=(), hot=()):
     return roles.ask("editor", f"Plan this week's articles. Give {want} topics, best first. {NO_REFS}\n\n"
                                f"Every topic must solve one problem from HOT PROBLEMS, which are real complaints from the last 30 days. Put its url in demand_url, "
                                f"and use the reader's own words for the symptom. "
+                               f"Abhi wants this order of focus, and every topic must sit in one lane, given in lane: {json.dumps(LANES)}. Include at least one ai_monitoring "
+                               f"topic if a real complaint supports it. An AI monitoring lab can run a small open model on EC2, because the lab has no paid AI API. "
                                f"Vary the week: no two topics on the same service or failure. Abhi has rejected repeated ALB posts, so offer at most one ALB topic, "
                                f"and cover different ground, such as ECS, logs, OpenTelemetry and Splunk Observability. "
                                f"The topic and headline matter most, so spend your effort there. Write three headlines for each topic and keep the strongest. "
@@ -126,7 +133,9 @@ def build_plan(topics, rejected, allowed, have, goal):
         if len(plan) >= goal + SPARES:
             break
         ok = usable(t, allowed, have)
-        if not ok:
+        if sum(p.get("lane") == t.get("lane") for p in plan) >= MAX_PER_LANE:
+            dropped.append((t.get("title"), f"this week already has {MAX_PER_LANE} {t.get('lane')} topics"))
+        elif not ok:
             dropped.append((t.get("title"), "repeats a topic, or has no real source"))
         elif n in rejected:
             dropped.append((ok[0], rejected[n]))
@@ -141,7 +150,7 @@ def build_plan(topics, rejected, allowed, have, goal):
                 b["gate1"] = {"passed": True, "reasons": []}
                 body = body_for(t, srcs, f"{safe_text(editor.brief_md(b, True, []))}\n\n{editor.marker(b)}")
                 assert_safe(title); assert_safe(body)
-                plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": t.get("yes"), "signal": t.get("signal")})
+                plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": t.get("yes"), "signal": t.get("signal"), "lane": t.get("lane")})
             except (Unsafe, RuntimeError, ValueError) as e:
                 dropped.append((title, str(e)[:200]))
     return plan, dropped

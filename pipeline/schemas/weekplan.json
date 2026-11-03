@@ -17,7 +17,8 @@
      "proof",
      "lab",
      "sources",
-     "kind"
+     "kind",
+     "lane"
     ],
     "properties": {
      "title": {
@@ -54,6 +55,14 @@
      "demand_url": {
       "type": "string",
       "description": "the url from HOT PROBLEMS this topic answers. Leave empty for a topic Abhi asked for"
+     },
+     "lane": {
+      "enum": [
+       "ai_monitoring",
+       "kubernetes",
+       "aws",
+       "splunk_observability"
+      ]
      }
     }
    }
