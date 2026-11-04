@@ -1,43 +1,15 @@
 {
  "week": "2026-W45",
  "target": 5,
- "created": "2026-11-03",
+ "created": "2026-11-04",
  "topics": [
   {
-   "issue": 134,
-   "title": "You Set AverageValue. KEDA's Splunk Scaler Ignored It.",
-   "state": "started",
-   "signal": "3 reactions and 7 comments on a GitHub issue opened in October",
-   "confirmed": true,
-   "scores": "Marketing 3/5, Editor 3/5",
-   "model": "claude-sonnet-5-5",
-   "started_on": "2026-11-03"
-  },
-  {
-   "issue": 135,
-   "title": "file_storage Won't Save Your journald Logs From This Restart",
-   "state": "started",
-   "signal": "1 reaction and 13 comments on a GitHub issue opened in October",
-   "confirmed": true,
-   "scores": "Marketing 3/5, Editor 3/5",
-   "model": "claude-opus-5-5",
-   "started_on": "2026-11-04"
-  },
-  {
-   "issue": 136,
-   "title": "Your Deleted Pods Are Still Renewing AWS Credentials",
+   "issue": 139,
+   "title": "Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
    "state": "queued",
-   "signal": "3 reactions and 3 comments on a GitHub issue opened in September",
+   "signal": "A 2 Nov 2026 issue with four participants comes from a Java user checking exactly what the agent exports.",
    "confirmed": true,
-   "scores": "Marketing 2/5, Editor 3/5",
-   "model": "claude-haiku-5-5"
-  },
-  {
-   "issue": 137,
-   "title": "Did the OTel Java Agent Break Your Redis? I Tested Four Versions.",
-   "state": "queued",
-   "signal": "10 comments on a GitHub issue opened in August, with no reproduction yet",
-   "confirmed": true,
+   "picked": false,
    "scores": "Marketing 3/5, Editor 3/5",
    "model": "claude-sonnet-5-5"
   }
