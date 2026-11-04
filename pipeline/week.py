@@ -172,7 +172,7 @@ def plan_message(topics, goal, dropped):
     rows = "\n".join(f"{n}. {t['title']}" + (f" ({t['scores']})" if t.get("scores") else "") + (" (spare)" if n > goal else "") for n, t in enumerate(topics, 1))
     left = "\n".join(f"- {str(title)[:90]}: {str(why)[:140]}" for title, why in dropped[:5])
     return (f"This week's plan: {goal} articles, one lab a day.\n{rows}" + (f"\n\nDropped before any lab ran:\n{left}" if left else "")
-            + ("" if len(topics) >= goal else f"\n\nOnly {len(topics)} of {goal} passed the checks."))
+            + ("" if len(topics) >= goal or any(t.get("chat") for t in topics) else f"\n\nOnly {len(topics)} of {goal} passed the checks."))
 
 def vet(topics, existing, allowed, have, need, hot):
     """(plan, dropped) for one round of topics, cheapest check first."""
@@ -263,9 +263,9 @@ def publish(plan, goal, dropped):
         ensure_label(l)
     for t in plan:
         number = t.get("issue") or post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)["number"]
-        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "confirmed": bool(t.get("confirmed")), "picked": bool(t.get("picked")), "scores": t.get("yes"),
+        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "confirmed": bool(t.get("confirmed")), "picked": bool(t.get("picked")), "chat": bool(t.get("chat")), "scores": t.get("yes"),
                      "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
-    first = next((r for r in rows if r["confirmed"] and r["picked"]), None)     # no lab without Marketing, the Editor and Abhi
+    first = next((r for r in rows if r["confirmed"] and r["picked"] and not r["chat"]), None)     # no lab without Marketing, the Editor and Abhi, and a chat topic starts from chat
     if first:
         first.update(state="started", started_on=datetime.date.today().isoformat())
     _, sha = analytics.read_file(PLAN)
@@ -351,7 +351,7 @@ def plan_from_chat(text):
             body = body_for(t, srcs, f"{safe_text(editor.brief_md(b, True, []))}\n\n{editor.marker(b)}")
             assert_safe(title); assert_safe(body)
             plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": f"Marketing {m_score}/5, Editor {e_score}/5",
-                         "signal": t.get("signal"), "confirmed": True, "picked": bool(t.get("picked")), "why": why})
+                         "signal": t.get("signal"), "confirmed": True, "picked": bool(t.get("picked")), "chat": True, "why": why})
     publish(plan, goal, dropped)
 
 if __name__ == "__main__":
