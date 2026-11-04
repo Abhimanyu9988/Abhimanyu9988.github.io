@@ -16,11 +16,12 @@
   {
    "issue": 135,
    "title": "file_storage Won't Save Your journald Logs From This Restart",
-   "state": "queued",
+   "state": "started",
    "signal": "1 reaction and 13 comments on a GitHub issue opened in October",
    "confirmed": true,
    "scores": "Marketing 3/5, Editor 3/5",
-   "model": "claude-opus-5-5"
+   "model": "claude-opus-5-5",
+   "started_on": "2026-11-04"
   },
   {
    "issue": 136,
