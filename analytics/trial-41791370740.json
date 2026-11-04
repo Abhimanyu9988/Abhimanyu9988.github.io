@@ -1,0 +1,10 @@
+{
+ "run": "41791370740",
+ "issue": 135,
+ "title": "file_storage Won't Save Your journald Logs From This Restart",
+ "model": "claude-opus-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 2,
+ "minutes": 24.2,
+ "lab_usd": 2.3302
+}
