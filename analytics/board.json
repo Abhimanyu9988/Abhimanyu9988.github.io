@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-04T07:26:20Z",
+ "updated": "2026-11-04T08:05:24Z",
  "columns": {
   "needs": [
    {
@@ -69,13 +69,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41791370740",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41791370740",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
     "kind": "Your PR",
