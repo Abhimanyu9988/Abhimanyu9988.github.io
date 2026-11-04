@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T20:15:47Z",
+ "updated": "2026-11-04T00:09:45Z",
  "columns": {
   "needs": [
    {
@@ -177,13 +177,6 @@
     "title": "docs(operator): explain autoGenerateCert behavior with Argo CD",
     "url": "https://github.com/open-telemetry/opentelemetry-helm-charts/pull/2473",
     "where": "opentelemetry-helm-charts"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52406",
-    "kind": "Merged",
-    "title": "[chore] receiver/flinkmetrics: match operator metrics on exact suffix",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52406",
-    "where": "opentelemetry-collector-contrib"
    }
   ]
  }
