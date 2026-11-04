@@ -1,0 +1,232 @@
+{
+ "mode": "warn",
+ "decision": "stop",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 5",
+  "marketing score 2 is below 5",
+  "technical: The fix results are claimed but no output is shown. Neither '0 lost on SIGTERM and SIGKILL' with the persistent queue nor '0.164.0 still lost 10 entries on SIGTERM and 10 on SIGKILL' has a log excerpt, and the evidence report contract covers only the reproduce measurements. Fix: Paste the fix.sh report() JSON summaries and FIX_RESULT/FIX_PATH lines for queue_on/TERM, queue_on/KILL, gate_on/TERM and gate_on/KILL on 0.164.0, including restarts_valid, lost, lost_seqs and duplicates. Cite the evidence file and line numbers.",
+  "technical: The section credits the disk-backed queue, but the run changed exporter retry and the persistent queue at the same time. That breaks the one-setting-per-run rule, so the mechanism named in the heading and TL;DR is not demonstrated. Fix: Either add runs for exporter retry + in-memory sending_queue and for persistent queue alone, or retitle the section 'Workaround: exporter retry plus a persistent sending_queue (not isolated)' and drop the queue-specific mechanism from the TL;DR.",
+  "editorial: The reader's decision (can I trust node logs across restarts?) depends on whether their config is affected. The bug needs the exporter queue and exporter retry disabled, which I believe is not the otlphttp default (to be confirmed in the exporter docs). The post never says this, so a reader on the defaults may wrongly conclude they are losing logs. Fix: State which of these settings differ from the otlphttp exporter defaults and cite the exporter docs. Add a run with the default exporter config (in-memory queue, retry on) under the same restart harness, so the reader learns whether the common setup loses entries.",
+  "technical: The duplicate trade-off is raised and then left unmeasured, even though fix.sh prints a duplicates field on every FIX_RESULT line. Fix: Report the duplicates value from res-queue-TERM.json and res-queue-KILL.json. If the files were truly lost, say that and rerun fix.sh.",
+  "editorial: The time promise comes from a run that included a failed first attempt, not from the reader's path. Fix: Use the README budget (each script under 14 minutes, plus terraform apply) or the timing of the successful attempt alone, and say it includes instance boot."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "entries_lost_sigterm",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "10-reproduce.log:33"
+    },
+    {
+     "id": "entries_lost_sigkill",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "10-reproduce.log:35"
+    },
+    {
+     "id": "restarts_with_loss_pct",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "10-reproduce.log:37"
+    },
+    {
+     "id": "loss_with_gate_off",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "10-reproduce.log:41"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "Reproduction is strong: 10/10 valid restarts per signal, lost_seqs listed, cursor comparison checked, effective config captured (10-reproduce.log:33-41).",
+     "The fix results (0 lost with the persistent queue, 10+10 lost on 0.164.0) are stated but not shown. The evidence report only covers the reproduce measurements.",
+     "The workaround changed exporter retry and the persistent queue together, so the heading 'put the retried entry in a disk-backed exporter queue' credits a mechanism nobody isolated.",
+     "The gate-off loss of 20 is reported but not explained. With the gate off, Write does not block, so the save-before-write explanation does not obviously cover it."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "Clear reader and an honest scope statement up front; 'What I didn't test' is candid.",
+     "The finding the reader needs most is missing: whether the default otlphttp exporter config (in-memory queue, retry on) is exposed at all. The affected shape appears to be a deliberately non-default config.",
+     "The TL;DR template (Problem/Cause/Fix) and stock headers read as generated, but the JSON output block looks like a real session.",
+     "The duplicate count is called unavailable even though fix.sh prints it. That reads as a gap papered over."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "Demand evidence is weak: one GitHub issue (51794) with 13 comments and 1 reaction, no search data.",
+     "The audience is narrow: only people who turned off exporter queue and retry so the receiver retries instead.",
+     "The title uses the words a searcher would use (journald, file_storage, retried), which helps a little.",
+     "Splunk was optional and is correctly absent."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The fix results are claimed but no output is shown. Neither '0 lost on SIGTERM and SIGKILL' with the persistent queue nor '0.164.0 still lost 10 entries on SIGTERM and 10 on SIGKILL' has a log excerpt, and the evidence report contract covers only the reproduce measurements.",
+    "evidence": "\"With that config on 0.164.0, the persistent-queue workaround lost 0 entries on both SIGTERM and SIGKILL in this lab.\"",
+    "fix": "Paste the fix.sh report() JSON summaries and FIX_RESULT/FIX_PATH lines for queue_on/TERM, queue_on/KILL, gate_on/TERM and gate_on/KILL on 0.164.0, including restarts_valid, lost, lost_seqs and duplicates. Cite the evidence file and line numbers."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The section credits the disk-backed queue, but the run changed exporter retry and the persistent queue at the same time. That breaks the one-setting-per-run rule, so the mechanism named in the heading and TL;DR is not demonstrated.",
+    "evidence": "\"## The fix: put the retried entry in a disk-backed exporter queue\" and \"this run changed exporter retry and exporter queueing together\"",
+    "fix": "Either add runs for exporter retry + in-memory sending_queue and for persistent queue alone, or retitle the section 'Workaround: exporter retry plus a persistent sending_queue (not isolated)' and drop the queue-specific mechanism from the TL;DR."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The reader's decision (can I trust node logs across restarts?) depends on whether their config is affected. The bug needs the exporter queue and exporter retry disabled, which I believe is not the otlphttp default (to be confirmed in the exporter docs). The post never says this, so a reader on the defaults may wrongly conclude they are losing logs.",
+    "evidence": "\"It is about this shape: ... exporter retry disabled, exporter queue disabled\"",
+    "fix": "State which of these settings differ from the otlphttp exporter defaults and cite the exporter docs. Add a run with the default exporter config (in-memory queue, retry on) under the same restart harness, so the reader learns whether the common setup loses entries."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The duplicate trade-off is raised and then left unmeasured, even though fix.sh prints a duplicates field on every FIX_RESULT line.",
+    "evidence": "\"My retained queue summary did not include a measured duplicate count.\"",
+    "fix": "Report the duplicates value from res-queue-TERM.json and res-queue-KILL.json. If the files were truly lost, say that and rerun fix.sh."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The time promise comes from a run that included a failed first attempt, not from the reader's path.",
+    "evidence": "\"Try it yourself in about 24 minutes\" vs \"My reproduced-and-fixed run took 24.2 minutes across two attempts.\"",
+    "fix": "Use the README budget (each script under 14 minutes, plus terraform apply) or the timing of the successful attempt alone, and say it includes instance boot."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The receiver saves the cursor before Write is called; Write blocks while the export is retried",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/51794"
+   },
+   {
+    "text": "The journald receiver docs describe storage support for the receiver cursor",
+    "class": "sourced",
+    "source_ref": "https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/receiver/journaldreceiver"
+   },
+   {
+    "text": "A redelivered entry can arrive twice with the persistent exporter queue",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The disk-backed exporter queue adds I/O",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The lab costs well under 1 USD",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "The persistent queue workaround protects entries because Write returns once the entry is in the on-disk queue",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/a09601e08b"
+ },
+ "brief": {
+  "reader": "Platform engineer shipping node and kubelet journald logs through the OpenTelemetry Collector",
+  "decision": "Whether file_storage and retries are enough to trust node logs across collector restarts, or whether to pin a fixed version",
+  "question": "Why are journald logs missing after my OTel Collector restarted during an outage?",
+  "takeaway": "The reader knows how many entries a restart loses in this setup, which restart type does it, and what to check before trusting the cursor.",
+  "adds": "The receiver docs describe storage and the cursor. They don't give a measured loss per restart during a failing export.",
+  "open_question": "Across 10 SIGTERM and 10 SIGKILL restarts during a retried export, how many journald entries never reach the sink?",
+  "tradeoffs": [
+   "Synchronous export adds backpressure on the receiver",
+   "Pinning a version waits on an unmerged fix",
+   "Disk-backed storage protects queued data, but not an entry the cursor already passed"
+  ],
+  "existing_pages": [
+   {
+    "title": "Journald Receiver",
+    "url": "https://pkg.go.dev/github.com/open-telemetry/opentelemetry-collector-contrib/receiver/journaldreceiver",
+    "covers": "configuration and storage options"
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "opentelemetry-collector-contrib issue 51794: 13 comments, reproduced in all 20 reported runs, fix proposed in PR 52685. No search data."
+  },
+  "splunk_fit": "optional",
+  "goal_id": "splunk-mvp-aws-community-visibility",
+  "verdict": "go",
+  "reasons": [
+   "A real data-loss failure with an exact reproduction and a clear measurement"
+  ],
+  "measurements": [
+   {
+    "id": "entries_lost_sigterm",
+    "what": "Entries that never reached the sink over 10 SIGTERM restarts",
+    "kind": "failure",
+    "unit": "entries",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "entries_lost_sigkill",
+    "what": "Entries that never reached the sink over 10 SIGKILL restarts",
+    "kind": "failure",
+    "unit": "entries",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "restarts_with_loss_pct",
+    "what": "Percent of restarts that lost at least one entry, per restart type",
+    "kind": "failure",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "loss_with_gate_off",
+    "what": "Entries lost in the same restarts with only the synchronous gate turned off",
+    "kind": "comparison",
+    "unit": "entries",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 3.6769
+}
