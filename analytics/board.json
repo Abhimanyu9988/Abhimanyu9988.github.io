@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-04T11:42:37Z",
+ "updated": "2026-11-04T14:25:04Z",
  "columns": {
   "needs": [
    {
@@ -70,6 +70,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "kind": "Your PR",
+    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
     "kind": "Your PR",
     "title": "[chore] Generate a list of collector components with specific operator support",
@@ -98,13 +105,6 @@
     "where": "process-monitoring-extension"
    },
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
-    "kind": "Your PR",
-    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/CiscoDevNet/appdynamics-charts/pull/36",
     "kind": "Your PR",
     "title": "ENV variables fix in InfraViz",
@@ -113,20 +113,6 @@
    }
   ],
   "next": [
-   {
-    "id": "Up next:Your Deleted Pods Are Still Renewing AWS Credentials",
-    "kind": "Up next",
-    "title": "Your Deleted Pods Are Still Renewing AWS Credentials",
-    "url": "",
-    "where": ""
-   },
-   {
-    "id": "Up next:Did the OTel Java Agent Break Your Redis? I Tested Four Versions.",
-    "kind": "Up next",
-    "title": "Did the OTel Java Agent Break Your Redis? I Tested Four Versions.",
-    "url": "",
-    "where": ""
-   },
    {
     "id": "Up next:Splunk Add-on for AWS: the IAM permissions that break ingestion, and how to fix them",
     "kind": "Up next",
