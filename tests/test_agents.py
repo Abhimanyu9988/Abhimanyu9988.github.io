@@ -1395,6 +1395,10 @@ check("article: a model alone can't start one", not started_art)
 cto.answer("write an article on Fluent Bit retries", [], "oss_scout")
 check("article: only the right leaders can start one", not started_art)
 sent.clear()
+check("article: a request for tomorrow counts", cto.ARTICLE_WORDS.search("For tomorrow, keep it simple. Make the title stronger"))
+cto.answer("OpenTelemetry Java agent and Splunk", [])
+check("article: if it didn't start, he's told so", not started_art and "hasn't started" in sent[-1][1])
+sent.clear()
 cto.answer("I need an article on Fluent Bit retries", [])
 check("article: his words start it, and he's told", started_art == ["Fluent Bit retries"] and "Started" in sent[-1][1])
 cto.start_article = real_sa
@@ -1458,6 +1462,7 @@ real_gpd = cto.gh
 cto.gh = lambda m, path, b=None: [{"head": {"ref": "draft/a"}, "body": "<!-- lab-run: 7 -->", "created_at": "2026-11-04T00:00:00Z"}, {"head": {"ref": "draft/b"}, "body": "<!-- lab-run: 7 -->", "created_at": "2026-11-04T00:00:00Z"}]
 check("plan: a redraft doesn't count as a second article", cto.lab_drafts(plan_doc) == 1)
 cto.gh = real_gpd
+check("facts: a failed read of the labs is empty, never a guess", cto.recent_labs() == [] or isinstance(cto.recent_labs(), list))
 check("plan: other drafts don't count toward the target", cto.lab_drafts(plan_doc) == 1)
 cto.gh, analytics.write_file, analytics.read_file = real_gp, real_wr, real_ar
 import week

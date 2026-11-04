@@ -29,7 +29,7 @@ LEADER = re.compile(r"\s*@?(secretary|ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-
 CONSULT = ("ceo", "cto", "cmo", "cfo", "oss_scout")
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
 NOTES_WORDS = re.compile(r"(?i)\b(feature requests?|build notes|my notes|backlog)\b")
-ARTICLE_WORDS = re.compile(r"(?i)\b(articles?|posts?|blog|write|cover)\b")
+ARTICLE_WORDS = re.compile(r"(?i)\b(articles?|posts?|blog|write|cover|titles?|tomorrow)\b")
 ARTICLE_ROLES = ("secretary", "ceo", "cto", "cmo")
 AUDIT_DAYS = 30
 TRIAL_WORDS = re.compile(r"(?i)\b(models?|stats?|experiment|trial)\b")
@@ -220,6 +220,17 @@ def next_run():
         print(f"::warning title=cto::plan not read: {' '.join(str(e).split())[:200]}")
         return {}
 
+def recent_labs(limit=4):
+    """What the last labs really did, so a leader never has to guess which lab ran or what happened to it."""
+    try:
+        names = [f["name"] for f in gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []]
+        runs = sorted((n for n in names if re.fullmatch(r"trial-\d+\.json", n)), key=lambda n: int(n[6:-5]), reverse=True)[:limit]
+        rows = [json.loads(analytics.read_file(f"analytics/{n}")[0]) for n in runs]
+        return [{k: r.get(k) for k in ("title", "status", "attempts", "model")} for r in rows]
+    except Exception as e:
+        print(f"::warning title=cto::labs not read: {' '.join(str(e).split())[:200]}")
+        return []
+
 def progress():
     """Facts from GitHub and the spend record. A failed source is left out by the caller, never guessed."""
     since = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()[:19] + "Z"
@@ -230,7 +241,8 @@ def progress():
     picks = gh("GET", f"/repos/{HOME_REPO}/issues?labels=radar&state=open&sort=created&direction=desc&per_page=8") or []
     total, jobs = budget.spent()
     pipeline = [p for p in pulls if not p["head"]["ref"].startswith("draft/")]
-    return {"tomorrow": next_run(), "board_url": live_board.PAGE,
+    return {"tomorrow": next_run(), "recent_labs_newest_first": recent_labs(), "board_url": live_board.PAGE,
+            "open_article_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in drafts if p["state"] == "open"],
             "open_pipeline_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in pipeline if p["state"] == "open"],
             "recently_shipped": [p["title"] for p in pipeline if (p.get("merged_at") or "") >= since][:12],
             "newest_topics_first": [{"title": i["title"], "panel_pick": any(l["name"] == "replicate" for l in i["labels"]), "opened": i["created_at"][:10]}
@@ -549,6 +561,8 @@ def answer(text, talk, role="secretary"):
     if got.get("article") and role in ARTICLE_ROLES and ARTICLE_WORDS.search(text):   # his words decide, never a model's alone
         start_article(got["article"])
         notes.append("Started. The Editor and Lab Check are looking at it now, and the Editor will post here next.")
+    elif got.get("article"):
+        notes.append("This article hasn't started. To start it, say: I need an article on, followed by the subject.")
     elif got.get("ideas") and IDEA_WORDS.search(text):
         save_ideas(got["ideas"])
         notes.append("Saved for the Editor's plan on Monday, ahead of other topics.")
