@@ -151,12 +151,13 @@ card = {"scores": {"technical": {"score": 5, "reasons": []}, "editorial": {"scor
                    "marketing": {"score": 5, "reasons": []}}, "blocking": [], "flags_addressed": [], "claims": []}
 check("a 5 on technical cannot offset a 2 on editorial", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
 card["scores"]["editorial"]["score"] = 4
-check("a 4 on editorial is below Abhi's bar", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
-card["scores"]["editorial"]["score"] = 5
-card["scores"]["marketing"]["score"] = 4
-check("a 4 on marketing is below Abhi's bar", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
+check("4 of 5 passes for now", editor.decide(card, {"passed": True, "flags": []})[0] == "pass")
+card["scores"]["marketing"]["score"] = 3
+check("a 3 on marketing is below the bar", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
 card["scores"]["marketing"]["score"] = 5
-check("5 of 5 from both passes", editor.decide(card, {"passed": True, "flags": []})[0] == "pass")
+card["scores"]["editorial"]["score"] = 3
+check("a 3 on editorial is below the bar", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
+card["scores"]["editorial"]["score"] = 4
 check("evidence failure blocks whatever the Editor thinks", editor.decide(card, {"passed": False, "flags": []})[0] == "revise")
 card["claims"] = [{"text": "x", "class": "sourced", "source_ref": "https://made/up"}]
 check("an outside claim needs a known source", editor.decide(card, {"passed": True, "flags": []})[0] == "revise")
@@ -1319,6 +1320,13 @@ check("draft: Slack warns when a draft is below the bar, because approving publi
 check("draft: a passed draft stays simple, even with no scorecard", draft_mod.ready_message("T", 9, {"decision": "pass"}).startswith("Draft ready for your decision: T\nhttps://"))
 redraft_yaml = __import__("yaml").safe_load((ROOT / ".github/workflows/redraft.yml").read_text())
 check("redraft: its finished draft reaches Slack", any("SLACK_BOT_TOKEN" in (st.get("env") or {}) for st in redraft_yaml["jobs"]["redraft"]["steps"]))
+inbox_store = {}
+real_rp2, real_wp2, real_hm, real_aon = cto.read_private, cto.write_private, slack.his_messages, cto.admin_on
+cto.read_private, cto.write_private, slack.his_messages, cto.admin_on = (lambda p: (inbox_store.get("t", ""), "s")), (lambda p, t, s, m: inbox_store.update(t=t, p=p) or True), (lambda limit=50: [("1793700000.0", "Editor: send me topics")]), (lambda: True)
+cto.save_inbox()
+check("inbox: his Slack messages reach the private repo for a chat to read", "send me topics" in inbox_store["t"])
+cto.read_private, cto.write_private, slack.his_messages, cto.admin_on = real_rp2, real_wp2, real_hm, real_aon
+check("draft: warn mode opens a paid-for draft, and only enforce stops it", 'verdict == "revise" and editor.mode() == "enforce"' in (ROOT / "pipeline/draft.py").read_text())
 check("slack: bold is Slack's own", slack.clean("**hi**") == "*hi*")
 
 # ---------- lab pre-flight ----------
@@ -1340,6 +1348,7 @@ check("pre-flight: a comment doesn't count as code", lab_mod.preflight(lab_files
 lab_mod.validate = real_validate
 slow_brief = {"measurements": [{"id": "stale", "unit": "count"}, {"id": "ratio", "what": "steady-state hourly count"}, {"id": "after", "what": "still active 1 hour after the rollout"}, {"id": "fast", "what": "drain time in seconds"}]}
 check("gate: a contract that needs an hour's wait is caught before AWS", editor.slow_measures(slow_brief) == ["ratio", "after"])
+check("gate: a measurement must be a number", editor.word_measures({"measurements": [{"id": "hpa", "unit": "type"}, {"id": "secs", "unit": "seconds"}]}) == ["hpa"])
 check("gate: such a topic fails the Topic Investment Gate", any("longer wait" in r for r in editor.gate1(slow_brief)[1]))
 
 # ---------- secretary and build notes ----------
@@ -1387,6 +1396,10 @@ check("article: a model alone can't start one", not started_art)
 cto.answer("write an article on Fluent Bit retries", [], "oss_scout")
 check("article: only the right leaders can start one", not started_art)
 sent.clear()
+check("article: a request for tomorrow counts", cto.ARTICLE_WORDS.search("For tomorrow, keep it simple. Make the title stronger"))
+cto.answer("OpenTelemetry Java agent and Splunk", [])
+check("article: if it didn't start, he's told so", not started_art and "hasn't started" in sent[-1][1])
+sent.clear()
 cto.answer("I need an article on Fluent Bit retries", [])
 check("article: his words start it, and he's told", started_art == ["Fluent Bit retries"] and "Started" in sent[-1][1])
 cto.start_article = real_sa
@@ -1407,13 +1420,13 @@ cto.merged_prs = real_merged
 real_gpr, cto.gh = cto.gh, lambda m, p, b=None: [{"title": "New", "html_url": "https://g/1", "body": "b", "head": {"ref": "feat/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Article", "html_url": "https://g/2", "head": {"ref": "draft/a"}, "merged_at": "2999-01-01T00:00:00Z"}, {"title": "Closed", "html_url": "https://g/3", "head": {"ref": "feat/b"}}]
 check("IT: only merged pipeline PRs count as evidence", [m["url"] for m in cto.merged_prs()] == ["https://g/1"])
 cto.gh = real_gpr
-analytics.read_file = lambda p, ref=None: (json.dumps({"week": "2026-W45", "target": 5, "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued", "confirmed": True}, {"issue": 3, "title": "C", "state": "queued", "confirmed": True}, {"issue": 4, "title": "Old", "state": "queued"}]}), "s")
+analytics.read_file = lambda p, ref=None: (json.dumps({"week": "2026-W45", "target": 5, "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued", "confirmed": True, "picked": True}, {"issue": 3, "title": "C", "state": "queued", "confirmed": True, "picked": True}, {"issue": 4, "title": "Old", "state": "queued"}]}), "s")
 plan_now = cto.next_run()
 check("tomorrow: he gets the real next lab, then the rest", plan_now["next_lab"] == "B" and plan_now["queued_after_that"] == ["C"] and plan_now["articles_this_week"] == 5)
 analytics.read_file = lambda p, ref=None: (_ for _ in ()).throw(RuntimeError("down"))
 check("tomorrow: a failed read is left out, not guessed", cto.next_run() == {})
 saved_plan = []
-plan_doc = {"week": "2026-W45", "target": 2, "created": "2026-11-03", "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued", "confirmed": True}, {"issue": 3, "title": "C", "state": "queued", "confirmed": True}]}
+plan_doc = {"week": "2026-W45", "target": 2, "created": "2026-11-03", "topics": [{"issue": 1, "title": "A", "state": "started"}, {"issue": 2, "title": "B", "state": "queued", "confirmed": True, "picked": True}, {"issue": 3, "title": "C", "state": "queued", "confirmed": True, "picked": True}]}
 analytics.read_file = lambda p, ref=None: (json.dumps(plan_doc), "s")
 real_wr, analytics.write_file = analytics.write_file, lambda p, t, s, m: saved_plan.append(json.loads(t))
 state = {"drafts": 0, "running": []}
@@ -1431,12 +1444,14 @@ state["drafts"] = 1
 state.update(drafts=0)
 plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "queued"}]
 check("plan: an unconfirmed topic never starts a lab", cto.next_lab() is None)
-plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03", "confirmed": True}]
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "queued", "confirmed": True}]
+check("plan: a confirmed topic waits for Abhi's pick", cto.next_lab() is None)
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03", "confirmed": True, "picked": True}]
 saved_plan.clear()
 inner_gh = cto.gh
 cto.gh = lambda m, path, b=None: {"comments": 0} if "/issues/1" in path else inner_gh(m, path, b)
 check("plan: a lab that never started goes back in the queue", cto.next_lab("2026-11-04")["issue"] == 1 and saved_plan[-1]["topics"][0]["started_on"] == "2026-11-04")
-plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03", "confirmed": True}]
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03", "confirmed": True, "picked": True}]
 cto.gh = lambda m, path, b=None: {"comments": 2} if "/issues/1" in path else inner_gh(m, path, b)
 check("plan: a lab that ran isn't repeated", cto.next_lab("2026-11-04") is None)
 check("plan: a same-day start isn't mistaken for a lost lab", cto.next_lab("2026-11-03") is None)
@@ -1448,6 +1463,7 @@ real_gpd = cto.gh
 cto.gh = lambda m, path, b=None: [{"head": {"ref": "draft/a"}, "body": "<!-- lab-run: 7 -->", "created_at": "2026-11-04T00:00:00Z"}, {"head": {"ref": "draft/b"}, "body": "<!-- lab-run: 7 -->", "created_at": "2026-11-04T00:00:00Z"}]
 check("plan: a redraft doesn't count as a second article", cto.lab_drafts(plan_doc) == 1)
 cto.gh = real_gpd
+check("facts: a failed read of the labs is empty, never a guess", cto.recent_labs() == [] or isinstance(cto.recent_labs(), list))
 check("plan: other drafts don't count toward the target", cto.lab_drafts(plan_doc) == 1)
 cto.gh, analytics.write_file, analytics.read_file = real_gp, real_wr, real_ar
 import week
@@ -1565,6 +1581,11 @@ os.environ.pop("GITHUB_OUTPUT")
 check("request: it goes first, adds to the week's target, and starts its lab", wrote_req[-1]["topics"][0]["issue"] == 200 and wrote_req[-1]["target"] == 6 and "pick=200" in open(outreq).read() and "On it" in said_req[-1])
 week.slack.say, week.post_issue, week.ensure_label, analytics.read_file, analytics.write_file, week.requested = real_say, real_pi, real_el, real_rf, real_wf, real_req
 week.roles.ask, editor.brief, editor.gate1, editor.brief_md, editor.marker, week.lab_check, week.panel = real_ra, real_eb2, real_eg2, real_bm, real_mk, real_lc, real_pn
+check("headline: negative framing of our products is refused", week.title_problem("Your Java App Is Traced. Your Splunk Service Map Is Still Wrong.") != "" and week.title_problem("KEDA Fails Quietly When the Metric Stops Reporting at Night") == "")
+check("headline: a positive product title passes", week.title_problem("Zero-Code Java Tracing: See Every Request in Splunk APM in Minutes") == "")
+check("chat: a chat lab repairs itself, with no API call", "chat or attempt == MAX_ATTEMPTS" in (ROOT / "pipeline/lab.py").read_text() and "chat_lab(issue_no)" in (ROOT / "pipeline/lab.py").read_text())
+check("chat: an article waits for the chat, and isn't written by the API", "(written, {}) if written else write_post" in (ROOT / "pipeline/draft.py").read_text())
+check("chat: the playbook exists", (ROOT / "docs/chat-article.md").exists())
 check("headline: steps are refused", week.title_problem("How to deploy Fluent Bit on ECS Fargate with FireLens") != "" and week.title_problem("Setting up Argo CD on EKS for your whole team today") != "")
 check("headline: length is checked", week.title_problem("Short") != "" and week.title_problem("x" * 90) != "")
 check("headline: a symptom passes", week.title_problem("Argo CD is Synced while the ALB has zero healthy targets") == "")

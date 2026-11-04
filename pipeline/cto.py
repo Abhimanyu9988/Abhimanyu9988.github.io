@@ -20,6 +20,7 @@ from radar import HOME_REPO, comment, ensure_label, gh, post_issue, safe_text
 import analytics, budget, contract, live_board, roles, slack, sources
 
 TASKS, STATUS, CURSOR = "analytics/tasks.json", "analytics/status.json", "analytics/slack-cursor.json"
+INBOX = "analytics/slack-inbox.md"             # a path name only: read_private and write_private keep it in the private repo
 ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, so its analytics branch is too
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
@@ -28,7 +29,7 @@ LEADER = re.compile(r"\s*@?(secretary|ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-
 CONSULT = ("ceo", "cto", "cmo", "cfo", "oss_scout")
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
 NOTES_WORDS = re.compile(r"(?i)\b(feature requests?|build notes|my notes|backlog)\b")
-ARTICLE_WORDS = re.compile(r"(?i)\b(articles?|posts?|blog|write|cover)\b")
+ARTICLE_WORDS = re.compile(r"(?i)\b(articles?|posts?|blog|write|cover|titles?|tomorrow)\b")
 ARTICLE_ROLES = ("secretary", "ceo", "cto", "cmo")
 AUDIT_DAYS = 30
 TRIAL_WORDS = re.compile(r"(?i)\b(models?|stats?|experiment|trial)\b")
@@ -200,7 +201,7 @@ def next_lab(today=None):
     if not plan.get("topics") or lab_active() or lab_drafts(plan) >= plan.get("target", 0):
         return None
     requeue_lost(plan, today)
-    queued = [t for t in plan["topics"] if t.get("state") == "queued" and t.get("confirmed")]   # Marketing and the Editor confirm first
+    queued = [t for t in plan["topics"] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]   # Marketing and the Editor confirm, then Abhi picks
     if not queued:
         return None
     queued[0].update(state="started", started_on=today)
@@ -211,13 +212,24 @@ def next_run():
     """What is really planned, read from the week's plan. If it can't be read, this is left out rather than guessed."""
     try:
         plan, _ = read_plan()
-        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed")]
+        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]
         return {"week": plan.get("week"), "articles_this_week": plan.get("target"), "next_lab": queued[0] if queued else "nothing queued",
                 "next_lab_starts": "07:12 UTC tomorrow" if queued else "the next plan, on Monday at 06:00 UTC", "queued_after_that": queued[1:],
                 "note": "One lab a day. A lab can still fail, and an article needs your approval."}
     except Exception as e:
         print(f"::warning title=cto::plan not read: {' '.join(str(e).split())[:200]}")
         return {}
+
+def recent_labs(limit=4):
+    """What the last labs really did, so a leader never has to guess which lab ran or what happened to it."""
+    try:
+        names = [f["name"] for f in gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []]
+        runs = sorted((n for n in names if re.fullmatch(r"trial-\d+\.json", n)), key=lambda n: int(n[6:-5]), reverse=True)[:limit]
+        rows = [json.loads(analytics.read_file(f"analytics/{n}")[0]) for n in runs]
+        return [{k: r.get(k) for k in ("title", "status", "attempts", "model")} for r in rows]
+    except Exception as e:
+        print(f"::warning title=cto::labs not read: {' '.join(str(e).split())[:200]}")
+        return []
 
 def progress():
     """Facts from GitHub and the spend record. A failed source is left out by the caller, never guessed."""
@@ -229,7 +241,8 @@ def progress():
     picks = gh("GET", f"/repos/{HOME_REPO}/issues?labels=radar&state=open&sort=created&direction=desc&per_page=8") or []
     total, jobs = budget.spent()
     pipeline = [p for p in pulls if not p["head"]["ref"].startswith("draft/")]
-    return {"tomorrow": next_run(), "board_url": live_board.PAGE,
+    return {"tomorrow": next_run(), "recent_labs_newest_first": recent_labs(), "board_url": live_board.PAGE,
+            "open_article_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in drafts if p["state"] == "open"],
             "open_pipeline_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in pipeline if p["state"] == "open"],
             "recently_shipped": [p["title"] for p in pipeline if (p.get("merged_at") or "") >= since][:12],
             "newest_topics_first": [{"title": i["title"], "panel_pick": any(l["name"] == "replicate" for l in i["labels"]), "opened": i["created_at"][:10]}
@@ -548,6 +561,8 @@ def answer(text, talk, role="secretary"):
     if got.get("article") and role in ARTICLE_ROLES and ARTICLE_WORDS.search(text):   # his words decide, never a model's alone
         start_article(got["article"])
         notes.append("Started. The Editor and Lab Check are looking at it now, and the Editor will post here next.")
+    elif got.get("article"):
+        notes.append("This article hasn't started. To start it, say: I need an article on, followed by the subject.")
     elif got.get("ideas") and IDEA_WORDS.search(text):
         save_ideas(got["ideas"])
         notes.append("Saved for the Editor's plan on Monday, ahead of other topics.")
@@ -568,6 +583,13 @@ def answer(text, talk, role="secretary"):
         except Exception as e:
             print(f"::warning title=cmo::research skipped: {' '.join(str(e).split())[:200]}")
 
+def save_inbox(force=False):
+    """His own messages, in the private repo, so a Claude chat can read Slack without a Slack key. Never goes to the public repo."""
+    text, sha = read_private(INBOX)
+    if (force or not text.strip()) and admin_on():
+        rows = "\n\n".join(f"**{datetime.datetime.fromtimestamp(float(ts), datetime.timezone.utc):%Y-%m-%d %H:%M} UTC:** {body}" for ts, body in slack.his_messages())
+        write_private(INBOX, f"# What Abhi texted the team\n\n{rows}\n", sha, "inbox: his Slack messages")
+
 def poll():
     """Slack messages since the last run. The cursor moves first, so one bad message cannot repeat every ten minutes."""
     if not slack.enabled():
@@ -581,6 +603,10 @@ def poll():
         return
     if newest != after or not sha:
         analytics.write_file(CURSOR, json.dumps({"ts": newest}), sha, "slack: cursor")
+    try:
+        save_inbox(bool(mine))
+    except Exception as e:
+        print(f"::warning title=slack::inbox not saved: {' '.join(str(e).split())[:200]}")
     for m in mine[-MAX_REPLIES:]:
         for role, message in split_leaders(m["text"]):
             try:
@@ -594,7 +620,7 @@ def refresh_board():
     try:
         brief, _ = analytics.read_file(BRIEF)
         ideas = [l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")]
-        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued" and t.get("confirmed")]
+        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]
         live_board.refresh(needed(), own_prs(), planned + ideas, budget.spent()[0], budget.limit())
     except Exception as e:
         print(f"::warning title=board::not refreshed: {' '.join(str(e).split())[:200]}")

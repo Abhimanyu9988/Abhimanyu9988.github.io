@@ -37,6 +37,8 @@ SPARES, EXTRA_IDEAS = 1, 3                     # a spare covers a failed lab. Ex
 # Abhi's model trial. Each lab and article uses one, in turn, and the same reviewers judge them all, so the stats compare like with like.
 WEAK_TITLE = re.compile(r"(?i)^(how to|a guide|guide to|the complete|complete guide|getting started|introduction|intro to|setting up|set up|"
                         r"deploy(ing)?|install(ing)?|using|understanding|everything you|\d+ (ways|tips|best)|best practices)\b")
+OUR_PRODUCTS = re.compile(r"(?i)\b(splunk|opentelemetry|otel|galileo|appdynamics|cisco)\b")
+NEGATIVE = re.compile(r"(?i)\b(wrong|broken?|breaks?|bugs?|fails?|failing|ignored?|ignores|missing|miss(es)?|lost|loses?|lose|vanish\w*|gaps?|doesn't|don't|won't|can't|lacks?|worst|bad)\b")
 QUESTION = ("Should this become a post on Abhimanyu's blog, under exactly this headline? Readers are working engineers on AWS containers and "
             "observability who find posts through a symptom they hit: an error, a stuck deployment, a wrong number or a surprise bill. Vote yes only "
             "if a busy ECS or EKS engineer would stop at the headline, the headline names a concrete symptom, surprise or number, the hook teaches "
@@ -82,6 +84,7 @@ def propose(items, existing, want, refused=(), hot=()):
                                f"{'Include at least one ai_monitoring topic if a real complaint supports it. It must use Galileo, with a small open model on EC2, because the lab has no paid AI API. ' if galileo_ready() else 'Offer no ai_monitoring topics yet, because the lab has no Galileo key. '}"
                                f"Vary the week: no two topics on the same service or failure. Abhi has rejected repeated ALB posts, so offer at most one ALB topic, "
                                f"and cover different ground, such as ECS, logs, OpenTelemetry and Splunk Observability. "
+                               f"Stay positive about Splunk, OpenTelemetry and Galileo: show what they make possible, and never frame them as broken or lacking. "
                                f"The topic and headline matter most, so spend your effort there. Write three headlines for each topic and keep the strongest. "
                                f"A headline names the technology and a concrete symptom, surprise or number a busy engineer recognises, in 30 to 75 characters. "
                                f"It never describes steps, never says how to, and never promises more than the proof can show. "
@@ -112,6 +115,8 @@ def title_problem(title):
     """A plain reason, or "". These are cheap checks, and the panel judges the rest."""
     if not 30 <= len(title) <= 80:
         return f"the headline is {len(title)} characters, outside 30 to 80"
+    if OUR_PRODUCTS.search(title) and NEGATIVE.search(title):
+        return "the headline reads as negative about a product Abhi works on"
     return "the headline describes steps instead of a symptom or surprise" if WEAK_TITLE.match(title) else ""
 
 def panel(topics, rejected, existing):
@@ -223,7 +228,7 @@ def start_requested(subject):
     text, sha = analytics.read_file(PLAN)
     plan = json.loads(text) if text.strip() else {"week": week_id(), "target": 0, "created": datetime.date.today().isoformat(), "topics": []}
     plan["target"] = plan.get("target", 0) + 1     # it comes on top of the week's target, so a planned article isn't dropped for it
-    plan["topics"].insert(0, {"issue": number, "title": t["title"], "state": "started", "started_on": datetime.date.today().isoformat(), "requested": True, "confirmed": True})
+    plan["topics"].insert(0, {"issue": number, "title": t["title"], "state": "started", "started_on": datetime.date.today().isoformat(), "requested": True, "confirmed": True, "picked": True})
     analytics.write_file(PLAN, json.dumps(plan, indent=1), sha, "week: Abhi's article")
     slack.say("editor", f"On it. Headline: {t['title']}\n\nThe lab is starting now. It takes up to an hour, and you'll get a PR to approve if it works.")
     if os.environ.get("GITHUB_OUTPUT"):
@@ -258,9 +263,9 @@ def publish(plan, goal, dropped):
         ensure_label(l)
     for t in plan:
         number = t.get("issue") or post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)["number"]
-        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "confirmed": bool(t.get("confirmed")), "scores": t.get("yes"),
+        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "confirmed": bool(t.get("confirmed")), "picked": bool(t.get("picked")), "scores": t.get("yes"),
                      "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
-    first = next((r for r in rows if r["confirmed"]), None)     # a lab never starts on a topic they didn't confirm
+    first = next((r for r in rows if r["confirmed"] and r["picked"]), None)     # no lab without Marketing, the Editor and Abhi
     if first:
         first.update(state="started", started_on=datetime.date.today().isoformat())
     _, sha = analytics.read_file(PLAN)
@@ -346,7 +351,7 @@ def plan_from_chat(text):
             body = body_for(t, srcs, f"{safe_text(editor.brief_md(b, True, []))}\n\n{editor.marker(b)}")
             assert_safe(title); assert_safe(body)
             plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": f"Marketing {m_score}/5, Editor {e_score}/5",
-                         "signal": t.get("signal"), "confirmed": True, "why": why})
+                         "signal": t.get("signal"), "confirmed": True, "picked": bool(t.get("picked")), "why": why})
     publish(plan, goal, dropped)
 
 if __name__ == "__main__":
