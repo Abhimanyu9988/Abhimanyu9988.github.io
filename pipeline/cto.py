@@ -29,8 +29,6 @@ LEADER = re.compile(r"\s*@?(secretary|ceo|cto|cmo|cfo|oss[ -]?scout|oss)\b[\s:,-
 CONSULT = ("ceo", "cto", "cmo", "cfo", "oss_scout")
 CLOSE_WORDS = re.compile(r"(?i)\b(reject|close|delete|drop|kill)\b")
 NOTES_WORDS = re.compile(r"(?i)\b(feature requests?|build notes|my notes|backlog)\b")
-ARTICLE_WORDS = re.compile(r"(?i)\b(articles?|posts?|blog|write|cover|titles?|tomorrow)\b")
-ARTICLE_ROLES = ("secretary", "ceo", "cto", "cmo")
 AUDIT_DAYS = 30
 TRIAL_WORDS = re.compile(r"(?i)\b(models?|stats?|experiment|trial)\b")
 DONE_WORDS = re.compile(r"(?i)\b(done|finished|complete|completed|remove|close|delete|drop)\b")
@@ -201,7 +199,7 @@ def next_lab(today=None):
     if not plan.get("topics") or lab_active() or lab_drafts(plan) >= plan.get("target", 0):
         return None
     requeue_lost(plan, today)
-    queued = [t for t in plan["topics"] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]   # Marketing and the Editor confirm, then Abhi picks
+    queued = [t for t in plan["topics"] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked") and not t.get("chat")]   # Marketing and the Editor confirm, Abhi picks, and a chat topic starts from chat
     if not queued:
         return None
     queued[0].update(state="started", started_on=today)
@@ -212,7 +210,7 @@ def next_run():
     """What is really planned, read from the week's plan. If it can't be read, this is left out rather than guessed."""
     try:
         plan, _ = read_plan()
-        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]
+        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked") and not t.get("chat")]
         return {"week": plan.get("week"), "articles_this_week": plan.get("target"), "next_lab": queued[0] if queued else "nothing queued",
                 "next_lab_starts": "07:12 UTC tomorrow" if queued else "the next plan, on Monday at 06:00 UTC", "queued_after_that": queued[1:],
                 "note": "One lab a day. A lab can still fail, and an article needs your approval."}
@@ -531,12 +529,6 @@ def ask_role(role, text, talk, p, heard=None):
                            f"{json.dumps({**p, 'team': roster(p)})[:6000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
                            f"\n\nMARKET BRIEF:\n{brief[:2500]}{extra}", "ctoreply")
 
-def start_article(subject):
-    """cto.yml starts the planner after this step, because only that step holds the token to do it."""
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-            f.write(f"article_topic<<END_OF_TOPIC\n{' '.join(str(subject).split())[:800].replace('END_OF_TOPIC', '')}\nEND_OF_TOPIC\n")
-
 def answer(text, talk, role="secretary"):
     wanted = budget.requested_limit(text)
     if wanted:
@@ -558,11 +550,8 @@ def answer(text, talk, role="secretary"):
     if got.get("done_tasks") and DONE_WORDS.search(text):
         finished = finish_tasks(got["done_tasks"])
         notes.append(f"Marked done: {', '.join(finished)}." if finished else "I found no open task with that title.")
-    if got.get("article") and role in ARTICLE_ROLES and ARTICLE_WORDS.search(text):   # his words decide, never a model's alone
-        start_article(got["article"])
-        notes.append("Started. The Editor and Lab Check are looking at it now, and the Editor will post here next.")
-    elif got.get("article"):
-        notes.append("This article hasn't started. To start it, say: I need an article on, followed by the subject.")
+    if got.get("article"):                              # labs and articles are written in Claude chat, so Slack never starts one
+        notes.append("Saved for Claude chat. No lab starts from Slack, and the Editor's shortlist comes first.")
     elif got.get("ideas") and IDEA_WORDS.search(text):
         save_ideas(got["ideas"])
         notes.append("Saved for the Editor's plan on Monday, ahead of other topics.")
@@ -620,7 +609,7 @@ def refresh_board():
     try:
         brief, _ = analytics.read_file(BRIEF)
         ideas = [l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")]
-        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]
+        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked") and not t.get("chat")]
         live_board.refresh(needed(), own_prs(), planned + ideas, budget.spent()[0], budget.limit())
     except Exception as e:
         print(f"::warning title=board::not refreshed: {' '.join(str(e).split())[:200]}")

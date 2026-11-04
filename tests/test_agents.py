@@ -1056,7 +1056,7 @@ check("cto: only Abhi on the desk issue starts it", "comment.user.login == 'Abhi
 check("cto: nothing from a PR runs with its keys", "pull_request" not in ctoy[True] and ctoy["jobs"]["cto"]["steps"][0]["with"]["ref"] == "main")
 cto_steps = {s.get("name"): s for s in ctoy["jobs"]["cto"]["steps"]}
 check("digest: a manual run never repeats it", cto_steps["cto"]["env"]["SCHEDULE"] == "${{ github.event.schedule }}")
-check("article: his subject reaches the shell only through env", "${{" not in cto_steps["start the article he asked for"]["run"])
+check("article: no Slack message can start the planner", "start the article he asked for" not in cto_steps)
 check("labs: the next one starts only from the plan", cto_steps["start the next lab"]["if"].startswith("steps.leaders.outputs.run_lab") and "${{" not in cto_steps["start the next lab"]["run"])
 term = (ROOT / "site/_includes/terminal.html").read_text()
 check("site: the prompt can't be copied, and page text stays text", "user-select: none" in term and "innerHTML" not in term)
@@ -1316,7 +1316,7 @@ check("topics: the failure finder only runs when asked, because the weekly plan 
 check("panel: a refused lab reaches Slack and the model stats", "the review panel didn't accept its proof" in (ROOT / "pipeline/draft.py").read_text() and '"status": "panel_rejected"' in (ROOT / "pipeline/draft.py").read_text())
 import draft as draft_mod
 revise_msg = draft_mod.ready_message("T", 9, {"decision": "revise", "card": {"scores": {"technical": {"score": 3}}}})
-check("draft: Slack warns when a draft is below the bar, because approving publishes", "below the 5/5 bar" in revise_msg and "technical 3/5" in revise_msg and "approving publishes" in revise_msg)
+check("draft: Slack warns when a draft is below the bar, because approving publishes", "below the 4/5 bar" in revise_msg and "technical 3/5" in revise_msg and "approving publishes" in revise_msg)
 check("draft: a passed draft stays simple, even with no scorecard", draft_mod.ready_message("T", 9, {"decision": "pass"}).startswith("Draft ready for your decision: T\nhttps://"))
 redraft_yaml = __import__("yaml").safe_load((ROOT / ".github/workflows/redraft.yml").read_text())
 check("redraft: its finished draft reaches Slack", any("SLACK_BOT_TOKEN" in (st.get("env") or {}) for st in redraft_yaml["jobs"]["redraft"]["steps"]))
@@ -1388,25 +1388,10 @@ sent.clear()
 cto.answer("how is it going?", [], "cto")
 check("notes: they stay quiet otherwise", len(sent) == 1)
 cto.audit_notes = real_audit
-started_art = []
-real_sa, cto.start_article = cto.start_article, lambda s: started_art.append(s)
-roles_mod.ask = lambda role, prompt, out: {**blank, "article": "Fluent Bit retries"}
-cto.answer("how are things?", [], "cto")
-check("article: a model alone can't start one", not started_art)
-cto.answer("write an article on Fluent Bit retries", [], "oss_scout")
-check("article: only the right leaders can start one", not started_art)
 sent.clear()
-check("article: a request for tomorrow counts", cto.ARTICLE_WORDS.search("For tomorrow, keep it simple. Make the title stronger"))
-cto.answer("OpenTelemetry Java agent and Splunk", [])
-check("article: if it didn't start, he's told so", not started_art and "hasn't started" in sent[-1][1])
-sent.clear()
-cto.answer("I need an article on Fluent Bit retries", [])
-check("article: his words start it, and he's told", started_art == ["Fluent Bit retries"] and "Started" in sent[-1][1])
-cto.start_article = real_sa
-out_art = tempfile.mktemp(); os.environ["GITHUB_OUTPUT"] = out_art
-cto.start_article("line one\nline two")
-os.environ.pop("GITHUB_OUTPUT")
-check("article: the subject reaches the workflow on one line", "line one line two" in open(out_art).read())
+roles_mod.ask = lambda role, prompt, out: {**blank, "article": "OTel Java agent in Splunk"}
+cto.answer("This is okay for now. Create lab tomorrow and share article", [])
+check("article: Slack never starts a lab, and he's told so", "No lab starts from Slack" in sent[-1][1] and not hasattr(cto, "start_article"))
 audit_rows = [{"title": "Note A", "owner": "cto", "status": "open"}, {"title": "Note B", "owner": "cto", "status": "open"}, {"title": "Note C", "owner": "cto", "status": "open"}, {"title": "Other", "owner": "cmo", "status": "open"}]
 written = []
 cto.tasks, cto.write_private = lambda: (audit_rows, "sha"), lambda p, t, s, m: written.append(t) or True
@@ -1446,6 +1431,8 @@ plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "queued"}]
 check("plan: an unconfirmed topic never starts a lab", cto.next_lab() is None)
 plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "queued", "confirmed": True}]
 check("plan: a confirmed topic waits for Abhi's pick", cto.next_lab() is None)
+plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "queued", "confirmed": True, "picked": True, "chat": True}]
+check("plan: a picked chat topic starts from chat, not on a timer", cto.next_lab() is None)
 plan_doc["topics"] = [{"issue": 1, "title": "A", "state": "started", "started_on": "2026-11-03", "confirmed": True, "picked": True}]
 saved_plan.clear()
 inner_gh = cto.gh
@@ -1489,6 +1476,7 @@ check("week: a lab can read the brief", "<!-- m -->" in plan_rows[0]["body"] and
 editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb, real_eg, week_editor_bm, week_editor_mk
 check("week: the Slack plan marks the spare", "2. Two (spare)" in week.plan_message(plan_rows, 1, []))
 check("week: it says when fewer passed", "Only 1 of 3" in week.plan_message(plan_rows[:1], 3, []))
+check("week: a short chat plan isn't called a failure", "Only" not in week.plan_message([{**plan_rows[0], "chat": True}], 3, []))
 real_prop, real_vet, real_hot, real_coll, real_ei = week.propose, week.vet, week.hot_items, week.collect, week.existing_issues
 rounds = []
 week.existing_issues, week.collect, week.waiting_topics = (lambda: ([], set())), (lambda: [{"url": "https://x.y/a"}]), (lambda: [])

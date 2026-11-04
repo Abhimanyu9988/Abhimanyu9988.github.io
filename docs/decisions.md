@@ -237,3 +237,7 @@ On 4 November the Secretary told Abhi his Java article had started, but his mess
 
 Abhi works at Cisco on Splunk and doesn't want content that reads as negative about the product, so prompts ask for positive framing and code refuses negative headlines naming these products. He accepts 4 of 5 for now, with 5 as the target.
 He wants the best output and chat before API. With `chat_work`, a Claude chat writes the lab and article on branch `chat/<issue>`. No model writes or repairs it, and the panel, evidence checks and Editor still run. Pod Identity is dropped.
+
+## 2026-11-04: Slack never starts a lab
+
+A Slack note saying to create the lab tomorrow started an API lab that minute, on a headline nobody picked. Labs and articles are written in chat, so Slack requests now wait in `slack-inbox.md`, and chat-planned topics start only from chat.

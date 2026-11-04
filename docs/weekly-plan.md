@@ -10,7 +10,7 @@ Planning here adds no API cost. A chat session does the research and writing, an
 6. Save `{"topics": [...]}`. Each topic has `title`, `titles` (at least three real options), `hook`, `payoff`, `proof`, `lab`, `sources`, `kind`, `lane`, `demand_url`, `signal` and `brief`. `brief` must match `pipeline/schemas/brief.json`, with `existing_pages` from pages you really found and `verdict` set to `go`.
 7. Run `REPO=Abhimanyu9988/Abhimanyu9988.github.io BOT_TOKEN=x GH_READ_TOKEN=x python3 pipeline/week.py --check plan.json` and fix everything it refuses.
 8. Post the Editor's shortlist in Slack and wait. Abhi picks the topics. Set `picked` to true on those only, because no lab starts without it.
-9. Start it with `gh workflow run radar.yml --repo Abhimanyu9988/Abhimanyu9988.github.io --ref main -f plan_json="$(cat plan.json)"`. ChatGPT approves topics and adds a headline option. Marketing and the Editor then do marketing analysis only: both must confirm a topic, and Marketing chooses its title. Code opens the issues, and the first confirmed lab starts.
+9. Start it with `gh workflow run radar.yml --repo Abhimanyu9988/Abhimanyu9988.github.io --ref main -f plan_json="$(cat plan.json)"`. ChatGPT approves topics and adds a headline option. Marketing and the Editor then do marketing analysis only: both must confirm a topic, and Marketing chooses its title. Code opens the issues. Nothing starts by itself, because a chat plan marks its topics `chat`. Start the lab by hand with `docs/chat-article.md`.
 
 Every measurement in a contract must be a number, because the evidence scanner refuses words.
 

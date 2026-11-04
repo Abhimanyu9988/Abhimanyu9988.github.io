@@ -720,7 +720,7 @@ def ready_message(title, number, gate):
     scores = (gate.get("card") or {}).get("scores") or {}
     marks = ", ".join(f"{k} {v.get('score')}/5" for k, v in scores.items() if isinstance(v, dict))
     if gate.get("decision") == "revise":
-        return f"Draft below the 5/5 bar: {title}\n{marks}\nDon't approve it yet, because approving publishes it. Comment /redraft with what to change.\n{link}"
+        return f"Draft below the 4/5 bar: {title}\n{marks}\nDon't approve it yet, because approving publishes it. Comment /redraft with what to change.\n{link}"
     return f"Draft ready for your decision: {title}\n{marks}\n{link}".replace("\n\n", "\n")
 
 def open_pr(issue_no, res, topic):
