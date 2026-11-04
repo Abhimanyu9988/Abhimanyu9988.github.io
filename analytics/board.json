@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-04T16:04:25Z",
+ "updated": "2026-11-04T16:23:35Z",
  "columns": {
   "needs": [
    {
@@ -69,20 +69,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41862812039",
-    "kind": "Lab Engineer is testing an article",
-    "title": "OTel Java Agent in Splunk: Counting Every Signal One Pod Sends",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41862812039",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41850940659",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/41850940659",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Your PR",
