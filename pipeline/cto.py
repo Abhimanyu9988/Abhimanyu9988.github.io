@@ -20,6 +20,7 @@ from radar import HOME_REPO, comment, ensure_label, gh, post_issue, safe_text
 import analytics, budget, contract, live_board, roles, slack, sources
 
 TASKS, STATUS, CURSOR = "analytics/tasks.json", "analytics/status.json", "analytics/slack-cursor.json"
+INBOX = "analytics/slack-inbox.md"             # a path name only: read_private and write_private keep it in the private repo
 ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, so its analytics branch is too
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
@@ -200,7 +201,7 @@ def next_lab(today=None):
     if not plan.get("topics") or lab_active() or lab_drafts(plan) >= plan.get("target", 0):
         return None
     requeue_lost(plan, today)
-    queued = [t for t in plan["topics"] if t.get("state") == "queued" and t.get("confirmed")]   # Marketing and the Editor confirm first
+    queued = [t for t in plan["topics"] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]   # Marketing and the Editor confirm, then Abhi picks
     if not queued:
         return None
     queued[0].update(state="started", started_on=today)
@@ -211,7 +212,7 @@ def next_run():
     """What is really planned, read from the week's plan. If it can't be read, this is left out rather than guessed."""
     try:
         plan, _ = read_plan()
-        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed")]
+        queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]
         return {"week": plan.get("week"), "articles_this_week": plan.get("target"), "next_lab": queued[0] if queued else "nothing queued",
                 "next_lab_starts": "07:12 UTC tomorrow" if queued else "the next plan, on Monday at 06:00 UTC", "queued_after_that": queued[1:],
                 "note": "One lab a day. A lab can still fail, and an article needs your approval."}
@@ -568,6 +569,13 @@ def answer(text, talk, role="secretary"):
         except Exception as e:
             print(f"::warning title=cmo::research skipped: {' '.join(str(e).split())[:200]}")
 
+def save_inbox(force=False):
+    """His own messages, in the private repo, so a Claude chat can read Slack without a Slack key. Never goes to the public repo."""
+    text, sha = read_private(INBOX)
+    if (force or not text.strip()) and admin_on():
+        rows = "\n\n".join(f"**{datetime.datetime.fromtimestamp(float(ts), datetime.timezone.utc):%Y-%m-%d %H:%M} UTC:** {body}" for ts, body in slack.his_messages())
+        write_private(INBOX, f"# What Abhi texted the team\n\n{rows}\n", sha, "inbox: his Slack messages")
+
 def poll():
     """Slack messages since the last run. The cursor moves first, so one bad message cannot repeat every ten minutes."""
     if not slack.enabled():
@@ -581,6 +589,10 @@ def poll():
         return
     if newest != after or not sha:
         analytics.write_file(CURSOR, json.dumps({"ts": newest}), sha, "slack: cursor")
+    try:
+        save_inbox(bool(mine))
+    except Exception as e:
+        print(f"::warning title=slack::inbox not saved: {' '.join(str(e).split())[:200]}")
     for m in mine[-MAX_REPLIES:]:
         for role, message in split_leaders(m["text"]):
             try:
@@ -594,7 +606,7 @@ def refresh_board():
     try:
         brief, _ = analytics.read_file(BRIEF)
         ideas = [l[2:] for l in ideas_block(brief).splitlines() if l.startswith("- ")]
-        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued" and t.get("confirmed")]
+        planned = [t["title"] for t in read_plan()[0].get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked")]
         live_board.refresh(needed(), own_prs(), planned + ideas, budget.spent()[0], budget.limit())
     except Exception as e:
         print(f"::warning title=board::not refreshed: {' '.join(str(e).split())[:200]}")

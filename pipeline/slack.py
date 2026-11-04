@@ -72,6 +72,13 @@ def messages(after):
     mine = [m for m in rows if m.get("user") == me and not m.get("bot_id") and not m.get("subtype") and m.get("text")]
     return sorted(mine, key=lambda m: float(m["ts"])), max([m["ts"] for m in rows] + [after], key=float)
 
+def his_messages(limit=50):
+    """(time, text) for Abhi's newest messages, oldest first, so a Claude chat can read what he texted the team."""
+    me = owner()
+    rows = api("conversations.history", channel=channel(), limit=200)["messages"]
+    mine = [m for m in rows if m.get("user") == me and not m.get("bot_id") and not m.get("subtype") and m.get("text")][:limit]
+    return [(m["ts"], m["text"]) for m in reversed(mine)]
+
 def history():
     """Abhi and the team only, so anyone else in the workspace stays out of the model's context."""
     me, rows = owner(), api("conversations.history", channel=channel(), limit=20)["messages"]

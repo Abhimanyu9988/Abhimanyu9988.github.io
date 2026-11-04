@@ -223,7 +223,7 @@ def start_requested(subject):
     text, sha = analytics.read_file(PLAN)
     plan = json.loads(text) if text.strip() else {"week": week_id(), "target": 0, "created": datetime.date.today().isoformat(), "topics": []}
     plan["target"] = plan.get("target", 0) + 1     # it comes on top of the week's target, so a planned article isn't dropped for it
-    plan["topics"].insert(0, {"issue": number, "title": t["title"], "state": "started", "started_on": datetime.date.today().isoformat(), "requested": True, "confirmed": True})
+    plan["topics"].insert(0, {"issue": number, "title": t["title"], "state": "started", "started_on": datetime.date.today().isoformat(), "requested": True, "confirmed": True, "picked": True})
     analytics.write_file(PLAN, json.dumps(plan, indent=1), sha, "week: Abhi's article")
     slack.say("editor", f"On it. Headline: {t['title']}\n\nThe lab is starting now. It takes up to an hour, and you'll get a PR to approve if it works.")
     if os.environ.get("GITHUB_OUTPUT"):
@@ -258,9 +258,9 @@ def publish(plan, goal, dropped):
         ensure_label(l)
     for t in plan:
         number = t.get("issue") or post_issue(t["title"], t["body"], LABEL, (t["kind"],), assign=False)["number"]
-        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "confirmed": bool(t.get("confirmed")), "scores": t.get("yes"),
+        rows.append({"issue": number, "title": t["title"], "state": "queued", "signal": t.get("signal"), "confirmed": bool(t.get("confirmed")), "picked": bool(t.get("picked")), "scores": t.get("yes"),
                      "model": TRIAL_MODELS[len(rows) % len(TRIAL_MODELS)]})
-    first = next((r for r in rows if r["confirmed"]), None)     # a lab never starts on a topic they didn't confirm
+    first = next((r for r in rows if r["confirmed"] and r["picked"]), None)     # no lab without Marketing, the Editor and Abhi
     if first:
         first.update(state="started", started_on=datetime.date.today().isoformat())
     _, sha = analytics.read_file(PLAN)
@@ -346,7 +346,7 @@ def plan_from_chat(text):
             body = body_for(t, srcs, f"{safe_text(editor.brief_md(b, True, []))}\n\n{editor.marker(b)}")
             assert_safe(title); assert_safe(body)
             plan.append({"title": title, "body": body, "kind": t.get("kind") or "build", "hook": t.get("hook"), "yes": f"Marketing {m_score}/5, Editor {e_score}/5",
-                         "signal": t.get("signal"), "confirmed": True, "why": why})
+                         "signal": t.get("signal"), "confirmed": True, "picked": bool(t.get("picked")), "why": why})
     publish(plan, goal, dropped)
 
 if __name__ == "__main__":

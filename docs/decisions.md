@@ -225,3 +225,8 @@ A lab can't start on an unconfirmed topic. An old plan row has no `confirmed` fl
 
 The KEDA lab worked, but `hpa_target_type` was a word in a contract I wrote in chat, and the scanner only accepts numbers, so no PR opened. The topic gate now refuses word measurements before a lab is paid for.
 Cancelling a run does not stop a lab quickly, because its cleanup steps always run, so a lab that has started should be treated as spent.
+
+## 2026-11-04: Abhi picks before any lab
+
+Abhi asked for a shortlist from the Editor before any lab starts, with planning done in Claude chat. A plan row now needs both `confirmed` and `picked`, so nothing starts on its own. His Slack messages are kept in the private `team-admin` repo, so a chat can read them.
+My 5/5 change also stopped paid-for drafts in warn mode, which I had said would still open. Two labs ended with no PR because of it. Warn mode now opens the PR, and only enforce stops one.

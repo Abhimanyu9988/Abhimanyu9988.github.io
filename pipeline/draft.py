@@ -583,7 +583,7 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
                 report, card, verdict, reasons = judge(post)
         except Exception as e:
             llm.warn(f"revision failed: {str(e)[:300]}")
-        if verdict == "revise":
+        if verdict == "revise" and editor.mode() == "enforce":     # in warn the paid-for draft still opens, and Slack says it's below the bar
             return {"decision": "stop", "reasons": reasons, "post": post, "report": report, "card": card}
     return {"decision": verdict, "reasons": reasons, "post": post, "report": report, "card": card}
 
@@ -746,6 +746,7 @@ def open_pr(issue_no, res, topic):
     gate = review_draft(post, context, logs, brief, topic, kind, scripts)
     if gate["decision"] == "stop":
         add_label(issue_no, "editor-stopped")
+        slack.say("editor", f"The draft didn't clear the review, so no PR was opened: {topic.get('title', 'unknown')}.")
         comment(issue_no, "The draft did not clear the gates after one revision, so no PR was opened.\n\n"
                           + safe_text("\n".join(f"- {r}" for r in gate["reasons"])))
         record_review(res.get("slug", "topic"), gate, brief)
