@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03",
+ "updated": "2026-11-04",
  "team": [
   {
    "role": "Executive Assistant",
@@ -95,11 +95,27 @@
    "role": "IT Support",
    "dept": "Engineering",
    "mission": "Check the CTO's feature notes against merged pull requests, and close the ones that are finished."
+  },
+  {
+   "role": "Lab Check",
+   "dept": "Engineering",
+   "mission": "Check the week's topics against the lab's limits before any lab money is spent."
+  },
+  {
+   "role": "Headline Check",
+   "dept": "Marketing",
+   "mission": "Give a second opinion on the weekly plan, and sharpen each headline."
+  },
+  {
+   "role": "Marketing",
+   "dept": "Marketing",
+   "mission": "Do marketing analysis only: confirm each topic and choose its title before a lab runs."
   }
  ],
- "in_review": [],
+ "in_review": [
+  "Draft: Default ECS FireLens Dropped 76.59% in My Fargate Outage Test"
+ ],
  "published": [
-  "Draft: October: Kubernetes memory semantics and Collector edge fixes",
-  "Draft: EKS App Slow, CPU Fine? Scale on Splunk Latency with KEDA"
+  "Draft: October: Kubernetes memory semantics and Collector edge fixes"
  ]
 }
