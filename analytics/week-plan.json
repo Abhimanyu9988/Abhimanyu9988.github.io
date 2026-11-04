@@ -1,8 +1,17 @@
 {
  "week": "2026-W45",
- "target": 5,
+ "target": 6,
  "created": "2026-11-04",
  "topics": [
+  {
+   "issue": 140,
+   "title": "OTel Java Agent in Splunk: Counting Every Signal One Pod Sends",
+   "state": "started",
+   "started_on": "2026-11-04",
+   "requested": true,
+   "confirmed": true,
+   "picked": true
+  },
   {
    "issue": 139,
    "title": "Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
