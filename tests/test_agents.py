@@ -1721,5 +1721,33 @@ rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])
 radar_b.gh, analytics_mod.read_file, analytics_mod.write_file = real_rgh, real_read, real_write2
 
+# ---------- free lab check ----------
+lc_y = __import__("yaml").safe_load((ROOT / ".github/workflows/lab-check.yml").read_text())
+lc_text = json.dumps(lc_y["jobs"]["app"])
+check("lab check: AI-written code runs with no secrets and no token", "secrets." not in lc_text and "github.token" not in lc_text and "environment" not in lc_y["jobs"]["app"])
+check("lab check: the issue reaches the shell only through env", "${{" not in " ".join(s.get("run", "") for s in lc_y["jobs"]["app"]["steps"]))
+check("lab check: both jobs run code from main", all(s["with"]["ref"] == "main" for j in lc_y["jobs"].values() for s in j["steps"] if "checkout" in s.get("uses", "")))
+import lab_check, tempfile as _tf
+for bad in ("../x.sh", "/etc/x.sh", "a/b.sh", ".github/x.yml"):
+    try:
+        lab_check.unpack({"files": [{"path": bad, "content": "x"}, {"path": "check.sh", "content": "x"}]}, _tf.mkdtemp())
+        check(f"lab check: refuses {bad}", False)
+    except SystemExit:
+        check(f"lab check: refuses {bad}", True)
+
+# ---------- Splunk APM check ----------
+import splunk_check
+sc_real = splunk_check.call
+sc_trace, sc_spans = splunk_check.test_spans("e", 5)
+check("splunk check: one trace across two services", len(sc_spans) == 3 and {s["traceId"] for s in sc_spans} == {sc_trace} and len({s["localEndpoint"]["serviceName"] for s in sc_spans}) == 2)
+check("splunk check: milliseconds are tried first", list(splunk_check.ranges(2000)) [0] == "epoch milliseconds" and splunk_check.ranges(2000)["epoch milliseconds"] == "500000/2000000")
+splunk_check.call = lambda m, u, t, b=None: (400, "Invalid time range") if "/" not in b["timeRange"] or "T" not in b["timeRange"] else (200, json.dumps({"data": {"nodes": [{"serviceName": "a"}, {"serviceName": "b"}]}}))
+check("splunk check: the second format is tried after a 400", splunk_check.read_topology("x", "t", "e", 2000)[:2] == ("ISO times", ["a", "b"]))
+splunk_check.call = lambda m, u, t, b=None: (404, "<html>")
+check("splunk check: a missing trace isn't a pass", splunk_check.read_trace("x", "t", "abc") == ("", 0, 404))
+splunk_check.call = lambda m, u, t, b=None: (200, "[1]") if u.endswith("/segments") else (404, "")
+check("splunk check: segments work when latest doesn't", splunk_check.read_trace("x", "t", "abc")[0] == "segments")
+splunk_check.call = sc_real
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

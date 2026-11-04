@@ -1,0 +1,50 @@
+name: lab-check
+# A free check before a chat lab pays for AWS. See docs/chat-article.md.
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: "Topic issue number, with its lab on branch chat/<issue>"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  # Runs the lab's own check.sh. It is written in chat, so this job holds no secrets and no token.
+  app:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: unpack the lab
+        env:
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "the issue must be a number"; exit 1; }
+          git fetch -q --depth 1 origin "chat/$ISSUE"
+          git show "FETCH_HEAD:chat-work/$ISSUE/lab.json" > lab.json
+          python3 pipeline/lab_check.py lab.json work
+      - name: run the lab's check
+        working-directory: work
+        run: bash check.sh
+  # Code from main only. Proves a span can be sent to Splunk and read back through the APIs a lab uses.
+  splunk:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: aws-lab
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: send a test trace and read it back
+        run: python3 pipeline/splunk_check.py
+        env:
+          SPLUNK_REALM: ${{ vars.SPLUNK_REALM }}
+          SPLUNK_ACCESS_TOKEN: ${{ secrets.SPLUNK_ACCESS_TOKEN }}
+          SPLUNK_API_TOKEN: ${{ secrets.SPLUNK_API_TOKEN }}

@@ -241,3 +241,7 @@ He wants the best output and chat before API. With `chat_work`, a Claude chat wr
 ## 2026-11-04: Slack never starts a lab
 
 A Slack note saying to create the lab tomorrow started an API lab that minute, on a headline nobody picked. Labs and articles are written in chat, so Slack requests now wait in `slack-inbox.md`, and chat-planned topics start only from chat.
+
+## 2026-11-04: A free check comes before AWS
+
+Two labs failed on things a free run could have caught. `lab-check.yml` now builds and runs the app on a GitHub runner, and proves Splunk APM can be read back, before a lab pays for AWS.
