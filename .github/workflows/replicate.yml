@@ -20,6 +20,10 @@ on:
         description: "Redraft only: id of an earlier replicate run whose lab output to reuse (no AWS)"
         required: false
         type: string
+      chat_work:
+        description: "A Claude chat wrote this lab and article, on branch chat/<issue>"
+        type: boolean
+        default: false
       model:
         description: "Model trial: the Claude model that writes this lab and article"
         required: false
@@ -152,6 +156,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_MODEL: ${{ inputs.model || vars.CLAUDE_MODEL }}
+          CHAT_WORK: ${{ inputs.chat_work }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}
@@ -235,6 +240,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CLAUDE_MODEL: ${{ inputs.model || vars.CLAUDE_MODEL }}
+          CHAT_WORK: ${{ inputs.chat_work }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}

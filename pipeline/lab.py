@@ -15,7 +15,7 @@ only the AWS credentials and lab variables, as the runner's uid, with no access 
 files or GitHub tokens. The model keys stay in this orchestrator process.
 Everything the draft job needs is written to out/.  `lab.py --destroy-only` is the safety-net step.
 """
-import html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time, urllib.error, urllib.request
+import base64, html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time, urllib.error, urllib.request
 from radar import HOME_REPO, LAB_LIMITS, call, gh, used_sources
 import check_plan, llm
 
@@ -324,6 +324,11 @@ def preflight(lab, body=""):
     shared = set(re.findall(r"/tmp/[\w./-]+", texts.get("reproduce.sh", ""))) & set(re.findall(r"/tmp/[\w./-]+", texts.get("fix.sh", "")))
     errs += [f"fix.sh reads {p} from reproduce.sh, but /tmp is gone when a script ends. Save it in the lab directory" for p in sorted(shared)]
     return errs
+
+def chat_lab(issue_no):
+    """The lab a Claude chat wrote, from its branch. No model is called, and anything wrong goes back to the chat."""
+    got = gh("GET", f"/repos/{HOME_REPO}/contents/chat-work/{int(issue_no)}/lab.json?ref=chat/{int(issue_no)}")
+    return as_lab(json.loads(base64.b64decode(got["content"])))
 
 def merge_lab(old, new):
     """A repair returns only the files it changed. Rewriting a whole lab was the biggest cost of a failed attempt."""
@@ -687,15 +692,19 @@ def main():
         versions = current_versions()
         if versions:
             context += f"\n\n{VERSIONS_RULE}\n" + "\n".join(versions)
-        lab = llm.claude_json("You are an AWS container engineer. You write small, reliable, disposable labs that "
-                              f"{goal}.",
-                              f"Write the lab for this topic.\n\nLAB RULES:\n{rules}\n\n{context}",
-                              LAB_SCHEMA, tool="submit_lab")
-        rubric = LAB_RUBRIC + (" For a BUILD topic, blocking also: fix.sh doesn't print real proof that the build "
-                               "works end to end." if kind == "build" else "")
-        lab, review = llm.refine("AWS lab", as_lab(lab), rubric, f"LAB RULES:\n{rules}\n\n{context}", LAB_SCHEMA)
-        lab = as_lab(lab)
-        for _ in range(MAX_PREFLIGHT):
+        chat = os.environ.get("CHAT_WORK") == "true"
+        if chat:
+            lab, review = chat_lab(issue_no), {"writer": "Claude chat"}
+        else:
+            lab = llm.claude_json("You are an AWS container engineer. You write small, reliable, disposable labs that "
+                                  f"{goal}.",
+                                  f"Write the lab for this topic.\n\nLAB RULES:\n{rules}\n\n{context}",
+                                  LAB_SCHEMA, tool="submit_lab")
+            rubric = LAB_RUBRIC + (" For a BUILD topic, blocking also: fix.sh doesn't print real proof that the build "
+                                   "works end to end." if kind == "build" else "")
+            lab, review = llm.refine("AWS lab", as_lab(lab), rubric, f"LAB RULES:\n{rules}\n\n{context}", LAB_SCHEMA)
+            lab = as_lab(lab)
+        for _ in range(0 if chat else MAX_PREFLIGHT):
             problems = preflight(lab, issue.get("body") or "")
             if not problems:
                 break
@@ -730,8 +739,8 @@ def main():
                 break
             print(f"attempt {attempt}: failed at {failed}")
             result["last_failure"] = {"step": failed, "output": tail(redact(out), 3000)}
-            if attempt == MAX_ATTEMPTS or remaining(WORK_END) < 10 * 60 or failed == "deadline":
-                break
+            if chat or attempt == MAX_ATTEMPTS or remaining(WORK_END) < 10 * 60 or failed == "deadline":
+                break                              # a chat repairs its own lab, so no repair goes to the API
             previous = lab
             lab = llm.claude_json(
                 "You are an AWS container engineer fixing your own lab after a failed run.",

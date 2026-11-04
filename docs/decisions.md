@@ -232,3 +232,8 @@ Abhi asked for a shortlist from the Editor before any lab starts, with planning 
 My 5/5 change also stopped paid-for drafts in warn mode, which I had said would still open. Two labs ended with no PR because of it. Warn mode now opens the PR, and only enforce stops one.
 
 On 4 November the Secretary told Abhi his Java article had started, but his message had no word the code accepted, so nothing ran. It also named the wrong lab and an old PR. Leaders now get the real recent labs and open PRs, code alone confirms a start, and he's told when one didn't.
+
+## 2026-11-04: Positive framing, 4 of 5, and writing in chat
+
+Abhi works at Cisco on Splunk and doesn't want content that reads as negative about the product, so prompts ask for positive framing and code refuses negative headlines naming these products. He accepts 4 of 5 for now, with 5 as the target.
+He wants the best output and chat before API. With `chat_work`, a Claude chat writes the lab and article on branch `chat/<issue>`. No model writes or repairs it, and the panel, evidence checks and Editor still run. Pod Identity is dropped.

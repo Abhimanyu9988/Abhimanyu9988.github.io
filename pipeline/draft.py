@@ -393,10 +393,13 @@ it only if that's what they'd type. A small surprise or contrast is good; clickb
 are not. Under 75 characters. Shapes that work: "ECS shows 1 running task while 3 are still draining", "Fargate worker stuck at 0 tasks? The scaling guard never runs", "EKS pods stuck in ContainerCreating after
 an upgrade". The opening puts the reader in that moment in the first sentence."""
 
+POSITIVE = ("\nStay positive about products. Abhi works at Cisco on Splunk and contributes to OpenTelemetry. Never frame Splunk, OpenTelemetry or Galileo as broken, missing, "
+            "wrong or lacking. Show what they make possible and how to get the most from them.\n")
+
 KINDS = {
-    "problem": {"verdict": VERDICT_Q, "rules": ARTICLE_RULES, "rubric": ARTICLE_RUBRIC, "titles": TITLE_RULES,
+    "problem": {"verdict": VERDICT_Q, "rules": ARTICLE_RULES + POSITIVE, "rubric": ARTICLE_RUBRIC, "titles": TITLE_RULES,
                 "limits": (900, 6, 10), "vote": "because it names a problem you've had or fear"},
-    "build": {"verdict": VERDICT_Q_BUILD, "rules": BUILD_ARTICLE_RULES, "rubric": BUILD_RUBRIC,
+    "build": {"verdict": VERDICT_Q_BUILD, "rules": BUILD_ARTICLE_RULES + POSITIVE, "rubric": BUILD_RUBRIC,
               "titles": BUILD_TITLE_RULES, "limits": (1100, 10, 10),
               "vote": "because you want that outcome running at work"},
 }
@@ -566,7 +569,7 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
         verdict, reasons = editor.decide(card, report, known, require_card=enforce)   # an outage is never approval
         return report, card, verdict, reasons
     report, card, verdict, reasons = judge(post)
-    if verdict == "revise" and editor.mode() in ("warn", "enforce"):
+    if verdict == "revise" and editor.mode() in ("warn", "enforce") and os.environ.get("CHAT_WORK") != "true":   # a chat revises its own work
         try:
             fixed = llm.ask("chatgpt", "You revise hands-on articles without inventing anything.",
                             "Fix every problem below. Never invent a result: if a result is missing, say so plainly "
@@ -586,6 +589,16 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
         if verdict == "revise" and editor.mode() == "enforce":     # in warn the paid-for draft still opens, and Slack says it's below the bar
             return {"decision": "stop", "reasons": reasons, "post": post, "report": report, "card": card}
     return {"decision": verdict, "reasons": reasons, "post": post, "report": report, "card": card}
+
+CHAT_DIR = "chat-work"
+def chat_post(issue_no):
+    """The article a Claude chat wrote, from its branch, or None until it exists."""
+    try:
+        got = gh("GET", f"/repos/{HOME_REPO}/contents/{CHAT_DIR}/{int(issue_no)}/post.json?ref=chat/{int(issue_no)}")
+        return json.loads(base64.b64decode(got["content"]))
+    except Exception as e:
+        print(f"no chat article yet: {str(e)[:120]}")
+        return None
 
 def record_trial(res, topic):
     """One record per lab, for the model trial. The Editor's score is joined later from the review saved under the same run."""
@@ -711,6 +724,12 @@ def ready_message(title, number, gate):
     return f"Draft ready for your decision: {title}\n{marks}\n{link}".replace("\n\n", "\n")
 
 def open_pr(issue_no, res, topic):
+    chat = os.environ.get("CHAT_WORK") == "true"
+    written = chat_post(issue_no) if chat else None
+    if chat and not written:                       # the lab is done, and the chat writes the article with no API cost
+        slack.say("lab_engineer", f"The lab finished: {topic.get('title', 'unknown')}. The article is being written in Claude chat.")
+        comment(issue_no, f"Lab finished in workflow run {res['run_id']}. The article is being written in Claude chat.")
+        return
     slug = res["slug"][:60].strip("-")
     if on_main(f"labs/{slug}"):                    # already published: the new post needs its own name
         slug = f"{slug[:50].strip('-')}-{res['run_id'][-6:]}"
@@ -741,7 +760,7 @@ def open_pr(issue_no, res, topic):
         comment(issue_no, "The lab ran, but it did not produce what the Evidence Contract required, so nothing was "
                           f"drafted.\n\n{safe_text(scan.markdown(before))}")
         return
-    post, log = write_post(context, kind, editor.writer_context(brief, before))
+    post, log = (written, {}) if written else write_post(context, kind, editor.writer_context(brief, before))
     post["body"] = drop_pipeline_lines(fix_output_tabs(post["body"]))
     gate = review_draft(post, context, logs, brief, topic, kind, scripts)
     if gate["decision"] == "stop":

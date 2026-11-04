@@ -14,4 +14,6 @@ Planning here adds no API cost. A chat session does the research and writing, an
 
 Every measurement in a contract must be a number, because the evidence scanner refuses words.
 
+Stay positive about Splunk, OpenTelemetry and Galileo. Never frame them as broken, missing or lacking. Write labs and articles in chat, using `docs/chat-article.md`.
+
 Never invent a count, a page or a result. If fewer topics pass, send fewer and say so.
