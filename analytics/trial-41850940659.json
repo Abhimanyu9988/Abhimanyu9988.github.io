@@ -1,0 +1,10 @@
+{
+ "run": "41850940659",
+ "issue": 140,
+ "title": "OTel Java Agent in Splunk: Counting Every Signal One Pod Sends",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_fix_failed",
+ "attempts": 2,
+ "minutes": 68.8,
+ "lab_usd": 2.0849
+}
