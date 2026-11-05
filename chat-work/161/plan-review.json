@@ -1,9 +1,18 @@
 {
- "Editor": [
+ "round": 1,
+ "Editor": [],
+ "Marketing": [
   {
-   "problem": "Earlier point 1 is only half fixed. minutes() no longer drops a minute because of its Splunk count, so the check can now catch undercounts. But the comparison still isn't built from the load's own per-minute sends. In fix.sh, `expected` is set to achieved \u00d7 60 \u00d7 window, an assumed flat rate. The load prints only one total (`requests=`), and that total counts only successful requests sent after warm-up. The first point is also at risk. from_ms is t_start+90, and a delta point for minute M holds whatever the agent exported during [M\u221260, M). Each export covers the 60 s before it, so the first point can reach back to t_start\u221230, before the load started. That minute can come back short for reasons that have nothing to do with Splunk. One short minute out of about 6.5 is roughly 15%, which is enough to push queries_gap_pct past 10%. fix.sh would then report not_fixed, and you'd pay for a rerun. Splunk could also be blamed for an undercount the setup caused.",
-   "fix": "Have load.py print one line per epoch minute: `LOAD minute=<epoch_minute*60> sent=<n>`. Count every request it sends, warm-up included, because inventory runs a lookup for each one. Set from_ms to (t_start+150)*1000 so that every export a point covers falls inside the load. Build `expected` by adding up, for each minute Splunk returned, the sent counts from that minute and the minute before. Weight them by export phase if you can find it, or else compare against the sum over the whole window with one minute of slack at each end. Print both sides minute by minute. Keep printing partial and empty minutes with the reason, but decide which minutes count only from the load's own sent lines."
+   "problem": "The only title option reads like a doc label. It starts with \"Read\", names no pain, and leaves out the \"no code changes\" promise that has worked for Abhi. It also omits the words an engineer would search: \"db.client.operation.duration\", \"database metrics\", \"query latency\". I would not put my name on it, and I can't pick a better option because none was offered.",
+   "fix": "Send back a title that credits the OTel Java agent and Splunk with the result. It should carry the reader's goal (Postgres query latency in Splunk, no app code changes, one env var) and a searchable term such as db.client.operation.duration or \"database metrics\". Keep the p95 promise worded to match what the proof shows."
+  },
+  {
+   "problem": "The title promises a \"p95\" and the brief wants it \"in milliseconds\". With the default buckets, a 30 ms query sits in a wide bucket (roughly 10 to 50 ms). The interpolated p95 could land well off the 30 ms truth. known_query_p95_vs_truth_pct only has to be \"present\", so a large gap would still pass and break the title's promise.",
+   "fix": "Set a real acceptance rule for the p95 reading. For example, require the SignalFlow p95 to fall inside the stored bucket that contains the timer's p95. Also report the bucket edges next to the reading. If the gap is large, the title should say \"bucket-accurate p95\" or similar. It should not imply exact milliseconds."
+  },
+  {
+   "problem": "The opening is likely to be built on the \"before\" measurement of zero series and on the one-bucket imprecision. That would frame the agent's default as missing something and put a cost at the top. The reader has to be able to take this as a positive gain, not as a flaw.",
+   "fix": "Open with what the reader gets: p95 query latency charts across Java services from one env var, with no code changes. Describe the zero-series run as the agent's opt-in default. Put bucket precision and the dup-name behaviour in the body as things to plan for."
   }
- ],
- "Marketing": []
+ ]
 }
