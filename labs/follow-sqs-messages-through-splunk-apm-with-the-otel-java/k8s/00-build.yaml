@@ -1,0 +1,178 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-src
+  namespace: demo
+data:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+      <modelVersion>4.0.0</modelVersion>
+      <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.6</version>
+        <relativePath/>
+      </parent>
+      <groupId>lab</groupId>
+      <artifactId>app</artifactId>
+      <version>1.0.0</version>
+      <properties>
+        <java.version>21</java.version>
+      </properties>
+      <dependencyManagement>
+        <dependencies>
+          <dependency>
+            <groupId>io.awspring.cloud</groupId>
+            <artifactId>spring-cloud-aws-dependencies</artifactId>
+            <version>3.4.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+          </dependency>
+        </dependencies>
+      </dependencyManagement>
+      <dependencies>
+        <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>io.awspring.cloud</groupId>
+          <artifactId>spring-cloud-aws-starter-sqs</artifactId>
+        </dependency>
+      </dependencies>
+      <build>
+        <finalName>app</finalName>
+        <plugins>
+          <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+          </plugin>
+        </plugins>
+      </build>
+    </project>
+  App.java: |
+    package lab;
+
+    import io.awspring.cloud.sqs.annotation.SqsListener;
+    import io.awspring.cloud.sqs.operations.SqsTemplate;
+    import java.util.Map;
+    import org.slf4j.Logger;
+    import org.slf4j.LoggerFactory;
+    import org.springframework.beans.factory.annotation.Value;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.context.annotation.Profile;
+    import org.springframework.stereotype.Component;
+    import org.springframework.web.bind.annotation.PathVariable;
+    import org.springframework.web.bind.annotation.PostMapping;
+    import org.springframework.web.bind.annotation.RestController;
+
+    // One jar, two services. The profile picks which one runs, and there is no tracing code in either.
+    @SpringBootApplication
+    public class App {
+      public static void main(String[] args) {
+        SpringApplication.run(App.class, args);
+      }
+
+      @RestController
+      @Profile("orders")
+      public static class Orders {
+        private final SqsTemplate sqs;
+        private final String queue;
+
+        public Orders(SqsTemplate sqs, @Value("${queue.name}") String queue) {
+          this.sqs = sqs;
+          this.queue = queue;
+        }
+
+        @PostMapping("/orders/{id}")
+        public Map<String, Object> order(@PathVariable("id") long id) {
+          String messageId = sqs.send(queue, "order-" + id).messageId().toString();
+          return Map.of("order", id, "messageId", messageId);
+        }
+      }
+
+      @Component
+      @Profile("fulfilment")
+      public static class Fulfilment {
+        private static final Logger log = LoggerFactory.getLogger(Fulfilment.class);
+
+        @SqsListener("${queue.name}")
+        public void handle(String body) {
+          log.info("fulfilled {}", body);
+        }
+      }
+    }
+---
+# Builds the jar once and fetches the agent once. Both land on the app node, so every run uses the same files.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build
+  namespace: demo
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 420
+  template:
+    spec:
+      restartPolicy: Never
+      nodeName: APP_NODE
+      volumes:
+        - name: src
+          configMap:
+            name: app-src
+        - name: lab
+          hostPath:
+            path: /opt/lab
+            type: DirectoryOrCreate
+      initContainers:
+        - name: fetch-agent
+          image: python:3.12-slim
+          volumeMounts:
+            - { name: lab, mountPath: /lab }
+          command:
+            - python
+            - -c
+            - |
+              import hashlib, time, urllib.request
+              sha256 = "e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149"
+              url = "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.33.1/opentelemetry-javaagent.jar"
+              for attempt in range(1, 13):
+                  try:
+                      urllib.request.urlretrieve(url, "/lab/opentelemetry-javaagent.jar")
+                      got = hashlib.sha256(open("/lab/opentelemetry-javaagent.jar", "rb").read()).hexdigest()
+                      if got != sha256:
+                          raise ValueError("agent hash " + got)
+                      print("agent v2.33.1 downloaded and verified on attempt", attempt)
+                      break
+                  except Exception as e:
+                      print("download attempt", attempt, "failed:", e)
+                      time.sleep(10)
+              else:
+                  raise SystemExit("the agent could not be downloaded")
+      containers:
+        - name: build
+          image: maven:3.9.9-eclipse-temurin-21
+          volumeMounts:
+            - { name: src, mountPath: /src }
+            - { name: lab, mountPath: /lab }
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /w/src/main/java/lab
+              cp /src/pom.xml /w/pom.xml
+              cp /src/App.java /w/src/main/java/lab/App.java
+              cd /w
+              mvn -q -B -DskipTests package
+              cp target/app.jar /lab/app.jar
+              ls -l /lab
