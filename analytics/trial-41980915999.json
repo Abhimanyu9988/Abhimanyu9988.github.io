@@ -1,0 +1,10 @@
+{
+ "run": "41980915999",
+ "issue": 139,
+ "title": "Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_fix_failed",
+ "attempts": 1,
+ "minutes": 66.3,
+ "lab_usd": 0.0
+}
