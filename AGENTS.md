@@ -54,6 +54,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/lab.py` | Runs the lab in the sandbox | Topic issue | `out/` |
 | `pipeline/lab_check.py` | Unpacks a chat lab for the free check, whose `check.sh` runs in a job with no secrets | `chat/<issue>` | `work/` |
 | `pipeline/rehearse.sh` | Runs a lab's real scripts on a small Kubernetes cluster, with the Splunk tokens only | Lab scripts | Nothing |
+| `pipeline/plan_review.py` | The Editor and Marketing review a lab plan before AWS | Brief, lab files as data | Log only |
 | `pipeline/splunk_check.py` | Proves a test trace reaches Splunk APM and reads back | Splunk tokens | Nothing |
 | `pipeline/draft.py` | Writes the post, runs gate 2, opens the PR | `out/` | Draft PR, review record |
 | `draft.voice_edit` | Voice Editor: removes AI patterns. `voice_safe` rejects any changed fact, code line or disclosure | Reviewed post, `author.md`, `field-notes.md` | The post body |

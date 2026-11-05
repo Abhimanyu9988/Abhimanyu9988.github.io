@@ -37,7 +37,8 @@
     "brief",
     "scorecard",
     "weekplan",
-    "topicconfirm"
+    "topicconfirm",
+    "planreview"
    ],
    "data_sources": [
     "goals",
@@ -423,14 +424,15 @@
    "model_env": "MARKETING_MODEL",
    "prompt": "marketing.md",
    "outputs": [
-    "topicconfirm"
+    "topicconfirm",
+    "planreview"
    ],
    "data_sources": [
     "goals"
    ],
    "budget": {
     "max_input_tokens": 12000,
-    "max_calls": 2
+    "max_calls": 4
    },
    "display": "Marketing",
    "dept": "Marketing"

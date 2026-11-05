@@ -1,0 +1,17 @@
+{
+ "type": "object",
+ "required": ["go", "blocking", "notes"],
+ "properties": {
+  "go": {"type": "boolean", "description": "true only if the lab can give this article what it promises"},
+  "blocking": {
+   "type": "array",
+   "maxItems": 6,
+   "items": {
+    "type": "object",
+    "required": ["problem", "fix"],
+    "properties": {"problem": {"type": "string"}, "fix": {"type": "string"}}
+   }
+  },
+  "notes": {"type": "array", "maxItems": 4, "items": {"type": "string"}}
+ }
+}

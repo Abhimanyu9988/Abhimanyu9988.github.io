@@ -1754,7 +1754,7 @@ rh_job = lc_y["jobs"]["rehearsal"]
 rh_text = json.dumps(rh_job)
 check("rehearsal: it holds the Splunk tokens and nothing else", "github.token" not in rh_text and "id-token" not in rh_text and "permissions" not in rh_job and
       sorted(set(re.findall(r"secrets\.(\w+)", rh_text))) == ["SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN"])
-check("rehearsal: it waits for the free checks", rh_job["needs"] == ["app", "splunk"])
+check("rehearsal: it waits for the other checks", rh_job["needs"] == ["app", "splunk", "plan-review"])
 rh_sh = (ROOT / "pipeline/rehearse.sh").read_text()
 check("rehearsal: a node has a t3.large's CPU, and a script's real result decides", "ALLOCATABLE_M=1930" in rh_sh and "^HERO_RESULT: $2" in rh_sh)
 check("lab check: AI-written code runs with no secrets and no token", "secrets." not in lc_text and "github.token" not in lc_text and "environment" not in lc_y["jobs"]["app"])
@@ -1781,6 +1781,18 @@ check("splunk check: a missing trace isn't a pass", splunk_check.read_trace("x",
 splunk_check.call = lambda m, u, t, b=None: (200, "[1]") if u.endswith("/segments") else (404, "")
 check("splunk check: segments work when latest doesn't", splunk_check.read_trace("x", "t", "abc")[0] == "segments")
 splunk_check.call = sc_real
+
+# ---------- plan review before AWS ----------
+import plan_review
+check("plan review: a clean review passes", plan_review.blocked("Editor", {"go": True, "blocking": [], "notes": ["n"]})[1] is False)
+check("plan review: a no stops the lab", plan_review.blocked("Editor", {"go": False, "blocking": [], "notes": []})[1] is True)
+check("plan review: a go with a blocking point still stops the lab", plan_review.blocked("Editor", {"go": True, "blocking": [{"problem": "p", "fix": "f"}], "notes": []})[1] is True)
+pr_lab = {"summary": "s", "files": [{"path": "fix.sh", "content": "echo hi"}]}
+check("plan review: the Editor sees the scripts, and Marketing doesn't", "echo hi" in plan_review.plan_text("t", {}, pr_lab, True) and "echo hi" not in plan_review.plan_text("t", {}, pr_lab, False))
+pr_job = lc_y["jobs"]["plan-review"]
+check("plan review: no lab code runs next to its keys", "bash " not in pr_job["steps"][-1]["run"] and "lab_check.py" not in pr_job["steps"][-1]["run"])
+check("plan review: the rehearsal waits for it", "plan-review" in lc_y["jobs"]["rehearsal"]["needs"])
+check("draft: an old chat article never meets a new lab's evidence", 'if chat and os.environ.get("FROM_RUN")' in (ROOT / "pipeline/draft.py").read_text())
 
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

@@ -725,7 +725,7 @@ def ready_message(title, number, gate):
 
 def open_pr(issue_no, res, topic):
     chat = os.environ.get("CHAT_WORK") == "true"
-    written = chat_post(issue_no) if chat else None
+    written = chat_post(issue_no) if chat and os.environ.get("FROM_RUN") else None     # a post from an earlier run must never meet new evidence
     if chat and not written:                       # the lab is done, and the chat writes the article with no API cost
         slack.say("lab_engineer", f"The lab finished: {topic.get('title', 'unknown')}. The article is being written in Claude chat.")
         comment(issue_no, f"Lab finished in workflow run {res['run_id']}. The article is being written in Claude chat.")

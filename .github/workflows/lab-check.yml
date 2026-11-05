@@ -31,11 +31,43 @@ jobs:
       - name: run the lab's check
         working-directory: work
         run: bash check.sh
+  # Marketing and the Editor review the plan from code on main. The lab's files reach them as data, and nothing from the lab runs here.
+  plan-review:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+      - name: review the lab plan
+        env:
+          ISSUE: ${{ inputs.issue }}
+          GH_TOKEN: ${{ github.token }}
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HERO_PUBLISH: "1"
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
+        run: |
+          [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "the issue must be a number"; exit 1; }
+          git fetch -q --depth 1 origin "chat/$ISSUE"
+          git show "FETCH_HEAD:chat-work/$ISSUE/lab.json" > lab.json
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE" > issue.json
+          python3 pipeline/plan_review.py issue.json lab.json
   # Runs the lab's real scripts on a small cluster. Like the lab sandbox, this holds the Splunk tokens and nothing else:
   # no model keys, no GitHub token and no AWS role.
   rehearsal:
     if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
-    needs: [app, splunk]
+    needs: [app, splunk, plan-review]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: aws-lab

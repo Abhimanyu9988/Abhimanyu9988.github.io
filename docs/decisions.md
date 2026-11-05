@@ -261,3 +261,7 @@ The free check ran in Docker, so a failure that only appears on a cluster still 
 ## 2026-11-05: Claude chat can read the Slack conversation
 
 Abhi wants the team's replies available to the chat and for later use. `slack-chat.jsonl` in the private repo now keeps his messages and the team's, and leaves out anyone else in the workspace.
+
+## 2026-11-05: Marketing and the Editor review the plan, not only the draft
+
+They used to see a topic before a lab and a draft after it, so faults in the lab design cost a paid run. `plan_review.py` now gives them the plan before AWS. A draft also uses `post.json` only in the article step, because a lab run once paired an old article with new evidence.
