@@ -1192,6 +1192,13 @@ check("team page: no spending, tasks or failures", "secret" not in json.dumps(pu
 check("team page: the page builds its text safely", "innerHTML" not in (ROOT / "site/team.md").read_text())
 md = cto.digest_md({"waiting": ["Post A"], "shipped": [], "failed_runs": [], "running": ["replicate"], "spent": 3.5, "limit": 50, "tasks": [{"title": "Check it", "owner": "editor"}]})
 check("digest: budget, waiting and work in progress are shown", all(x in md for x in ("$3.50 of $50.00", "Post A", "Content: Editor: Check it", "Engineering: Lab Engineer: working now", "Finance: Spend Tracker: idle")))
+_gh = cto.gh
+cto.gh = lambda m, p, b=None: [{"name": "one.md"}]
+check("facts: articles come from the site's own repo", cto.live_articles() == ["one"])
+def _no(*a): raise RuntimeError("down")
+cto.gh = _no
+check("facts: an unreadable site list is left out", cto.live_articles() == [])
+cto.gh = _gh
 real_gh_c, cto.gh = cto.gh, lambda m, p, b=None: ({"workflow_runs": [{"name": "replicate"}]} if "status=in_progress" in p else ({"workflow_runs": []} if "actions/runs" in p else []))
 real_sp3, real_lim3, real_tasks3 = budget.spent, budget.limit, cto.tasks
 budget.spent, budget.limit, cto.tasks = (lambda: (1, {})), (lambda: 50), (lambda: ([], None))
