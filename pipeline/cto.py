@@ -214,9 +214,9 @@ def next_run():
     try:
         plan, _ = read_plan()
         queued = [t["title"] for t in plan.get("topics") or [] if t.get("state") == "queued" and t.get("confirmed") and t.get("picked") and not t.get("chat")]
-        return {"week": plan.get("week"), "articles_this_week": plan.get("target"), "next_lab": queued[0] if queued else "nothing queued",
+        return {"week": plan.get("week"), "articles_this_week": plan.get("target"), "next_lab": queued[0] if queued else "no automatic lab queued",
                 "next_lab_starts": "07:12 UTC tomorrow" if queued else "the next plan, on Monday at 06:00 UTC", "queued_after_that": queued[1:],
-                "note": "One lab a day. A lab can still fail, and an article needs your approval."}
+                "note": "This covers automatic labs only. Article dates and labs from Claude chat are in WHAT ABHI AND CLAUDE CHAT DECIDED. A lab can still fail, and an article needs your approval."}
     except Exception as e:
         print(f"::warning title=cto::plan not read: {' '.join(str(e).split())[:200]}")
         return {}
