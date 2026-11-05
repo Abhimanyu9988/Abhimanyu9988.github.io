@@ -1,0 +1,38 @@
+name: apm-data
+# Reads a lab's real time series from Splunk, so a chart can show what Splunk recorded. Read only, with no AWS and no model.
+on:
+  workflow_dispatch:
+    inputs:
+      lab_env:
+        description: "The lab's Splunk environment name"
+        required: true
+        type: string
+      start_ms:
+        description: "Window start, epoch milliseconds"
+        required: true
+        type: string
+      stop_ms:
+        description: "Window end, epoch milliseconds"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  series:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: aws-lab
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: read the series
+        run: python3 pipeline/splunk_series.py
+        env:
+          LAB_ENV: ${{ inputs.lab_env }}
+          START_MS: ${{ inputs.start_ms }}
+          STOP_MS: ${{ inputs.stop_ms }}
+          SPLUNK_REALM: ${{ vars.SPLUNK_REALM }}
+          SPLUNK_API_TOKEN: ${{ secrets.SPLUNK_API_TOKEN }}
