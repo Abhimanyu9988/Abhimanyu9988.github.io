@@ -1,26 +1,29 @@
 {
  "week": "2026-W45",
- "target": 6,
- "created": "2026-11-04",
+ "target": 5,
+ "created": "2026-11-05",
  "topics": [
   {
-   "issue": 140,
-   "title": "OTel Java Agent in Splunk: Counting Every Signal One Pod Sends",
-   "state": "started",
-   "started_on": "2026-11-04",
-   "requested": true,
-   "confirmed": true,
-   "picked": true
-  },
-  {
-   "issue": 139,
-   "title": "Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
+   "issue": 161,
+   "title": "Read Postgres Query p95 in Splunk With One OTel Java Agent Setting",
    "state": "queued",
-   "signal": "A 2 Nov 2026 issue with four participants comes from a Java user checking exactly what the agent exports.",
+   "signal": "A Java agent 2.25 user with HikariCP asked why db.client.operation.duration did not appear, and a maintainer answered with the opt-in setting and where it must be set.",
    "confirmed": true,
-   "picked": false,
+   "picked": true,
+   "chat": true,
    "scores": "Marketing 3/5, Editor 3/5",
    "model": "claude-sonnet-5-5"
+  },
+  {
+   "issue": 162,
+   "title": "Follow Every SQS Message Through Splunk APM With Zero Code",
+   "state": "queued",
+   "signal": "A Spring Boot SQS tracing thread in the OTel Java instrumentation repo, with 5 comments and 15 replies since July 2025, and a new reader asking in June 2026 whether producer and consumer share a trace by default.",
+   "confirmed": true,
+   "picked": true,
+   "chat": true,
+   "scores": "Marketing 4/5, Editor 3/5",
+   "model": "claude-opus-5-5"
   }
  ]
 }
