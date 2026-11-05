@@ -1,18 +1,15 @@
 {
- "round": 1,
- "Editor": [],
+ "round": 2,
+ "Editor": [
+  {
+   "problem": "The takeaway, and the program printed in the README, promise that one SignalFlow program (histogram_percentile on the _bucket series) gives the query p95 in milliseconds. read_known() quietly switches to a p95 that jq computes from the bucket series whenever that program returns nothing or the wrong number of points. It records the switch only in $src, and the `fixed` gate never checks $src. So a run can emit `fixed` and HERO_MEASURE known_query_p95_ms when the published SignalFlow program never produced a reading. The article would then credit a program that did not run.",
+   "fix": "Emit `HERO_MEASURE: known_query_p95_source=$src` and add `[ \"$src\" = \"histogram_percentile()\" ]` to the `fixed` condition. Also print the raw SignalFlow error or metadata when `got` is 0. Keep the jq bucket p95 as a cross-check that is printed beside it, not as a replacement. If you would rather keep the fallback, the brief's takeaway must say the p95 can come from the bucket series, and it must not credit one SignalFlow program."
+  }
+ ],
  "Marketing": [
   {
-   "problem": "The only title option reads like a doc label. It starts with \"Read\", names no pain, and leaves out the \"no code changes\" promise that has worked for Abhi. It also omits the words an engineer would search: \"db.client.operation.duration\", \"database metrics\", \"query latency\". I would not put my name on it, and I can't pick a better option because none was offered.",
-   "fix": "Send back a title that credits the OTel Java agent and Splunk with the result. It should carry the reader's goal (Postgres query latency in Splunk, no app code changes, one env var) and a searchable term such as db.client.operation.duration or \"database metrics\". Keep the p95 promise worded to match what the proof shows."
-  },
-  {
-   "problem": "The title promises a \"p95\" and the brief wants it \"in milliseconds\". With the default buckets, a 30 ms query sits in a wide bucket (roughly 10 to 50 ms). The interpolated p95 could land well off the 30 ms truth. known_query_p95_vs_truth_pct only has to be \"present\", so a large gap would still pass and break the title's promise.",
-   "fix": "Set a real acceptance rule for the p95 reading. For example, require the SignalFlow p95 to fall inside the stored bucket that contains the timer's p95. Also report the bucket edges next to the reading. If the gap is large, the title should say \"bucket-accurate p95\" or similar. It should not imply exact milliseconds."
-  },
-  {
-   "problem": "The opening is likely to be built on the \"before\" measurement of zero series and on the one-bucket imprecision. That would frame the agent's default as missing something and put a cost at the top. The reader has to be able to take this as a positive gain, not as a flaw.",
-   "fix": "Open with what the reader gets: p95 query latency charts across Java services from one env var, with no code changes. Describe the zero-series run as the agent's opt-in default. Put bucket precision and the dup-name behaviour in the body as things to plan for."
+   "problem": "The title is still the only option and still opens with \"Read\", which sounds like a doc label. It names no pain. It also leaves out the words an engineer types when stuck: \"db.client.operation.duration\" or \"database metrics\". The reader in the one real demand source searched for that exact metric name and couldn't find it. The title does now carry \"one setting\" and \"no code changes\", but I still wouldn't put my name on it, and I can't pick a better one because none was offered.",
+   "fix": "Send a new title that credits the OTel Java agent and Splunk with the result and includes the metric name. For example: \"Postgres Query p95 in Splunk from One OTel Java Agent Setting, No Code Changes (db.client.operation.duration)\". Or: \"Get db.client.operation.duration Into Splunk: Postgres Query p95 From the OTel Java Agent, No Code Changes\". Don't say \"exact\" or \"millisecond-accurate\". The proof only shows a p95 inside a bucket."
   }
  ]
 }
