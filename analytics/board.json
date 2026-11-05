@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-04T16:23:35Z",
+ "updated": "2026-11-05T00:09:37Z",
  "columns": {
   "needs": [
    {
@@ -149,13 +149,6 @@
     "title": "[exporter/azuredataexplorer] Add Abhimanyu9988 as code owner and restore beta stability",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52500",
     "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-helm-charts/pull/2473",
-    "kind": "Merged",
-    "title": "docs(operator): explain autoGenerateCert behavior with Argo CD",
-    "url": "https://github.com/open-telemetry/opentelemetry-helm-charts/pull/2473",
-    "where": "opentelemetry-helm-charts"
    }
   ]
  }
