@@ -18,6 +18,15 @@ EDITOR = ("Check: does one change separate the two measurements? Is each number 
 MARKETING = ("Do marketing analysis only. Will the expected result support a title the right engineers would click, in words they would search for? "
              "Is there real demand evidence for this reader? Ignore whether the lab can run.\n\n")
 
+RERUN = ("You reviewed this plan before and blocked it on the points listed below. Check each point against the plan, and block again any that "
+         "isn't fixed. Raise a new blocking point only if it would make a measured result wrong or a promise in the title false. "
+         "Put anything smaller in notes, because the finished article gets a full review.\n\nEARLIER POINTS:\n")
+
+def rule_for(name, rule, earlier):
+    """The rerun checks the earlier points, so a lab isn't sent round again on a fresh list each time. A first review is unchanged."""
+    points = (earlier or {}).get(name) or []
+    return RULE + rule + (RERUN + "".join(f"- {b['problem']} FIX: {b['fix']}\n" for b in points) + "\n" if points else "")
+
 def plan_text(title, brief, lab, full):
     files = {f["path"]: f["content"] for f in lab.get("files") or []}
     text = f"TITLE: {title}\n\nBRIEF:\n{json.dumps(brief)[:7000]}\n\nLAB SUMMARY: {lab.get('summary')}\n"
@@ -32,15 +41,20 @@ def blocked(name, got):
 def main():
     issue = json.loads(pathlib.Path(sys.argv[1]).read_text())
     lab = json.loads(pathlib.Path(sys.argv[2]).read_text())
+    earlier = json.loads(pathlib.Path(sys.argv[3]).read_text()) if len(sys.argv) > 3 else {}
     brief = editor.parse_brief(issue.get("body") or "")
     if not brief:
         print("PLAN REVIEW FAILED: the topic has no valid brief")
         return 1
-    stop = False
+    stop, points = False, {}
     for role, name, rule, full in (("editor", "Editor", EDITOR, True), ("marketing", "Marketing", MARKETING, False)):
-        lines, no = blocked(name, roles.ask(role, RULE + rule + plan_text(issue.get("title"), brief, lab, full), "planreview"))
+        got = roles.ask(role, rule_for(name, rule, earlier) + plan_text(issue.get("title"), brief, lab, full), "planreview")
+        lines, no = blocked(name, got)
         print("\n".join(lines))
+        points[name] = got["blocking"]
         stop = stop or no
+    if len(sys.argv) > 4:
+        pathlib.Path(sys.argv[4]).write_text(json.dumps(points, indent=1))
     print("PLAN REVIEW BLOCKED: fix these before AWS" if stop else "PLAN REVIEW PASSED")
     return 1 if stop else 0
 

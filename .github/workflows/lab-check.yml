@@ -61,8 +61,19 @@ jobs:
           [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "the issue must be a number"; exit 1; }
           git fetch -q --depth 1 origin "chat/$ISSUE"
           git show "FETCH_HEAD:chat-work/$ISSUE/lab.json" > lab.json
+          git show "FETCH_HEAD:chat-work/$ISSUE/plan-review.json" > earlier.json 2>/dev/null || echo '{}' > earlier.json
           gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE" > issue.json
-          python3 pipeline/plan_review.py issue.json lab.json
+          status=0
+          python3 pipeline/plan_review.py issue.json lab.json earlier.json review.json || status=$?
+          # This round's points go on the lab's branch for the rerun to check. A save that fails only means a full review next time.
+          if [ -s review.json ]; then
+            path="repos/$GITHUB_REPOSITORY/contents/chat-work/$ISSUE/plan-review.json"
+            sha=$(GH_TOKEN="$BOT_TOKEN" gh api "$path?ref=chat/$ISSUE" --jq .sha 2>/dev/null || true)
+            jq -n --arg branch "chat/$ISSUE" --arg sha "$sha" --arg content "$(base64 -w0 review.json)" \
+              '{message: "Save the plan review points", branch: $branch, content: $content} + (if $sha == "" then {} else {sha: $sha} end)' |
+              GH_TOKEN="$BOT_TOKEN" gh api -X PUT "$path" --input - --silent || echo "could not save the plan review points"
+          fi
+          exit $status
   # Runs the lab's real scripts on a small cluster. Like the lab sandbox, this holds the Splunk tokens and nothing else:
   # no model keys, no GitHub token and no AWS role.
   rehearsal:
