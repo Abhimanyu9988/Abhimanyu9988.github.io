@@ -1,0 +1,121 @@
+$ bash fix.sh
+# exit 0 after 721s
+
+== 2. The before-check: the cluster reaches Splunk, and the map is empty
+cluster metric time series in Splunk: 2072
+services on the map before the change: 0
+instance CPU credit mode: unlimited unlimited unlimited
+== 3. Three rounds with OBI off, right before the change
+LOAD node_busy_pct=11
+LOAD requests=398 errors=0 p50_ms=7.78 p95_ms=13.93
+OFF round: p95 13.93 ms, CPU busy pct orders node 9, inventory node 8, load node 11
+LOAD node_busy_pct=9
+LOAD requests=398 errors=0 p50_ms=7.12 p95_ms=11.66
+OFF round: p95 11.66 ms, CPU busy pct orders node 10, inventory node 9, load node 9
+LOAD node_busy_pct=11
+LOAD requests=397 errors=0 p50_ms=7.80 p95_ms=15.52
+OFF round: p95 15.52 ms, CPU busy pct orders node 13, inventory node 9, load node 11
+== 4. The first value
+helm upgrade --reuse-values --set obi.enabled=true
+JVMs OBI reports instrumenting: 2
+splunk-otel-collector splunk-otel-collector-0.163.1 app 0.163.1
+OBI hostPID=true hostNetwork=true privileged=true
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml
+helm values under obi: {"enabled":true}
+time=2026-11-05T22:31:05.606Z level=INFO msg="instrumenting process" component=discover.traceAttacher cmd=/opt/java/openjdk/bin/java pid=3886 ino=12627970 type=java service=app logenricher=false
+time=2026-11-05T22:31:18.825Z level=ERROR msg="couldn't attach OpenTelemetry eBPF Java Agent" component=javaagent.Injector pid=3886 path=/tmp/obi-java-agent.jar error="error reading line read unix @->
+time=2026-11-05T22:31:18.826Z level=WARN msg="unable to attach java agent to process, Java TLS telemetry will not work" component=discover.traceAttacher pid=3886 error="java attach timed out"
+time=2026-11-05T22:31:05.224Z level=INFO msg="instrumenting process" component=discover.traceAttacher cmd=/usr/local/bin/postgres pid=4196 ino=27520550 type=cpp service="" logenricher=false
+time=2026-11-05T22:31:08.100Z level=INFO msg="instrumenting process" component=discover.traceAttacher cmd=/opt/java/openjdk/bin/java pid=4090 ino=4103989 type=java service=app logenricher=false
+time=2026-11-05T22:31:18.113Z level=ERROR msg="couldn't attach OpenTelemetry eBPF Java Agent" component=javaagent.Injector pid=4090 path=/tmp/obi-java-agent.jar error="error reading line read unix @->
+time=2026-11-05T22:31:18.113Z level=WARN msg="unable to attach java agent to process, Java TLS telemetry will not work" component=discover.traceAttacher pid=4090 error="java attach timed out"
+== 5. One discarded round while OBI settles, then three rounds with OBI on, on the same pods
+LOAD node_busy_pct=15
+LOAD requests=394 errors=0 p50_ms=10.29 p95_ms=19.10
+LOAD node_busy_pct=8
+LOAD requests=398 errors=0 p50_ms=8.05 p95_ms=15.82
+ON round: p95 15.82 ms, CPU busy pct orders node 16, inventory node 11, load node 8
+LOAD node_busy_pct=9
+LOAD requests=398 errors=0 p50_ms=7.10 p95_ms=12.87
+ON round: p95 12.87 ms, CPU busy pct orders node 10, inventory node 9, load node 9
+LOAD node_busy_pct=9
+LOAD requests=398 errors=0 p50_ms=6.45 p95_ms=11.21
+ON round: p95 11.21 ms, CPU busy pct orders node 11, inventory node 7, load node 9
+inventory	ca653889-b1a6-4447-936a-93d5e12206a2	0	2026-11-05T22:26:50Z	maven:3.9.9-eclipse-temurin-21
+orders	f0c67713-a216-4a19-a520-9d124ff13fd2	0	2026-11-05T22:26:49Z	maven:3.9.9-eclipse-temurin-21
+postgres	d2e39469-51ee-4d5a-ad27-b8f3ed5abfc2	0	2026-11-05T22:26:55Z	postgres:16.4-alpine
+orders Java agent mappings after OBI: 4
+inventory Java agent mappings after OBI: 4
+== 6. A fixed wait of 90s, then one pass over the sampled traces
+  0s after the rounds: services=2
+  16s after the rounds: services=2
+  31s after the rounds: services=2
+  47s after the rounds: services=2
+  63s after the rounds: services=2
+  78s after the rounds: services=2
+== 7. The second value, in propagate.sh
+sample trace from the default case: none found
+helm upgrade --reuse-values --set-string obi.env.OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+JVMs OBI reports instrumenting: 2
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+helm values under obi: {"enabled":true,"env":{"OTEL_EBPF_BPF_CONTEXT_PROPAGATION":"headers"}}
+LOAD node_busy_pct=16
+LOAD requests=399 errors=0 p50_ms=6.69 p95_ms=10.98
+LOAD node_busy_pct=5
+LOAD requests=399 errors=0 p50_ms=6.22 p95_ms=11.30
+LOAD node_busy_pct=8
+LOAD requests=399 errors=0 p50_ms=6.07 p95_ms=10.99
+sample trace from the propagation case: 07515449a2bc2d3973c9a54e05c5a3c3
+  orders null GET /orders/{id} span=6d8b9deb02b22f67 parent=27bbfc90c12b0320
+  orders null GET /stock/{id} span=abb1276d3baad92f parent=6d8b9deb02b22f67
+  load null GET /orders/* span=27bbfc90c12b0320 parent=none
+  inventory null GET /stock/{id} span=967bac47e7062f91 parent=abb1276d3baad92f
+== 8. The result
+-- service map from Splunk APM
+  inventory inferred=false
+  orders inferred=false
+  load inferred=false
+  load -> orders
+  orders -> inventory
+NAME                                          KERNEL                             OS
+ip-10-0-0-149.eu-central-1.compute.internal   6.12.113-138.209.amzn2023.x86_64   Amazon Linux 2023.12.20261102
+ip-10-0-0-233.eu-central-1.compute.internal   6.12.113-138.209.amzn2023.x86_64   Amazon Linux 2023.12.20261102
+ip-10-0-1-147.eu-central-1.compute.internal   6.12.113-138.209.amzn2023.x86_64   Amazon Linux 2023.12.20261102
+inventory	ca653889-b1a6-4447-936a-93d5e12206a2	0	2026-11-05T22:26:50Z	maven:3.9.9-eclipse-temurin-21
+orders	f0c67713-a216-4a19-a520-9d124ff13fd2	0	2026-11-05T22:26:49Z	maven:3.9.9-eclipse-temurin-21
+postgres	d2e39469-51ee-4d5a-ad27-b8f3ed5abfc2	0	2026-11-05T22:26:55Z	postgres:16.4-alpine
+services on map from Splunk with the first value: 2
+HERO_MEASURE: services_on_map=2
+load client on the map, traced by OBI's default of every namespace: 1
+inventory pod restarts added by the first value: 0
+HERO_MEASURE: pod_restarts_added[inventory]=0
+orders pod restarts added by the first value: 0
+HERO_MEASURE: pod_restarts_added[orders]=0
+postgres pod restarts added by the first value: 0
+HERO_MEASURE: pod_restarts_added[postgres]=0
+inventory pod restarts after propagation, -1 means not run: 0
+HERO_MEASURE: pod_restarts_after_propagation[inventory]=0
+orders pod restarts after propagation, -1 means not run: 0
+HERO_MEASURE: pod_restarts_after_propagation[orders]=0
+postgres pod restarts after propagation, -1 means not run: 0
+HERO_MEASURE: pod_restarts_after_propagation[postgres]=0
+first value: 0 joined of 0 known traces found in Splunk, 56 IDs searched
+second value: 39 joined of 39 known traces found in Splunk, 48 IDs searched
+services in trace default, most on one trace, 2 means joined: 0
+HERO_MEASURE: services_in_trace_default=0
+services in trace propagation, most on one trace, 2 means joined, -1 means not run: 2
+HERO_MEASURE: services_in_trace_propagation=2
+orders jvm helper attached: 1
+HERO_MEASURE: jvm_helper_attached[orders]=1
+inventory jvm helper attached: 1
+HERO_MEASURE: jvm_helper_attached[inventory]=1
+p95 with OBI off: min 11.66, median 13.93, max 15.52 ms
+p95 with OBI on: min 11.21, median 12.87, max 15.82 ms
+p95 added ms, median of three rounds minus median of three rounds: -1.06
+HERO_MEASURE: p95_added_ms=-1.06
+HERO_RESULT: fixed
+
