@@ -7,7 +7,7 @@ import json, os, pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import editor, roles
 
-SHOWN = ("reproduce.sh", "fix.sh", "k8s/10-app.yaml", "k8s/20-load.yaml", "README.md")
+SHOWN = ("reproduce.sh", "fix.sh", "lib.sh", "propagate.sh", "k8s/10-app.yaml", "k8s/20-load.yaml", "README.md")     # the Editor can only judge the scripts it sees
 RULE = ("Review this lab's PLAN before it runs, and name now anything you would mark down in the finished article. "
         "A problem found here costs nothing, and a problem found after the run costs a paid rerun. "
         "Block only what the plan itself decides, and give a concrete change to the lab, brief or title. "
