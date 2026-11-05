@@ -1,0 +1,10 @@
+{
+ "run": "42116738351",
+ "issue": 162,
+ "title": "Follow SQS Messages Through Splunk APM With the OTel Java Agent, Zero Code",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 20.3,
+ "lab_usd": 0.0
+}
