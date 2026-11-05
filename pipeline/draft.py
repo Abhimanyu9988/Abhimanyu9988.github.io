@@ -601,6 +601,17 @@ def chat_post(issue_no):
         print(f"no chat article yet: {str(e)[:120]}")
         return None
 
+def chat_figures(issue_no):
+    """Images a Claude chat drew from real series, by file name. An empty result only means none were saved."""
+    try:
+        path = f"/repos/{HOME_REPO}/contents/{CHAT_DIR}/{int(issue_no)}/figures"
+        rows = gh("GET", f"{path}?ref=chat/{int(issue_no)}") or []
+        names = [r["name"] for r in rows if r.get("name", "").endswith(".png")]
+        return {n: base64.b64decode(gh("GET", f"{path}/{n}?ref=chat/{int(issue_no)}")["content"]) for n in names}
+    except Exception as e:
+        print(f"no chat figures: {str(e)[:120]}")
+        return {}
+
 def record_trial(res, topic):
     """One record per lab, for the model trial. The Editor's score is joined later from the review saved under the same run."""
     import analytics
@@ -795,9 +806,14 @@ def open_pr(issue_no, res, topic):
                for r in post.get("source_replies") or []
                if isinstance(r, dict) and r.get("text") and (not srcs or r.get("url") in srcs)]
     png = OUT / "cover.png"
-    fig = make_cover(post, tags, png, kind)
+    drawn = chat_figures(issue_no) if chat else {}
+    if "cover.png" in drawn:                       # Abhi rejected terminal pictures, so a chat's real-data images replace them
+        png.write_bytes(drawn.pop("cover.png"))
+        fig, shots = None, drawn
+    else:
+        fig = make_cover(post, tags, png, kind)
+        shots = add_shots(post, slug)              # pictures of the real output, placed in their sections
     img_path = f"/assets/posts/{slug}/cover.png"
-    shots = add_shots(post, slug)                  # pictures of the real output, placed in their sections
     post["body"] = add_files_section(post["body"], slug, list(lab) + ["providers.tf"])
     alt = re.sub(r"[\[\]\n]", " ", (fig or {}).get("alt") or f"Cover: {post['title']}")[:300]
     body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + post["body"].strip() + "\n"
@@ -864,7 +880,8 @@ def open_pr(issue_no, res, topic):
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
     if gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true":
-        slack.say("writer", ready_message(post["title"], pr["number"], gate))
+        if not chat:                               # chat drafts go to Marketing and the Editor. Abhi only hears once one is live
+            slack.say("writer", ready_message(post["title"], pr["number"], gate))
     if (log.get("question") if isinstance(log, dict) else "") and (gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true"):
         slack.say("voice_editor", f"Optional, but this is what makes a post truly yours: {log['question']}\n"
                                   "To add your answer, comment /redraft with it on the PR.")

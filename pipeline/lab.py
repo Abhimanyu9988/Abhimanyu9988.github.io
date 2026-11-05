@@ -185,10 +185,10 @@ def redact(s):
             s = s.replace(v, f"<{k.lower()}>")
     for rx in SECRET_RX:
         s = re.sub(rx, "<secret>", s)
-    s = re.sub(r"\b\d{12}\b", "<account-id>", s)
+    s = re.sub(r"\b(?!0{12}\b)\d{12}\b", "<account-id>", s)      # all zeros is a local stand-in, and changing it breaks the lab
     s = re.sub(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b", "<access-key>", s)
     return re.sub(r"(?i)\b(aws_secret_access_key|aws_session_token|secretaccesskey|sessiontoken|password)"
-                  r"(\"?\s*[:=]\s*\"?)[^\s\",]+", r"\1\2<redacted>", s)
+                  r"(\"?\s*[:=]\s*\"?)(?!standin\b)[^\s\",]+", r"\1\2<redacted>", s)
 
 def tail(s, n=12000):
     return s if len(s) <= n else "[... earlier output cut ...]\n" + s[-n:]
