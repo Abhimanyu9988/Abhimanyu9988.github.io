@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init
+  namespace: demo
+data:
+  init.sql: |
+    create table stock (id int primary key, sku text not null, qty int not null);
+    insert into stock select i, 'SKU-' || i, 100 + i from generate_series(1, 100) i;
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      nodeName: INVENTORY_NODE
+      volumes:
+        - name: init
+          configMap:
+            name: db-init
+      containers:
+        - name: postgres
+          image: postgres:16.4-alpine
+          env:
+            - { name: POSTGRES_PASSWORD, value: lab }
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - { name: init, mountPath: /docker-entrypoint-initdb.d }
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            periodSeconds: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: demo
+spec:
+  selector: { app: postgres }
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: orders }
+  template:
+    metadata:
+      labels: { app: orders }
+    spec:
+      nodeName: ORDERS_NODE
+      volumes:
+        - name: lab
+          hostPath: { path: /opt/lab }
+      containers:
+        - name: app
+          image: maven:3.9.9-eclipse-temurin-21
+          command: ["java", "-Xms256m", "-Xmx256m", "-jar", "/lab/app.jar"]
+          env:
+            - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres:5432/postgres" }
+            - { name: SPRING_DATASOURCE_USERNAME, value: postgres }
+            - { name: SPRING_DATASOURCE_PASSWORD, value: lab }
+            - { name: INVENTORY_URL, value: "http://inventory:8080" }
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - { name: lab, mountPath: /lab, readOnly: true }
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            tcpSocket: { port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 90
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: demo
+spec:
+  selector: { app: orders }
+  ports:
+    - port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: inventory }
+  template:
+    metadata:
+      labels: { app: inventory }
+    spec:
+      nodeName: INVENTORY_NODE
+      volumes:
+        - name: lab
+          hostPath: { path: /opt/lab }
+      containers:
+        - name: app
+          image: maven:3.9.9-eclipse-temurin-21
+          command: ["java", "-Xms256m", "-Xmx256m", "-jar", "/lab/app.jar"]
+          env:
+            - { name: SPRING_DATASOURCE_URL, value: "jdbc:postgresql://postgres:5432/postgres" }
+            - { name: SPRING_DATASOURCE_USERNAME, value: postgres }
+            - { name: SPRING_DATASOURCE_PASSWORD, value: lab }
+            - { name: INVENTORY_URL, value: "http://inventory:8080" }
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - { name: lab, mountPath: /lab, readOnly: true }
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            tcpSocket: { port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 90
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory
+  namespace: demo
+spec:
+  selector: { app: inventory }
+  ports:
+    - port: 8080
