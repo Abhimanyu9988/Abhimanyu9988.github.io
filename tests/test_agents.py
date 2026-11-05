@@ -1791,6 +1791,8 @@ pr_lab = {"summary": "s", "files": [{"path": "fix.sh", "content": "echo hi"}]}
 check("plan review: a first review is the plain rule", plan_review.rule_for("Editor", "R", {}) == plan_review.RULE + "R")
 check("plan review: a rerun lists the role's earlier points", "old gap FIX: close it" in plan_review.rule_for("Editor", "R", {"Editor": [{"problem": "old gap", "fix": "close it"}]}))
 check("plan review: one role's points don't reach the other", plan_review.rule_for("Marketing", "R", {"Editor": [{"problem": "old gap", "fix": "close it"}]}) == plan_review.RULE + "R")
+check("plan review: a role that passed isn't asked to review from scratch", plan_review.PASSED in plan_review.rule_for("Marketing", "R", {"round": 1, "Editor": [{"problem": "p", "fix": "f"}], "Marketing": []}))
+check("plan review: points about the article wait for the article", "goes in notes" in plan_review.RULE)
 check("plan review: a recheck is allowed", plan_review.round_allowed({"round": 1}, False))
 check("plan review: a third review stops", not plan_review.round_allowed({"round": 2}, False))
 check("plan review: Abhi can allow a third review", plan_review.round_allowed({"round": 2}, True))
