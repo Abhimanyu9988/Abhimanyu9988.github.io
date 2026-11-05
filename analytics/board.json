@@ -1,12 +1,26 @@
 {
- "updated": "2026-11-05T10:51:53Z",
+ "updated": "2026-11-05T11:01:26Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
+    "kind": "Approve or reject",
+    "title": "Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "kind": "Approve or reject",
     "title": "Default ECS FireLens Dropped 76.59% in My Fargate Outage Test",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
+    "kind": "Review",
+    "title": "Draft: Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
     "where": "Abhimanyu9988.github.io"
    },
    {
@@ -69,13 +83,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42013919924",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42013919924",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Your PR",
