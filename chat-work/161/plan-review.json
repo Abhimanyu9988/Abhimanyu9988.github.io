@@ -1,10 +1,5 @@
 {
- "round": 3,
- "Editor": [
-  {
-   "problem": "Earlier point, only partly fixed. read_known() now sets from_program, prints the SignalFlow reply when a program gives nothing back, emits HERO_MEASURE known_query_p95_from_program, and the `fixed` gate requires from_program=1. That part is fixed. The gap is in the loop. It tries two programs: first `$base.sum(by=['le']).$tail`, then `$base.$tail`, which has no `.sum(by=['le'])`. from_program becomes 1 when either one returns readings. The README and the takeaway print only the first program as the one that gives the p95. So a run can emit `fixed` and known_query_p95_ms from the second program, and the article would credit a program that did not produce the number.",
-   "fix": "Choose one of two. (a) Drop the second program, so only the published program can set from_program=1. (b) Keep it, but record which one ran: set from_program=1 for the published program and 2 for the other, emit `HERO_MEASURE: known_query_p95_program=<the exact program text>`, and make the `fixed` check `[ \"$from_program\" -eq 1 ]` pass only for the published program. If the second program is the one that works, the README and the takeaway must print that program instead."
-  }
- ],
+ "round": 4,
+ "Editor": [],
  "Marketing": []
 }
