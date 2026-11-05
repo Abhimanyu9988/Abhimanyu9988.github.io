@@ -1788,6 +1788,9 @@ check("plan review: a clean review passes", plan_review.blocked("Editor", {"go":
 check("plan review: a no stops the lab", plan_review.blocked("Editor", {"go": False, "blocking": [], "notes": []})[1] is True)
 check("plan review: a go with a blocking point still stops the lab", plan_review.blocked("Editor", {"go": True, "blocking": [{"problem": "p", "fix": "f"}], "notes": []})[1] is True)
 pr_lab = {"summary": "s", "files": [{"path": "fix.sh", "content": "echo hi"}]}
+check("plan review: a first review is the plain rule", plan_review.rule_for("Editor", "R", {}) == plan_review.RULE + "R")
+check("plan review: a rerun lists the role's earlier points", "old gap FIX: close it" in plan_review.rule_for("Editor", "R", {"Editor": [{"problem": "old gap", "fix": "close it"}]}))
+check("plan review: one role's points don't reach the other", plan_review.rule_for("Marketing", "R", {"Editor": [{"problem": "old gap", "fix": "close it"}]}) == plan_review.RULE + "R")
 check("plan review: the Editor sees the scripts, and Marketing doesn't", "echo hi" in plan_review.plan_text("t", {}, pr_lab, True) and "echo hi" not in plan_review.plan_text("t", {}, pr_lab, False))
 pr_job = lc_y["jobs"]["plan-review"]
 check("plan review: no lab code runs next to its keys", "bash " not in pr_job["steps"][-1]["run"] and "lab_check.py" not in pr_job["steps"][-1]["run"])
