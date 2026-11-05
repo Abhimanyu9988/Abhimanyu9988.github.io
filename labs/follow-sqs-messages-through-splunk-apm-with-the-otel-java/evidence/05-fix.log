@@ -1,0 +1,94 @@
+$ bash fix.sh
+# exit 0 after 277s
+
+== 2. The before-check: the cluster's own data reaches Splunk while the services send nothing
+cluster metric time series in Splunk: 1812
+== 3. The whole change: one environment variable on each service, and no SQS setting among its values
+orders image: maven:3.9.9-eclipse-temurin-21
+orders jar: 61da51970b79c8b4307af88d949747ea5007580e05217ed714c094704efdf4c7  /lab/app.jar
+orders agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149  /lab/opentelemetry-javaagent.jar
+orders agent version: 2.33.1
+orders receive telemetry: not set, default false
+orders propagator for messaging: not set, default false
+orders OTEL_ environment variables: 0
+fulfilment image: maven:3.9.9-eclipse-temurin-21
+fulfilment jar: 61da51970b79c8b4307af88d949747ea5007580e05217ed714c094704efdf4c7  /lab/app.jar
+fulfilment agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149  /lab/opentelemetry-javaagent.jar
+fulfilment agent version: 2.33.1
+fulfilment receive telemetry: not set, default false
+fulfilment propagator for messaging: not set, default false
+fulfilment OTEL_ environment variables: 0
+jar unchanged from the before run
+== 4. The same 400 orders, with the agent on its defaults
+pod/load condition met
+LOAD sent=400 errors=0
+default run: sent 400, fulfilled 400, producer spans 400, consumer spans 400, joined on message ID 400, sharing one trace 400, distinct traces 400
+default run, misses: no process span 0, no producer span 0, different trace 0. Most process spans for one message: 1
+one trace percent, default run: 100.0
+default run, consumer spans linked to the producer: 0
+default_receive_span links to the producer: 0
+default run, receive spans: 0
+-- three of the joined rows: message ID, producer trace, consumer trace
+  0127de22-485b-428a-acc7-034f2e4dcf5e c5cbf7e49265aebe6aacdeb6bdad9d02 c5cbf7e49265aebe6aacdeb6bdad9d02
+  012bcc56-c649-433e-812b-63b9f712ed34 f90a7d13ce7bb5e8e60c0262a34f49ad f90a7d13ce7bb5e8e60c0262a34f49ad
+  01771e24-4d49-4a6a-abdb-12586654acef 368cd3268d19dbf632c4a0b16e5657b2 368cd3268d19dbf632c4a0b16e5657b2
+HERO_MEASURE: messages_sent[default]=400
+HERO_MEASURE: one_trace_messages[default]=400
+HERO_MEASURE: one_trace_percent=100.0
+HERO_MEASURE: consumer_spans_linked_to_producer[default]=0
+HERO_MEASURE: consumer_spans_linked_to_producer[default_receive_span]=0
+HERO_MEASURE: receive_spans[default]=0
+== 5. How the trace crossed the queue: fulfilment pauses, one order goes in, and that message is read from the queue
+messages waiting before the probe: 0
+{"order":999999,"messageId":"d5a18fb0-fa79-47c5-8f1c-dfc5dcb98c65"}
+message d5a18fb0-fa79-47c5-8f1c-dfc5dcb98c65 AWSTraceHeader: Root=1-354df141-feaef1cc58d93649bca2af18;Parent=7475d1a4838a35dd;Sampled=1
+probe message deleted
+default run, messages carrying the header: 1
+HERO_MEASURE: trace_header_on_message[default]=1
+trace ID in the header: 354df141feaef1cc58d93649bca2af18, on the producer span: 354df141feaef1cc58d93649bca2af18
+trace header root matches the producer span: 1
+HERO_MEASURE: trace_header_root_matches=1
+== 6. One setting changed: receive telemetry on, on fulfilment only, for 100 orders
+fulfilment receive telemetry: receive-telemetry.enabled=true
+fulfilment propagator for messaging: not set, default false
+fulfilment OTEL_ environment variables: 0
+pod/load condition met
+LOAD sent=100 errors=0
+receive_telemetry run: sent 100, fulfilled 100, joined on message ID 100, sharing one trace 0, in their own trace 100. Most process spans for one message: 1
+receive_telemetry run, consumer spans linked to the producer: 100
+receive_telemetry_receive_span links to the producer: 0
+receive_telemetry run, process spans whose parent is a receive span: 100
+-- one consumer trace, from the agent's OTLP output
+  follow-sqs-messages-thro-738351-orders receive kind=5 span=3c4aa35a087891e3 parent=none links=
+    follow-sqs-messages-thro-738351-orders process kind=5 span=88f2e0f96c7c481c parent=3c4aa35a087891e3 links=3d4b7a86685e7351af999a6440905f9c
+    follow-sqs-messages-thro-738351-orders process kind=5 span=2e2a9857c6bf3525 parent=3c4aa35a087891e3 links=344012b64ebe2e596b7c31a64d93b17c
+    Sqs.DeleteMessageBatch kind=3 span=f956636b787d5a63 parent=3c4aa35a087891e3 links=
+receive_telemetry run, receive spans: 76
+HERO_MEASURE: messages_sent[receive_telemetry]=100
+HERO_MEASURE: one_trace_messages[receive_telemetry]=0
+HERO_MEASURE: consumer_spans_linked_to_producer[receive_telemetry]=100
+HERO_MEASURE: consumer_spans_linked_to_producer[receive_telemetry_receive_span]=0
+HERO_MEASURE: receive_spans[receive_telemetry]=76
+== 7. What Splunk Observability Cloud shows for the default run
+  t+30s: services=2 sampled traces holding both services=7 of 10
+  t+56s: services=2 sampled traces holding both services=10 of 10
+  fulfilment inferred=false
+  sqs inferred=true
+  orders inferred=false
+  fulfilment -> sqs
+  orders -> fulfilment
+  orders -> sqs
+  sqs -> fulfilment
+services on the map from Splunk: 2
+queue path on map from orders to fulfilment: 1
+HERO_MEASURE: services_on_map=2
+HERO_MEASURE: queue_path_on_map=1
+-- trace 584848f492dedd50dff1498bb79db203 from Splunk APM
+  fulfilment follow-sqs-messages-thro-{ID}-orders process
+  orders POST /orders/{id}
+  orders follow-sqs-messages-thro-{ID}-orders publish
+sampled traces with both services in one trace in Splunk: 10 of 10
+HERO_MEASURE: splunk_traces_both_services=10
+HERO_MEASURE: splunk_traces_checked=10
+HERO_RESULT: fixed
+
