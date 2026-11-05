@@ -2,14 +2,14 @@
 title: "OpenTelemetry Java Agent in Splunk APM: One Env Var, Zero Code, Full Service Map"
 description: "One environment variable put two Spring Boot services on a Splunk APM service map, with traces and JVM metrics, no code change and p95 about level."
 image: /assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/cover.png
-image_alt: "Terminal output showing zero agent metrics before the change, the jar unchanged, then 3 services on the Splunk APM map, 19 metric names and 4 spans per request."
+image_alt: "Dashboard-style chart from the lab: orders calls inventory, which calls an inferred Postgres node, with 3 services, 4 spans and 19 metric names, and p50 and p95 latency with and without the agent."
 tags: ["opentelemetry", "java", "kubernetes", "splunk"]
 channels: ["devto", "hashnode"]
 lab: labs/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code
 linkedin: "Adding tracing to a Java service usually starts with a code change.\nMine took one environment variable. Same jar, same image.\n\nI attached the OpenTelemetry Java agent to two Spring Boot services and watched what Splunk APM drew.\n\n→ The JVM reads JAVA_TOOL_OPTIONS when it starts\n→ That one variable attached the agent\n→ Splunk APM built the service map, including Postgres\n\nWhat appeared:\n3 services on the map\n4 spans in one order request\n19 metric names from the JVM and connection pool\n\np95 stayed about level: 17.91 ms before, 18.48 ms after.\n\nSo a platform team can show a service team its traces on day one, before anyone writes a span. The post also covers the memory and startup numbers to plan for.\n\nI built and tested this in a throwaway AWS account, and the post has every step:\n{LINKS}\n\nWhat would you show a Java team first?\n\n#OpenTelemetry #Java #Kubernetes #Observability"
 replies: []
 ---
-![Terminal output showing zero agent metrics before the change, the jar unchanged, then 3 services on the Splunk APM map, 19 metric names and 4 spans per request.](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/cover.png)
+![Dashboard-style chart from the lab: orders calls inventory, which calls an inferred Postgres node, with 3 services, 4 spans and 19 metric names, and p50 and p95 latency with and without the agent.](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/cover.png)
 
 One environment variable put two Spring Boot services on a Splunk APM service map, with no code change and no new image. Splunk showed **3 services, 4 spans per request and 19 metric names**, including a Postgres node that runs no agent.
 
@@ -49,8 +49,6 @@ cluster metric time series in Splunk: 2098
 agent metric names in Splunk before the change: 0
 ```
 
-![Same jar hash, agent now loaded](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/step-1.png)
-
 ## What Splunk drew for you
 
 Splunk APM built the map by itself, and that includes Postgres, which runs no agent:
@@ -69,9 +67,9 @@ The 19 metric names were 12 from the JVM, such as `jvm.memory.used` and `jvm.gc.
 
 Requests stayed healthy throughout: the runs served 1179 and 1196 requests with 0 errors.
 
-![Service map from Splunk APM](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/step-2.png)
+![Service map charted from the Splunk APM output: orders calls inventory, which calls an inferred Postgres node](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/step-2.png)
 
-![One request trace with 4 spans](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/step-3.png)
+![One order request: 4 spans across orders and inventory, charted from the Splunk trace output](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/step-3.png)
 
 ## What to plan for before you roll it out
 
