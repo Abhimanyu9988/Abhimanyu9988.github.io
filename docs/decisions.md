@@ -265,3 +265,7 @@ Abhi wants the team's replies available to the chat and for later use. `slack-ch
 ## 2026-11-05: Marketing and the Editor review the plan, not only the draft
 
 They used to see a topic before a lab and a draft after it, so faults in the lab design cost a paid run. `plan_review.py` now gives them the plan before AWS. A draft also uses `post.json` only in the article step, because a lab run once paired an old article with new evidence.
+
+## 2026-11-05: The team reads his words, and only finished work reaches him
+
+Every leader now sees his recent messages and what the Executive Assistant has learned he likes. A chat run's failures and below-bar drafts come back to the chat instead of Slack.

@@ -11,7 +11,8 @@
    "prompt": "assistant.md",
    "outputs": [
     "goal",
-    "plan"
+    "plan",
+    "abhiprefs"
    ],
    "data_sources": [
     "goals",

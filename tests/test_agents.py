@@ -1794,5 +1794,21 @@ check("plan review: no lab code runs next to its keys", "bash " not in pr_job["s
 check("plan review: the rehearsal waits for it", "plan-review" in lc_y["jobs"]["rehearsal"]["needs"])
 check("draft: an old chat article never meets a new lab's evidence", 'if chat and os.environ.get("FROM_RUN")' in (ROOT / "pipeline/draft.py").read_text())
 
+# ---------- the team learns from him ----------
+tm_files, tm_real = {}, (cto.read_private, cto.write_private, cto.admin_on, roles_mod.ask)
+cto.read_private = lambda p: (tm_files.get(p, ""), "s")
+cto.write_private = lambda p, t, s, m: tm_files.__setitem__(p, t) or True
+rows3 = "".join(json.dumps({"ts": str(n), "time": "t", "from": w, "text": f"{w} {n}"}) + "\n" for n, w in ((1, "Abhi"), (2, "CMO"), (3, "Abhi"), (4, "Abhi")))
+tm_files[cto.CHAT] = rows3
+tm_mem = cto.team_memory()
+check("team: every leader sees his words, not the team's", "Abhi 3" in tm_mem and "CMO 2" not in tm_mem)
+tm_seen = []
+roles_mod.ask = lambda role, prompt, out: tm_seen.append((role, out)) or {"likes": ["strong titles"], "dislikes": ["broken drafts"], "rules": ["be positive"]}
+check("team: the Executive Assistant learns after a few new replies", cto.learn() and tm_seen == [("executive_assistant", "abhiprefs")] and "broken drafts" in tm_files[cto.PREFS])
+check("team: it doesn't relearn the same replies", cto.learn() is False and len(tm_seen) == 1)
+cto.read_private, cto.write_private, cto.admin_on, roles_mod.ask = tm_real
+draft_src = (ROOT / "pipeline/draft.py").read_text()
+check("draft: a chat run's below-bar draft stays out of Slack", 'if gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true":' in draft_src and 'tell("lab_engineer", f"Lab failed,' in draft_src)
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
