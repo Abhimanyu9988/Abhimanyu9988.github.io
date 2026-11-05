@@ -31,6 +31,33 @@ jobs:
       - name: run the lab's check
         working-directory: work
         run: bash check.sh
+  # Runs the lab's real scripts on a small cluster. Like the lab sandbox, this holds the Splunk tokens and nothing else:
+  # no model keys, no GitHub token and no AWS role.
+  rehearsal:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    needs: [app, splunk]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: aws-lab
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: unpack the lab
+        env:
+          ISSUE: ${{ inputs.issue }}
+        run: |
+          [[ "$ISSUE" =~ ^[0-9]+$ ]] || { echo "the issue must be a number"; exit 1; }
+          git fetch -q --depth 1 origin "chat/$ISSUE"
+          git show "FETCH_HEAD:chat-work/$ISSUE/lab.json" > lab.json
+          python3 pipeline/lab_check.py lab.json work
+      - name: rehearse the lab on Kubernetes
+        run: bash pipeline/rehearse.sh work
+        env:
+          SPLUNK_REALM: ${{ vars.SPLUNK_REALM }}
+          SPLUNK_ACCESS_TOKEN: ${{ secrets.SPLUNK_ACCESS_TOKEN }}
+          SPLUNK_API_TOKEN: ${{ secrets.SPLUNK_API_TOKEN }}
   # Code from main only. Proves a span can be sent to Splunk and read back through the APIs a lab uses.
   splunk:
     if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'

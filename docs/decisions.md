@@ -253,3 +253,7 @@ A pod pinned with `nodeName` asked for 500m of CPU, and the rollout never finish
 ## 2026-11-05: A stuck old lab can't use up a new lab's time
 
 The sweep spent 40 minutes on a leftover VPC, and one 504 on a download then failed a paid lab. `destroy` now also clears leftover security groups, the sweep tries a lab once, and lab rules say every download retries.
+
+## 2026-11-05: Labs rehearse on Kubernetes before AWS
+
+The free check ran in Docker, so a failure that only appears on a cluster still cost a paid run. `lab-check.yml` now runs the real scripts on a small cluster with a t3.large's CPU. It can't test Terraform or EKS.
