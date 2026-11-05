@@ -1754,7 +1754,7 @@ rh_job = lc_y["jobs"]["rehearsal"]
 rh_text = json.dumps(rh_job)
 check("rehearsal: it holds the Splunk tokens and nothing else", "github.token" not in rh_text and "id-token" not in rh_text and "permissions" not in rh_job and
       sorted(set(re.findall(r"secrets\.(\w+)", rh_text))) == ["SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN"])
-check("rehearsal: it waits for the free checks", rh_job["needs"] == ["app", "splunk"])
+check("rehearsal: it waits for the other checks", rh_job["needs"] == ["app", "splunk", "plan-review"])
 rh_sh = (ROOT / "pipeline/rehearse.sh").read_text()
 check("rehearsal: a node has a t3.large's CPU, and a script's real result decides", "ALLOCATABLE_M=1930" in rh_sh and "^HERO_RESULT: $2" in rh_sh)
 check("lab check: AI-written code runs with no secrets and no token", "secrets." not in lc_text and "github.token" not in lc_text and "environment" not in lc_y["jobs"]["app"])
@@ -1781,6 +1781,49 @@ check("splunk check: a missing trace isn't a pass", splunk_check.read_trace("x",
 splunk_check.call = lambda m, u, t, b=None: (200, "[1]") if u.endswith("/segments") else (404, "")
 check("splunk check: segments work when latest doesn't", splunk_check.read_trace("x", "t", "abc")[0] == "segments")
 splunk_check.call = sc_real
+
+# ---------- plan review before AWS ----------
+import plan_review
+check("plan review: a clean review passes", plan_review.blocked("Editor", {"go": True, "blocking": [], "notes": ["n"]})[1] is False)
+check("plan review: a no stops the lab", plan_review.blocked("Editor", {"go": False, "blocking": [], "notes": []})[1] is True)
+check("plan review: a go with a blocking point still stops the lab", plan_review.blocked("Editor", {"go": True, "blocking": [{"problem": "p", "fix": "f"}], "notes": []})[1] is True)
+pr_lab = {"summary": "s", "files": [{"path": "fix.sh", "content": "echo hi"}]}
+check("plan review: the Editor sees the scripts, and Marketing doesn't", "echo hi" in plan_review.plan_text("t", {}, pr_lab, True) and "echo hi" not in plan_review.plan_text("t", {}, pr_lab, False))
+pr_job = lc_y["jobs"]["plan-review"]
+check("plan review: no lab code runs next to its keys", "bash " not in pr_job["steps"][-1]["run"] and "lab_check.py" not in pr_job["steps"][-1]["run"])
+check("plan review: the rehearsal waits for it", "plan-review" in lc_y["jobs"]["rehearsal"]["needs"])
+check("draft: an old chat article never meets a new lab's evidence", 'if chat and os.environ.get("FROM_RUN")' in (ROOT / "pipeline/draft.py").read_text())
+
+# ---------- the team learns from him ----------
+tm_files, tm_real = {}, (cto.read_private, cto.write_private, cto.admin_on, roles_mod.ask)
+cto.read_private = lambda p: (tm_files.get(p, ""), "s")
+cto.write_private = lambda p, t, s, m: tm_files.__setitem__(p, t) or True
+rows3 = "".join(json.dumps({"ts": str(n), "time": "t", "from": w, "text": f"{w} {n}"}) + "\n" for n, w in ((1, "Abhi"), (2, "CMO"), (3, "Abhi"), (4, "Abhi")))
+tm_files[cto.CHAT] = rows3
+tm_mem = cto.team_memory()
+check("team: every leader sees his words and the team's", "Abhi 3" in tm_mem and "CMO 2" in tm_mem)
+tm_seen = []
+roles_mod.ask = lambda role, prompt, out: tm_seen.append((role, out)) or {"likes": ["strong titles"], "dislikes": ["broken drafts"], "rules": ["be positive"]}
+check("team: the Executive Assistant learns after a few new replies", cto.learn() and tm_seen == [("executive_assistant", "abhiprefs")] and "broken drafts" in tm_files[cto.PREFS])
+check("team: it doesn't relearn the same replies", cto.learn() is False and len(tm_seen) == 1)
+cto.read_private, cto.write_private, cto.admin_on, roles_mod.ask = tm_real
+draft_src = (ROOT / "pipeline/draft.py").read_text()
+check("draft: a chat run's below-bar draft stays out of Slack", 'if gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true":' in draft_src and 'tell("lab_engineer", f"Lab failed,' in draft_src)
+
+# ---------- who said what, and who can read it ----------
+ms_files, ms_real = {}, (cto.read_private, cto.write_private)
+cto.read_private = lambda p: (ms_files.get(p, ""), "s")
+cto.write_private = lambda p, t, s, m: ms_files.__setitem__(p, t) or True
+check("team: one name per member", cto.member("CMO (Marketing)") == "cmo" and cto.member("Executive Assistant (Office)") == "executive_assistant" and cto.member("Abhi") == "abhi")
+cto.save_members([{"from": "CMO (Marketing)", "text": "a"}, {"from": "Abhi", "text": "b"}, {"from": "CMO (Marketing)", "text": "c"}])
+check("team: each member has its own file", ms_files["team-cmo.jsonl"].count("\n") == 2 and ms_files["team-abhi.jsonl"].count("\n") == 1)
+ms_files[cto.CHAT] = "".join(json.dumps({"ts": str(n), "time": "t", "from": w, "text": f"said by {w}"}) + "\n" for n, w in enumerate(("Abhi", "CMO (Marketing)", "CFO (Finance)")))
+check("team: everyone reads everything by default", cto.can_read("cfo") is None and "said by CMO" in cto.team_memory("cfo"))
+ms_files[cto.ACCESS] = json.dumps({"members": {"cfo": ["editor"]}})
+check("team: Abhi can limit a member, and his words still reach them", "said by CMO" not in cto.team_memory("cfo") and "said by Abhi" in cto.team_memory("cfo") and "said by CMO" in cto.team_memory("cmo"))
+ms_files[cto.NOTES] = "Lead with the gain"
+check("team: everyone sees what Abhi and Claude chat decided", "Lead with the gain" in cto.team_memory("cmo"))
+cto.read_private, cto.write_private = ms_real
 
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

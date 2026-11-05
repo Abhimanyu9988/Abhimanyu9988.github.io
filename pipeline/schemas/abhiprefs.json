@@ -1,0 +1,9 @@
+{
+ "type": "object",
+ "required": ["likes", "dislikes", "rules"],
+ "properties": {
+  "likes": {"type": "array", "maxItems": 20, "items": {"type": "string"}, "description": "what he has said or shown he likes"},
+  "dislikes": {"type": "array", "maxItems": 20, "items": {"type": "string"}, "description": "what he has said or shown he dislikes"},
+  "rules": {"type": "array", "maxItems": 20, "items": {"type": "string"}, "description": "standing instructions in his own terms"}
+ }
+}

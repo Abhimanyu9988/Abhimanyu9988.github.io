@@ -394,7 +394,8 @@ are not. Under 75 characters. Shapes that work: "ECS shows 1 running task while 
 an upgrade". The opening puts the reader in that moment in the first sentence."""
 
 POSITIVE = ("\nStay positive about products. Abhi works at Cisco on Splunk and contributes to OpenTelemetry. Never frame Splunk, OpenTelemetry or Galileo as broken, missing, "
-            "wrong or lacking. Show what they make possible and how to get the most from them.\n")
+            "wrong or lacking. Show what they make possible and how to get the most from them. "
+            "Lead with what the reader gains. A cost is something to plan for, in the body, and never the title or the opening.\n")
 
 KINDS = {
     "problem": {"verdict": VERDICT_Q, "rules": ARTICLE_RULES + POSITIVE, "rubric": ARTICLE_RUBRIC, "titles": TITLE_RULES,
@@ -714,6 +715,11 @@ def finish_body(body, run_id):
     """A refused PR would strand the branch, so the cap comes first. /redraft reads the marker, which follows all model text."""
     return f"{body[:64000]}\n\n<!-- lab-run: {run_id} -->"
 
+def tell(role, text):
+    """Abhi hears about finished work. A chat run's failures and unfinished drafts go back to the chat, which fixes them first."""
+    if os.environ.get("CHAT_WORK") != "true":
+        slack.say(role, text)
+
 def ready_message(title, number, gate):
     """Approving publishes, so he hears the Editor's view before he opens the PR."""
     link = f"https://github.com/{HOME_REPO}/pull/{number}"
@@ -725,9 +731,9 @@ def ready_message(title, number, gate):
 
 def open_pr(issue_no, res, topic):
     chat = os.environ.get("CHAT_WORK") == "true"
-    written = chat_post(issue_no) if chat else None
+    written = chat_post(issue_no) if chat and os.environ.get("FROM_RUN") else None     # a post from an earlier run must never meet new evidence
     if chat and not written:                       # the lab is done, and the chat writes the article with no API cost
-        slack.say("lab_engineer", f"The lab finished: {topic.get('title', 'unknown')}. The article is being written in Claude chat.")
+        tell("lab_engineer", f"The lab finished: {topic.get('title', 'unknown')}. The article is being written in Claude chat.")
         comment(issue_no, f"Lab finished in workflow run {res['run_id']}. The article is being written in Claude chat.")
         return
     slug = res["slug"][:60].strip("-")
@@ -738,7 +744,7 @@ def open_pr(issue_no, res, topic):
     v = llm.verdict(KINDS[kind]["verdict"], context)
     if not v["passed"]:
         add_label(issue_no, "replication-disputed")
-        slack.say("lab_engineer", f"The lab ran, but the review panel didn't accept its proof, so no article was written: {topic.get('title', 'unknown')}. "
+        tell("lab_engineer", f"The lab ran, but the review panel didn't accept its proof, so no article was written: {topic.get('title', 'unknown')}. "
                                   f"{v['yes']} of 3 accepted it.")
         if budget.in_pipeline():
             record_trial({**res, "status": "panel_rejected"}, topic)   # a lab the panel refused must not count as finished
@@ -765,7 +771,7 @@ def open_pr(issue_no, res, topic):
     gate = review_draft(post, context, logs, brief, topic, kind, scripts)
     if gate["decision"] == "stop":
         add_label(issue_no, "editor-stopped")
-        slack.say("editor", f"The draft didn't clear the review, so no PR was opened: {topic.get('title', 'unknown')}.")
+        tell("editor", f"The draft didn't clear the review, so no PR was opened: {topic.get('title', 'unknown')}.")
         comment(issue_no, "The draft did not clear the gates after one revision, so no PR was opened.\n\n"
                           + safe_text("\n".join(f"- {r}" for r in gate["reasons"])))
         record_review(res.get("slug", "topic"), gate, brief)
@@ -857,8 +863,9 @@ def open_pr(issue_no, res, topic):
     pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": title, "head": branch, "base": "main",
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
-    slack.say("writer", ready_message(post["title"], pr["number"], gate))
-    if (log.get("question") if isinstance(log, dict) else ""):
+    if gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true":
+        slack.say("writer", ready_message(post["title"], pr["number"], gate))
+    if (log.get("question") if isinstance(log, dict) else "") and (gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true"):
         slack.say("voice_editor", f"Optional, but this is what makes a post truly yours: {log['question']}\n"
                                   "To add your answer, comment /redraft with it on the PR.")
     if gate.get("report"):
@@ -875,7 +882,7 @@ def main():
     issue_no = int(os.environ["ISSUE"])
     rf = OUT / "result.json"
     if not rf.exists():
-        slack.say("lab_engineer", "A lab ended without a result, so no draft was written. Nothing is needed from you.")
+        tell("lab_engineer", "A lab ended without a result, so no draft was written. Nothing is needed from you.")
         comment(issue_no, f"The lab job (workflow run {os.environ.get('RUN_ID', '?')}) ended without a result: it "
                           "was not approved, was cancelled, or crashed before writing output. Nothing was drafted.")
         return
@@ -907,7 +914,7 @@ def main():
                 "failed": "❌ The lab did not get to a result."}.get(res["status"], res["status"])
         clean = "AWS was cleaned up." if res.get("destroyed") else "Check AWS: cleanup didn't confirm."
         cause = safe_text(lf.get("step") or res.get("error") or "before the lab ran")[:160]
-        slack.say("lab_engineer", f"Lab failed, so no article was written: {topic.get('title', 'unknown')}. Stopped at: {cause}. "
+        tell("lab_engineer", f"Lab failed, so no article was written: {topic.get('title', 'unknown')}. Stopped at: {cause}. "
                                   f"{res.get('attempts')} attempt(s), {res.get('minutes')} min. {clean}")
         msg = (f"{nice} {res.get('attempts')} attempt(s), {res.get('minutes')} min, workflow run {res['run_id']}."
                f"{warn}\n\n**Last failure:** {safe_text(lf.get('step') or 'before the lab ran')}\n```\n{out}\n```\n\n"
