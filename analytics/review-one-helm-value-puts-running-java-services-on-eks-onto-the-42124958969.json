@@ -1,0 +1,370 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 2 is below 4",
+  "technical: The post plays down the Java agent attach timeouts and treats a libinstrument mapping as proof the helper attached. The log shows attach timeouts for two different PIDs, which is probably both JVMs. Fix: Match PIDs 388 and 409 to orders and inventory, for example with the 'instrumenting process' log lines. Then say plainly how many JVMs timed out. Rename the measure to 'agent library loaded', not 'attached'. Add one sentence explaining that the HTTP map and traces don't depend on this helper, while Java TLS capture does.",
+  "technical: The post recommends a second value for joined traces, but a run with the first value alone was never measured, so nothing shows that value is required. Fix: Rerun the case with only the first value, using a longer trace wait (for example 300 s) and a retry pass, and report joined of found. Or reword the advice as 'With both values, 39 of 39 found traces joined across nodes. I did not measure the first value alone.' and drop the suggestion that it fails without the second value.",
+  "editorial: The brief's takeaway promised a measured answer to 'whether traces across nodes need a second value'. That answer is missing, and the TL;DR shows the 39/39 result without saying the baseline is missing. Fix: Add to the TL;DR: 'The first value alone wasn't measured for traces; see below.' Or run the baseline and report both numbers side by side.",
+  "editorial: The structure and phrasing look generated: templated headings, bold labels and stock transitions. Fix: Rename the sections after what happened ('Turning on OBI with chart 0.163.1', 'Same pod UIDs before and after'). Cut the bold labels from the TL;DR and vary the sentence rhythm. Fix the time to match the run: 26.9 minutes for the scripts, plus Terraform."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [
+   {
+    "id": "f1",
+    "kind": "timed_out",
+    "severity": "medium",
+    "file": "05-fix.log",
+    "line": 29,
+    "text": "time=2026-11-05T22:31:18.826Z level=WARN msg=\"unable to attach java agent to process, Java TLS telemetry will not work\" component=discover.traceAttacher pid=388",
+    "why": "a step timed out"
+   },
+   {
+    "id": "f2",
+    "kind": "timed_out",
+    "severity": "medium",
+    "file": "05-fix.log",
+    "line": 33,
+    "text": "time=2026-11-05T22:31:18.113Z level=WARN msg=\"unable to attach java agent to process, Java TLS telemetry will not work\" component=discover.traceAttacher pid=409",
+    "why": "a step timed out"
+   }
+  ],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "services_on_map",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:92"
+    },
+    {
+     "id": "pod_restarts_added",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "05-fix.log:95"
+    },
+    {
+     "id": "pod_restarts_after_propagation",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "05-fix.log:101"
+    },
+    {
+     "id": "services_in_trace_default",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:109"
+    },
+    {
+     "id": "services_in_trace_propagation",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:111"
+    },
+    {
+     "id": "jvm_helper_attached",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:113"
+    },
+    {
+     "id": "p95_added_ms",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:119"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The core results hold up. The map read 2 of 2 services after obi.enabled=true while cluster metrics were already arriving, so the before-check could have failed. Pod UIDs, start times and restart counts were compared, so a replaced pod could not pass as 0 restarts.",
+     "The Java helper section plays down the evidence. 05-fix.log:29 and :33 show 'java attach timed out' for two different PIDs (388 and 409), which looks like both JVMs. The post says 'at least one'. jvm_helper_attached=1 only counts libinstrument mappings, so it does not show that the agent finished attaching.",
+     "The trace comparison with the first value alone was never measured: 0 of 56 IDs came back within 90 s. The post admits this, but the 'Use it' section still implies that joined traces need the second value.",
+     "Latency is handled honestly. The -1.06 ms median comes with overlapping ranges and is reported as no visible change. The '28 minutes' in the TL;DR doesn't match the step times, which add up to 24 minutes, or the 26.9-minute run."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader and their decision are clear, and the opening delivers what the title promises: services on the map, no restarts.",
+     "The finding beyond the docs is thin. The docs already say no restart is needed. The new parts are the UID-level proof on Amazon Linux 2023, the 39 of 39 cross-node join with propagation on, and the attach timeouts. The one comparison that would answer the brief, with and without propagation, is missing.",
+     "It reads as templated. Bold labels ('What you get / The trick / The proof') appear in the TL;DR and again as section headings ('The trick', 'The proof'), along with stock lines like 'Here's what one value gives you' and 'That's the whole change.'",
+     "The trade-offs on privileges, namespaces and agents are covered honestly, and the 'What I didn't test' section is good."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "Demand is weak. The only signal is one OBI issue with two comments, and it is about Java agent injection into non-root JVMs, not first service maps. There is no search or traffic data.",
+     "The title is in practitioner language and gives Splunk and the chart credit for the result, which suits a platform engineer looking for an EKS service map.",
+     "Splunk fits naturally here and isn't forced. OBI and the Splunk chart are the subject of the post."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The post plays down the Java agent attach timeouts and treats a libinstrument mapping as proof the helper attached. The log shows attach timeouts for two different PIDs, which is probably both JVMs.",
+    "evidence": "05-fix.log:29 pid=388 and 05-fix.log:33 pid=409 'unable to attach java agent to process, Java TLS telemetry will not work'. The post says: 'it logged at least one attach that didn't finish' and 'Both JVMs went from 0 Java agents loaded to 4 agent library mappings.'",
+    "fix": "Match PIDs 388 and 409 to orders and inventory, for example with the 'instrumenting process' log lines. Then say plainly how many JVMs timed out. Rename the measure to 'agent library loaded', not 'attached'. Add one sentence explaining that the HTTP map and traces don't depend on this helper, while Java TLS capture does."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The post recommends a second value for joined traces, but a run with the first value alone was never measured, so nothing shows that value is required.",
+    "evidence": "'With the first value alone, none of the 56 sampled IDs came back inside the same 90-second wait. That's unmeasured.' Later the post says: 'Add the second value when you want joined traces.'",
+    "fix": "Rerun the case with only the first value, using a longer trace wait (for example 300 s) and a retry pass, and report joined of found. Or reword the advice as 'With both values, 39 of 39 found traces joined across nodes. I did not measure the first value alone.' and drop the suggestion that it fails without the second value."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The brief's takeaway promised a measured answer to 'whether traces across nodes need a second value'. That answer is missing, and the TL;DR shows the 39/39 result without saying the baseline is missing.",
+    "evidence": "Brief takeaway: 'whether traces across nodes need a second value'. TL;DR: 'With a second value, 39 of 39 traces found in Splunk held both services, across two nodes.'",
+    "fix": "Add to the TL;DR: 'The first value alone wasn't measured for traces; see below.' Or run the baseline and report both numbers side by side."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The structure and phrasing look generated: templated headings, bold labels and stock transitions.",
+    "evidence": "TL;DR labels 'What you get / The trick / The proof', the headings '## The trick:' and '## The proof:', and the lines 'That's the whole change.' and 'Here's what one value gives you'.",
+    "fix": "Rename the sections after what happened ('Turning on OBI with chart 0.163.1', 'Same pod UIDs before and after'). Cut the bold labels from the TL;DR and vary the sentence rhythm. Fix the time to match the run: 26.9 minutes for the scripts, plus Terraform."
+   }
+  ],
+  "flags_addressed": [
+   {
+    "id": "f1",
+    "addressed": true,
+    "how": "The post quotes the 'java attach timed out' warning and links it to Java TLS telemetry. It frames this as something to plan for rather than a product failure."
+   },
+   {
+    "id": "f2",
+    "addressed": false,
+    "how": "The second timeout, for a different PID (409), is not acknowledged. The post says 'at least one attach', which hides that both JVMs probably timed out."
+   }
+  ],
+  "claims": [
+   {
+    "text": "OBI is a beta feature in Splunk Observability Cloud",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi"
+   },
+   {
+    "text": "OBI runs as a DaemonSet and captures traces and request metrics from running workloads with no code change or restart",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi"
+   },
+   {
+    "text": "The chart turns OBI on with obi.enabled=true and runs it privileged with host PID and host network, and also documents a reduced capability set",
+    "class": "sourced",
+    "source_ref": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/docs/zero-code-ebpf-instrumentation.md"
+   },
+   {
+    "text": "The chart guide names Ubuntu as its tested node OS",
+    "class": "sourced",
+    "source_ref": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/docs/zero-code-ebpf-instrumentation.md"
+   },
+   {
+    "text": "OBI outgoing propagation is off by default",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/obi/distributed-traces/"
+   },
+   {
+    "text": "Proxies and load balancers can affect propagation",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/obi/distributed-traces/"
+   },
+   {
+    "text": "Async frameworks need their own context-propagation check",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/obi/context-propagation/"
+   },
+   {
+    "text": "Splunk recommends combining OBI with language agents, and OBI skips processes that already have OpenTelemetry instrumentation",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi"
+   },
+   {
+    "text": "Reducing OBI's capabilities affects Java agent injection into non-root JVMs",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-ebpf-instrumentation/issues/3895"
+   },
+   {
+    "text": "A language agent gives the deepest detail, joins the JVM at startup, and so requires pods to roll",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "A first map showing who calls whom is often enough to choose which teams to talk to next",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Joined cross-node traces need the second (propagation) value",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Java services on EKS who wants a first service map before asking any team to change a deployment",
+  "decision": "Whether to turn on OBI through the Splunk OTel Collector chart as a first layer across a cluster, before rolling out language agents",
+  "question": "Can I get services that are already running on EKS onto the Splunk APM map without restarting a pod, and what do I get from it?",
+  "takeaway": "You can decide from measured numbers: what one Helm value puts on the map for running services, what it does to the pods, and whether traces across nodes need a second value.",
+  "adds": "Existing pages state that OBI needs no restart and list what it captures. This post measures it on EKS on Amazon Linux 2023: services on the map, each pod's UID and restart count before and after, whether one trace spans two nodes with and without propagation, the Java helper OBI loads, and the p95 latency added.",
+  "open_question": "With obi.enabled=true alone on chart 0.163.1, how many running services reach the Splunk APM map, how many pod restarts does it add, and how many services share one trace across two nodes with and without outgoing header propagation?",
+  "tradeoffs": [
+   "OBI first for a broad map, or a language agent for deeper framework detail",
+   "A privileged DaemonSet with host PID and host network, or the chart's documented reduced capabilities",
+   "Every namespace by default, or a namespace filter",
+   "Outgoing header propagation on, or kept at its default"
+  ],
+  "existing_pages": [
+   {
+    "title": "Instrument an application using OBI",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi",
+    "covers": "Splunk's beta overview: supported languages and protocols, elevated privileges, and how OBI sits alongside SDK or agent instrumentation. It gives no measured result."
+   },
+   {
+    "title": "Instrument your application using OBI",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi/instrument-your-application-using-obi",
+    "covers": "Says OBI captures telemetry with no code change or restart and sends to a local Collector, and links to the setup pages."
+   },
+   {
+    "title": "Zero-Code Instrumentation with eBPF",
+    "url": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/docs/zero-code-ebpf-instrumentation.md",
+    "covers": "The chart's guide: obi.enabled=true, platform requirements, default privileges and reduced capabilities. It names Ubuntu as the tested node OS."
+   },
+   {
+    "title": "Distributed traces with OBI",
+    "url": "https://opentelemetry.io/docs/zero-code/obi/distributed-traces/",
+    "covers": "Explains that outgoing network propagation is off by default and how to enable it, with kernel and Kubernetes requirements."
+   },
+   {
+    "title": "Trace context association in OBI",
+    "url": "https://opentelemetry.io/docs/zero-code/obi/context-propagation/",
+    "covers": "How OBI finds the parent request for outgoing work, including JDK task APIs and where frameworks need more."
+   },
+   {
+    "title": "Phase 3: Kubernetes, Add the OBI DaemonSet",
+    "url": "https://splunk.github.io/observability-workshop/en/ninja-workshops/instrumentation/16-obi-ebpf/5-kubernetes/3-add-obi-daemonset/",
+    "covers": "Splunk's workshop adds OBI with obi.enabled=true to a three-service demo. It does not record pod identity or measure a cross-node join."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "One recent issue in the OBI repo from a user running it as a Kubernetes DaemonSet, with two comments, plus Splunk's own workshop and beta documentation for the feature. No search volume data was available."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist",
+   "Serves the OpenTelemetry auto-instrumentation and Splunk goals",
+   "Starts from the Spring Boot, Postgres and Collector lab that already ran on EKS"
+  ],
+  "measurements": [
+   {
+    "id": "services_on_map",
+    "what": "of the two running services, how many Splunk APM shows for the lab's environment after the one Helm value",
+    "kind": "count",
+    "unit": "services",
+    "accept": {
+     "op": "ge",
+     "value": 2
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "pod_restarts_added",
+    "what": "container restarts added across orders, inventory and Postgres, counting a replaced pod as one",
+    "kind": "failure",
+    "unit": "restarts",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "pod_restarts_after_propagation",
+    "what": "container restarts added after the second Helm value, per pod, counting a replaced pod as one",
+    "kind": "failure",
+    "unit": "restarts",
+    "accept": {
+     "op": "ge",
+     "value": 0
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "services_in_trace_default",
+    "what": "how many of the two services share one known trace across two nodes with the one Helm value",
+    "kind": "comparison",
+    "unit": "services",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "services_in_trace_propagation",
+    "what": "how many of the two services share one known trace across two nodes with outgoing header propagation also on",
+    "kind": "comparison",
+    "unit": "services",
+    "accept": {
+     "op": "ge",
+     "value": 0
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "jvm_helper_attached",
+    "what": "1 if a Java agent is loaded in the running JVM after OBI starts, 0 if not, per service",
+    "kind": "comparison",
+    "unit": "flag",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "p95_added_ms",
+    "what": "median p95 of three load rounds with OBI minus the median of three rounds without it, on the same pods",
+    "kind": "overhead",
+    "unit": "ms",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.7887
+}
