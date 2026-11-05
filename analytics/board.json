@@ -1,26 +1,12 @@
 {
- "updated": "2026-11-05T11:52:08Z",
+ "updated": "2026-11-05T12:06:16Z",
  "columns": {
   "needs": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/149",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
     "kind": "Approve or reject",
-    "title": "Zero-Code Java in Splunk APM: 17.99 Seconds at Startup, 0.57 ms at p95",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/149",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/148",
-    "kind": "Approve or reject",
-    "title": "Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/148",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
-    "kind": "Approve or reject",
-    "title": "Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
+    "title": "OpenTelemetry Java Agent in Splunk APM: 17.99 s Added at Startup, 0.57 ms at p95",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
     "where": "Abhimanyu9988.github.io"
    },
    {
@@ -31,24 +17,10 @@
     "where": "Abhimanyu9988.github.io"
    },
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/149",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
     "kind": "Review",
-    "title": "Draft: Zero-Code Java in Splunk APM: 17.99 Seconds at Startup, 0.57 ms at p95",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/149",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/148",
-    "kind": "Review",
-    "title": "Draft: Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/148",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
-    "kind": "Review",
-    "title": "Draft: Every Signal the OTel Java Agent Gives You in Splunk, With Zero Code",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/146",
+    "title": "Draft: OpenTelemetry Java Agent in Splunk APM: 17.99 s Added at Startup, 0.57 ms at p95",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
     "where": "Abhimanyu9988.github.io"
    },
    {
@@ -111,13 +83,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42022338553",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42022338553",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Your PR",
