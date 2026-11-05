@@ -273,3 +273,7 @@ Every leader now sees his recent messages and what the Executive Assistant has l
 ## 2026-11-05: Each member has its own record, and Abhi controls access
 
 Every member's messages also go to `team-<name>.jsonl`. Everyone reads everything by default, and `team-access.json` can limit a member. `claude-chat-notes.md` gives the team what Abhi and Claude chat decided. Articles lead with what the reader gains, and a cost is never the title or opening.
+
+## 2026-11-05: New posts stay on our own site, and a Domain Scout joins Finance
+
+Abhi is moving away from dev.to and Hashnode, so new posts set no channels. The Domain Scout checks candidate names daily through public RDAP records, and only Abhi buys.

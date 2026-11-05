@@ -1833,5 +1833,21 @@ ad_y = __import__("yaml").safe_load((ROOT / ".github/workflows/apm-data.yml").re
 ad_text = json.dumps(ad_y["jobs"]["series"])
 check("series: it holds only the read token, and runs main's code", re.findall(r"secrets\.(\w+)", ad_text) == ["SPLUNK_API_TOKEN"] and '"ref": "main"' in ad_text and "${{" not in ad_y["jobs"]["series"]["steps"][-1]["run"])
 
+# ---------- Domain Scout ----------
+import domain_scout as ds
+ds_day = __import__("datetime").date(2026, 11, 5)
+check("domains: only a clear 404 counts as open", ds.classify(404, "", ds_day)[0] == "open" and ds.classify(0, "", ds_day)[0] == "unknown" and ds.classify(429, "", ds_day)[0] == "unknown")
+ds_row = lambda ends, born, status=(): json.dumps({"status": list(status), "events": [{"eventAction": "expiration", "eventDate": ends + "T00:00:00Z"}, {"eventAction": "registration", "eventDate": born + "T00:00:00Z"}]})
+check("domains: an expiring name is flagged", ds.classify(200, ds_row("2026-11-20", "2025-01-01"), ds_day)[0] == "leaving")
+check("domains: a name being released is flagged", ds.classify(200, ds_row("2027-11-20", "2025-01-01", ["pending delete"]), ds_day)[0] == "leaving")
+check("domains: a name held for years is marked unlikely", ds.classify(200, ds_row("2028-01-01", "2015-01-01"), ds_day)[0] == "long_held")
+check("domains: a recent registration is just taken", ds.classify(200, ds_row("2028-01-01", "2025-01-01"), ds_day)[0] == "taken")
+check("domains: IANA's list becomes a lookup", ds.servers(json.dumps({"services": [[["com", "net"], ["https://rdap.x/"]]]})) == {"com": "https://rdap.x", "net": "https://rdap.x"})
+ds_rows = [{"domain": "a.com", "state": "open", "note": ""}, {"domain": "b.com", "state": "taken", "note": "x"}]
+ds_msg = ds.message(ds_rows, [], set(), 100)
+check("domains: the CFO hears about a new find, and nothing is bought", "CFO" in ds_msg and "a.com" in ds_msg and "Nothing has been bought" in ds_msg)
+check("domains: the same find isn't repeated", ds.message(ds_rows, [], {"a.com"}, 100) == "")
+check("draft: new posts stay on our own site", '"channels: []"' in (ROOT / "pipeline/draft.py").read_text() and '"channels: []"' in (ROOT / "pipeline/monthly.py").read_text())
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

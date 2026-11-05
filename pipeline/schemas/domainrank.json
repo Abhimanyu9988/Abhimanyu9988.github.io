@@ -1,0 +1,15 @@
+{
+ "type": "object",
+ "required": ["picks"],
+ "properties": {
+  "picks": {
+   "type": "array",
+   "maxItems": 5,
+   "items": {
+    "type": "object",
+    "required": ["domain", "why"],
+    "properties": {"domain": {"type": "string"}, "why": {"type": "string"}}
+   }
+  }
+ }
+}
