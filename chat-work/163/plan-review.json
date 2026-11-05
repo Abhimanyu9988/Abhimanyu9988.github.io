@@ -1,9 +1,4 @@
 {
- "Editor": [
-  {
-   "problem": "Earlier point 1 is still partly open. When propagate.sh does not run or is stopped by `timeout 310`, fix.sh sets prop_best=-1 and `later()` prints -1 for each pod. It then emits HERO_MEASURE: services_in_trace_propagation=-1 and pod_restarts_after_propagation[pod]=-1. Both contract entries use op 'present', and the pod_restarts_after_propagation description even says '-1 if that stage did not run'. So a run that never set the second value still passes the contract. The cross-node comparison promised in the takeaway would then be backed by a placeholder number. The earlier fix asked for `not_run`.",
-   "fix": "In fix.sh, when propagate-result.txt is missing, emit `HERO_MEASURE: services_in_trace_propagation=not_run`. Also emit `pod_restarts_after_propagation[$pod]=not_run` for each of the three pods, and stop printing -1. In the BRIEF, remove 'or -1 if that stage did not run' from pod_restarts_after_propagation. Make both entries accept only a number of 0 or more. For services_in_trace_propagation that means op 'present' plus a rule that a non-numeric value fails, or op 'ge' 0. A skipped stage must then fail the contract and must not count as a result."
-  }
- ],
+ "Editor": [],
  "Marketing": []
 }
