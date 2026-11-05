@@ -1,0 +1,29 @@
+{
+ "Editor": [
+  {
+   "problem": "The second trace measurement may never run, and if it does, the test is unequal. Stage 7 in fix.sh runs only if 150s or more remain out of 830. Stage 3 alone can use up to 530s waiting for OBI to be ready. If stage 7 is skipped, the script still prints services_in_trace_propagation=0, and 0 looks like a result. When it does run, it gets one load round (3 known trace IDs) and up to 170s to wait for traces. The default case gets three rounds (9 IDs) and up to 330s. Both numbers are also 'best of', so one joined trace counts as 2. The with-propagation versus without comparison that the takeaway promises can't be credited to the setting.",
+   "fix": "Move propagation into its own script, propagate.sh, with its own time budget. If it doesn't run, print services_in_trace_propagation=not_run. Give both cases the same number of load rounds, the same number of known trace IDs and the same wait for traces. Have load.py record 30 sampled trace IDs per round, not just the last 3. Report each case as joined traces / known traces found, and keep the 1-or-2 'best' value only as a secondary line."
+  },
+  {
+   "problem": "The p95 comparison isn't equal on both sides. The before side has a warm-up round. The after side starts measuring right after obi_ready returns, while OBI may still be finding processes and loading its Java agent. All three before rounds run in reproduce.sh, and all three after rounds run minutes later in fix.sh. On burstable t3.large nodes, CPU credit drift and JIT warm-up can produce the difference by themselves. A median of 3 also gives no spread, so a reader can't tell a real change from noise.",
+   "fix": "Add one discarded warm-up round after obi_ready. Then alternate the rounds on the same pods: OFF, ON, OFF, ON, OFF, ON, switching with helm --set obi.enabled. Or at least run three more OFF rounds in fix.sh just before the upgrade. Print every round's p95, and the min and max, next to the median. Use m6i.large nodes, or set t3 to unlimited mode and record the CPU credit balance, so CPU throttling can't move the number."
+  },
+  {
+   "problem": "The load node is overloaded, and the load script will likely be traced. load.py, inventory and Postgres all run on INVENTORY_NODE, a 2-vCPU burstable node, and the OBI pod joins them there once enabled. OBI covers every namespace, so the Python load client may be traced too and add its own CPU cost and its own spans. The p95 change would then mix OBI's cost on the services with competition for the node's CPU.",
+   "fix": "Add a third small node just for the load pod. Exclude the load pod from OBI with a namespace or label filter, or at least print whether it shows up on the map. Record node CPU (kubectl top nodes) during each load round, in both the before and after runs."
+  },
+  {
+   "problem": "The restart count can't be credited to the one Helm value. pods-after.txt is captured only after both upgrades, so a restart caused by the propagation value would be blamed on the value in the title. The contract also sets min_entities to 1 for pod_restarts_added, but three pods (orders, inventory, Postgres) must each report.",
+   "fix": "Snapshot pods_now right after the obi.enabled stage (pods-obi.txt) and report pod_restarts_added from that snapshot. Report a separate pod_restarts_after_propagation from the final snapshot. Set min_entities to 3 for both, and print each pod's UID and restart count in a row."
+  },
+  {
+   "problem": "The script never shows that the propagation setting actually took effect. Stage 3 prints the OBI image and its privilege flags, but after the second upgrade nothing prints OBI's environment. Nothing confirms OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers reached the running pods. Nothing checks the kernel version against the propagation requirements either. If both cases come out at 1, a reader can't tell 'propagation doesn't join these traces' from 'the setting was never applied'.",
+   "fix": "After each upgrade, print the OBI DaemonSet container env from kubectl get ds -o json, filtered to OTEL_EBPF_*, along with helm get values -n splunk. Wait for the new OBI pods' rollout to finish, then grep OBI's log for the startup line that names the propagation mode. Print each node's kernel version next to the result."
+  },
+  {
+   "problem": "The title promises more than the lab tests. 'Running EKS Services' sounds like any workload. The lab covers two Spring Boot services on Java 21, Amazon Linux 2023 and t3.large nodes. Also, 'one value puts running services on the map' is close to word-for-word what the docs already say. The new findings are the cross-node trace result, the Java agent OBI loads into each JVM and the latency cost.",
+   "fix": "Change the title to 'One Helm Value Puts Running Java Services on EKS onto the Splunk APM Map'. Open with what the reader learns beyond the docs: the services appear with zero restarts, what the second value adds to traces across nodes, and that OBI loads its own Java agent. Put the p95 cost in the body as something to plan for."
+  }
+ ],
+ "Marketing": []
+}
