@@ -1,0 +1,30 @@
+{
+ "Editor": [
+  {
+   "problem": "The before-check can't fail on undercounts. read_statement drops any minute below `least` (90% of the load's own rate), and then queries_gap_pct asks whether the kept minutes are within 10% of that same rate. A minute where Splunk undercounts is thrown out before it is compared, so the gap can only catch overcounts. The known statement has the same problem with least/4.",
+   "fix": "Read every full minute between t_start+90 and t_start+480 with no rate filter. Compute queries_gap_pct over all of them, and print how many minutes were partial and why. If you need to drop a minute, decide it from the load's own per-minute send count, never from the Splunk count being tested."
+  },
+  {
+   "problem": "known_query_p95_ms passes at 'ge 30', which it can hardly miss. Nearly every sample of a 30 ms sleep lands in the agent's 10\u201350 ms bucket, and interpolating p95 inside that bucket gives close to 48 ms. So the check passes even when the reading is about 50% above the real latency. That gap is the one finding the docs don't give. The current contract hides it, and nothing measures the 'how precise' part of the takeaway.",
+   "fix": "Change known_query_p95_ms to op 'present'. Add a comparison measurement, known_query_p95_vs_truth_pct, that compares the SignalFlow p95 against a reference taken outside the histogram: pg_stat_statements max_exec_time and stddev for that statement, plus a client-side timer in inventory around that one JDBC call, logged per minute. Report the bucket's lower and upper le as observed in Splunk. The article then tells readers to use _sum/_count for the mean and how far to trust the p95 from default buckets."
+  },
+  {
+   "problem": "The plan assumes the metric carries a db.query.summary dimension with values like 'select reserved'. The README's SignalFlow program and read_statement both filter on it. If agent 2.33.1 instead puts db.operation.name and db.collection.name (or another key) on this metric, every read returns nothing and fix.sh ends not_fixed. That costs a paid rerun.",
+   "fix": "Before any read, print the dimension keys and values that series.json actually holds for db.client.operation.duration_bucket. Make read_statement build its filter from them, with db.operation.name + db.collection.name as the fallback. Publish the SignalFlow program exactly as it ran, with the dimension it used."
+  },
+  {
+   "problem": "setting_claims_confirmed packs three claims into one count of 3, so a reader can't see which claim held. One of them, 'the configuration file route exports no such metric', presents an OpenTelemetry configuration route as something that doesn't work. That framing is off-tone for this blog, and the claim rests on how this lab wrote the file.",
+   "fix": "Split it into three measurements, each with op 'present': dup_emits_both_names, pool_metric_names_after (print old and new names side by side), and where_the_setting_is_read. Write the last one positively, as 'the agent reads this setting from an environment variable or the system property otel.semconv-stability.opt-in', and capture the effective config file contents if you keep that route at all."
+  },
+  {
+   "problem": "The open question promises results 'at 20 requests per second', but the load loop sleeps max(0, 50 ms \u2212 response time). Every fourth request carries a 30 ms sleep on top of two HTTP hops, so the achieved rate will probably fall short of 20/s. Nothing in the contract reports the rate that was actually reached.",
+   "fix": "Add achieved_rps (kind rate, op present), computed from the load's requests over its post-warm-up seconds. Word the question and article around the rate that was measured, not 20/s."
+  }
+ ],
+ "Marketing": [
+  {
+   "problem": "The only title option reads like a label: \"X in Splunk From the Y, With No Code Changes\". It names no pain and doesn't use the plan's best hook, which is that one environment variable is all it takes. \"No code changes\" is a true promise, but it is the weaker half of the story. Readers search for the metric or the question, and the title has neither.",
+   "fix": "Retitle before the run so it leads with the gain and the single setting. Example: \"Get Postgres Query p95 in Splunk From the OTel Java Agent With One Environment Variable\". Keep \"OTel Java agent\", \"Splunk\" and \"query p95\" in the title. Keep the bucket-precision caveat out of the title and the opening, and put it in the body."
+  }
+ ]
+}
