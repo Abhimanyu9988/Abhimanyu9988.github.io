@@ -1,0 +1,343 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "technical: The lab link and clone path in the post don't match the lab that produced the evidence, so the reproduction steps may point at a repo or path that doesn't exist. Fix: Point the clone command, the cd path and the footer link at the published LAB_URL (repo Abhimanyu9988.github.io, folder labs/follow-sqs-messages-through-splunk-apm-w). Or publish the lab at the path the post names, and check that the link resolves before publishing.",
+  "technical: The post says one setting changes the trace shape, but it shows the receive span count only for the receive telemetry run (76). The default-run count, the contract's other receive_spans value, is missing, so the reader can't see the positive control flip. Fix: Add the 'default run, receive spans: N' line from 05-fix.log to the proof block, and add a 'Receive spans' column to the comparison table (Defaults: N, Receive telemetry: 76).",
+  "editorial: The brief's second trade-off, AWSTraceHeader by default versus the configured propagator in message attributes, never appears. The reader doesn't learn when to reach for the propagator setting. Fix: Add a short paragraph under 'Use it on your own queues' that names the agent's SQS/SNS propagator setting, citing the AWS SDK README, which says it defaults to false. Say when a reader might turn it on, for example when they need W3C context in message attributes, and mark it untested in this lab under 'What I didn't test'.",
+  "editorial: The time and cost figures disagree, so a reader planning the spend gets a number that's too low. Fix: Give one wall-clock figure that covers terraform apply through destroy, and say that EKS control plane and node charges run for that whole window."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "messages_sent",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:41"
+    },
+    {
+     "id": "one_trace_percent",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:37"
+    },
+    {
+     "id": "one_trace_messages",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:36"
+    },
+    {
+     "id": "trace_header_on_message",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:48"
+    },
+    {
+     "id": "consumer_spans_linked_to_producer",
+     "status": "ok",
+     "values": 4,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:38"
+    },
+    {
+     "id": "splunk_traces_both_services",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:91"
+    },
+    {
+     "id": "trace_header_root_matches",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:50"
+    },
+    {
+     "id": "receive_spans",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:40"
+    },
+    {
+     "id": "queue_path_on_map",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:85"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 4,
+    "reasons": [
+     "All 9 Evidence Contract measurements are present and corroborated: 400/400 joined on message ID with 0 misses, the header trace ID matches the producer span, 100/100 process spans are linked with receive telemetry on, and 10/10 Splunk traces hold both services.",
+     "The lab is careful: the jar SHA is checked unchanged, the agent is pinned to 2.33.1 and its version is checked, receive spans serve as a positive control, and the link is attributed to process spans rather than receive spans.",
+     "The repo path in the post's clone command and footer differs from the recorded LAB_URL, so as written a reader may not be able to reproduce it.",
+     "The default-run count of receive spans is left out of the post, even though the contract asks for it in both runs. That weakens the claim that one setting changed the shape. Each setting also ran only once, which the post says."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader and decision are clear, and the opening delivers what the title promises. The default behaviour is already stated by a maintainer in discussion 14193, so the new value is the per-message count, plus two details: the link sits on the process span, and 100 messages produced 76 receive spans.",
+     "The brief's second trade-off is missing. It's the AWSTraceHeader attribute versus the configured propagator in message attributes, and the reader never learns when they'd want the propagator.",
+     "Some phrasing reads as generated: 'The trick:', 'Here's how', 'Two details are worth knowing', and TL;DR bullets with an even rhythm. Several code blocks are tidied echo summaries, not a raw session.",
+     "The time and cost figures disagree. The TL;DR says about 21 minutes, the steps add up to 17 minutes before destroy, and the lab README says the resources run for about an hour."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "The only demand signal is one GitHub discussion, with 5 comments and 15 replies, plus a June 2026 follow-up question. That's real but weak, and there's no search volume data.",
+     "The title credits Splunk APM and the OTel Java agent with the answer and names SQS, which is how a reader would search. 'Zero Code' is accurate.",
+     "Splunk fits naturally: the service map with the inferred sqs node and the 10/10 trace readback serve the reader. It isn't forced.",
+     "A score of 4 would need a stronger signal than one thread, such as reactions or views on this exact question."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The lab link and clone path in the post don't match the lab that produced the evidence, so the reproduction steps may point at a repo or path that doesn't exist.",
+    "evidence": "Post: 'git clone https://github.com/Abhimanyu9988/showmerit.git && cd showmerit/labs/follow-sqs-messages-through-splunk-apm-with-the-otel-java'. The footer links the same path. LAB_URL is https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/follow-sqs-messages-through-splunk-apm-w",
+    "fix": "Point the clone command, the cd path and the footer link at the published LAB_URL (repo Abhimanyu9988.github.io, folder labs/follow-sqs-messages-through-splunk-apm-w). Or publish the lab at the path the post names, and check that the link resolves before publishing."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The post says one setting changes the trace shape, but it shows the receive span count only for the receive telemetry run (76). The default-run count, the contract's other receive_spans value, is missing, so the reader can't see the positive control flip.",
+    "evidence": "'receive_telemetry run, receive spans: 76'. There's no matching 'default run, receive spans' line, though fix.sh prints one and the contract requires receive_spans in both runs.",
+    "fix": "Add the 'default run, receive spans: N' line from 05-fix.log to the proof block, and add a 'Receive spans' column to the comparison table (Defaults: N, Receive telemetry: 76)."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The brief's second trade-off, AWSTraceHeader by default versus the configured propagator in message attributes, never appears. The reader doesn't learn when to reach for the propagator setting.",
+    "evidence": "BRIEF tradeoffs: 'The AWSTraceHeader system attribute by default, or the configured propagator in message attributes'. The post only covers the receive telemetry trade-off.",
+    "fix": "Add a short paragraph under 'Use it on your own queues' that names the agent's SQS/SNS propagator setting, citing the AWS SDK README, which says it defaults to false. Say when a reader might turn it on, for example when they need W3C context in message attributes, and mark it untested in this lab under 'What I didn't test'."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The time and cost figures disagree, so a reader planning the spend gets a number that's too low.",
+    "evidence": "TL;DR: 'about 21 minutes in my run'. The step headings add up to 8+4+5=17 minutes before terraform destroy. The lab README says 'an EKS control plane for about an hour'.",
+    "fix": "Give one wall-clock figure that covers terraform apply through destroy, and say that EKS control plane and node charges run for that whole window."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "A maintainer of the Java instrumentation describes AWSTraceHeader propagation as the agent's default",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/14193"
+   },
+   {
+    "text": "The AWSTraceHeader attribute doesn't count towards message size",
+    "class": "sourced",
+    "source_ref": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html"
+   },
+   {
+    "text": "The header uses the AWS X-Ray trace header format",
+    "class": "sourced",
+    "source_ref": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html"
+   },
+   {
+    "text": "The receive telemetry setting is marked experimental",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.33.1/instrumentation/aws-sdk/aws-sdk-2.2/metadata.yaml"
+   },
+   {
+    "text": "The maintainer discussion notes exceptions for batch receives",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/14193"
+   },
+   {
+    "text": "Services using SqsTemplate and single-message @SqsListener methods in general will get the same one-trace result from the variable alone",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Receive telemetry suits readers who want each consumer's work in a trace of its own",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Spring Boot services on EKS that talk over Amazon SQS",
+  "decision": "Whether to roll out the OTel Java agent alone for queue tracing, before asking any team for code changes or extra settings",
+  "question": "With only the Java agent attached, do my SQS producer and consumer land in one trace, and do I need a setting for that?",
+  "takeaway": "You can follow a message across SQS in Splunk APM from one environment variable, on the OpenTelemetry Java agent's defaults, and you know the one setting that gives each consumer a linked trace of its own.",
+  "adds": "Existing pages name the settings and describe the system attribute. This post counts real messages on a real queue, shows the header on a waiting message next to the producer span's trace ID, and measures what one setting changes.",
+  "open_question": "Of 400 messages sent through a real SQS queue with the Java agent on its defaults, what percent have producer and process spans sharing one trace ID, and with receive telemetry on, how many of 100 stay in that trace and how many link to it?",
+  "tradeoffs": [
+   "One trace per message by default, or receive telemetry with each consumer in a linked trace of its own",
+   "The AWSTraceHeader system attribute by default, or the configured propagator in message attributes"
+  ],
+  "existing_pages": [
+   {
+    "title": "Springboot sqs instrumentation",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/14193",
+    "covers": "A maintainer explains that context travels in the AWSTraceHeader system attribute by default, that producer and consumer should share a trace by default, and that receive telemetry gives separate traces joined by a span link. It gives no per-message count on real SQS."
+   },
+   {
+    "title": "Message metadata for Amazon SQS",
+    "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html",
+    "covers": "Message system attributes, and AWSTraceHeader as the supported one, holding an X-Ray trace header string. It doesn't cover the Java agent."
+   },
+   {
+    "title": "Settings for the AWS SDK instrumentation",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/main/instrumentation/aws-sdk/README.md",
+    "covers": "The agent's AWS SDK settings and their defaults, including the propagator setting for SNS and SQS, which defaults to false."
+   },
+   {
+    "title": "AWS SDK instrumentation metadata, v2.33.1",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.33.1/instrumentation/aws-sdk/aws-sdk-2.2/metadata.yaml",
+    "covers": "The instrumentation's settings at v2.33.1, including receive telemetry, off by default, which starts a new consumer trace with a span link to the producer."
+   },
+   {
+    "title": "Spring Cloud AWS",
+    "url": "https://docs.awspring.io/spring-cloud-aws/docs/3.4.0/reference/html/index.html",
+    "covers": "How to send with SqsTemplate and receive with SqsListener, with its own Observability Support section."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "One GitHub discussion in the OTel Java instrumentation repo, Springboot sqs instrumentation, shows 5 comments and 15 replies. It was opened in July 2025, and a new reader asked about the default behaviour in June 2026. No search volume data was available."
+  },
+  "splunk_fit": "natural",
+  "measurements": [
+   {
+    "id": "messages_sent",
+    "what": "messages accepted by the queue, in the no_agent, default and receive_telemetry runs",
+    "kind": "count",
+    "unit": "messages",
+    "accept": {
+     "op": "ge",
+     "value": 100
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "one_trace_percent",
+    "what": "percent of messages sent in the default run whose publish and process spans share one trace ID, joined on the SQS message ID",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "one_trace_messages",
+    "what": "messages whose publish and process spans share one trace ID, in the default and receive_telemetry runs",
+    "kind": "comparison",
+    "unit": "messages",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "trace_header_on_message",
+    "what": "the probe message, found on the queue by its ID, carrying AWSTraceHeader, with no agent and with the agent",
+    "kind": "comparison",
+    "unit": "messages",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "consumer_spans_linked_to_producer",
+    "what": "process spans with a span link to the producer's trace, in the default and receive_telemetry runs",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "splunk_traces_both_services",
+    "what": "sampled default-run traces, found by trace ID, that hold spans of both services in Splunk APM, reported as n of 10",
+    "kind": "count",
+    "unit": "traces",
+    "accept": {
+     "op": "ge",
+     "value": 10
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "trace_header_root_matches",
+    "what": "1 when the trace ID in the AWSTraceHeader equals the producer span's trace ID, otherwise 0",
+    "kind": "comparison",
+    "unit": "matches",
+    "accept": {
+     "op": "eq",
+     "value": 1
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "receive_spans",
+    "what": "spans named <queue> receive of kind CONSUMER, in the default and receive_telemetry runs, showing the agent applied the setting",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "queue_path_on_map",
+    "what": "1 when the Splunk APM map runs from orders to fulfilment, directly or through the inferred queue node, otherwise 0",
+    "kind": "comparison",
+    "unit": "paths",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist on 5 November 2026",
+   "The agent ships SQS and Spring Cloud AWS instrumentation, so the reader gets a real result from one environment variable",
+   "One setting separates the two results, so the finding can be credited to it",
+   "If one_trace_percent is below 100, use the title: Follow SQS Messages Across Services in Splunk APM With the OTel Java Agent"
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.7722
+}
