@@ -1,15 +1,10 @@
 {
- "round": 2,
+ "round": 3,
  "Editor": [
   {
-   "problem": "The takeaway, and the program printed in the README, promise that one SignalFlow program (histogram_percentile on the _bucket series) gives the query p95 in milliseconds. read_known() quietly switches to a p95 that jq computes from the bucket series whenever that program returns nothing or the wrong number of points. It records the switch only in $src, and the `fixed` gate never checks $src. So a run can emit `fixed` and HERO_MEASURE known_query_p95_ms when the published SignalFlow program never produced a reading. The article would then credit a program that did not run.",
-   "fix": "Emit `HERO_MEASURE: known_query_p95_source=$src` and add `[ \"$src\" = \"histogram_percentile()\" ]` to the `fixed` condition. Also print the raw SignalFlow error or metadata when `got` is 0. Keep the jq bucket p95 as a cross-check that is printed beside it, not as a replacement. If you would rather keep the fallback, the brief's takeaway must say the p95 can come from the bucket series, and it must not credit one SignalFlow program."
+   "problem": "Earlier point, only partly fixed. read_known() now sets from_program, prints the SignalFlow reply when a program gives nothing back, emits HERO_MEASURE known_query_p95_from_program, and the `fixed` gate requires from_program=1. That part is fixed. The gap is in the loop. It tries two programs: first `$base.sum(by=['le']).$tail`, then `$base.$tail`, which has no `.sum(by=['le'])`. from_program becomes 1 when either one returns readings. The README and the takeaway print only the first program as the one that gives the p95. So a run can emit `fixed` and known_query_p95_ms from the second program, and the article would credit a program that did not produce the number.",
+   "fix": "Choose one of two. (a) Drop the second program, so only the published program can set from_program=1. (b) Keep it, but record which one ran: set from_program=1 for the published program and 2 for the other, emit `HERO_MEASURE: known_query_p95_program=<the exact program text>`, and make the `fixed` check `[ \"$from_program\" -eq 1 ]` pass only for the published program. If the second program is the one that works, the README and the takeaway must print that program instead."
   }
  ],
- "Marketing": [
-  {
-   "problem": "The title is still the only option and still opens with \"Read\", which sounds like a doc label. It names no pain. It also leaves out the words an engineer types when stuck: \"db.client.operation.duration\" or \"database metrics\". The reader in the one real demand source searched for that exact metric name and couldn't find it. The title does now carry \"one setting\" and \"no code changes\", but I still wouldn't put my name on it, and I can't pick a better one because none was offered.",
-   "fix": "Send a new title that credits the OTel Java agent and Splunk with the result and includes the metric name. For example: \"Postgres Query p95 in Splunk from One OTel Java Agent Setting, No Code Changes (db.client.operation.duration)\". Or: \"Get db.client.operation.duration Into Splunk: Postgres Query p95 From the OTel Java Agent, No Code Changes\". Don't say \"exact\" or \"millisecond-accurate\". The proof only shows a p95 inside a bucket."
-  }
- ]
+ "Marketing": []
 }
