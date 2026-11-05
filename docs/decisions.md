@@ -257,3 +257,7 @@ The sweep spent 40 minutes on a leftover VPC, and one 504 on a download then fai
 ## 2026-11-05: Labs rehearse on Kubernetes before AWS
 
 The free check ran in Docker, so a failure that only appears on a cluster still cost a paid run. `lab-check.yml` now runs the real scripts on a small cluster with a t3.large's CPU. It can't test Terraform or EKS.
+
+## 2026-11-05: Claude chat can read the Slack conversation
+
+Abhi wants the team's replies available to the chat and for later use. `slack-chat.jsonl` in the private repo now keeps his messages and the team's, and leaves out anyone else in the workspace.

@@ -1721,6 +1721,19 @@ rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])
 radar_b.gh, analytics_mod.read_file, analytics_mod.write_file = real_rgh, real_read, real_write2
 
+# ---------- the team conversation for Claude chat ----------
+sc_files, sc_real = {}, (cto.read_private, cto.write_private, cto.admin_on, slack_mod.team_messages if "slack_mod" in globals() else cto.slack.team_messages)
+cto.read_private, cto.admin_on = lambda p: (sc_files.get(p, ""), "s"), lambda: True
+cto.write_private = lambda p, t, s, m: sc_files.__setitem__(p, t) or True
+cto.slack.team_messages = lambda after: [("5.0", "Abhi", "hello"), ("6.0", "CMO (Marketing)", "notes")] if after == "0" else []
+check("chat: his messages and the team's are both kept", cto.save_chat() == 2 and '"from": "CMO (Marketing)"' in sc_files[cto.CHAT])
+check("chat: nothing is written when nothing is new", cto.save_chat() == 0 and sc_files[cto.CHAT].count("\n") == 2)
+sc_files[cto.CHAT] = "".join(json.dumps({"ts": str(i), "text": "x" * 2000}) + "\n" for i in range(1, 600))
+cto.slack.team_messages = lambda after: [("9000.0", "Abhi", "new")]
+cto.save_chat()
+check("chat: old lines roll off before the file is too big to read", len(sc_files[cto.CHAT]) <= cto.CHAT_MAX_BYTES + 3000 and sc_files[cto.CHAT].rstrip().endswith('"new"}'))
+cto.read_private, cto.write_private, cto.admin_on, cto.slack.team_messages = sc_real
+
 # ---------- pinned pods and leftover network items ----------
 import lab as lab_mod
 pin = lambda cpu: {"files": [{"path": "k8s/a.yaml", "content": f"spec:\n  nodeName: X\n  resources:\n    requests: {{ cpu: {cpu}, memory: 1Gi }}\n"},
