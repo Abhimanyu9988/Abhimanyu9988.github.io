@@ -29,6 +29,7 @@ BUCKET = os.environ.get("TF_STATE_BUCKET", "")
 START = time.time()
 WORK_END = START + 60 * 60      # no new attempt or step starts after this
 HARD_END = START + 106 * 60     # nothing runs past this (the workflow step is killed at 112 minutes)
+MAX_PINNED_CPU_M = 100                                        # a pod pinned with nodeName can't wait for room
 MAX_SCRIPT_S, MAX_PREFLIGHT = 14 * 60, 2       # the longest a script may wait, and rewrites allowed before touching AWS
 MAX_ATTEMPTS, MAX_SWEEP = 4, 2      # the work deadline still stops attempts in time for cleanup
 HIDE = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GH_READ_TOKEN", "BOT_TOKEN", "GITHUB_TOKEN",
@@ -75,6 +76,7 @@ Every HERO_MEASURE value must be a number. Print a word, such as an HPA target t
 Plan the clock before you write. reproduce.sh and fix.sh must each finish within 14 minutes, waits included. If the topic
 needs more, shorten each wait or use fewer steps, and say so in README.md. Never leave a value out to fit the time.
 Every loop has a fixed maximum, and every curl sets --max-time.
+A pod with nodeName skips the scheduler, so the node refuses it when CPU requests don't fit. Keep such a pod's CPU request at 100m or less.
 Splunk's series API lags by minutes and adds new series in batches, so a count taken right after a step can read zero. Wait once
 after the last step, then count everything from creation times. Never decide HERO_RESULT from a count that lag can change.
 AWS_REGION and LAB_NAME are set in the environment. Never print
@@ -320,6 +322,10 @@ def preflight(lab, body=""):
             waited = sum(int(n) for n in re.findall(r"(?m)^[^#\n]*\bsleep\s+(\d+)\b", text))
             if path in ("reproduce.sh", "fix.sh") and waited > MAX_SCRIPT_S:
                 errs.append(f"{path}: its sleeps add up to {waited}s, over the {MAX_SCRIPT_S}s limit")
+        if path.endswith((".yaml", ".yml")) and re.search(r"(?m)^\s*nodeName:", text):
+            big = [int(c) for c in re.findall(r"\bcpu:\s*[\"']?(\d+)m\b", text) if int(c) > MAX_PINNED_CPU_M]
+            if big:
+                errs.append(f"{path}: nodeName skips the scheduler, so a CPU request of {big[0]}m can make the node refuse the pod forever. Use {MAX_PINNED_CPU_M}m or less")
     texts = {str(f.get("path")): str(f.get("content", "")) for f in lab.get("files") or []}
     shared = set(re.findall(r"/tmp/[\w./-]+", texts.get("reproduce.sh", ""))) & set(re.findall(r"/tmp/[\w./-]+", texts.get("fix.sh", "")))
     errs += [f"fix.sh reads {p} from reproduce.sh, but /tmp is gone when a script ends. Save it in the lab directory" for p in sorted(shared)]
@@ -436,6 +442,15 @@ def apply(lab_id):
     return run("apply", ["terraform", "apply", "-input=false", "-no-color", "-auto-approve", "tfplan"],
                40 * 60, env=tf_env(lab_id), sandbox=True)
 
+def free_interfaces():
+    """A network interface left in a subnet stops terraform destroy. An available one is attached to nothing, and this account runs one lab at a time."""
+    found = _aws_json("ec2", "describe-network-interfaces", "--filters", "Name=status,Values=available") or {}
+    ids = [n["NetworkInterfaceId"] for n in found.get("NetworkInterfaces", [])]
+    freed = [i for i in ids if _aws("ec2", "delete-network-interface", "--network-interface-id", i)]
+    if freed:
+        print(f"deleted {len(freed)} leftover network interface(s)")
+    return freed
+
 def destroy(lab_id, cleanup_dir, tf_dir):
     """cleanup.sh from cleanup_dir (the newest scripts), then terraform destroy from tf_dir (the last good config)."""
     env = tf_env(lab_id)
@@ -444,6 +459,7 @@ def destroy(lab_id, cleanup_dir, tf_dir):
     if tf_init(lab_id, tf_dir)[0]:
         return False
     for _ in range(2):
+        free_interfaces()
         code, _ = run("destroy", ["terraform", "destroy", "-input=false", "-no-color", "-auto-approve"],
                       35 * 60, cwd=tf_dir, env=env, sandbox=True)
         if code == 0:

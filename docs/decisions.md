@@ -245,3 +245,7 @@ A Slack note saying to create the lab tomorrow started an API lab that minute, o
 ## 2026-11-04: A free check comes before AWS
 
 Two labs failed on things a free run could have caught. `lab-check.yml` now builds and runs the app on a GitHub runner, and proves Splunk APM can be read back, before a lab pays for AWS.
+
+## 2026-11-05: Two checks from the Java agent lab
+
+A pod pinned with `nodeName` asked for 500m of CPU, and the rollout never finished once the Collector was on the node. Pre-flight now refuses that. A leftover network interface also held a subnet through three destroy attempts, so `destroy` now deletes available interfaces first.
