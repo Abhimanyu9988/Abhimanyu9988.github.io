@@ -1,0 +1,6 @@
+$ aws ec2 delete-network-interface --network-interface-id eni-02912ecacc7e5bf5b
+# exit 254 after 1s
+
+
+aws: [ERROR]: An error occurred (InvalidNetworkInterfaceID.NotFound) when calling the DeleteNetworkInterface operation: The networkInterface ID 'eni-02912ecacc7e5bf5b' does not exist
+
