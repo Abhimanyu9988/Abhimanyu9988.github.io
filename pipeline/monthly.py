@@ -151,7 +151,7 @@ def open_pr(prs, in_review, start, post, log):
     body = f"![{alt}]({draft.SITE_URL}{img})\n\n" + post["body"].strip() + "\n"
     front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
                        f"image: {img}", f"image_alt: {j(alt)}", f"tags: {json.dumps(tags)}",
-                       "channels: [\"devto\", \"hashnode\"]", f"linkedin: {j(linkedin)}", "replies: []", "---", ""])
+                       "channels: []", f"linkedin: {j(linkedin)}", "replies: []", "---", ""])
     today = datetime.date.today().isoformat()
     files = {f"site/_posts/{today}-{slug}.md": front + body, f"site{img}": png.read_bytes()}
     preview = safe_text(post["body"], "[preview left out: failed the link-safety check; read the post file]")

@@ -426,7 +426,8 @@
    "prompt": "marketing.md",
    "outputs": [
     "topicconfirm",
-    "planreview"
+    "planreview",
+    "domainrank"
    ],
    "data_sources": [
     "goals"
@@ -437,6 +438,18 @@
    },
    "display": "Marketing",
    "dept": "Marketing"
+  },
+  "domain_scout": {
+   "mission": "Find domains we can buy within budget, and tell the CFO what is open, leaving or unlikely to free up.",
+   "module": "pipeline/domain_scout.py",
+   "status": "active",
+   "vendor": "code",
+   "model_env": "",
+   "data_sources": [],
+   "budget": {},
+   "outputs": [],
+   "display": "Domain Scout",
+   "dept": "Finance"
   }
  }
 }

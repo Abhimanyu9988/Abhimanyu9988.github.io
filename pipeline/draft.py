@@ -803,7 +803,7 @@ def open_pr(issue_no, res, topic):
     body_md = f"![{alt}]({SITE_URL}{img_path})\n\n" + post["body"].strip() + "\n"
     front = "\n".join(["---", f"title: {j(post['title'][:90])}", f"description: {j(post['description'][:300])}",
                        f"image: {img_path}", f"image_alt: {j(alt)}",
-                       f"tags: {json.dumps(tags)}", "channels: [\"devto\", \"hashnode\"]", f"lab: labs/{slug}",
+                       f"tags: {json.dumps(tags)}", "channels: []", f"lab: labs/{slug}",
                        f"linkedin: {j(linkedin)}", f"replies: {j(replies)}", "---", ""])
     files = {f"site/_posts/{today}-{slug}.md": front + body_md, f"site{img_path}": png.read_bytes()}
     for name, data in shots.items():
