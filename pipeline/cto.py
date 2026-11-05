@@ -23,6 +23,7 @@ TASKS, STATUS, CURSOR = "analytics/tasks.json", "analytics/status.json", "analyt
 INBOX = "analytics/slack-inbox.md"             # a path name only: read_private and write_private keep it in the private repo
 CHAT, CHAT_MAX_BYTES = "slack-chat.jsonl", 800_000
 PREFS, LEARN_AFTER, RECENT_HIS = "abhi-preferences.md", 3, 30
+ACCESS, NOTES, RECENT_TEAM = "team-access.json", "claude-chat-notes.md", 40
 ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, so its analytics branch is too
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
@@ -522,11 +523,14 @@ def chat_rows():
     text, _ = read_private(CHAT)
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
-def team_memory():
-    """What everyone on the team must know: what he likes, and his own recent words. A missing file only means nothing is learned yet."""
+def team_memory(role="secretary"):
+    """What everyone on the team must know. A missing file only means nothing is saved yet."""
     try:
-        said = [f"{r['time']}: {r['text']}" for r in chat_rows() if r.get("from") == "Abhi"][-RECENT_HIS:]
-        return f"\n\nWHAT ABHI LIKES AND DOESN'T:\n{read_private(PREFS)[0][:2500]}\n\nHIS RECENT MESSAGES, newest last:\n{json.dumps(said)[:3500]}"
+        rows, allowed = chat_rows(), can_read(role)
+        said = [f"{r['time']}: {r['text']}" for r in rows if r.get("from") == "Abhi"][-RECENT_HIS:]
+        seen = [{"from": r.get("from"), "time": r.get("time"), "text": r.get("text", "")[:600]} for r in rows if allowed is None or member(r.get("from")) in allowed][-RECENT_TEAM:]
+        return (f"\n\nWHAT ABHI LIKES AND DOESN'T:\n{read_private(PREFS)[0][:2500]}\n\nWHAT ABHI AND CLAUDE CHAT DECIDED:\n{read_private(NOTES)[0][:3000]}"
+                f"\n\nHIS RECENT MESSAGES, newest last:\n{json.dumps(said)[:3500]}\n\nTEAM CONVERSATION, newest last:\n{json.dumps(seen)[:6000]}")
     except Exception as e:
         print(f"::warning title=cto::team memory not read: {' '.join(str(e).split())[:200]}")
         return ""
@@ -557,7 +561,7 @@ def ask_role(role, text, talk, p, heard=None):
             print(f"::warning title=cto::trial not read: {' '.join(str(e).split())[:200]}")
     return roles.ask(role, f"ABHI SAID:\n{text[:4000]}\n\nCONVERSATION, newest last:\n{json.dumps(recent_talk(talk))}\n\nFACTS:\n"
                            f"{json.dumps({**p, 'team': roster(p)})[:6000]}\n\nGOALS AND TEAM:\n{json.dumps(team)[:4000]}"
-                           f"\n\nMARKET BRIEF:\n{brief[:2500]}{team_memory()}{extra}", "ctoreply")
+                           f"\n\nMARKET BRIEF:\n{brief[:2500]}{team_memory(role)}{extra}", "ctoreply")
 
 def answer(text, talk, role="secretary"):
     wanted = budget.requested_limit(text)
@@ -623,7 +627,29 @@ def save_chat():
         while len(json.dumps(rows)) > CHAT_MAX_BYTES:
             rows = rows[50:]
         write_private(CHAT, "".join(json.dumps(r) + "\n" for r in rows), sha, "chat: Slack messages")
+        save_members(new)
     return len(new)
+
+def member(name):
+    """"CMO (Marketing)" is cmo, and "Executive Assistant (Office)" is executive_assistant, so each member has one name everywhere."""
+    return re.sub(r"\W+", "_", str(name).split(" (")[0].strip().lower()).strip("_") or "unknown"
+
+def save_members(rows):
+    """One file per team member, so anyone can see exactly who said what."""
+    for name in sorted({member(r["from"]) for r in rows}):
+        path = f"team-{name}.jsonl"
+        text, sha = read_private(path)
+        kept = [json.loads(line) for line in text.splitlines() if line.strip()] + [r for r in rows if member(r["from"]) == name]
+        while len(json.dumps(kept)) > CHAT_MAX_BYTES:
+            kept = kept[50:]
+        write_private(path, "".join(json.dumps(r) + "\n" for r in kept), sha, f"team: {name}")
+
+def can_read(role):
+    """Who this member may read. Everyone reads everyone unless Abhi limits them in team-access.json, and his own words always reach them."""
+    text, _ = read_private(ACCESS)
+    rules = json.loads(text) if text.strip() else {}
+    limit = (rules.get("members") or {}).get(member(role))
+    return None if limit is None or limit == "all" else {member(x) for x in limit} | {"abhi"}
 
 def poll():
     """Slack messages since the last run. The cursor moves first, so one bad message cannot repeat every ten minutes."""

@@ -394,7 +394,8 @@ are not. Under 75 characters. Shapes that work: "ECS shows 1 running task while 
 an upgrade". The opening puts the reader in that moment in the first sentence."""
 
 POSITIVE = ("\nStay positive about products. Abhi works at Cisco on Splunk and contributes to OpenTelemetry. Never frame Splunk, OpenTelemetry or Galileo as broken, missing, "
-            "wrong or lacking. Show what they make possible and how to get the most from them.\n")
+            "wrong or lacking. Show what they make possible and how to get the most from them. "
+            "Lead with what the reader gains. A cost is something to plan for, in the body, and never the title or the opening.\n")
 
 KINDS = {
     "problem": {"verdict": VERDICT_Q, "rules": ARTICLE_RULES + POSITIVE, "rubric": ARTICLE_RUBRIC, "titles": TITLE_RULES,

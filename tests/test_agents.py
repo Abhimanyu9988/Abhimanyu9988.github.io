@@ -1801,7 +1801,7 @@ cto.write_private = lambda p, t, s, m: tm_files.__setitem__(p, t) or True
 rows3 = "".join(json.dumps({"ts": str(n), "time": "t", "from": w, "text": f"{w} {n}"}) + "\n" for n, w in ((1, "Abhi"), (2, "CMO"), (3, "Abhi"), (4, "Abhi")))
 tm_files[cto.CHAT] = rows3
 tm_mem = cto.team_memory()
-check("team: every leader sees his words, not the team's", "Abhi 3" in tm_mem and "CMO 2" not in tm_mem)
+check("team: every leader sees his words and the team's", "Abhi 3" in tm_mem and "CMO 2" in tm_mem)
 tm_seen = []
 roles_mod.ask = lambda role, prompt, out: tm_seen.append((role, out)) or {"likes": ["strong titles"], "dislikes": ["broken drafts"], "rules": ["be positive"]}
 check("team: the Executive Assistant learns after a few new replies", cto.learn() and tm_seen == [("executive_assistant", "abhiprefs")] and "broken drafts" in tm_files[cto.PREFS])
@@ -1809,6 +1809,21 @@ check("team: it doesn't relearn the same replies", cto.learn() is False and len(
 cto.read_private, cto.write_private, cto.admin_on, roles_mod.ask = tm_real
 draft_src = (ROOT / "pipeline/draft.py").read_text()
 check("draft: a chat run's below-bar draft stays out of Slack", 'if gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true":' in draft_src and 'tell("lab_engineer", f"Lab failed,' in draft_src)
+
+# ---------- who said what, and who can read it ----------
+ms_files, ms_real = {}, (cto.read_private, cto.write_private)
+cto.read_private = lambda p: (ms_files.get(p, ""), "s")
+cto.write_private = lambda p, t, s, m: ms_files.__setitem__(p, t) or True
+check("team: one name per member", cto.member("CMO (Marketing)") == "cmo" and cto.member("Executive Assistant (Office)") == "executive_assistant" and cto.member("Abhi") == "abhi")
+cto.save_members([{"from": "CMO (Marketing)", "text": "a"}, {"from": "Abhi", "text": "b"}, {"from": "CMO (Marketing)", "text": "c"}])
+check("team: each member has its own file", ms_files["team-cmo.jsonl"].count("\n") == 2 and ms_files["team-abhi.jsonl"].count("\n") == 1)
+ms_files[cto.CHAT] = "".join(json.dumps({"ts": str(n), "time": "t", "from": w, "text": f"said by {w}"}) + "\n" for n, w in enumerate(("Abhi", "CMO (Marketing)", "CFO (Finance)")))
+check("team: everyone reads everything by default", cto.can_read("cfo") is None and "said by CMO" in cto.team_memory("cfo"))
+ms_files[cto.ACCESS] = json.dumps({"members": {"cfo": ["editor"]}})
+check("team: Abhi can limit a member, and his words still reach them", "said by CMO" not in cto.team_memory("cfo") and "said by Abhi" in cto.team_memory("cfo") and "said by CMO" in cto.team_memory("cmo"))
+ms_files[cto.NOTES] = "Lead with the gain"
+check("team: everyone sees what Abhi and Claude chat decided", "Lead with the gain" in cto.team_memory("cmo"))
+cto.read_private, cto.write_private = ms_real
 
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

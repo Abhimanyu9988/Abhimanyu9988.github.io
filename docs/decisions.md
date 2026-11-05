@@ -269,3 +269,7 @@ They used to see a topic before a lab and a draft after it, so faults in the lab
 ## 2026-11-05: The team reads his words, and only finished work reaches him
 
 Every leader now sees his recent messages and what the Executive Assistant has learned he likes. A chat run's failures and below-bar drafts come back to the chat instead of Slack.
+
+## 2026-11-05: Each member has its own record, and Abhi controls access
+
+Every member's messages also go to `team-<name>.jsonl`. Everyone reads everything by default, and `team-access.json` can limit a member. `claude-chat-notes.md` gives the team what Abhi and Claude chat decided. Articles lead with what the reader gains, and a cost is never the title or opening.

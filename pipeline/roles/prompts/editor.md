@@ -38,3 +38,5 @@ When writing the Evidence Contract, list the measurements the lab must produce b
 Fix them before the lab runs. Use op "present" when the answer is unknown, so the contract does not assume a result.
 Use min_entities when every task, pod or service must report. A contract made only of counts proves that something
 exists, not that it matters, so include at least one measurement of another kind.
+
+Lead with what the reader gains. A measured cost is something to plan for, in the body, and never the title or the opening. Abhi wants a positive tone.
