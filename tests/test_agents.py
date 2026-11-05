@@ -1737,6 +1737,13 @@ lab_mod._aws_json, lab_mod._aws = real_aj, real_a
 # ---------- free lab check ----------
 lc_y = __import__("yaml").safe_load((ROOT / ".github/workflows/lab-check.yml").read_text())
 lc_text = json.dumps(lc_y["jobs"]["app"])
+rh_job = lc_y["jobs"]["rehearsal"]
+rh_text = json.dumps(rh_job)
+check("rehearsal: it holds the Splunk tokens and nothing else", "github.token" not in rh_text and "id-token" not in rh_text and "permissions" not in rh_job and
+      sorted(set(re.findall(r"secrets\.(\w+)", rh_text))) == ["SPLUNK_ACCESS_TOKEN", "SPLUNK_API_TOKEN"])
+check("rehearsal: it waits for the free checks", rh_job["needs"] == ["app", "splunk"])
+rh_sh = (ROOT / "pipeline/rehearse.sh").read_text()
+check("rehearsal: a node has a t3.large's CPU, and a script's real result decides", "ALLOCATABLE_M=1930" in rh_sh and "^HERO_RESULT: $2" in rh_sh)
 check("lab check: AI-written code runs with no secrets and no token", "secrets." not in lc_text and "github.token" not in lc_text and "environment" not in lc_y["jobs"]["app"])
 check("lab check: the issue reaches the shell only through env", "${{" not in " ".join(s.get("run", "") for s in lc_y["jobs"]["app"]["steps"]))
 check("lab check: both jobs run code from main", all(s["with"]["ref"] == "main" for j in lc_y["jobs"].values() for s in j["steps"] if "checkout" in s.get("uses", "")))
