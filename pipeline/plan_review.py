@@ -22,6 +22,11 @@ RERUN = ("You reviewed this plan before and blocked it on the points listed belo
          "isn't fixed. Raise a new blocking point only if it would make a measured result wrong or a promise in the title false. "
          "Put anything smaller in notes, because the finished article gets a full review.\n\nEARLIER POINTS:\n")
 
+MAX_ROUNDS = 2      # a first review and one recheck. A third is Abhi's decision, because reviews had reached 12 for three labs
+
+def round_allowed(earlier, extra):
+    return extra or int((earlier or {}).get("round") or 0) < MAX_ROUNDS
+
 def rule_for(name, rule, earlier):
     """The rerun checks the earlier points, so a lab isn't sent round again on a fresh list each time. A first review is unchanged."""
     points = (earlier or {}).get(name) or []
@@ -46,7 +51,10 @@ def main():
     if not brief:
         print("PLAN REVIEW FAILED: the topic has no valid brief")
         return 1
-    stop, points = False, {}
+    if not round_allowed(earlier, os.environ.get("EXTRA_ROUND") == "true"):
+        print(f"PLAN REVIEW STOPPED: this lab has used its {MAX_ROUNDS} reviews, and a third needs Abhi's OK. Nothing was spent")
+        return 1
+    stop, points = False, {"round": int(earlier.get("round") or 0) + 1}
     for role, name, rule, full in (("editor", "Editor", EDITOR, True), ("marketing", "Marketing", MARKETING, False)):
         got = roles.ask(role, rule_for(name, rule, earlier) + plan_text(issue.get("title"), brief, lab, full), "planreview")
         lines, no = blocked(name, got)

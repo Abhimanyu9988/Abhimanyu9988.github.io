@@ -54,7 +54,8 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/lab.py` | Runs the lab in the sandbox | Topic issue | `out/` |
 | `pipeline/lab_check.py` | Unpacks a chat lab for the free check, whose `check.sh` runs in a job with no secrets | `chat/<issue>` | `work/` |
 | `pipeline/rehearse.sh` | Runs a lab's real scripts on a small Kubernetes cluster, with the Splunk tokens only | Lab scripts | Nothing |
-| `pipeline/plan_review.py` | The Editor and Marketing review a lab plan before AWS. A rerun checks the earlier points | Brief, lab files as data | Log, `plan-review.json` on the lab's branch |
+| `pipeline/plan_review.py` | The Editor and Marketing review a lab plan before AWS, twice at most. A rerun checks the earlier points | Brief, lab files as data | Log, `plan-review.json` on the lab's branch |
+| `pipeline/clean_footer.py` | Removes an unwanted footer from issue and PR text | Issue and PR text | That text only |
 | `pipeline/splunk_series.py` | Reads a lab's real time series from Splunk for charts | Read token | Log only |
 | `pipeline/domain_scout.py` | Checks domain names through public RDAP and reports to the CFO. It never buys | Private candidates | Private report, Slack |
 | `pipeline/splunk_check.py` | Proves a test trace reaches Splunk APM and reads back | Splunk tokens | Nothing |

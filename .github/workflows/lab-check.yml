@@ -7,6 +7,11 @@ on:
         description: "Topic issue number, with its lab on branch chat/<issue>"
         required: true
         type: string
+      extra_round:
+        description: "Allow a review past the limit of two. Only with Abhi's OK"
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -50,6 +55,7 @@ jobs:
       - name: review the lab plan
         env:
           ISSUE: ${{ inputs.issue }}
+          EXTRA_ROUND: ${{ inputs.extra_round }}
           GH_TOKEN: ${{ github.token }}
           BOT_TOKEN: ${{ steps.bot.outputs.token }}
           GH_READ_TOKEN: ${{ github.token }}
