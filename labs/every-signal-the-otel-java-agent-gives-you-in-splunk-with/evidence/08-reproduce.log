@@ -1,0 +1,44 @@
+$ bash reproduce.sh
+# exit 0 after 291s
+
+== 1. Waiting for 2 worker nodes
+NAME                                          STATUS   ROLES    AGE   VERSION                INTERNAL-IP   EXTERNAL-IP     OS-IMAGE                        KERNEL-VERSION                     CONTAINER-RUNTIME
+ip-10-0-0-229.eu-central-1.compute.internal   Ready    <none>   18s   v1.34.12-eks-6e7947a   10.0.0.229    3.69.232.80     Amazon Linux 2023.12.20261102   6.12.113-138.209.amzn2023.x86_64   containerd://2.3.7+unknown
+ip-10-0-1-16.eu-central-1.compute.internal    Ready    <none>   22s   v1.34.12-eks-6e7947a   10.0.1.16     18.185.36.129   Amazon Linux 2023.12.20261102   6.12.113-138.209.amzn2023.x86_64   containerd://2.3.7+unknown
+deployment "coredns" successfully rolled out
+app node: ip-10-0-0-229.eu-central-1.compute.internal
+load node: ip-10-0-1-16.eu-central-1.compute.internal
+== 2. Building the jar in the cluster, once, and fetching the agent, unused for now
+total 48608
+-rw-r--r--. 1 root root 23262798 Nov  5 10:34 app.jar
+-rw-r--r--. 1 root root 26507624 Nov  5 10:34 opentelemetry-javaagent.jar
+agent downloaded on attempt 1
+build took 57s
+== 3. Deploying Postgres, orders and inventory with no agent
+Waiting for deployment "postgres" rollout to finish: 0 of 1 updated replicas are available...
+deployment "postgres" successfully rolled out
+deployment "inventory" successfully rolled out
+deployment "orders" successfully rolled out
+== 4. No agent is attached, and the image and jar are recorded
+orders image: maven:3.9.9-eclipse-temurin-21
+orders JAVA_TOOL_OPTIONS or OTEL settings: 0
+orders jar: c0e52e094a8b1e0129eb679a22dc9c84c848346d35d4b5e4cfd61fd00c7cdb97  /lab/app.jar
+inventory image: maven:3.9.9-eclipse-temurin-21
+inventory JAVA_TOOL_OPTIONS or OTEL settings: 0
+inventory jar: c0e52e094a8b1e0129eb679a22dc9c84c848346d35d4b5e4cfd61fd00c7cdb97  /lab/app.jar
+== 5. Startup, three restarts of each service
+orders startup round 1: process running for 11.306
+inventory startup round 1: process running for 11.562
+orders startup round 2: process running for 11.534
+inventory startup round 2: process running for 11.739
+orders startup round 3: process running for 11.761
+inventory startup round 3: process running for 11.77
+== 6. The same load as the agent run: one request every 50 ms, the first 30 seconds as warm-up
+pod/load condition met
+LOAD requests=1192 errors=0 p50_ms=8.98 p95_ms=18.80
+LOAD last_trace_id=051f76dbf6ea99b127e4a3705063f36f
+== 7. Resident memory after the load
+orders VmRSS: 250296 kB
+inventory VmRSS: 247548 kB
+HERO_RESULT: reproduced
+
