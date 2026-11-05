@@ -100,7 +100,7 @@ The three startup samples ran from 10.77 to 11.521 seconds without the agent, an
 ## What to plan for before you roll it out
 
 - **Give startup room.** Check startup probes first, because that's where the time went, and restart a few pods at a time if your nodes are tight.
-- **Set memory limits from a measurement.** The heap was fixed at 256 MiB, so the extra 101.6 to 112.5 MiB sits outside your `-Xmx` setting.
+- **Set memory limits from a measurement.** Resident memory rose 101.6 to 112.5 MiB with the heap fixed at 256 MiB, so size your limits from resident memory, not from `-Xmx` alone.
 - **Start with the agent, add custom spans later.** It gives a team a map and traces on day one, and hand-written spans can follow for business steps. The [OpenTelemetry performance guide](https://opentelemetry.io/docs/zero-code/java/agent/performance/) covers tuning, and maintainers have a [startup PR in review](https://github.com/open-telemetry/opentelemetry-java-instrumentation/pull/21033) reporting a 5.19% cut in agent-added startup on their benchmark.
 
 ## Build it yourself in 3 steps
