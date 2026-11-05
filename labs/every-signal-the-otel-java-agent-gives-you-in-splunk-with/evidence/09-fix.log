@@ -1,0 +1,93 @@
+$ bash fix.sh
+# exit 0 after 371s
+
+== 1. Installing the Splunk OTel Collector (chart 0.163.1)
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 0 of 2 updated pods are available...
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 1 of 2 updated pods are available...
+daemon set "splunk-otel-collector-agent" successfully rolled out
+== 2. The before-check: the cluster's own data reaches Splunk while the services send nothing
+cluster metric time series in Splunk: 801
+agent metric names in Splunk before the change: 0
+== 3. The whole change: one environment variable on each service
+orders image: maven:3.9.9-eclipse-temurin-21
+orders jar: c0e52e094a8b1e0129eb679a22dc9c84c848346d35d4b5e4cfd61fd00c7cdb97  /lab/app.jar
+orders [otel.javaagent 2026-11-05 10:38:59:579 +0000] [main] INFO io.opentelemetry.javaagent.tooling.VersionLogger - opentelemetry-javaagent - version: 2.33.1
+inventory image: maven:3.9.9-eclipse-temurin-21
+inventory jar: c0e52e094a8b1e0129eb679a22dc9c84c848346d35d4b5e4cfd61fd00c7cdb97  /lab/app.jar
+inventory [otel.javaagent 2026-11-05 10:39:01:178 +0000] [main] INFO io.opentelemetry.javaagent.tooling.VersionLogger - opentelemetry-javaagent - version: 2.33.1
+jar unchanged from the before run
+== 4. Startup, three samples of each service
+orders startup round 1: process running for 29.701
+inventory startup round 1: process running for 29.593
+orders startup round 2: process running for 29.702
+inventory startup round 2: process running for 30.055
+orders startup round 3: process running for 29.633
+inventory startup round 3: process running for 30.457
+== 5. The same load as the before run
+pod/load condition met
+LOAD requests=1196 errors=0 p50_ms=9.08 p95_ms=18.64
+LOAD last_trace_id=9556673896a52a8cce695e5ca73dc13c
+orders VmRSS: 346944 kB
+inventory VmRSS: 341500 kB
+== 6. What Splunk Observability Cloud now shows
+  t+107s from first traffic: services=3 metric names=19 spans in the known trace=0
+  t+131s from first traffic: services=3 metric names=19 spans in the known trace=0
+  t+156s from first traffic: services=3 metric names=19 spans in the known trace=0
+  t+180s from first traffic: services=3 metric names=19 spans in the known trace=0
+  t+206s from first traffic: services=3 metric names=19 spans in the known trace=4
+
+-- service map from Splunk APM
+  postgresql:postgres inferred=true
+  orders inferred=false
+  inventory inferred=false
+  inventory -> postgresql:postgres
+  orders -> inventory
+services map count from Splunk: 3
+HERO_MEASURE: services_on_map=3
+
+-- agent metric names in Splunk
+  db.client.connections.create_time
+  db.client.connections.idle.min
+  db.client.connections.max
+  db.client.connections.pending_requests
+  db.client.connections.usage
+  db.client.connections.use_time
+  db.client.connections.wait_time
+  jvm.class.count
+  jvm.class.loaded
+  jvm.class.unloaded
+  jvm.cpu.count
+  jvm.cpu.recent_utilization
+  jvm.cpu.time
+  jvm.gc.duration
+  jvm.memory.committed
+  jvm.memory.limit
+  jvm.memory.used
+  jvm.memory.used_after_last_gc
+  jvm.thread.count
+agent metric names count: 19
+HERO_MEASURE: agent_metric_names=19
+
+-- trace 9556673896a52a8cce695e5ca73dc13c from Splunk APM
+  inventory null SELECT postgres.stock
+  inventory null GET /stock/{id}
+  orders null GET
+  orders null GET /orders/{id}
+spans per request in one trace: 4
+HERO_MEASURE: spans_per_request=4
+
+== 7. The cost, on the same jar, image, nodes and load
+orders median startup without the agent 11.534s, with the agent 29.701s, added 18.17
+HERO_MEASURE: startup_added_seconds[orders]=18.17
+inventory median startup without the agent 11.739s, with the agent 30.055s, added 18.32
+HERO_MEASURE: startup_added_seconds[inventory]=18.32
+orders resident memory without the agent 250296 kB, with the agent 346944 kB, added 94.4 MiB
+HERO_MEASURE: memory_added_mib[orders]=94.4
+inventory resident memory without the agent 247548 kB, with the agent 341500 kB, added 91.8 MiB
+HERO_MEASURE: memory_added_mib[inventory]=91.8
+LOAD requests=1192 errors=0 p50_ms=8.98 p95_ms=18.80
+LOAD requests=1196 errors=0 p50_ms=9.08 p95_ms=18.64
+p95 added ms between the runs: -0.16
+HERO_MEASURE: p95_added_ms=-0.16
+HERO_RESULT: fixed
+
