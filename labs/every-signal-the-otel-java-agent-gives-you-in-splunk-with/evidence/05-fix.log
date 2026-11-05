@@ -1,0 +1,104 @@
+$ bash fix.sh
+# exit 0 after 724s
+
+== 2. The before-check: the cluster's own data reaches Splunk while the services send nothing
+cluster metric time series in Splunk: 2098
+agent metric names in Splunk before the change: 0
+== 3. The whole change: one environment variable on each service
+orders image: maven:3.9.9-eclipse-temurin-21
+orders jar: e9c6db24a1e342f6bae103fb67b936724fa187e3aa40aa7a04e5b61514780d01  /lab/app.jar
+orders [otel.javaagent 2026-11-05 11:29:55:762 +0000] [main] INFO io.opentelemetry.javaagent.tooling.VersionLogger - opentelemetry-javaagent - version: 2.33.1
+inventory image: maven:3.9.9-eclipse-temurin-21
+inventory jar: e9c6db24a1e342f6bae103fb67b936724fa187e3aa40aa7a04e5b61514780d01  /lab/app.jar
+inventory [otel.javaagent 2026-11-05 11:29:57:363 +0000] [main] INFO io.opentelemetry.javaagent.tooling.VersionLogger - opentelemetry-javaagent - version: 2.33.1
+jar unchanged from the before run
+== 4. Startup, three samples of each service
+orders startup round 1: process running for 28.239
+inventory startup round 1: process running for 28.027
+orders startup round 2: process running for 29.345
+inventory startup round 2: process running for 30.273
+orders startup round 3: process running for 29.095
+inventory startup round 3: process running for 28.382
+== 5. The same load as the before run
+pod/load condition met
+LOAD requests=1196 errors=0 p50_ms=8.45 p95_ms=18.48
+LOAD last_trace_id=952be926f7b99a54c7366d1cef17d536
+orders VmRSS: 349812 kB
+inventory VmRSS: 355916 kB
+== 6. What Splunk Observability Cloud now shows
+  t+109s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=0
+  t+134s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=0
+  t+159s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=0
+  t+183s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=0
+  t+208s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+232s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+255s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+282s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+306s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+329s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+353s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+377s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+401s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+424s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+448s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+471s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+495s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+518s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+542s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+  t+565s from first traffic: services=3 metric names=19 http names=0 spans in the known trace=4
+
+-- service map from Splunk APM
+  postgresql:postgres inferred=true
+  inventory inferred=false
+  orders inferred=false
+  inventory -> postgresql:postgres
+  orders -> inventory
+services map count from Splunk: 3
+HERO_MEASURE: services_on_map=3
+
+-- agent metric names in Splunk
+  db.client.connections.create_time
+  db.client.connections.idle.min
+  db.client.connections.max
+  db.client.connections.pending_requests
+  db.client.connections.usage
+  db.client.connections.use_time
+  db.client.connections.wait_time
+  jvm.class.count
+  jvm.class.loaded
+  jvm.class.unloaded
+  jvm.cpu.count
+  jvm.cpu.recent_utilization
+  jvm.cpu.time
+  jvm.gc.duration
+  jvm.memory.committed
+  jvm.memory.limit
+  jvm.memory.used
+  jvm.memory.used_after_last_gc
+  jvm.thread.count
+agent metric names count: 19
+HERO_MEASURE: agent_metric_names=19
+
+-- trace 952be926f7b99a54c7366d1cef17d536 from Splunk APM
+  orders null GET /orders/{id}
+  orders null GET
+  inventory null SELECT postgres.stock
+  inventory null GET /stock/{id}
+spans per request in one trace: 4
+HERO_MEASURE: spans_per_request=4
+
+== 7. The cost, on the same jar, image, nodes and load
+orders median startup without the agent 11.107s, with the agent 29.095s, added 17.99
+HERO_MEASURE: startup_added_seconds[orders]=17.99
+inventory median startup without the agent 11.065s, with the agent 28.382s, added 17.32
+HERO_MEASURE: startup_added_seconds[inventory]=17.32
+orders resident memory without the agent 245812 kB, with the agent 349812 kB, added 101.6 MiB
+HERO_MEASURE: memory_added_mib[orders]=101.6
+inventory resident memory without the agent 240756 kB, with the agent 355916 kB, added 112.5 MiB
+HERO_MEASURE: memory_added_mib[inventory]=112.5
+LOAD requests=1179 errors=0 p50_ms=8.65 p95_ms=17.91
+LOAD requests=1196 errors=0 p50_ms=8.45 p95_ms=18.48
+p95 added ms between the runs: 0.57
+HERO_MEASURE: p95_added_ms=0.57
+HERO_RESULT: fixed
+
