@@ -1,0 +1,4 @@
+$ aws ec2 delete-network-interface --network-interface-id eni-0b656fdae5ab942ca
+# exit 0 after 1s
+
+
