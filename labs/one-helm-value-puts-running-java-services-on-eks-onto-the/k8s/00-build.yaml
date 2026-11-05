@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-src
+  namespace: demo
+data:
+  pom.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+      <modelVersion>4.0.0</modelVersion>
+      <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.6</version>
+        <relativePath/>
+      </parent>
+      <groupId>lab</groupId>
+      <artifactId>app</artifactId>
+      <version>1.0.0</version>
+      <properties>
+        <java.version>21</java.version>
+      </properties>
+      <dependencies>
+        <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+          <groupId>org.postgresql</groupId>
+          <artifactId>postgresql</artifactId>
+          <scope>runtime</scope>
+        </dependency>
+      </dependencies>
+      <build>
+        <finalName>app</finalName>
+        <plugins>
+          <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+          </plugin>
+        </plugins>
+      </build>
+    </project>
+  App.java: |
+    package lab;
+
+    import java.util.Map;
+    import org.springframework.beans.factory.annotation.Value;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.jdbc.core.JdbcTemplate;
+    import org.springframework.web.bind.annotation.GetMapping;
+    import org.springframework.web.bind.annotation.PathVariable;
+    import org.springframework.web.bind.annotation.RestController;
+    import org.springframework.web.client.RestClient;
+
+    @SpringBootApplication
+    @RestController
+    public class App {
+      private final JdbcTemplate jdbc;
+      private final RestClient inventory;
+
+      public App(JdbcTemplate jdbc, RestClient.Builder builder, @Value("${inventory.url}") String url) {
+        this.jdbc = jdbc;
+        this.inventory = builder.baseUrl(url).build();
+      }
+
+      public static void main(String[] args) {
+        SpringApplication.run(App.class, args);
+      }
+
+      @GetMapping("/orders/{id}")
+      public Map<String, Object> order(@PathVariable("id") long id) {
+        Map<?, ?> stock = inventory.get().uri("/stock/{id}", id).retrieve().body(Map.class);
+        return Map.of("order", id, "stock", stock);
+      }
+
+      @GetMapping("/stock/{id}")
+      public Map<String, Object> stock(@PathVariable("id") long id) {
+        return jdbc.queryForMap("select sku, qty from stock where id = ?", id % 100 + 1);
+      }
+    }
+---
+# Builds the jar on one node. reproduce.sh starts this Job once per node, because the services run on different nodes.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: BUILD_NAME
+  namespace: demo
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 420
+  template:
+    spec:
+      restartPolicy: Never
+      nodeName: BUILD_NODE
+      volumes:
+        - name: src
+          configMap:
+            name: app-src
+        - name: lab
+          hostPath:
+            path: /opt/lab
+            type: DirectoryOrCreate
+      containers:
+        - name: build
+          image: maven:3.9.9-eclipse-temurin-21
+          volumeMounts:
+            - { name: src, mountPath: /src }
+            - { name: lab, mountPath: /lab }
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /w/src/main/java/lab
+              cp /src/pom.xml /w/pom.xml
+              cp /src/App.java /w/src/main/java/lab/App.java
+              cd /w
+              mvn -q -B -DskipTests package
+              cp target/app.jar /lab/app.jar
+              ls -l /lab
