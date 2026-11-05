@@ -103,7 +103,7 @@ def site_rows(posts):
         print(f"warn: GoatCounter: {str(e)[:200]}"); return []
     by_slug = {}
     for h in got.get("hits") or []:
-        m = re.search(r"/posts/([^/]+)/?$", str(h.get("path") or ""))
+        m = re.search(r"/(?:posts|articles)/([^/]+)/?$", str(h.get("path") or ""))
         n = h.get("count") if h.get("count") is not None else h.get("count_unique")
         if m and n is not None:
             by_slug[m[1]] = by_slug.get(m[1], 0) + int(n)
