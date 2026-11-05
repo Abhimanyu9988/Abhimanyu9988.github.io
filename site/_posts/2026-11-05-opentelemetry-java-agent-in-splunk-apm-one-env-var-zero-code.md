@@ -11,7 +11,7 @@ replies: []
 ---
 ![Terminal output showing zero agent metrics before the change, the jar unchanged, then 3 services on the Splunk APM map, 19 metric names and 4 spans per request.](https://abhimanyu9988.github.io/assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/cover.png)
 
-One environment variable put two Spring Boot services on a Splunk APM service map, with no code change and no new image. Splunk showed **3 services, 4 spans per request and 19 metric names**, and p95 stayed about level: 17.91 ms before, 18.48 ms after.
+One environment variable put two Spring Boot services on a Splunk APM service map, with no code change and no new image. Splunk showed **3 services, 4 spans per request and 19 metric names**, including a Postgres node that runs no agent.
 
 That's the day-one result I want to hand a Java team. Turn the agent on, and they can see their dependencies, routes and database calls before anyone writes a span.
 
@@ -33,7 +33,7 @@ for s in orders inventory; do
 done
 ```
 
-That value attaches the agent, names the service, points it at the Collector on the same node, and sets the environment you filter by in APM. It also turns log export off for this lab. `HOST_IP` comes from the pod's own spec.
+This is the upstream OpenTelemetry Java agent 2.33.1 with Splunk OTel Collector chart 0.163.1 and Spring Boot 3.5.6. That value attaches the agent, names the service, points it at the Collector on the same node, and sets the environment you filter by in APM. It also turns log export off for this lab. `HOST_IP` comes from the pod's own spec.
 
 After the rollout, the jar's hash still matched:
 
