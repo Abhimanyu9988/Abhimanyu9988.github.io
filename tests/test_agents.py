@@ -1721,6 +1721,19 @@ rs = ry["jobs"]["radar"]["steps"][-1]
 check("auto lab: off switch and quoted input", "vars.AUTO_LAB != 'off'" in rs["if"] and "${{" not in rs["run"])
 radar_b.gh, analytics_mod.read_file, analytics_mod.write_file = real_rgh, real_read, real_write2
 
+# ---------- pinned pods and leftover interfaces ----------
+import lab as lab_mod
+pin = lambda cpu: {"files": [{"path": "k8s/a.yaml", "content": f"spec:\n  nodeName: X\n  resources:\n    requests: {{ cpu: {cpu}, memory: 1Gi }}\n"},
+                             *[{"path": p, "content": "x"} for p in ("main.tf", "reproduce.sh", "fix.sh", "cleanup.sh", "README.md")]]}
+check("lab: a big CPU request on a pinned pod is refused", any("nodeName" in e for e in lab_mod.preflight(pin("500m"))))
+check("lab: a small CPU request on a pinned pod passes", not any("nodeName" in e for e in lab_mod.preflight(pin("100m"))))
+real_aj, real_a = lab_mod._aws_json, lab_mod._aws
+lab_mod._aws_json, lab_mod._aws = lambda *a: {"NetworkInterfaces": [{"NetworkInterfaceId": "eni-1"}]}, lambda *a: True
+check("lab: a leftover interface is deleted before destroy", lab_mod.free_interfaces() == ["eni-1"])
+lab_mod._aws_json, lab_mod._aws = lambda *a: None, real_a
+check("lab: a failed interface listing changes nothing", lab_mod.free_interfaces() == [])
+lab_mod._aws_json, lab_mod._aws = real_aj, real_a
+
 # ---------- free lab check ----------
 lc_y = __import__("yaml").safe_load((ROOT / ".github/workflows/lab-check.yml").read_text())
 lc_text = json.dumps(lc_y["jobs"]["app"])
