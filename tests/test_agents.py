@@ -1849,5 +1849,10 @@ check("domains: the CFO hears about a new find, and nothing is bought", "CFO" in
 check("domains: the same find isn't repeated", ds.message(ds_rows, [], {"a.com"}, 100) == "")
 check("draft: new posts stay on our own site", '"channels: []"' in (ROOT / "pipeline/draft.py").read_text() and '"channels: []"' in (ROOT / "pipeline/monthly.py").read_text())
 
+# ---------- own site only ----------
+pub_src = (ROOT / "pipeline/publish.py").read_text()
+check("publish: nothing goes to Medium unless a post asks for it", '+ ["medium"]' not in pub_src and 'for ch in post.get("channels", []):' in pub_src)
+check("publish: a post with no channels sends no ready-to-post email", 'if post.get("channels") and not done.get("announced"):' in pub_src)
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

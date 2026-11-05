@@ -172,7 +172,7 @@ def main(paths):
         done = state.setdefault(canonical, {})
         if done.get("devto", {}).get("url"):       # already out before this run: an update, not a new post
             done.setdefault("announced", True)
-        for ch in list(post.get("channels", [])) + ["medium"]:
+        for ch in post.get("channels", []):                # a post with no channels stays on our own site
             prev = done.get(ch, {})
             if prev.get("hash") == digest or (ch == "medium" and prev.get("id")):
                 continue
@@ -189,7 +189,7 @@ def main(paths):
             except Exception as e:
                 report.append(f"- {ch}: FAILED {safe_text(str(e))[:300]}"); failed = True
         slug = slug_of(path, post.metadata)
-        if not done.get("announced"):              # the "ready to post" email goes out once per post
+        if post.get("channels") and not done.get("announced"):   # the "ready to post" email goes out once per post
             report += share_block(post, canonical, done, slug)
             titles.append(str(post.get("title") or slug))
             done["announced"] = True
