@@ -4,7 +4,7 @@ description: "One environment variable put two Spring Boot services on a Splunk 
 image: /assets/posts/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code/cover.png
 image_alt: "APM-style dashboard charted from real Splunk series for the lab run: a service map of orders, inventory and an inferred Postgres node, with 3 services, 4 spans and 19 metric names, plus request rate, latency and JVM memory graphs."
 tags: ["opentelemetry", "java", "kubernetes", "splunk"]
-channels: ["devto", "hashnode"]
+channels: []
 lab: labs/opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code
 linkedin: "Adding tracing to a Java service usually starts with a code change.\nMine took one environment variable. Same jar, same image.\n\nI attached the OpenTelemetry Java agent to two Spring Boot services and watched what Splunk APM drew.\n\n→ The JVM reads JAVA_TOOL_OPTIONS when it starts\n→ That one variable attached the agent\n→ Splunk APM built the service map, including Postgres\n\nWhat appeared:\n3 services on the map\n4 spans in one order request\n19 metric names from the JVM and connection pool\n\np95 stayed about level: 17.91 ms before, 18.48 ms after.\n\nSo a platform team can show a service team its traces on day one, before anyone writes a span. The post also covers the memory and startup numbers to plan for.\n\nI built and tested this in a throwaway AWS account, and the post has every step:\n{LINKS}\n\nWhat would you show a Java team first?\n\n#OpenTelemetry #Java #Kubernetes #Observability"
 replies: []
