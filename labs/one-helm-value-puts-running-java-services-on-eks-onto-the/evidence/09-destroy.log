@@ -1,0 +1,201 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 148s
+
+[... earlier output cut ...]
+-igw"
+        } -> null
+      - tags_all = {
+          - "Name"     = "one-helm-value-puts-runn-202877-igw"
+          - "hero-lab" = "one-helm-value-puts-runn-202877"
+        } -> null
+      - vpc_id   = "vpc-0005e3124da3d1ca9" -> null
+    }
+
+  # aws_route_table.public will be destroyed
+  - resource "aws_route_table" "public" {
+      - arn              = "arn:aws:ec2:eu-central-1:<account-id>:route-table/rtb-00f7808d6c7ff9703" -> null
+      - id               = "rtb-00f7808d6c7ff9703" -> null
+      - owner_id         = "<account-id>" -> null
+      - propagating_vgws = [] -> null
+      - route            = [
+          - {
+              - cidr_block                 = "0.0.0.0/0"
+              - gateway_id                 = "igw-049987d2c2438e43c"
+                # (11 unchanged attributes hidden)
+            },
+        ] -> null
+      - tags             = {
+          - "Name" = "one-helm-value-puts-runn-202877-public"
+        } -> null
+      - tags_all         = {
+          - "Name"     = "one-helm-value-puts-runn-202877-public"
+          - "hero-lab" = "one-helm-value-puts-runn-202877"
+        } -> null
+      - vpc_id           = "vpc-0005e3124da3d1ca9" -> null
+    }
+
+  # aws_route_table_association.public[0] will be destroyed
+  - resource "aws_route_table_association" "public" {
+      - id             = "rtbassoc-04ee13a033c157eff" -> null
+      - route_table_id = "rtb-00f7808d6c7ff9703" -> null
+      - subnet_id      = "subnet-0f50d1d9693142a07" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_route_table_association.public[1] will be destroyed
+  - resource "aws_route_table_association" "public" {
+      - id             = "rtbassoc-06cbdd7261ee23fa5" -> null
+      - route_table_id = "rtb-00f7808d6c7ff9703" -> null
+      - subnet_id      = "subnet-0aa47bae586736e6c" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_subnet.public[0] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0f50d1d9693142a07" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1a" -> null
+      - availability_zone_id                           = "euc1-az2" -> null
+      - cidr_block                                     = "10.0.0.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0f50d1d9693142a07" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "one-helm-value-puts-runn-202877-public-0"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "one-helm-value-puts-runn-202877-public-0"
+          - "hero-lab" = "one-helm-value-puts-runn-202877"
+        } -> null
+      - vpc_id                                         = "vpc-0005e3124da3d1ca9" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_subnet.public[1] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0aa47bae586736e6c" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1b" -> null
+      - availability_zone_id                           = "euc1-az3" -> null
+      - cidr_block                                     = "10.0.1.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0aa47bae586736e6c" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "one-helm-value-puts-runn-202877-public-1"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "one-helm-value-puts-runn-202877-public-1"
+          - "hero-lab" = "one-helm-value-puts-runn-202877"
+        } -> null
+      - vpc_id                                         = "vpc-0005e3124da3d1ca9" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_vpc.main will be destroyed
+  - resource "aws_vpc" "main" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-0005e3124da3d1ca9" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.0.0.0/16" -> null
+      - default_network_acl_id               = "acl-0d60135200b88c3d5" -> null
+      - default_route_table_id               = "rtb-08e2290d40c42cc5b" -> null
+      - default_security_group_id            = "sg-0e2a8e48c81f95794" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-0005e3124da3d1ca9" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-08e2290d40c42cc5b" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "one-helm-value-puts-runn-202877-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "one-helm-value-puts-runn-202877-vpc"
+          - "hero-lab" = "one-helm-value-puts-runn-202877"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 19 to destroy.
+
+Changes to Outputs:
+  - cluster_name      = "one-helm-value-puts-runn-202877" -> null
+  - node_count        = 3 -> null
+  - node_instance_ids = "i-053bba257d7f1a033 i-0d942f01ddc0450c3 i-0a74681e2efb4abb7" -> null
+aws_route_table_association.public[0]: Destroying... [id=rtbassoc-04ee13a033c157eff]
+aws_route_table_association.public[1]: Destroying... [id=rtbassoc-06cbdd7261ee23fa5]
+aws_instance.node[2]: Destroying... [id=i-0a74681e2efb4abb7]
+aws_instance.node[0]: Destroying... [id=i-053bba257d7f1a033]
+aws_instance.node[1]: Destroying... [id=i-0d942f01ddc0450c3]
+aws_route_table_association.public[1]: Destruction complete after 1s
+aws_route_table_association.public[0]: Destruction complete after 1s
+aws_route_table.public: Destroying... [id=rtb-00f7808d6c7ff9703]
+aws_route_table.public: Destruction complete after 1s
+aws_internet_gateway.main: Destroying... [id=igw-049987d2c2438e43c]
+aws_instance.node[2]: Still destroying... [id=i-0a74681e2efb4abb7, 00m10s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-053bba257d7f1a033, 00m10s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0d942f01ddc0450c3, 00m10s elapsed]
+aws_internet_gateway.main: Still destroying... [id=igw-049987d2c2438e43c, 00m10s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-053bba257d7f1a033, 00m20s elapsed]
+aws_instance.node[2]: Still destroying... [id=i-0a74681e2efb4abb7, 00m20s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0d942f01ddc0450c3, 00m20s elapsed]
+aws_instance.node[2]: Destruction complete after 22s
+aws_internet_gateway.main: Still destroying... [id=igw-049987d2c2438e43c, 00m20s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-053bba257d7f1a033, 00m30s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0d942f01ddc0450c3, 00m30s elapsed]
+aws_internet_gateway.main: Destruction complete after 29s
+aws_instance.node[0]: Destruction complete after 32s
+aws_instance.node[1]: Still destroying... [id=i-0d942f01ddc0450c3, 00m40s elapsed]
+aws_instance.node[1]: Destruction complete after 42s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destroying... [id=hero-lab-one-helm-value-puts-runn-202877-node-20261105221714124200000001]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destroying... [id=hero-lab-one-helm-value-puts-runn-202877-node-20261105221714311200000004]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destroying... [id=hero-lab-one-helm-value-puts-runn-202877-node-20261105221714263400000003]
+aws_eks_access_entry.node: Destroying... [id=one-helm-value-puts-runn-202877:arn:aws:iam::<account-id>:role/hero-lab-one-helm-value-puts-runn-202877-node]
+aws_iam_instance_profile.node: Destroying... [id=hero-lab-one-helm-value-puts-runn-202877-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destruction complete after 0s
+aws_iam_instance_profile.node: Destruction complete after 0s
+aws_eks_access_entry.node: Destruction complete after 1s
+aws_iam_role.node: Destroying... [id=hero-lab-one-helm-value-puts-runn-202877-node]
+aws_eks_cluster.main: Destroying... [id=one-helm-value-puts-runn-202877]
+aws_iam_role.node: Destruction complete after 0s
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 00m10s elapsed]
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 00m20s elapsed]
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 00m30s elapsed]
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 00m40s elapsed]
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 00m50s elapsed]
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 01m00s elapsed]
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 01m10s elapsed]
+aws_eks_cluster.main: Still destroying... [id=one-helm-value-puts-runn-202877, 01m20s elapsed]
+aws_eks_cluster.main: Destruction complete after 1m29s
+aws_iam_role_policy_attachment.cluster: Destroying... [id=hero-lab-one-helm-value-puts-runn-202877-cluster-20261105221714151500000002]
+aws_subnet.public[1]: Destroying... [id=subnet-0aa47bae586736e6c]
+aws_subnet.public[0]: Destroying... [id=subnet-0f50d1d9693142a07]
+aws_iam_role_policy_attachment.cluster: Destruction complete after 1s
+aws_iam_role.cluster: Destroying... [id=hero-lab-one-helm-value-puts-runn-202877-cluster]
+aws_iam_role.cluster: Destruction complete after 0s
+aws_subnet.public[1]: Destruction complete after 2s
+aws_subnet.public[0]: Destruction complete after 2s
+aws_vpc.main: Destroying... [id=vpc-0005e3124da3d1ca9]
+aws_vpc.main: Destruction complete after 1s
+
+Destroy complete! Resources: 19 destroyed.
+
