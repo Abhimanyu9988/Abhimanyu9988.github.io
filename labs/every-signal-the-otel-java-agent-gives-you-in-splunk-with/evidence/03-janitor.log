@@ -1,0 +1,8 @@
+$ aws ec2 delete-security-group --group-id sg-000a11c77ca72f644
+# exit 0 after 1s
+
+{
+    "Return": true,
+    "GroupId": "sg-000a11c77ca72f644"
+}
+
