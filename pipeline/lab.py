@@ -75,7 +75,7 @@ directory, which is the current directory.
 Every HERO_MEASURE value must be a number. Print a word, such as an HPA target type, in the raw output and record a count or 1 or 0 as its measure.
 Plan the clock before you write. reproduce.sh and fix.sh must each finish within 14 minutes, waits included. If the topic
 needs more, shorten each wait or use fewer steps, and say so in README.md. Never leave a value out to fit the time.
-Every loop has a fixed maximum, and every curl sets --max-time.
+Every loop has a fixed maximum, and every curl sets --max-time. Every download retries, because one 504 would otherwise fail a paid run.
 A pod with nodeName skips the scheduler, so the node refuses it when CPU requests don't fit. Keep such a pod's CPU request at 100m or less.
 Splunk's series API lags by minutes and adds new series in batches, so a count taken right after a step can read zero. Wait once
 after the last step, then count everything from creation times. Never decide HERO_RESULT from a count that lag can change.
@@ -442,24 +442,28 @@ def apply(lab_id):
     return run("apply", ["terraform", "apply", "-input=false", "-no-color", "-auto-approve", "tfplan"],
                40 * 60, env=tf_env(lab_id), sandbox=True)
 
-def free_interfaces():
-    """A network interface left in a subnet stops terraform destroy. An available one is attached to nothing, and this account runs one lab at a time."""
+def free_network():
+    """A network interface or security group left in a VPC stops terraform destroy. An available interface is attached to nothing, a group
+    still in use refuses to go, and this account runs one lab at a time, so neither call can touch a working lab."""
     found = _aws_json("ec2", "describe-network-interfaces", "--filters", "Name=status,Values=available") or {}
     ids = [n["NetworkInterfaceId"] for n in found.get("NetworkInterfaces", [])]
     freed = [i for i in ids if _aws("ec2", "delete-network-interface", "--network-interface-id", i)]
+    groups = (_aws_json("ec2", "describe-security-groups") or {}).get("SecurityGroups", [])
+    extra = [g["GroupId"] for g in groups if g.get("GroupName") != "default"]
+    freed += [g for g in extra if _aws("ec2", "delete-security-group", "--group-id", g)]
     if freed:
-        print(f"deleted {len(freed)} leftover network interface(s)")
+        print(f"deleted {len(freed)} leftover network item(s)")
     return freed
 
-def destroy(lab_id, cleanup_dir, tf_dir):
+def destroy(lab_id, cleanup_dir, tf_dir, tries=2):
     """cleanup.sh from cleanup_dir (the newest scripts), then terraform destroy from tf_dir (the last good config)."""
     env = tf_env(lab_id)
     if (cleanup_dir / "cleanup.sh").exists():
         run("cleanup", ["bash", "cleanup.sh"], 10 * 60, cwd=cleanup_dir, env=env, sandbox=True)
     if tf_init(lab_id, tf_dir)[0]:
         return False
-    for _ in range(2):
-        free_interfaces()
+    for _ in range(tries):
+        free_network()
         code, _ = run("destroy", ["terraform", "destroy", "-input=false", "-no-color", "-auto-approve"],
                       35 * 60, cwd=tf_dir, env=env, sandbox=True)
         if code == 0:
@@ -491,7 +495,7 @@ def sweep():
     for k in keys[:MAX_SWEEP]:
         lab_id = k.split("/")[1]
         where = pathlib.Path("work/sweep") / lab_id
-        ok = fetch_code(lab_id, where) and destroy(lab_id, where, where)
+        ok = fetch_code(lab_id, where) and destroy(lab_id, where, where, tries=1)     # a stuck old lab must not use up the new lab's time
         swept.append({"lab": lab_id, "destroyed": bool(ok)})
         print(f"sweep: {lab_id} destroyed={ok}")
     if len(keys) > MAX_SWEEP:

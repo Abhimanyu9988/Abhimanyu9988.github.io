@@ -249,3 +249,7 @@ Two labs failed on things a free run could have caught. `lab-check.yml` now buil
 ## 2026-11-05: Two checks from the Java agent lab
 
 A pod pinned with `nodeName` asked for 500m of CPU, and the rollout never finished once the Collector was on the node. Pre-flight now refuses that. A leftover network interface also held a subnet through three destroy attempts, so `destroy` now deletes available interfaces first.
+
+## 2026-11-05: A stuck old lab can't use up a new lab's time
+
+The sweep spent 40 minutes on a leftover VPC, and one 504 on a download then failed a paid lab. `destroy` now also clears leftover security groups, the sweep tries a lab once, and lab rules say every download retries.
