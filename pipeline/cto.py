@@ -21,6 +21,7 @@ import analytics, budget, contract, live_board, roles, slack, sources
 
 TASKS, STATUS, CURSOR = "analytics/tasks.json", "analytics/status.json", "analytics/slack-cursor.json"
 INBOX = "analytics/slack-inbox.md"             # a path name only: read_private and write_private keep it in the private repo
+CHAT, CHAT_MAX_BYTES = "slack-chat.jsonl", 800_000
 ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, so its analytics branch is too
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
@@ -579,6 +580,22 @@ def save_inbox(force=False):
         rows = "\n\n".join(f"**{datetime.datetime.fromtimestamp(float(ts), datetime.timezone.utc):%Y-%m-%d %H:%M} UTC:** {body}" for ts, body in slack.his_messages())
         write_private(INBOX, f"# What Abhi texted the team\n\n{rows}\n", sha, "inbox: his Slack messages")
 
+def save_chat():
+    """The whole team conversation, in the private repo, so a Claude chat can read it and use it later. Never goes to the public repo.
+    Old lines roll off before the file reaches GitHub's read limit, because a file too big to read would lose everything."""
+    if not admin_on():
+        return 0
+    text, sha = read_private(CHAT)
+    rows = [json.loads(line) for line in text.splitlines() if line.strip()]
+    new = [{"ts": ts, "time": f"{datetime.datetime.fromtimestamp(float(ts), datetime.timezone.utc):%Y-%m-%d %H:%M} UTC", "from": who, "text": body}
+           for ts, who, body in slack.team_messages(rows[-1]["ts"] if rows else "0")]
+    if new:
+        rows += new
+        while len(json.dumps(rows)) > CHAT_MAX_BYTES:
+            rows = rows[50:]
+        write_private(CHAT, "".join(json.dumps(r) + "\n" for r in rows), sha, "chat: Slack messages")
+    return len(new)
+
 def poll():
     """Slack messages since the last run. The cursor moves first, so one bad message cannot repeat every ten minutes."""
     if not slack.enabled():
@@ -594,6 +611,7 @@ def poll():
         analytics.write_file(CURSOR, json.dumps({"ts": newest}), sha, "slack: cursor")
     try:
         save_inbox(bool(mine))
+        save_chat()
     except Exception as e:
         print(f"::warning title=slack::inbox not saved: {' '.join(str(e).split())[:200]}")
     for m in mine[-MAX_REPLIES:]:

@@ -79,6 +79,13 @@ def his_messages(limit=50):
     mine = [m for m in rows if m.get("user") == me and not m.get("bot_id") and not m.get("subtype") and m.get("text")][:limit]
     return [(m["ts"], m["text"]) for m in reversed(mine)]
 
+def team_messages(after="0"):
+    """(time, who, text) for Abhi and the team since `after`, oldest first. Anyone else in the workspace stays out."""
+    me = owner()
+    rows = api("conversations.history", channel=channel(), oldest=after, limit=200)["messages"]
+    kept = [m for m in rows if (m.get("user") == me or m.get("bot_id")) and m.get("text")]
+    return [(m["ts"], m.get("username") or "Abhi", m["text"]) for m in reversed(kept)]
+
 def history():
     """Abhi and the team only, so anyone else in the workspace stays out of the model's context."""
     me, rows = owner(), api("conversations.history", channel=channel(), limit=20)["messages"]
