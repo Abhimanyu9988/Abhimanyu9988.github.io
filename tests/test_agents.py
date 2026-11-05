@@ -1825,5 +1825,13 @@ ms_files[cto.NOTES] = "Lead with the gain"
 check("team: everyone sees what Abhi and Claude chat decided", "Lead with the gain" in cto.team_memory("cmo"))
 cto.read_private, cto.write_private = ms_real
 
+# ---------- real series for charts ----------
+import splunk_series
+ss = "event: metadata\ndata: {\"tsId\": \"A\", \"properties\": {\"sf_service\": \"orders\"}}\n\nevent: data\ndata: {\"logicalTimestampMs\": 10, \"data\": [{\"tsId\": \"A\", \"value\": 5}, {\"tsId\": \"A\", \"value\": null}]}\n\nevent: control-message\ndata: {\"event\": \"END_OF_CHANNEL\"}\n"
+check("series: real points come out named by service, and an empty value is dropped", splunk_series.parse(ss) == {"orders": [[10, 5]]})
+ad_y = __import__("yaml").safe_load((ROOT / ".github/workflows/apm-data.yml").read_text())
+ad_text = json.dumps(ad_y["jobs"]["series"])
+check("series: it holds only the read token, and runs main's code", re.findall(r"secrets\.(\w+)", ad_text) == ["SPLUNK_API_TOKEN"] and '"ref": "main"' in ad_text and "${{" not in ad_y["jobs"]["series"]["steps"][-1]["run"])
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
