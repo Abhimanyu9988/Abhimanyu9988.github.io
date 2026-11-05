@@ -1,0 +1,291 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "editorial: The opening uses a measured cost as its hook and picks the good one: p95 'stayed about level'. Startup rising from about 11 s to about 29 s goes unmentioned. Costs belong in the body, and choosing only the good one weakens trust. Fix: Cut the p95 clause from the first paragraph. Open on the gain: a 3-node map with Postgres inferred, 4 route-templated spans per request, and 19 metric names, all from one variable. Keep the full cost table in 'What to plan for before you roll it out'.",
+  "technical: Versions and the agent distribution are missing, so the result can't be reproduced or credited. The lab uses upstream opentelemetry-javaagent v2.33.1 and Collector chart 0.163.1, but the post links the Splunk distribution's metrics page as if it applied. Fix: Next to the env-var block, add: 'Upstream OpenTelemetry Java agent 2.33.1, Splunk OTel Collector Helm chart 0.163.1, Spring Boot 3.5.6, Temurin 21.' Add one sentence on how the Splunk distribution relates to the linked metrics page.",
+  "technical: No HTTP metrics were found, and the brief's takeaway promised them. The metric lookup probably lost them: it pulls one broad query with limit=1000 when the cluster has 2,098 series, and the http* query filters on k8s.cluster.name, which agent metrics may not carry. Fix: Query sf_metric:http.server.request.duration* AND deployment.environment:<lab> directly, rerun, and report the real count. Also mention that Splunk APM already gives request rate, errors and latency from the spans.",
+  "technical: The startup figure the reader will use for probes comes from 100m CPU requests on a burstable t3.large, with three samples per side, the before run first, and no CPU credit data. The +18 s may mostly reflect CPU starvation, not the agent. Fix: Rerun the startup comparison on a non-burstable node (for example m5.large) or with t3 unlimited, with about 1 CPU requested. Alternate before and after runs and capture CPUCreditBalance. Report both figures, so the reader gets a range they can plan for.",
+  "outside claim without a known source: The JVM picks up JAVA_TOOL_OPTIONS when it starts",
+  "outside claim without a known source: Maintainers have a startup PR in review that reports a 5.19% cut on their benchmark"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "services_on_map",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:57"
+    },
+    {
+     "id": "agent_metric_names",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:80"
+    },
+    {
+     "id": "spans_per_request",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:88"
+    },
+    {
+     "id": "startup_added_seconds",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:92"
+    },
+    {
+     "id": "memory_added_mib",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:96"
+    },
+    {
+     "id": "p95_added_ms",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:102"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The before-check could genuinely fail: cluster data was reaching Splunk and agent metric names were 0. The same jar was confirmed by SHA-256, and the trace ID was chosen by the load generator so one request could be found again.",
+     "The post never names the agent version (v2.33.1) or the Collector chart (0.163.1). It doesn't say this is the upstream agent rather than the Splunk distribution, yet it links the Splunk distribution's metrics page.",
+     "Startup (+18 s) and memory (+102 to 113 MiB) come from one run per side on burstable t3.large nodes with 100m CPU requests, and the CPU credit state wasn't recorded. The startup gap can't be credited to the agent alone.",
+     "No HTTP metrics were found, probably because the lookup was cut off (limit=1000 on a broad query when the cluster has 2,098 series). The brief promised HTTP metrics."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "Clear reader and decision, a useful service map with Postgres inferred, and route-templated spans that help a platform engineer pitch the agent to Java teams.",
+     "The opening quotes the good cost (p95 about level) and leaves out that startup went from about 11 s to about 29 s. Costs belong in the body, so this framing is uneven.",
+     "Some lines read as generated: 'That's the day-one result I want to hand a Java team.', 'Here's what appeared, what to plan for, and how to build it yourself.'",
+     "Limits are stated honestly (logs off, HTTP metrics not counted, one load shape)."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "Demand evidence is weak: three GitHub threads (about 6 participants, 11 replies, one PR still in review) and no search data, so 3 is the ceiling.",
+     "The title 'One Env Var, Zero Code' uses words engineers search with, and the topic matches a real rollout decision."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "editorial",
+    "problem": "The opening uses a measured cost as its hook and picks the good one: p95 'stayed about level'. Startup rising from about 11 s to about 29 s goes unmentioned. Costs belong in the body, and choosing only the good one weakens trust.",
+    "evidence": "\"and p95 stayed about level: 17.91 ms before, 18.48 ms after.\"",
+    "fix": "Cut the p95 clause from the first paragraph. Open on the gain: a 3-node map with Postgres inferred, 4 route-templated spans per request, and 19 metric names, all from one variable. Keep the full cost table in 'What to plan for before you roll it out'."
+   },
+   {
+    "dimension": "technical",
+    "problem": "Versions and the agent distribution are missing, so the result can't be reproduced or credited. The lab uses upstream opentelemetry-javaagent v2.33.1 and Collector chart 0.163.1, but the post links the Splunk distribution's metrics page as if it applied.",
+    "evidence": "k8s/00-build.yaml downloads releases/download/v2.33.1/opentelemetry-javaagent.jar; reproduce.sh --version 0.163.1; the post never names either version",
+    "fix": "Next to the env-var block, add: 'Upstream OpenTelemetry Java agent 2.33.1, Splunk OTel Collector Helm chart 0.163.1, Spring Boot 3.5.6, Temurin 21.' Add one sentence on how the Splunk distribution relates to the linked metrics page."
+   },
+   {
+    "dimension": "technical",
+    "problem": "No HTTP metrics were found, and the brief's takeaway promised them. The metric lookup probably lost them: it pulls one broad query with limit=1000 when the cluster has 2,098 series, and the http* query filters on k8s.cluster.name, which agent metrics may not carry.",
+    "evidence": "fix.sh agent_names(): series \"deployment.environment:${LAB_NAME}\" with limit=1000; post: \"No http.* names appeared in my lookup during the 565 seconds it ran.\"",
+    "fix": "Query sf_metric:http.server.request.duration* AND deployment.environment:<lab> directly, rerun, and report the real count. Also mention that Splunk APM already gives request rate, errors and latency from the spans."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The startup figure the reader will use for probes comes from 100m CPU requests on a burstable t3.large, with three samples per side, the before run first, and no CPU credit data. The +18 s may mostly reflect CPU starvation, not the agent.",
+    "evidence": "k8s/10-app.yaml requests: { cpu: 100m }; main.tf instance_type = \"t3.large\"; table: 11.107 s vs 29.095 s",
+    "fix": "Rerun the startup comparison on a non-burstable node (for example m5.large) or with t3 unlimited, with about 1 CPU requested. Alternate before and after runs and capture CPUCreditBalance. Report both figures, so the reader gets a range they can plan for."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The JVM picks up JAVA_TOOL_OPTIONS when it starts",
+    "class": "sourced",
+    "source_ref": "https://docs.oracle.com/javase/8/docs/technotes/guides/troubleshoot/envvars002.html"
+   },
+   {
+    "text": "Maintainers have a startup PR in review that reports a 5.19% cut on their benchmark",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/pull/21033"
+   },
+   {
+    "text": "The OpenTelemetry performance guide covers tuning",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/java/agent/performance/"
+   },
+   {
+    "text": "The startup side keeps improving",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The agent does its setup when the JVM starts",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "An 11-second baseline for a two-endpoint app shows the node was deliberately tight",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The lookup may have missed the HTTP metrics",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Size limits from resident memory, not from -Xmx alone",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "I work a lot with Java instrumentation inside Kubernetes clusters",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer rolling out observability to Java teams on Kubernetes",
+  "decision": "Whether to turn on the OTel Java agent everywhere first, before asking any team for code changes",
+  "question": "What exactly do I get in Splunk Observability Cloud from the OTel Java agent alone, and what does it cost my service?",
+  "takeaway": "You can show a team its service map, traces and JVM and HTTP metrics from one environment variable, and quote measured startup, memory and p95 numbers when they ask what it costs.",
+  "adds": "Existing pages list what the agent can emit and how to tune overhead, and one issue reports older startup numbers. This post shows what one small Spring Boot system really produced in Splunk, and measures startup, memory and p95 on the same jar, image and Collector with the current agent.",
+  "open_question": "With one environment variable and no code change, how many services, metric names and spans per request does the OTel Java agent put in Splunk Observability Cloud, and how much startup time, memory and p95 latency does it add to a Spring Boot service?",
+  "tradeoffs": [
+   "Agent on every service first, or hand-written instrumentation later",
+   "Default settings, or tuning instrumentation and sampling for lower overhead",
+   "Traces and metrics reach Observability Cloud here; application logs follow a separate route"
+  ],
+  "existing_pages": [
+   {
+    "title": "Metrics and attributes collected by the Splunk OTel Java agent",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-a-java-application/metrics-and-attributes",
+    "covers": "The metric groups, dimensions and span attributes the Splunk distribution adds. It gives no per-application count or cost."
+   },
+   {
+    "title": "Performance | OpenTelemetry",
+    "url": "https://opentelemetry.io/docs/zero-code/java/agent/performance/",
+    "covers": "How to reduce and measure agent overhead, as guidance."
+   },
+   {
+    "title": "Startup performance is downgraded significantly when add opentelemetry agent in spring project",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/8629",
+    "covers": "One report of startup averages with and without older agent versions. It has no Kubernetes or memory figures, and shows no Splunk result."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "Three real threads in the OTel Java instrumentation repo. An issue reports Spring startup rising from 61.4s to 84.9s on average with the agent, with about six participants. A 2024 discussion with 11 replies asks about high CPU during startup, and a maintainer advises estimating overhead and reserving resources. PR 21033, ready for review since 29 Oct 2026, reports a 5.19% cut in agent-added startup. No search volume data was available."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "reasons": [
+   "Abhi asked for this topic",
+   "Serves the OpenTelemetry auto-instrumentation and Splunk goals",
+   "Goes beyond the 21 October post, which covered one annotation and Collector logs"
+  ],
+  "measurements": [
+   {
+    "id": "services_on_map",
+    "what": "services Splunk APM shows for the lab's environment",
+    "kind": "count",
+    "unit": "services",
+    "accept": {
+     "op": "ge",
+     "value": 2
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "agent_metric_names",
+    "what": "distinct JVM, HTTP and database metric names from the agent in Splunk",
+    "kind": "count",
+    "unit": "metrics",
+    "accept": {
+     "op": "ge",
+     "value": 5
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "spans_per_request",
+    "what": "spans in one traced order request",
+    "kind": "count",
+    "unit": "spans",
+    "accept": {
+     "op": "ge",
+     "value": 3
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "startup_added_seconds",
+    "what": "median JVM startup time with the agent minus without it, per service",
+    "kind": "overhead",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "memory_added_mib",
+    "what": "resident memory with the agent minus without it, per service, after the same load",
+    "kind": "overhead",
+    "unit": "MiB",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "p95_added_ms",
+    "what": "p95 latency of the order request with the agent minus without it, at the same rate",
+    "kind": "overhead",
+    "unit": "ms",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.7373
+}
