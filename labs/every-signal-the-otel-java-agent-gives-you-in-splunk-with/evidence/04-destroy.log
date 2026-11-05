@@ -1,0 +1,51 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 9s
+
+data.aws_ssm_parameter.ami: Reading...
+data.aws_availability_zones.available: Reading...
+aws_vpc.main: Refreshing state... [id=vpc-026accdb1c8a34068]
+data.aws_ssm_parameter.ami: Read complete after 0s [id=/aws/service/eks/optimized-ami/1.34/amazon-linux-2023/x86_64/standard/recommended/image_id]
+data.aws_availability_zones.available: Read complete after 0s [id=eu-central-1]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  - destroy
+
+Terraform will perform the following actions:
+
+  # aws_vpc.main will be destroyed
+  - resource "aws_vpc" "main" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-026accdb1c8a34068" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.0.0.0/16" -> null
+      - default_network_acl_id               = "acl-0ab86da5213521cd4" -> null
+      - default_route_table_id               = "rtb-068d62442908ecf38" -> null
+      - default_security_group_id            = "sg-0d359b038a32a0b80" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-026accdb1c8a34068" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-068d62442908ecf38" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "every-signal-the-otel-ja-915999-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "every-signal-the-otel-ja-915999-vpc"
+          - "hero-lab" = "every-signal-the-otel-ja-915999"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 1 to destroy.
+
+Changes to Outputs:
+  - cluster_name = "every-signal-the-otel-ja-915999" -> null
+aws_vpc.main: Destroying... [id=vpc-026accdb1c8a34068]
+aws_vpc.main: Destruction complete after 1s
+
+Destroy complete! Resources: 1 destroyed.
+
