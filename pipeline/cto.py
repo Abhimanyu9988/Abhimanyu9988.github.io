@@ -24,6 +24,7 @@ INBOX = "analytics/slack-inbox.md"             # a path name only: read_private 
 CHAT, CHAT_MAX_BYTES = "slack-chat.jsonl", 800_000
 PREFS, LEARN_AFTER, RECENT_HIS = "abhi-preferences.md", 3, 30
 ACCESS, NOTES, RECENT_TEAM = "team-access.json", "claude-chat-notes.md", 40
+SITE, SITE_REPO, SITE_ANALYTICS = "https://showmerit.com", "Abhimanyu9988/showmerit", "https://abhimanyu9988.goatcounter.com"
 ADMIN_REPO = "Abhimanyu9988/team-admin"        # private. This repo is public, so its analytics branch is too
 WORKFLOW_OWNER = {"radar": "topic_scout", "replicate": "lab_engineer", "analytics": "analyst", "publish": "publisher"}
 URL = re.compile(r"https?://[^\s)\]>]+")
@@ -195,6 +196,14 @@ def requeue_lost(plan, today):
         if t.get("state") == "started" and t.get("started_on", today) < today and not (gh("GET", f"/repos/{HOME_REPO}/issues/{t['issue']}") or {}).get("comments", 1):
             t["state"] = "queued"
 
+def live_articles():
+    """What is really on the site, from its own repo. If it can't be read, this is left out rather than guessed."""
+    try:
+        return [r["name"].removesuffix(".md") for r in gh("GET", f"/repos/{SITE_REPO}/contents/content/abhimanyu/articles") or []]
+    except Exception as e:
+        print(f"::warning title=cto::site articles not read: {' '.join(str(e).split())[:200]}")
+        return []
+
 def next_lab(today=None):
     """One lab a day from the plan, until the week's target is met. A spare only runs if a lab failed."""
     today = today or datetime.date.today().isoformat()
@@ -242,7 +251,8 @@ def progress():
     picks = gh("GET", f"/repos/{HOME_REPO}/issues?labels=radar&state=open&sort=created&direction=desc&per_page=8") or []
     total, jobs = budget.spent()
     pipeline = [p for p in pulls if not p["head"]["ref"].startswith("draft/")]
-    return {"tomorrow": next_run(), "recent_labs_newest_first": recent_labs(), "board_url": live_board.PAGE,
+    return {"tomorrow": next_run(), "site": SITE, "site_analytics_url": SITE_ANALYTICS, "live_on_site": live_articles(),
+            "recent_labs_newest_first": recent_labs(), "board_url": live_board.PAGE,
             "open_article_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in drafts if p["state"] == "open"],
             "open_pipeline_prs": [{"title": p["title"], "url": p.get("html_url", "")} for p in pipeline if p["state"] == "open"],
             "recently_shipped": [p["title"] for p in pipeline if (p.get("merged_at") or "") >= since][:12],
