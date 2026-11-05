@@ -1,7 +1,21 @@
 {
- "updated": "2026-11-05T22:23:01Z",
+ "updated": "2026-11-05T22:52:46Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/170",
+    "kind": "Approve or reject",
+    "title": "Follow SQS Messages Through Splunk APM With the OTel Java Agent, Zero Code",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/170",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/169",
+    "kind": "Approve or reject",
+    "title": "Follow SQS Messages Through Splunk APM With the OTel Java Agent, Zero Code",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/169",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
     "kind": "Approve or reject",
@@ -14,6 +28,20 @@
     "kind": "Approve or reject",
     "title": "Default ECS FireLens Dropped 76.59% in My Fargate Outage Test",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/170",
+    "kind": "Review",
+    "title": "Draft: Follow SQS Messages Through Splunk APM With the OTel Java Agent, Zero Code",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/170",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/169",
+    "kind": "Review",
+    "title": "Draft: Follow SQS Messages Through Splunk APM With the OTel Java Agent, Zero Code",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/169",
     "where": "Abhimanyu9988.github.io"
    },
    {
@@ -84,10 +112,10 @@
   ],
   "working": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42119202877",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42124958969",
     "kind": "Lab Engineer is testing an article",
     "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42119202877",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42124958969",
     "where": "Abhimanyu9988.github.io"
    },
    {
