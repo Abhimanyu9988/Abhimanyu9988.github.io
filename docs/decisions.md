@@ -277,3 +277,7 @@ Every member's messages also go to `team-<name>.jsonl`. Everyone reads everythin
 ## 2026-11-05: New posts stay on our own site, and a Domain Scout joins Finance
 
 Abhi is moving away from dev.to and Hashnode, so new posts set no channels. The Domain Scout checks candidate names daily through public RDAP records, and only Abhi buys.
+
+## 2026-11-05: Posts stay on our own site only
+
+Abhi wants nothing on Medium or anywhere else for now. A post with no channels creates no draft elsewhere and sends no ready-to-post email.
