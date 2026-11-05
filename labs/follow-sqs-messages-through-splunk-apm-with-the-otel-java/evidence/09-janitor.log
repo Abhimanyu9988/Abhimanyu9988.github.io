@@ -1,0 +1,6 @@
+$ aws ec2 delete-security-group --group-id sg-0f348ae8d24b9bda3
+# exit 254 after 1s
+
+
+aws: [ERROR]: An error occurred (DependencyViolation) when calling the DeleteSecurityGroup operation: resource sg-0f348ae8d24b9bda3 has a dependent object
+
