@@ -121,7 +121,7 @@
   "measurements": {
    "type": "array",
    "minItems": 1,
-   "maxItems": 6,
+   "maxItems": 10,
    "description": "the Evidence Contract, fixed before the lab runs",
    "items": {
     "type": "object",
@@ -149,7 +149,8 @@
        "failure",
        "comparison",
        "limit",
-       "cost"
+       "cost",
+       "rate"
       ],
       "description": "count only proves something exists; the others answer a decision"
      },
