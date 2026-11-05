@@ -1,21 +1,4 @@
 {
- "Editor": [
-  {
-   "problem": "With receive telemetry on, the agent may put the span link to the producer on the `<queue> receive` span, with each process span as its child. The README counts links only on `<queue> process` spans. If the link sits on the receive span, consumer_spans_linked_to_producer[receive_telemetry] reads 0, and the takeaway that each consumer gets a linked trace of its own goes unproven or reads as wrong.",
-   "fix": "In collect, also count receive spans whose link trace ID equals the producer trace ID, and each process span's parent span kind. Report both as consumer_spans_linked_to_producer (by span kind), and print one full receive-plus-process span tree from logging-otlp, so the article can name which span holds the link."
-  },
-  {
-   "problem": "The brief's 'adds' promises the header on a waiting message shown next to the producer span's trace ID. That is the one finding beyond the docs. fix.sh emits trace_header_root_matches, receive_spans and queue_path_on_map, but the contract fixes none of them, so the promised result isn't required before anyone may claim it.",
-   "fix": "Add trace_header_root_matches to the contract (op eq, value 1). Add receive_spans for the default and receive_telemetry runs (op present, min_entities 2), which also backs the claim that the setting took effect. Add queue_path_on_map (op present)."
-  },
-  {
-   "problem": "The contract requires splunk_traces_both_services of at least 10, 'n of 10'. The script samples every 40th unique shared trace, so it checks 10 only if about 400 messages joined. If fewer join, it checks fewer than 10 and still emits fixed, because it only needs both >= checked.",
-   "fix": "Always sample exactly 10 trace IDs spread across the run (shuf -n 10, or an even stride over $shared). Fail if fewer than 10 exist, and make the fixed gate both -eq 10, matching the contract."
-  },
-  {
-   "problem": "The open question asks what percent share one trace, which is unknown today. Yet one_trace_percent must reach 95% or the run is marked not_fixed, and the brief also keeps a fallback title for results under 100%. The threshold presumes the answer.",
-   "fix": "Make one_trace_percent op present and drop the 95% check from emit fixed. Let the measured percent pick the title under the brief's existing rule: under 100%, use 'Follow SQS Messages Across Services in Splunk APM With the OTel Java Agent'."
-  }
- ],
+ "Editor": [],
  "Marketing": []
 }
