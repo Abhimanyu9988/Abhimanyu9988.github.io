@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-05T21:13:09Z",
+ "updated": "2026-11-05T22:04:53Z",
  "columns": {
   "needs": [
    {
@@ -15,13 +15,6 @@
     "title": "Default ECS FireLens Dropped 76.59% in My Fargate Outage Test",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52792",
-    "kind": "Review",
-    "title": "[chore] Update core dependencies",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52792",
-    "where": "opentelemetry-collector-contrib"
    },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
@@ -91,6 +84,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42116738351",
+    "kind": "Lab Engineer is testing an article",
+    "title": "Running now",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42116738351",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Your PR",
     "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
@@ -156,13 +156,6 @@
     "title": "[chore] receiver/flinkmetrics: update tested Flink versions and correct README configuration",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
     "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/83",
-    "kind": "Published",
-    "title": "October: Kubernetes memory semantics and Collector edge fixes",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/83",
-    "where": "Abhimanyu9988.github.io"
    },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52500",
