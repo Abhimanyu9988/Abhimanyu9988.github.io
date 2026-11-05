@@ -1,0 +1,337 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "marketing score 3 is below 4",
+  "technical: The repository path a reader is told to clone doesn't match where this run's lab code lives, so Step 1 may fail or check out different code. Fix: Make the clone command, the cd path and the footer 'lab code and raw output' link all point to the location of the code that produced these logs, or publish the lab at the showmerit path before release and check that the path resolves.",
+  "technical: The comparison table says the default run had 0 process spans linked to the producer, but the default-run output in the post doesn't include that measurement. A reader can't check the cell that makes the two shapes look distinct. Fix: Add the 'default run, consumer spans linked to the producer: N' and 'default_receive_span links to the producer: N' lines from 05-fix.log to the proof block, so every table cell has a logged value next to it."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "messages_sent",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:41"
+    },
+    {
+     "id": "one_trace_percent",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:37"
+    },
+    {
+     "id": "one_trace_messages",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:36"
+    },
+    {
+     "id": "trace_header_on_message",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:48"
+    },
+    {
+     "id": "consumer_spans_linked_to_producer",
+     "status": "ok",
+     "values": 4,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:38"
+    },
+    {
+     "id": "splunk_traces_both_services",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:91"
+    },
+    {
+     "id": "trace_header_root_matches",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:50"
+    },
+    {
+     "id": "receive_spans",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:40"
+    },
+    {
+     "id": "queue_path_on_map",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:85"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 4,
+    "reasons": [
+     "Every headline number traces to a corroborated contract measurement: 400 of 400 messages share a trace (05-fix.log:37), the header root matches the producer span (05-fix.log:50), Splunk shows 10 of 10 sampled traces, and receive spans rise from 0 to 76.",
+     "The comparison is controlled. The jar hash, the agent version (2.33.1) and the effective settings are checked on each pod. Only one setting changes between the default and receive telemetry runs, and receive spans act as the positive control.",
+     "The default-run table cell 'Linked to the producer: 0' has no line behind it in the output the post shows, although fix.sh prints that value.",
+     "The clone path in Step 1 (showmerit/labs/follow-sqs-messages-through-splunk-apm-with-the-otel-java) differs from this run's LAB_URL (Abhimanyu9988.github.io/labs/follow-sqs-messages-through-splunk-apm-w), so the post can't be reproduced as written."
+    ]
+   },
+   "editorial": {
+    "score": 4,
+    "reasons": [
+     "The reader and their decision are clear: roll out the agent alone before asking teams for code. The opening delivers that answer with a count.",
+     "The trade-offs are honest. The post weighs one trace per message against a linked trace per consumer, covers the propagator alternative, and lists what wasn't tested (batch listeners, FIFO, SendMessageBatch, overhead).",
+     "The headline result, 400 of 400 in one trace, confirms what the maintainer already says in discussion 14193. The findings that go beyond the docs get less space: the link sits on the process span, not the receive span, and one receive span can hold two messages.",
+     "The output blocks look like a real session, with raw IDs, kind=5 and odd label names. In places the prose rhythm is even and reads as templated, for example 'Below: how the trace crosses the queue...'."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "The only demand evidence is one GitHub discussion, opened in July 2025, with 5 comments and 15 replies and one new question in June 2026. The brief rates it weak, and no search-volume data exists, so the score is capped at 3.",
+     "The title credits Splunk APM and the OTel Java agent with the result and promises 'zero code', which the lab supports. That is the right framing for platform engineers on Spring Boot with SQS.",
+     "The headline doesn't use the words the people in that thread use, such as 'producer and consumer in the same trace'. That limits how many searchers it will match."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The repository path a reader is told to clone doesn't match where this run's lab code lives, so Step 1 may fail or check out different code.",
+    "evidence": "Step 1: 'cd showmerit/labs/follow-sqs-messages-through-splunk-apm-with-the-otel-java'. LAB_URL: https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/follow-sqs-messages-through-splunk-apm-w",
+    "fix": "Make the clone command, the cd path and the footer 'lab code and raw output' link all point to the location of the code that produced these logs, or publish the lab at the showmerit path before release and check that the path resolves."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The comparison table says the default run had 0 process spans linked to the producer, but the default-run output in the post doesn't include that measurement. A reader can't check the cell that makes the two shapes look distinct.",
+    "evidence": "Table row 'Defaults | 400 | 400 | 0 | 0'. The proof block omits the 'default run, consumer spans linked to the producer:' line that fix.sh prints.",
+    "fix": "Add the 'default run, consumer spans linked to the producer: N' and 'default_receive_span links to the producer: N' lines from 05-fix.log to the proof block, so every table cell has a logged value next to it."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The Java instrumentation uses the AWSTraceHeader system attribute by default, and producer and consumer should share a trace by default",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/14193"
+   },
+   {
+    "text": "The AWSTraceHeader attribute doesn't count towards message size",
+    "class": "sourced",
+    "source_ref": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html"
+   },
+   {
+    "text": "otel.instrumentation.aws-sdk.experimental-use-propagator-for-messaging defaults to false and moves context into message attributes with the configured propagator",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/main/instrumentation/aws-sdk/README.md"
+   },
+   {
+    "text": "The maintainer says the propagator setting changes how context travels, not whether spans share a trace, and suggests it for a stand-in that doesn't keep AWSTraceHeader",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/14193"
+   },
+   {
+    "text": "The maintainer discussion notes exceptions for batch receives",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/14193"
+   },
+   {
+    "text": "Receive telemetry is experimental and off by default at v2.33.1",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.33.1/instrumentation/aws-sdk/aws-sdk-2.2/metadata.yaml"
+   },
+   {
+    "text": "An init container or the OpenTelemetry Operator are common ways to deliver the agent jar in production",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "The README's one hour is a safe budget for the run",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "The default behaviour applies to teams using SqsTemplate and single-message @SqsListener methods in general, beyond this one lab run",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Spring Boot services on EKS that talk over Amazon SQS",
+  "decision": "Whether to roll out the OTel Java agent alone for queue tracing, before asking any team for code changes or extra settings",
+  "question": "With only the Java agent attached, do my SQS producer and consumer land in one trace, and do I need a setting for that?",
+  "takeaway": "You can follow a message across SQS in Splunk APM from one environment variable, on the OpenTelemetry Java agent's defaults, and you know the one setting that gives each consumer a linked trace of its own.",
+  "adds": "Existing pages name the settings and describe the system attribute. This post counts real messages on a real queue, shows the header on a waiting message next to the producer span's trace ID, and measures what one setting changes.",
+  "open_question": "Of 400 messages sent through a real SQS queue with the Java agent on its defaults, what percent have producer and process spans sharing one trace ID, and with receive telemetry on, how many of 100 stay in that trace and how many link to it?",
+  "tradeoffs": [
+   "One trace per message by default, or receive telemetry with each consumer in a linked trace of its own",
+   "The AWSTraceHeader system attribute by default, or the configured propagator in message attributes"
+  ],
+  "existing_pages": [
+   {
+    "title": "Springboot sqs instrumentation",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/14193",
+    "covers": "A maintainer explains that context travels in the AWSTraceHeader system attribute by default, that producer and consumer should share a trace by default, and that receive telemetry gives separate traces joined by a span link. It gives no per-message count on real SQS."
+   },
+   {
+    "title": "Message metadata for Amazon SQS",
+    "url": "https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html",
+    "covers": "Message system attributes, and AWSTraceHeader as the supported one, holding an X-Ray trace header string. It doesn't cover the Java agent."
+   },
+   {
+    "title": "Settings for the AWS SDK instrumentation",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/main/instrumentation/aws-sdk/README.md",
+    "covers": "The agent's AWS SDK settings and their defaults, including the propagator setting for SNS and SQS, which defaults to false."
+   },
+   {
+    "title": "AWS SDK instrumentation metadata, v2.33.1",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.33.1/instrumentation/aws-sdk/aws-sdk-2.2/metadata.yaml",
+    "covers": "The instrumentation's settings at v2.33.1, including receive telemetry, off by default, which starts a new consumer trace with a span link to the producer."
+   },
+   {
+    "title": "Spring Cloud AWS",
+    "url": "https://docs.awspring.io/spring-cloud-aws/docs/3.4.0/reference/html/index.html",
+    "covers": "How to send with SqsTemplate and receive with SqsListener, with its own Observability Support section."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "One GitHub discussion in the OTel Java instrumentation repo, Springboot sqs instrumentation, shows 5 comments and 15 replies. It was opened in July 2025, and a new reader asked about the default behaviour in June 2026. No search volume data was available."
+  },
+  "splunk_fit": "natural",
+  "measurements": [
+   {
+    "id": "messages_sent",
+    "what": "messages accepted by the queue, in the no_agent, default and receive_telemetry runs",
+    "kind": "count",
+    "unit": "messages",
+    "accept": {
+     "op": "ge",
+     "value": 100
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "one_trace_percent",
+    "what": "percent of messages sent in the default run whose publish and process spans share one trace ID, joined on the SQS message ID",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "one_trace_messages",
+    "what": "messages whose publish and process spans share one trace ID, in the default and receive_telemetry runs",
+    "kind": "comparison",
+    "unit": "messages",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "trace_header_on_message",
+    "what": "the probe message, found on the queue by its ID, carrying AWSTraceHeader, with no agent and with the agent",
+    "kind": "comparison",
+    "unit": "messages",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "consumer_spans_linked_to_producer",
+    "what": "process spans with a span link to the producer's trace, in the default and receive_telemetry runs",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "splunk_traces_both_services",
+    "what": "sampled default-run traces, found by trace ID, that hold spans of both services in Splunk APM, reported as n of 10",
+    "kind": "count",
+    "unit": "traces",
+    "accept": {
+     "op": "ge",
+     "value": 10
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "trace_header_root_matches",
+    "what": "1 when the trace ID in the AWSTraceHeader equals the producer span's trace ID, otherwise 0",
+    "kind": "comparison",
+    "unit": "matches",
+    "accept": {
+     "op": "eq",
+     "value": 1
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "receive_spans",
+    "what": "spans named <queue> receive of kind CONSUMER, in the default and receive_telemetry runs, showing the agent applied the setting",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "queue_path_on_map",
+    "what": "1 when the Splunk APM map runs from orders to fulfilment, directly or through the inferred queue node, otherwise 0",
+    "kind": "comparison",
+    "unit": "paths",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist on 5 November 2026",
+   "The agent ships SQS and Spring Cloud AWS instrumentation, so the reader gets a real result from one environment variable",
+   "One setting separates the two results, so the finding can be credited to it",
+   "If one_trace_percent is below 100, use the title: Follow SQS Messages Across Services in Splunk APM With the OTel Java Agent"
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.7672
+}
