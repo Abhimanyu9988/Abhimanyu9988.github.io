@@ -1,12 +1,12 @@
 {
- "updated": "2026-11-05T12:06:16Z",
+ "updated": "2026-11-05T12:35:12Z",
  "columns": {
   "needs": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
     "kind": "Approve or reject",
-    "title": "OpenTelemetry Java Agent in Splunk APM: 17.99 s Added at Startup, 0.57 ms at p95",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
+    "title": "OpenTelemetry Java Agent in Splunk APM: One Env Var, Zero Code, Full Service Map",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
     "where": "Abhimanyu9988.github.io"
    },
    {
@@ -17,10 +17,10 @@
     "where": "Abhimanyu9988.github.io"
    },
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
     "kind": "Review",
-    "title": "Draft: OpenTelemetry Java Agent in Splunk APM: 17.99 s Added at Startup, 0.57 ms at p95",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/151",
+    "title": "Draft: OpenTelemetry Java Agent in Splunk APM: One Env Var, Zero Code, Full Service Map",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
     "where": "Abhimanyu9988.github.io"
    },
    {
