@@ -1,0 +1,50 @@
+$ bash reproduce.sh
+# exit 0 after 213s
+
+== 1. Waiting for 2 worker nodes
+NAME                                          STATUS   ROLES    AGE   VERSION                INTERNAL-IP   EXTERNAL-IP    OS-IMAGE                        KERNEL-VERSION                     CONTAINER-RUNTIME
+ip-10-0-0-246.eu-central-1.compute.internal   Ready    <none>   53s   v1.34.12-eks-6e7947a   10.0.0.246    3.126.248.27   Amazon Linux 2023.12.20261102   6.12.113-138.209.amzn2023.x86_64   containerd://2.3.7+unknown
+ip-10-0-1-174.eu-central-1.compute.internal   Ready    <none>   54s   v1.34.12-eks-6e7947a   10.0.1.174    63.181.3.64    Amazon Linux 2023.12.20261102   6.12.113-138.209.amzn2023.x86_64   containerd://2.3.7+unknown
+deployment "coredns" successfully rolled out
+app node: ip-10-0-0-246.eu-central-1.compute.internal
+load node: ip-10-0-1-174.eu-central-1.compute.internal
+== 2. Installing the Splunk OTel Collector (chart 0.163.1) first, so it is running in every run
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 0 of 2 updated pods are available...
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 1 of 2 updated pods are available...
+daemon set "splunk-otel-collector-agent" successfully rolled out
+== 3. Building the jar in the cluster, once, and fetching the agent, unused for now
+agent v2.33.1 downloaded and verified on attempt 1
+total 58376
+-rw-r--r--. 1 root root 33265005 Nov  5 22:04 app.jar
+-rw-r--r--. 1 root root 26507624 Nov  5 22:04 opentelemetry-javaagent.jar
+build took 58s
+== 4. Deploying orders and fulfilment with no agent
+queue: follow-sqs-messages-thro-738351-orders in eu-central-1
+Waiting for deployment "fulfilment" rollout to finish: 0 of 1 updated replicas are available...
+deployment "fulfilment" successfully rolled out
+deployment "orders" successfully rolled out
+== 5. No agent is attached, and the image and jar are recorded
+orders image: maven:3.9.9-eclipse-temurin-21
+orders JAVA_TOOL_OPTIONS or OTEL settings: 0
+orders jar: 61da51970b79c8b4307af88d949747ea5007580e05217ed714c094704efdf4c7  /lab/app.jar
+orders Pod Identity credential settings on the pod: 1
+fulfilment image: maven:3.9.9-eclipse-temurin-21
+fulfilment JAVA_TOOL_OPTIONS or OTEL settings: 0
+fulfilment jar: 61da51970b79c8b4307af88d949747ea5007580e05217ed714c094704efdf4c7  /lab/app.jar
+fulfilment Pod Identity credential settings on the pod: 1
+agent jar, unused for now: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149  /lab/opentelemetry-javaagent.jar
+listener: @SqsListener takes one String, so single-message mode, polling up to 10 messages. Spring Cloud AWS observation is not enabled.
+== 6. 400 orders, one every 50 ms, each one message on the queue
+pod/load condition met
+LOAD sent=400 errors=0
+no_agent run: sent 400, fulfilled 400, producer spans 0, consumer spans 0
+HERO_MEASURE: messages_sent[no_agent]=400
+== 7. What one message carries with no agent: fulfilment pauses, one order goes in, and that message is read from the queue
+messages waiting before the probe: 0
+{"messageId":"47d4f7f7-c828-44d6-8bc2-ac32ee16cfdd","order":999999}
+message 47d4f7f7-c828-44d6-8bc2-ac32ee16cfdd AWSTraceHeader: none
+probe message deleted
+no_agent run, messages carrying the header: 0
+HERO_MEASURE: trace_header_on_message[no_agent]=0
+HERO_RESULT: reproduced
+
