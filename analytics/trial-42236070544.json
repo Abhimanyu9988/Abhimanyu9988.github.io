@@ -1,0 +1,10 @@
+{
+ "run": "42236070544",
+ "issue": 161,
+ "title": "Postgres Query p95 in Splunk From One OTel Java Agent Setting, No Code Changes (db.client.operation.duration)",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 31.8,
+ "lab_usd": 0.0
+}
