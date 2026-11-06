@@ -1,0 +1,391 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "marketing score 3 is below 4",
+  "technical: The post says OBI assigns its own trace IDs and that the load client's traceparent does not shape them. Yet the sample trace's orders server span has a parent (e76355175e7d3f75) that is not among the trace's spans, and load appears on the map as an instrumented service. The post never shows the evidence for its trace-ID claim and leaves the dangling parent unexplained, so a reader cannot tell whether the incoming header partly shaped the context. Fix: Quote the lab's count of traces carrying the caller's trace ID (the 'traced under the ID the caller sent' line, or the matching EKS check). Then say in one sentence what the parent span ID is, for example load's client span exported in another trace, or a parent span ID taken from the incoming header. If the run cannot settle it, say the span ID is an open question and soften 'doesn't shape them' to what was measured.",
+  "outside claim without a known source: OBI loads its own Java agent by default for TLS tracing, virtual-thread correlation and runtime metrics, and javaagent.enabled turns it off",
+  "outside claim without a known source: OBI covers every namespace by default and service discovery settings can narrow that",
+  "outside claim without a known source: Splunk describes an inferred service as one it deduces from a caller's span"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "services_with_own_spans",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:98"
+    },
+    {
+     "id": "pod_restarts_added",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "05-fix.log:102"
+    },
+    {
+     "id": "traces_found_default",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:115"
+    },
+    {
+     "id": "traces_joined_default",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:114"
+    },
+    {
+     "id": "traces_found_propagation",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:117"
+    },
+    {
+     "id": "traces_joined_propagation",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:116"
+    },
+    {
+     "id": "pod_restarts_after_propagation",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "05-fix.log:108"
+    },
+    {
+     "id": "jvm_helper_attached",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:119"
+    },
+    {
+     "id": "p95_added_ms",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:125"
+    },
+    {
+     "id": "p95_noise_ms",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:127"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 4,
+    "reasons": [
+     "Every headline number matches a corroborated contract line: 2 of 2 services sent their own spans, 0 restarts on 3 pods with UIDs kept, joined traces went from 0 of 30 to 30 of 30, the agent library was mapped in both JVMs, and p95 rose 2.58 ms against 7.58 ms of noise.",
+     "The before-checks could have failed. The lab stops if cluster data never reaches Splunk or if the map already holds the services, and it compares pod UIDs, so a replaced pod cannot pass as 0 restarts.",
+     "Claims stay within the evidence. The inferred=true flag is reported as a fact with no cause given, and the post says a library mapping shows only that the library is present. The latency result is limited to one cluster at one rate.",
+     "One loose end: the post says OBI assigns its own trace IDs, but the sample trace's orders server span has a parent that is not in the trace. A sharp reader will ask where that parent came from, and the post does not show the lab line behind the trace-ID claim."
+    ]
+   },
+   "editorial": {
+    "score": 4,
+    "reasons": [
+     "The reader and the decision are clear: a platform engineer wants a first map before asking any team to change a deployment. The title delivers exactly what the first value showed, and the second value is presented honestly as a separate step.",
+     "It has findings beyond the docs. The map draws orders -> inventory while 0 of 30 traces join until propagation is on. The pods keep their identity, verified by UID. OBI loads a Java agent into running JVMs, and the post gives a result on Amazon Linux 2023.",
+     "The trade-offs on privileges, the injected agent, namespace scope and latency sit in the body as things to plan for, which is the right tone.",
+     "Some lines read as generated, such as 'Here's one with both values on:', a TL;DR that repeats the body, and evenly sized sections. The 'Use it for your own services' bullets mostly restate the docs."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "Demand evidence is weak. The only signal is one OBI issue with a few comments, and it is about Java agent injection into non-root JVMs, not about getting a first service map. There is no search volume and no linked reaction to this topic.",
+     "Splunk fits naturally because the chart value and the APM map are the subject, and the title credits the product with the result.",
+     "The headline uses plain words for the situation (one Helm value, running Java services, EKS), but nothing shows these are the words readers search with. Without a real demand signal this cannot score above 3."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The post says OBI assigns its own trace IDs and that the load client's traceparent does not shape them. Yet the sample trace's orders server span has a parent (e76355175e7d3f75) that is not among the trace's spans, and load appears on the map as an instrumented service. The post never shows the evidence for its trace-ID claim and leaves the dangling parent unexplained, so a reader cannot tell whether the incoming header partly shaped the context.",
+    "evidence": "\"OBI assigns its own trace IDs, so my load client's random `traceparent` header doesn't shape them\" and \"The `orders` server span's own parent isn't among the three.\"",
+    "fix": "Quote the lab's count of traces carrying the caller's trace ID (the 'traced under the ID the caller sent' line, or the matching EKS check). Then say in one sentence what the parent span ID is, for example load's client span exported in another trace, or a parent span ID taken from the incoming header. If the run cannot settle it, say the span ID is an open question and soften 'doesn't shape them' to what was measured."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "OBI is a beta feature in Splunk Observability Cloud and runs as a DaemonSet capturing traces and request metrics from outside the process",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi"
+   },
+   {
+    "text": "OBI loads its own Java agent by default for TLS tracing, virtual-thread correlation and runtime metrics, and javaagent.enabled turns it off",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-ebpf-instrumentation/blob/v0.15.2/devdocs/config/CONFIG.md"
+   },
+   {
+    "text": "OBI covers every namespace by default and service discovery settings can narrow that",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/obi/configure/service-discovery/"
+   },
+   {
+    "text": "Splunk describes an inferred service as one it deduces from a caller's span",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/monitor-application-performance/manage-services-spans-and-traces-in-splunk-apm/inferred-services-in-splunk-apm"
+   },
+   {
+    "text": "OBI's outgoing propagation is off by default",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/obi/distributed-traces/"
+   },
+   {
+    "text": "Proxies and load balancers can affect propagation",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/obi/distributed-traces/"
+   },
+   {
+    "text": "Async frameworks need their own check for context propagation",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/zero-code/obi/context-propagation/"
+   },
+   {
+    "text": "The chart's default runs OBI privileged with host PID and host network, and the guide lists a reduced capability set",
+    "class": "sourced",
+    "source_ref": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/docs/zero-code-ebpf-instrumentation.md"
+   },
+   {
+    "text": "The chart guide names Ubuntu as its tested node OS",
+    "class": "sourced",
+    "source_ref": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/docs/zero-code-ebpf-instrumentation.md"
+   },
+   {
+    "text": "Reduced capabilities can affect Java agent injection into non-root JVMs",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-ebpf-instrumentation/issues/3895"
+   },
+   {
+    "text": "Splunk recommends combining OBI with language agents",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi"
+   },
+   {
+    "text": "Language agents join the JVM at startup, so the pods have to roll",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The usual route to a service map means instrumenting each service, planning a rollout and waiting for it",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "OBI assigns its own trace IDs, so the load client's traceparent header does not shape them",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "It takes about 25 minutes from an empty account",
+    "class": "estimate",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Java services on EKS who wants a first service map before asking any team to change a deployment",
+  "decision": "Whether to turn on OBI through the Splunk OTel Collector chart as a first layer across a cluster, before rolling out language agents",
+  "question": "Can I get services that are already running on EKS onto the Splunk APM map without restarting a pod, and what do I get from it?",
+  "takeaway": "You can decide from measured numbers: what one Helm value puts on the map for running services, what it does to the pods, and whether traces across nodes need a second value.",
+  "adds": "Existing pages state that OBI needs no restart and list what it captures. This post measures it on EKS on Amazon Linux 2023: services on the map, each pod's UID and restart count before and after, whether one trace spans two nodes with and without propagation, the Java helper OBI loads, and the p95 latency added.",
+  "open_question": "With obi.enabled=true alone on chart 0.163.1, how many running services reach the Splunk APM map, how many pod restarts does it add, and how many services share one trace across two nodes with and without outgoing header propagation?",
+  "tradeoffs": [
+   "OBI first for a broad map, or a language agent for deeper framework detail",
+   "A privileged DaemonSet with host PID and host network, or the chart's documented reduced capabilities",
+   "Every namespace by default, or a namespace filter",
+   "Outgoing header propagation on, or kept at its default"
+  ],
+  "existing_pages": [
+   {
+    "title": "Instrument an application using OBI",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi",
+    "covers": "Splunk's beta overview: supported languages and protocols, elevated privileges, and how OBI sits alongside SDK or agent instrumentation. It gives no measured result."
+   },
+   {
+    "title": "Instrument your application using OBI",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/instrument-back-end-services/instrument-back-end-applications-to-send-spans-to-splunk-apm/instrument-an-application-using-obi/instrument-your-application-using-obi",
+    "covers": "Says OBI captures telemetry with no code change or restart and sends to a local Collector, and links to the setup pages."
+   },
+   {
+    "title": "Zero-Code Instrumentation with eBPF",
+    "url": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/docs/zero-code-ebpf-instrumentation.md",
+    "covers": "The chart's guide: obi.enabled=true, platform requirements, default privileges and reduced capabilities. It names Ubuntu as the tested node OS."
+   },
+   {
+    "title": "Distributed traces with OBI",
+    "url": "https://opentelemetry.io/docs/zero-code/obi/distributed-traces/",
+    "covers": "Explains that outgoing network propagation is off by default and how to enable it, with kernel and Kubernetes requirements."
+   },
+   {
+    "title": "Trace context association in OBI",
+    "url": "https://opentelemetry.io/docs/zero-code/obi/context-propagation/",
+    "covers": "How OBI finds the parent request for outgoing work, including JDK task APIs and where frameworks need more."
+   },
+   {
+    "title": "Phase 3: Kubernetes, Add the OBI DaemonSet",
+    "url": "https://splunk.github.io/observability-workshop/en/ninja-workshops/instrumentation/16-obi-ebpf/5-kubernetes/3-add-obi-daemonset/",
+    "covers": "Splunk's workshop adds OBI with obi.enabled=true to a three-service demo. It does not record pod identity or measure a cross-node join."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "One recent issue in the OBI repo from a user running it as a Kubernetes DaemonSet, with two comments, plus Splunk's own workshop and beta documentation for the feature. No search volume data was available."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist",
+   "Serves the OpenTelemetry auto-instrumentation and Splunk goals",
+   "Starts from the Spring Boot, Postgres and Collector lab that already ran on EKS"
+  ],
+  "measurements": [
+   {
+    "id": "services_with_own_spans",
+    "what": "of the two running services, how many sent spans with the one Helm value, shown by a server span Splunk returned for the service plus a service.request.count series created by then",
+    "kind": "count",
+    "unit": "services",
+    "accept": {
+     "op": "ge",
+     "value": 2
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "pod_restarts_added",
+    "what": "container restarts added across orders, inventory and Postgres, counting a replaced pod as one",
+    "kind": "failure",
+    "unit": "restarts",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "traces_found_default",
+    "what": "of 30 orders traces OBI exported with the one Helm value, how many Splunk returned",
+    "kind": "count",
+    "unit": "traces",
+    "accept": {
+     "op": "ge",
+     "value": 20
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "traces_joined_default",
+    "what": "of those traces, how many held both services across two nodes with the one Helm value",
+    "kind": "comparison",
+    "unit": "traces",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "traces_found_propagation",
+    "what": "of 30 orders traces OBI exported with propagation also on, how many Splunk returned",
+    "kind": "count",
+    "unit": "traces",
+    "accept": {
+     "op": "ge",
+     "value": 20
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "traces_joined_propagation",
+    "what": "of those traces, how many held both services across two nodes with propagation also on",
+    "kind": "comparison",
+    "unit": "traces",
+    "accept": {
+     "op": "ge",
+     "value": 20
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "pod_restarts_after_propagation",
+    "what": "container restarts added after the second Helm value, per pod, counting a replaced pod as one",
+    "kind": "failure",
+    "unit": "restarts",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "jvm_helper_attached",
+    "what": "1 if a Java agent is loaded in the running JVM after OBI starts, 0 if not, per service",
+    "kind": "comparison",
+    "unit": "flag",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "p95_added_ms",
+    "what": "median p95 of five load rounds with OBI minus the median of five rounds without it, on the same pods, at about 20 requests a second",
+    "kind": "overhead",
+    "unit": "ms",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "p95_noise_ms",
+    "what": "spread of p95 across the five rounds without OBI",
+    "kind": "comparison",
+    "unit": "ms",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.7215
+}
