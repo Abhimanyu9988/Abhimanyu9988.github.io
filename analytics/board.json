@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T22:42:46Z",
+ "updated": "2026-11-06T23:22:45Z",
  "columns": {
   "needs": [
    {
@@ -98,17 +98,17 @@
   ],
   "working": [
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
-    "kind": "Your PR",
-    "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
     "kind": "Your PR",
     "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
+    "kind": "Your PR",
+    "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
     "where": "opentelemetry-collector-contrib"
    },
    {
