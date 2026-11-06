@@ -1,0 +1,64 @@
+$ bash reproduce.sh
+# exit 0 after 401s
+
+== 1. Waiting for 3 worker nodes
+NAME                                          ARCH    KERNEL                             OS                              RUNTIME
+ip-10-0-0-24.eu-central-1.compute.internal    amd64   6.12.113-138.209.amzn2023.x86_64   Amazon Linux 2023.12.20261102   containerd://2.3.7+unknown
+ip-10-0-0-26.eu-central-1.compute.internal    amd64   6.12.113-138.209.amzn2023.x86_64   Amazon Linux 2023.12.20261102   containerd://2.3.7+unknown
+ip-10-0-1-177.eu-central-1.compute.internal   amd64   6.12.113-138.209.amzn2023.x86_64   Amazon Linux 2023.12.20261102   containerd://2.3.7+unknown
+deployment "coredns" successfully rolled out
+orders node: ip-10-0-0-24.eu-central-1.compute.internal
+inventory and postgres node: ip-10-0-0-26.eu-central-1.compute.internal
+load node: ip-10-0-1-177.eu-central-1.compute.internal
+== 2. Installing the Splunk OTel Collector (chart 0.163.1) with OBI at its default, off
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 0 of 3 updated pods are available...
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 1 of 3 updated pods are available...
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 2 of 3 updated pods are available...
+daemon set "splunk-otel-collector-agent" successfully rolled out
+OBI pods running: 0
+== 2b. Pulling the OBI image onto every node, so its pull can't eat into the measured stages
+OBI image ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 on 3 of 3 nodes
+== 3. Building the jar once on each node
+total 22720
+-rw-r--r--. 1 root root 23262798 Nov  6 11:52 app.jar
+both builds took 50s
+== 4. Deploying Postgres, orders and inventory
+Waiting for deployment "postgres" rollout to finish: 0 of 1 updated replicas are available...
+deployment "postgres" successfully rolled out
+deployment "inventory" successfully rolled out
+deployment "orders" successfully rolled out
+== 5. The JVMs before OBI
+orders image: maven:3.9.9-eclipse-temurin-21
+orders JAVA_TOOL_OPTIONS or OTEL settings: 0
+orders Java agents loaded: 0
+HERO_MEASURE: jvm_helper_before[orders]=0
+inventory image: maven:3.9.9-eclipse-temurin-21
+inventory JAVA_TOOL_OPTIONS or OTEL settings: 0
+inventory Java agents loaded: 0
+HERO_MEASURE: jvm_helper_before[inventory]=0
+== 6. Warming the JVMs, then five rounds with OBI off, ending seconds before the change in fix.sh
+LOAD node_busy_pct=9
+LOAD requests=299 errors=0 p50_ms=12.89 p95_ms=22.25
+LOAD node_busy_pct=7
+LOAD requests=299 errors=0 p50_ms=9.70 p95_ms=16.89
+LOAD node_busy_pct=5
+LOAD requests=299 errors=0 p50_ms=7.86 p95_ms=12.22
+OFF round: p95 12.22 ms, CPU busy pct orders node 9, inventory node 10, load node 5
+LOAD node_busy_pct=7
+LOAD requests=299 errors=0 p50_ms=7.59 p95_ms=16.01
+OFF round: p95 16.01 ms, CPU busy pct orders node 10, inventory node 10, load node 7
+LOAD node_busy_pct=11
+LOAD requests=298 errors=0 p50_ms=7.50 p95_ms=12.76
+OFF round: p95 12.76 ms, CPU busy pct orders node 11, inventory node 10, load node 11
+LOAD node_busy_pct=5
+LOAD requests=299 errors=0 p50_ms=5.86 p95_ms=8.43
+OFF round: p95 8.43 ms, CPU busy pct orders node 8, inventory node 8, load node 5
+LOAD node_busy_pct=6
+LOAD requests=299 errors=0 p50_ms=6.18 p95_ms=11.24
+OFF round: p95 11.24 ms, CPU busy pct orders node 9, inventory node 8, load node 6
+== 7. The pods as they stand: name, UID, restarts, container start time, image
+inventory	3d5bff04-4f6e-4e43-acec-b2b5fa84b3a5	0	2026-11-06T11:52:49Z	maven:3.9.9-eclipse-temurin-21
+orders	e68c5092-f2f3-4d6a-b184-47d4fe8d685e	0	2026-11-06T11:52:48Z	maven:3.9.9-eclipse-temurin-21
+postgres	575f06e9-81da-42a8-ab14-5b0da9e93a1d	0	2026-11-06T11:52:55Z	postgres:16.4-alpine
+HERO_RESULT: reproduced
+
