@@ -1,5 +1,10 @@
 {
- "round": 5,
- "Editor": [],
+ "round": 6,
+ "Editor": [
+  {
+   "problem": "The two trace cases are not read at the same delay, but fix.sh says 'Each case waits the same' and the brief compares traces_found and traces_joined with and without propagation. In fix.sh 7b, `propagate.sh read default` runs trace_pass (two 40s read_ids passes plus a 15s sleep) and then own_evidence (two more 40s read_ids calls), so the default read can take about 175s from on_end+200. prop_end is about on_end+110, so wait_for(prop_end+200) has usually already passed, and the propagation case gets read about 250\u2013270s after its round. Spans that arrive late in Splunk would favour the propagation case, so a gap between the two counts could come from read timing and not from the second value.",
+   "fix": "Take own_evidence out of `propagate.sh read default` and give it its own mode, e.g. `propagate.sh own default`. fix.sh then runs: wait_for on_end+200, trace_pass default, wait_for prop_end+200, trace_pass propagation, and only then own_evidence default. Print the actual seconds between each round's end and the start of its read, and record them as a measure (read_delay_default_s, read_delay_propagation_s), so the reader can see the two cases were read at the same delay. Also print how far wait_for overshot when it found nothing to wait for."
+  }
+ ],
  "Marketing": []
 }
