@@ -1,21 +1,7 @@
 {
- "updated": "2026-11-06T15:32:41Z",
+ "updated": "2026-11-06T15:42:04Z",
  "columns": {
   "needs": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/180",
-    "kind": "Approve or reject",
-    "title": "Postgres Query p95 in Splunk From One OTel Java Agent Setting, No Code Changes (db.client.operation.duration)",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/180",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/179",
-    "kind": "Approve or reject",
-    "title": "Postgres Query p95 in Splunk From One OTel Java Agent Setting, No Code Changes (db.client.operation.duration)",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/179",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
     "kind": "Approve or reject",
@@ -28,20 +14,6 @@
     "kind": "Approve or reject",
     "title": "Default ECS FireLens Dropped 76.59% in My Fargate Outage Test",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/180",
-    "kind": "Review",
-    "title": "Draft: Postgres Query p95 in Splunk From One OTel Java Agent Setting, No Code Changes (db.client.operation.duration)",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/180",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/179",
-    "kind": "Review",
-    "title": "Draft: Postgres Query p95 in Splunk From One OTel Java Agent Setting, No Code Changes (db.client.operation.duration)",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/179",
     "where": "Abhimanyu9988.github.io"
    },
    {
