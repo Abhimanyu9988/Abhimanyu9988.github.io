@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-05",
+ "updated": "2026-11-06",
  "team": [
   {
    "role": "Executive Assistant",
@@ -110,12 +110,16 @@
    "role": "Marketing",
    "dept": "Marketing",
    "mission": "Do marketing analysis only: confirm each topic and choose its title before a lab runs."
+  },
+  {
+   "role": "Domain Scout",
+   "dept": "Finance",
+   "mission": "Find domains we can buy within budget, and tell the CFO what is open, leaving or unlikely to free up."
   }
  ],
  "in_review": [
+  "Draft: OpenTelemetry Java Agent in Splunk APM: One Env Var, Zero Code, Full Service Map",
   "Draft: Default ECS FireLens Dropped 76.59% in My Fargate Outage Test"
  ],
- "published": [
-  "Draft: October: Kubernetes memory semantics and Collector edge fixes"
- ]
+ "published": []
 }
