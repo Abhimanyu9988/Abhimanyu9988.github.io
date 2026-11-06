@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T07:51:54Z",
+ "updated": "2026-11-06T11:22:56Z",
  "columns": {
   "needs": [
    {
@@ -91,6 +91,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "kind": "Your PR",
+    "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Your PR",
     "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
@@ -109,13 +116,6 @@
     "kind": "Your PR",
     "title": "[receiver/flinkmetrics] Record JVM GC metrics for both JobManager and TaskManager",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
-    "kind": "Your PR",
-    "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "where": "opentelemetry-collector-contrib"
    },
    {
