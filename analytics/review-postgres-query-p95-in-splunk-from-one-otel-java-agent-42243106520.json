@@ -1,0 +1,405 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "editorial: Title and opening promise a Postgres query p95, but the measured value is the bucket estimate: nearly all calls sit in the 10\u201350 ms bucket, so the reading of about 48 ms (10 + 0.95\u00d740) would appear for any latency in that bucket. It was 32.1% above the timer's p95, and the post itself says 'the reading tells you the bucket'. Fix: Lead with what the reader can act on: the per-statement mean from _sum/_count, which came within 3.3% of pg_stat_statements, plus the bucket it falls in. State plainly that with the default edges (1, 5, 10, 50 ms...) a p95 near 48 ms means 'between 10 and 50 ms'. Retitle, e.g. 'Postgres Query Latency Per Statement in Splunk From One OTel Java Agent Setting, and the 36-Dimension Budget to Plan For'.",
+  "technical: The bucket match offered as proof in the opening could barely fail: a pg_sleep(0.03) statement puts both the timer p95 and the SignalFlow p95 in the 10\u201350 ms bucket by design, so the match shows bucket placement, not accuracy. Fix: Add a second known statement in a different bucket (e.g. pg_sleep(0.003) for 1\u20135 ms or pg_sleep(0.07) for 50\u2013100 ms) and show the program tracks it. Otherwise, drop the match as proof in the opening and describe it in the body as a bucket-placement check.",
+  "technical: Every latency figure was measured on a node that had run out of CPU credits and had heavy steal, yet those figures appear in the opening and TL;DR while the caveat sits at the end. Fix: Put the credit/steal caveat directly under the p95/mean results and in the TL;DR, or rerun fix.sh on a non-burstable node (e.g. m5.large) so the timer, mean and p95 comparison stands on its own.",
+  "editorial: The HTTP section presents an unmeasured explanation ('le would likely make 37') in a way that reads as Splunk not keeping HTTP data, instead of showing the reader how to make room for HTTP percentiles. Fix: Label it explicitly as a hypothesis and reframe it as planning advice: 'To chart HTTP percentiles alongside this, free dimension room first; otel.java.disabled.resource.providers took the agent's resource attributes from 20 to 14 in a short run.' Better, run the main load with the trim and report whether http.server.request.duration_bucket appears.",
+  "outside claim without a known source: Splunk Observability Cloud holds 36 dimensions per series",
+  "outside claim without a known source: The agent's docs list database client metrics for those who opt in to stable semantic conventions",
+  "outside claim without a known source: An earlier run waited on an HTTP metric with one extra environment attribute and read 0 series for 268 seconds",
+  "outside claim without a known source: histogram_percentile() computes a percentile from bucket series with an le dimension"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [
+   {
+    "id": "f1",
+    "kind": "weak_control",
+    "severity": "low",
+    "file": "04-reproduce.log",
+    "line": 79,
+    "text": "time series for db.client.operation.duration with no opt-in: 0",
+    "why": "a zero before anything sends data may be unable to fail; check it can"
+   },
+   {
+    "id": "f2",
+    "kind": "weak_control",
+    "severity": "low",
+    "file": "04-reproduce.log",
+    "line": 81,
+    "text": "db duration series before: 0",
+    "why": "a zero before anything sends data may be unable to fail; check it can"
+   }
+  ],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "db_duration_series_before",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:82"
+    },
+    {
+     "id": "series_per_statement",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "corroborated",
+     "where": "05-fix.log:160"
+    },
+    {
+     "id": "known_query_p95_in_timer_bucket",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:192"
+    },
+    {
+     "id": "known_query_p95_vs_truth_pct",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:190"
+    },
+    {
+     "id": "known_query_mean_gap_pct",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:194"
+    },
+    {
+     "id": "queries_gap_pct",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:195"
+    },
+    {
+     "id": "setting_route_results",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "corroborated",
+     "where": "05-fix.log:174"
+    },
+    {
+     "id": "db_duration_max_dimensions",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:197"
+    },
+    {
+     "id": "trim_evidence",
+     "status": "ok",
+     "values": 8,
+     "needed": 8,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:84"
+    },
+    {
+     "id": "achieved_rps",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:196"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "Contract passed and the core counts are measured: 0 series before (read after the pool metric arrived), 14 series per statement after, 0.8% count gap, 36 dimensions on the bucket series with probes at 30/36 held and 37/40 not held.",
+     "The 'p95' of 47.99 ms is just the straight-line estimate inside one 10\u201350 ms bucket (10 + 0.95\u00d740 = 48). It would read about 48 for any latency in that bucket, and it sat 32.1% from the timer's 36.33 ms. The in-bucket check could barely fail, because pg_sleep(0.03) guarantees the bucket.",
+     "Latency figures come from a node at 0.0\u20130.87 CPU credits with 19.21% steal. The post discloses this, but only at the end.",
+     "The HTTP '37 dimensions' explanation is inference from an earlier run and a missing series, not a measurement."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "Clear reader and a real finding the docs don't give: the metric's bucket series use exactly the 36 dimensions Splunk holds per series on EKS with chart defaults, so the attribute budget can be planned.",
+     "Title and opening lead with a p95 that the body admits only identifies a bucket, so the headline promises more precision than was delivered. The mean (3.3% from pg_stat_statements) is the more useful number and is buried.",
+     "Honest trade-offs (dup naming, trim not run under load, burstable node), but the key latency caveat sits in 'What I didn't test' instead of next to the numbers.",
+     "Prose is dense and evenly paced, with some stock lines ('So you can plan your own attributes around it'). The log snippets read like real output."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "The only demand evidence is one GitHub discussion (#16419) with a maintainer reply. No reaction, comment or view counts, so 3 is the ceiling.",
+     "The title includes the exact metric name the discussion's user searched for, which helps the right reader find it.",
+     "The title is long, and 'p95' oversells what a single wide bucket can show. A title naming the latency chart and the dimension budget would match the actual finding better."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "editorial",
+    "problem": "Title and opening promise a Postgres query p95, but the measured value is the bucket estimate: nearly all calls sit in the 10\u201350 ms bucket, so the reading of about 48 ms (10 + 0.95\u00d740) would appear for any latency in that bucket. It was 32.1% above the timer's p95, and the post itself says 'the reading tells you the bucket'.",
+    "evidence": "TITLE 'Postgres Query p95 in Splunk From One OTel Java Agent Setting' vs body 'histogram_percentile() p95: median 47.99 ... timer p95: median 36.33' and 'Straight-line arithmetic on the same bucket counts gave a median of 48.00'",
+    "fix": "Lead with what the reader can act on: the per-statement mean from _sum/_count, which came within 3.3% of pg_stat_statements, plus the bucket it falls in. State plainly that with the default edges (1, 5, 10, 50 ms...) a p95 near 48 ms means 'between 10 and 50 ms'. Retitle, e.g. 'Postgres Query Latency Per Statement in Splunk From One OTel Java Agent Setting, and the 36-Dimension Budget to Plan For'."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The bucket match offered as proof in the opening could barely fail: a pg_sleep(0.03) statement puts both the timer p95 and the SignalFlow p95 in the 10\u201350 ms bucket by design, so the match shows bucket placement, not accuracy.",
+    "evidence": "'One SignalFlow program then placed a known-latency Postgres statement in the stored 10 to 50 ms bucket, the same bucket as my reference timer.'",
+    "fix": "Add a second known statement in a different bucket (e.g. pg_sleep(0.003) for 1\u20135 ms or pg_sleep(0.07) for 50\u2013100 ms) and show the program tracks it. Otherwise, drop the match as proof in the opening and describe it in the body as a bucket-placement check."
+   },
+   {
+    "dimension": "technical",
+    "problem": "Every latency figure was measured on a node that had run out of CPU credits and had heavy steal, yet those figures appear in the opening and TL;DR while the caveat sits at the end.",
+    "evidence": "'The app node's CPU credits read between 0.0 and 0.87, with 19.21% steal during the load, so treat every latency figure here as context.'",
+    "fix": "Put the credit/steal caveat directly under the p95/mean results and in the TL;DR, or rerun fix.sh on a non-burstable node (e.g. m5.large) so the timer, mean and p95 comparison stands on its own."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The HTTP section presents an unmeasured explanation ('le would likely make 37') in a way that reads as Splunk not keeping HTTP data, instead of showing the reader how to make room for HTTP percentiles.",
+    "evidence": "'http.server.request.duration_bucket read 0 series at all three reads ... Its le would likely make 37, though the run can't show that'",
+    "fix": "Label it explicitly as a hypothesis and reframe it as planning advice: 'To chart HTTP percentiles alongside this, free dimension room first; otel.java.disabled.resource.providers took the agent's resource attributes from 20 to 14 in a short run.' Better, run the main load with the trim and report whether http.server.request.duration_bucket appears."
+   }
+  ],
+  "flags_addressed": [
+   {
+    "id": "f1",
+    "addressed": true,
+    "how": "The zero before the opt-in was read after the agent's connection pool metric from the same load had arrived (post shows 'connection pool metric series for the same load: 1'), so a broken pipeline would also have shown as zero pool series. The zero is expected per the docs and is a precondition, not a finding."
+   },
+   {
+    "id": "f2",
+    "addressed": true,
+    "how": "Same control as f1. The 'db duration series before: 0' line sits beside the pool-metric control, and after the opt-in db.client.connection.count served as a second control that exists only with the setting."
+   }
+  ],
+  "claims": [
+   {
+    "text": "Splunk Observability Cloud holds 36 dimensions per series",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/administer/org-reference-info/per-product-system-limits-in-splunk-observability-cloud/infrastructure-system-limits"
+   },
+   {
+    "text": "The agent's docs list database client metrics for those who opt in to stable semantic conventions",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/blob/v2.33.1/docs/supported-libraries.md"
+   },
+   {
+    "text": "An engineer asked for db.client.operation.duration and a maintainer pointed to the opt-in setting",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/16419"
+   },
+   {
+    "text": "An earlier run waited on an HTTP metric with one extra environment attribute and read 0 series for 268 seconds",
+    "class": "sourced",
+    "source_ref": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42125514934"
+   },
+   {
+    "text": "histogram_percentile() computes a percentile from bucket series with an le dimension",
+    "class": "sourced",
+    "source_ref": "https://dev.splunk.com/observability/docs/signalflow/functions/histogram_percentile_function"
+   },
+   {
+    "text": "http.server.request.duration_bucket would likely reach 37 dimensions because of its le dimension",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "pg_stat_statements times the server side only, so its mean excludes client and network time",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Counts and dimensions don't depend on CPU credits or steal on the node",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Allow about 7 minutes for the cluster and 20 for the scripts",
+    "class": "estimate",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Java services on Kubernetes with the OTel Java agent and Splunk Observability Cloud",
+  "decision": "Whether to turn on the agent's database client metrics across Java services to get query latency charts without touching application code",
+  "question": "How do I get Postgres query latency from the OTel Java agent into Splunk as a p95 in milliseconds?",
+  "takeaway": "One environment variable gives you db.client.operation.duration in Splunk on EKS when its series fits Splunk's 36 dimensions per series, and the run shows how close it sits. One SignalFlow program then turns it into a query p95 in milliseconds, with the bucket it falls in telling you how precise that reading is.",
+  "adds": "The agent's docs name the opt-in, and Splunk's pages cover histograms in general. This post shows the whole path on one running system: the opt-in on the same jar and image, the metric's real series and dimensions in Splunk, and a working SignalFlow program for its p95 in milliseconds.",
+  "open_question": "With the opt-in environment variable alone on EKS, does Splunk store db.client.operation.duration, how close do its series sit to 36 dimensions, how many series does it hold per Postgres query, what bucket precision do they give, and what query p95 in milliseconds does a Splunk SignalFlow program report at the request rate the load reaches?",
+  "tradeoffs": [
+   "database moves span attributes and pool metrics to the stable names, while database/dup emits both during a move",
+   "The stored bucket edges start at 1, 5, 10 and 50 ms, as the le dimension shows them, so a p95 is an estimate inside one bucket",
+   "The p95 comes from the histogram's bucket series through SignalFlow, on the Collector chart's default values",
+   "title_changes=1 keeps the one-setting title. title_changes=2 means the opt-in alone wasn't stored on EKS, so the attribute trim went on, and it selects the title Get Postgres Query p95 Into Splunk on EKS: Two OTel Java Agent Changes, No Code Changes"
+  ],
+  "existing_pages": [
+   {
+    "title": "Unable to collect db.client.operation.duration",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/discussions/16419",
+    "covers": "A user on agent 2.25 asks why the metric is absent from their data, and a maintainer names otel.semconv-stability.opt-in=database and says it belongs in a system property or environment variable."
+   },
+   {
+    "title": "Supported libraries, frameworks, application servers, and JVMs",
+    "url": "https://raw.githubusercontent.com/open-telemetry/opentelemetry-java-instrumentation/v2.33.1/docs/supported-libraries.md",
+    "covers": "Says database client metrics are available to those who opt in to semantic convention stability. It shows no Splunk result."
+   },
+   {
+    "title": "Get histogram data in",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/metrics-metadata-and-events/metrics-events-and-metadata/get-histogram-data-in",
+    "covers": "How histogram data reaches Splunk Observability Cloud through the Collector and which exporter settings apply. It has no database example."
+   },
+   {
+    "title": "Open Telemetry histograms reporting from otel receiver?",
+    "url": "https://github.com/signalfx/splunk-otel-collector-chart/discussions/2080",
+    "covers": "How a histogram from the chart's OTLP receiver appears in Splunk as _bucket, _sum and _count series, and the native histogram option."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "One real GitHub discussion in the OTel Java instrumentation repo, where a user on agent 2.25 with HikariCP could not find db.client.operation.duration and a maintainer answered. No search volume data was available."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist on 5 November 2026",
+   "Serves the OpenTelemetry auto-instrumentation and Splunk MVP goals",
+   "Answers a real question from the agent's own repo with a measured result"
+  ],
+  "measurements": [
+   {
+    "id": "db_duration_series_before",
+    "what": "db.client.operation.duration time series in Splunk with no opt-in, read one 60-second export interval after the agent's connection pool metric from the same load has arrived",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "series_per_statement",
+    "what": "db.client.operation.duration time series in Splunk for each of the four statements",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "known_query_p95_in_timer_bucket",
+    "what": "1 when the SignalFlow p95 for the pg_sleep(0.03) statement falls inside the stored bucket that holds the p95 from the timer around that JDBC call",
+    "kind": "comparison",
+    "unit": "match",
+    "accept": {
+     "op": "eq",
+     "value": 1
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "known_query_p95_vs_truth_pct",
+    "what": "gap between the SignalFlow p95 for the pg_sleep(0.03) statement and the p95 from a timer around that JDBC call in inventory, reported with the bucket edges Splunk stores",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "known_query_mean_gap_pct",
+    "what": "gap between that statement's mean from Splunk's sum and count and its mean from pg_stat_statements",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "le",
+     "value": 10
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "queries_gap_pct",
+    "what": "gap between the lookups Splunk counted across the readings and the requests the load sent in the same minutes",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "le",
+     "value": 10
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "setting_route_results",
+    "what": "results per route on the cluster: dup_emits_both_names (database name sets seen together on database/dup), pool_metric_names_after (pool metric names under the stable db.client.connection name), and where_the_setting_is_read (routes the agent read this setting from: the environment variable and the system property)",
+    "kind": "comparison",
+    "unit": "results",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "db_duration_max_dimensions",
+    "what": "most dimensions on any db.client.operation.duration_bucket series in Splunk, from /v2/metrictimeseries",
+    "kind": "limit",
+    "unit": "dimensions",
+    "accept": {
+     "op": "le",
+     "value": 36
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "trim_evidence",
+    "what": "numbers around the 36-dimension limit: probe_largest_held (the largest of the 30, 36, 37 and 40 dimension test points Splunk holds), untrimmed_resource_attribute_count and trimmed_resource_attribute_count (the agent's resource attributes without and with the trim, from one short run), collector_added_attribute_count (cloud and host attributes on the series), untrimmed_db_series_dimensions (dimensions, leaving out sf_metric, on the audit statement series with the opt-in alone, read from Splunk if stored, or else the trimmed series plus what the trim removes), untrimmed_series_held and untrimmed_control_series (audit statement bucket series and db.client.connection.count series Splunk stored from the opt-in alone, after a read of about two minutes), and title_changes (1 when the opt-in alone is stored, or 2 when it isn't and the trim went on)",
+    "kind": "comparison",
+    "unit": "counts",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 8
+   },
+   {
+    "id": "achieved_rps",
+    "what": "requests per second the load reached across the 510 seconds after warm-up",
+    "kind": "rate",
+    "unit": "requests per second",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.7487
+}
