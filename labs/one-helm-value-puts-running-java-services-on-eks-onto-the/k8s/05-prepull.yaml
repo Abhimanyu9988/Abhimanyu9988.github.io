@@ -1,0 +1,15 @@
+# Puts the OBI image on a node before the measured stages, so a slow pull can't use up their time. It has no privileges and
+# no host access, so OBI can't start here. Only the pull matters, and reproduce.sh deletes the pod after it.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: POD_NAME
+  namespace: splunk
+spec:
+  restartPolicy: Never
+  nodeName: NODE_NAME
+  containers:
+    - name: pull
+      image: OBI_IMAGE
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
