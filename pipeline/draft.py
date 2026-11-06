@@ -877,6 +877,7 @@ def open_pr(issue_no, res, topic):
     for path, text in files.items():
         put(branch, path, text, f"draft: add {path}")
     pr = gh("POST", f"/repos/{HOME_REPO}/pulls", {"title": title, "head": branch, "base": "main",
+                                                  "draft": bool(chat),     # a draft PR asks no review, so Abhi isn't emailed about it
                                                   "body": f"{body}\n\nCloses #{issue_no}"})
     print(f"opened PR {pr['number']} from {branch}")
     if gate.get("decision") != "revise" or os.environ.get("CHAT_WORK") != "true":
