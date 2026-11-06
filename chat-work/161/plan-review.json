@@ -1,5 +1,14 @@
 {
- "round": 5,
- "Editor": [],
+ "round": 6,
+ "Editor": [
+  {
+   "problem": "The before-check can return 0 even when the metric would exist. The contract for db_duration_series_before says to read it \"after the agent's HTTP metric has arrived\". reproduce.sh step 7 instead waits for jvm.memory.used, and its own comment says that metric \"reports with no traffic\". So it can reach Splunk before any metric driven by the load does. A 0 read at that moment may only mean the data is late, not that the opt-in is what turns the metric on. That would weaken the main before/after result.",
+   "fix": "In step 7, wait until series \"sf_metric:http.server.request.duration AND deployment.environment:$LAB_NAME AND service.name:inventory\" returns at least 1. That metric comes from the same load and the same export cycle. Then wait one more 60 s export interval before calling duration_series. Print the HTTP series count next to db_duration_series_before so readers can see the zero came after traffic data had arrived."
+  },
+  {
+   "problem": "The title says \"Two OTel Java Agent Changes\", but only the opt-in is tested. The attribute trim is on in both runs. No measurement in the contract shows the trim is needed, or that it keeps db.client.operation.duration series within 36 dimensions. dimension_probe_read and the per-metric maximum dimension count are printed, but neither is a HERO_MEASURE. So nothing measured supports \"two changes\". The counts \"36 dimensions per series\", \"8 cloud and host attributes\" and \"6 process attributes\" all come from the brief, not from the lab.",
+   "fix": "Add three measurements. (1) db_duration_max_dimensions: kind count, op le 36, read from /v2/metrictimeseries on db.client.operation.duration_bucket in fix.sh. (2) dimension_probe_held: op present, showing which of the 30/36/37/40-dimension test points Splunk kept. (3) untrimmed_resource_attribute_count: op present. Get it from one short console-exporter run on inventory with the trim removed, during other_routes, and print the resource attribute keys. If the untrimmed count does not go over 36, change the title to \"One OTel Java Agent Setting\" and move the trim into a section on dimension headroom."
+  }
+ ],
  "Marketing": []
 }
