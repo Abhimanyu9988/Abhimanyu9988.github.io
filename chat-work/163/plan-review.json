@@ -1,4 +1,26 @@
 {
- "Editor": [],
+ "round": 1,
+ "Editor": [
+  {
+   "problem": "The tap in k8s/collector-tap.yaml distorts p95_added_ms. Its logging pipeline only has work once OBI exports spans. In fix.sh step 5 the three ON rounds run while the Collector agent, on the same orders and inventory nodes, writes every span to its log. The OFF rounds carry none of that work. So the measured cost includes the lab's own debug exporter, not just OBI, and the takeaway's 'what it does to the pods' would be overstated.",
+   "fix": "Split the latency rounds from the rounds that produce trace IDs. Install the Collector without the tap. Run the OFF and ON latency rounds. Then apply the tap with a Collector-only helm upgrade, with the obi values unchanged. Run one extra ON round to collect the 30 trace IDs, and do the same before the propagation rounds. Print the effective Collector pipelines in each phase so the reader can see the tap was absent from the timed rounds."
+  },
+  {
+   "problem": "The p95 figure can't be told apart from noise. Each round is 20 s with 5 s of warm-up, about 300 requests at 50 ms spacing, so p95 rests on roughly the 15 slowest requests. There are three rounds per side, the OFF rounds always run first, and the JVMs have had only 2\u00d720 s of warm-up in reproduce.sh. JIT drift alone could produce the delta. There is no OFF-vs-OFF baseline, so a reader can't tell whether 'p95 added' is bigger than the spread between rounds.",
+   "fix": "Lengthen the rounds to at least 60 s measured, or run 5 per side. Warm until the OFF p95 settles. Add a measurement, p95_noise_ms, taken as the spread of OFF rounds that run in two blocks separated by a dummy pause. The article may only call p95_added_ms a cost if it is larger than p95_noise_ms. Otherwise it says 'within noise at this load'. State the load rate, about 20 requests per second, next to the number."
+  },
+  {
+   "problem": "services_on_map can pass without the map. on_map falls back to the service.request.count metric series when the topology call returns fewer than 2 non-inferred nodes. The title promises 'onto the Splunk APM Map', but a metric series is not a map node, so the headline count could be measuring something else.",
+   "fix": "Report two measurements: services_on_map_topology, counted only from /v2/apm/topology nodes, with min_entities 2 and op ge 2, and services_with_metrics, from the fallback. The title claim rests only on the topology count. Also save the raw topology JSON and the orders \u2192 inventory edge as evidence."
+  },
+  {
+   "problem": "services_in_trace_default and services_in_trace_propagation record only the best of up to 30 traces. A single joined trace among 30 would report 2 and read as 'propagation joins traces across nodes'. The joined/found counts are printed but are not in the contract, so the article could claim a join rate the evidence doesn't support.",
+   "fix": "Add contract measurements traces_joined_default and traces_joined_propagation as joined over found, with op present, plus traces_found_* with min 20 per case so a thin read can't pass. The article states the ratio, for example 'n of m traces held both services', not the maximum."
+  },
+  {
+   "problem": "Several acceptance rules can't fail. pod_restarts_after_propagation uses ge 0, which accepts any count, and services_in_trace_propagation uses ge 0, which accepts 1 just as readily as 2. They look like checks but prove nothing. Also, jvm_helper_attached is labelled a comparison, yet its before value, from reproduce.sh step 5, is never emitted as a measure.",
+   "fix": "Set services_in_trace_propagation to op present, so the contract doesn't assume a result. Set pod_restarts_after_propagation to op eq 0 with min_entities 3, because 'without restarting a pod' is the article's promise for both values. Emit jvm_helper_before[orders|inventory] from reproduce.sh, so the helper flag is shown as a before/after change on the same PID 1."
+  }
+ ],
  "Marketing": []
 }
