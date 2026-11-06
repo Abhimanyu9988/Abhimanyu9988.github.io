@@ -1,10 +1,5 @@
 {
- "round": 7,
- "Editor": [
-  {
-   "problem": "Earlier point 2 is only partly fixed, so the title's \"Two OTel Java Agent Changes\" can still pass without proof. The plan now adds db_duration_max_dimensions (le 36), probe_largest_held, and untrimmed, trimmed and collector-added attribute counts. But fix.sh's `fixed` gate only checks `untrimmed > trimmed`. That can hardly fail: turning off two resource providers always removes attributes. Nothing measures whether a db.client.operation.duration series without the trim would go over 36 dimensions. That depends on everything a series carries: resource attributes, the metric's own attributes (db.system.name, db.namespace, db.operation.name, db.collection.name, db.query.summary, server.address, server.port, le), and what the Collector adds (cloud, host and k8s.*). The earlier fix also asked for a fallback: if the untrimmed count stays within 36, the title changes. That fallback appears nowhere in the plan. So a run can emit `fixed` while the trim is never shown to matter. The \"8 cloud and host\" and \"6 process\" attribute counts in the step 5 comment and the README also still come from the brief, not from the lab.",
-   "fix": "In other_routes, orders already exports over OTLP without the trim, with the opt-in set as a system property. Read its select-audit db.client.operation.duration_bucket series back from /v2/metrictimeseries under the same LAB_NAME. Report untrimmed_db_series_dimensions (kind limit, op present) and untrimmed_series_held (present: how many of those series Splunk stored). If that series isn't readable, compute the figure as max_dimensions + (untrimmed \u2212 trimmed) and print both terms. In the gate, replace `untrimmed > trimmed` with a branch that sets TITLE_CHANGES=2 when untrimmed_db_series_dimensions > 36, and TITLE_CHANGES=1 otherwise. Print it as a HERO_MEASURE. Record now, in the brief, that TITLE_CHANGES=1 means the title becomes \"...: One OTel Java Agent Setting, No Code Changes\" and the trim moves to a dimension-headroom section. Print the process attribute keys and the cloud/host keys that were actually counted, so the 6 and the 8 come from the run."
-  }
- ],
+ "round": 8,
+ "Editor": [],
  "Marketing": []
 }
