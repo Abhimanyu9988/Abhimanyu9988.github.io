@@ -1,5 +1,7 @@
 name: lab-check
 # A free check before a chat lab pays for AWS. See docs/chat-article.md.
+# A blocked or failed check is a normal result, not a broken run, and GitHub emails Abhi about every red run.
+# So each check reports through its job's `passed` output, and the verdict job's name gives the result.
 on:
   workflow_dispatch:
     inputs:
@@ -20,6 +22,8 @@ jobs:
     if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      passed: ${{ steps.check.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,6 +38,8 @@ jobs:
           git show "FETCH_HEAD:chat-work/$ISSUE/lab.json" > lab.json
           python3 pipeline/lab_check.py lab.json work
       - name: run the lab's check
+        id: check
+        continue-on-error: true
         working-directory: work
         run: bash check.sh
   # Marketing and the Editor review the plan from code on main. The lab's files reach them as data, and nothing from the lab runs here.
@@ -41,6 +47,8 @@ jobs:
     if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      passed: ${{ steps.review.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,6 +61,8 @@ jobs:
           private-key: ${{ secrets.BOT_PRIVATE_KEY }}
           permission-contents: write
       - name: review the lab plan
+        id: review
+        continue-on-error: true
         env:
           ISSUE: ${{ inputs.issue }}
           EXTRA_ROUND: ${{ inputs.extra_round }}
@@ -83,11 +93,13 @@ jobs:
   # Runs the lab's real scripts on a small cluster. Like the lab sandbox, this holds the Splunk tokens and nothing else:
   # no model keys, no GitHub token and no AWS role.
   rehearsal:
-    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && needs.app.outputs.passed == 'true' && needs.splunk.outputs.passed == 'true' && needs.plan-review.outputs.passed == 'true'
     needs: [app, splunk, plan-review]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: aws-lab
+    outputs:
+      passed: ${{ steps.rehearse.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -102,6 +114,8 @@ jobs:
           git show "FETCH_HEAD:chat-work/$ISSUE/lab.json" > lab.json
           python3 pipeline/lab_check.py lab.json work
       - name: rehearse the lab on Kubernetes
+        id: rehearse
+        continue-on-error: true
         run: bash pipeline/rehearse.sh work
         env:
           SPLUNK_REALM: ${{ vars.SPLUNK_REALM }}
@@ -113,14 +127,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: aws-lab
+    outputs:
+      passed: ${{ steps.send.outcome == 'success' }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           persist-credentials: false
       - name: send a test trace and read it back
+        id: send
+        continue-on-error: true
         run: python3 pipeline/splunk_check.py
         env:
           SPLUNK_REALM: ${{ vars.SPLUNK_REALM }}
           SPLUNK_ACCESS_TOKEN: ${{ secrets.SPLUNK_ACCESS_TOKEN }}
           SPLUNK_API_TOKEN: ${{ secrets.SPLUNK_API_TOKEN }}
+  # The result of the whole check, in one place. A lab may go to AWS only if all four say true.
+  verdict:
+    name: verdict app=${{ needs.app.outputs.passed }} splunk=${{ needs.splunk.outputs.passed }} review=${{ needs.plan-review.outputs.passed }} rehearsal=${{ needs.rehearsal.outputs.passed || 'false' }}
+    if: always() && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    needs: [app, splunk, plan-review, rehearsal]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "Read the job name for the result of this check."
