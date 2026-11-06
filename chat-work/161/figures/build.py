@@ -16,10 +16,10 @@ S={(r["metric"],r["service"]):dict(map(tuple,r["points"])) for r in rows}
 BLUE,PINK,TEAL="#1436E0","#D61F7A","#0B7A75"; INK,MID,GRID="#101426","#596078","#E6E8F0"
 clock=lambda ms:dt.datetime.fromtimestamp(ms/1000,dt.timezone.utc).strftime("%H:%M:%S")
 STEP=30000     # the series report every 10 to 20 s. Only a longer stretch counts as no reading
-def lines(w,h,series,top,label=True):
+def lines(w,h,series,top,label=True,STEP=STEP):
     """Real points only, each one marked. A dotted join crosses the stretch with no load, so it can't read as measured traffic."""
     ts=[t for _,d,_,_ in series for t in d]; t0,t1=min(ts),max(ts)
-    L,T,B,R=34,8,20,(82 if label else 22); X=lambda t:L+(t-t0)/(t1-t0)*(w-L-R); Y=lambda v:max(T,h-B-(v/top)*(h-B-T)); s=""
+    L,T,B,R=34,8,20,(120 if label else 22); X=lambda t:L+(t-t0)/(t1-t0)*(w-L-R); Y=lambda v:max(T,h-B-(v/top)*(h-B-T)); s=""
     for i in range(5):
         v=top*i/4; y=Y(v)
         s+=f'<line x1="{L}" x2="{w-R}" y1="{y:.1f}" y2="{y:.1f}" stroke="{GRID}"/><text x="{L-6}" y="{y+4:.1f}" text-anchor="end" fill="{MID}" font-size="11">{v:.0f}</text>'
@@ -90,10 +90,20 @@ LIMIT=f"""<!doctype html><meta charset=utf-8><style>{BASE}</style><body style="w
 <div class=k style="margin:12px 0 4px">my test points, sent straight to Splunk</div>
 {bar("30 dimensions",30,True,"held")}{bar("36 dimensions",36,True,"held")}{bar("37 dimensions",37,False,"not held")}{bar("40 dimensions",40,False,"not held")}
 </div><div style="font:400 12px 'Plex'">Counts read from Splunk's metric time series API for my lab run, leaving out sf_metric, charted by me. Not a Splunk screen.</div></body>"""
+
+MIN=[1793977380000+i*60000 for i in range(6)]    # the six minutes in the lab's output, ending 15:03 to 15:08 UTC
+PROG=dict(zip(MIN,[48.27956989247313,48.5239852398524,48.07560137457045,47.972972972972975,47.99331103678931,47.986577181208055]))
+TIMER=dict(zip(MIN,[38.03,42.17,37.42,36.33,33.64,32.55]))
+EDGE=' stroke-dasharray="3 5"'
+def p95(w,h): return lines(w,h,[("le 50 ms",{t:50 for t in MIN},MID,EDGE),("SignalFlow p95",PROG,BLUE,""),("timer p95",TIMER,PINK,""),("le 10 ms",{t:10 for t in MIN},MID,EDGE)],60,STEP=90000).replace('r="2"','r="3"')
+P95=f"""<!doctype html><meta charset=utf-8><style>{BASE}</style><body style="width:900px;padding:16px;display:flex;flex-direction:column;gap:10px">
+<div class=p><div class=h>The pg_sleep(0.03) statement, one reading per minute <span class=u>ms. Grey: the stored bucket edges</span></div>{p95(844,270).replace('width="844"','width="844"')}</div>
+<div class=p style="display:flex;gap:30px;padding:12px 18px"><div class=s><b style="font-size:26px">47.99</b><span>SignalFlow p95, median, min 47.97, max 48.52</span></div><div class=s><b style="font-size:26px;color:{PINK}">36.33</b><span>timer p95, median, min 32.55, max 42.17</span></div></div>
+<div style="font:400 12px 'Plex'">Values printed by my lab run, from the SignalFlow stream and a test timer around one JDBC call. Charted by me. Not a Splunk screen.</div></body>"""
 async def main():
     async with async_playwright() as p:
         b=await p.chromium.launch()
-        for n,h,w,hh in (("cover",COVER,1200,630),("step-2",WIDE,900,100),("step-3",LIMIT,900,100)):
+        for n,h,w,hh in (("cover",COVER,1200,630),("step-2",WIDE,900,100),("step-3",LIMIT,900,100),("step-4",P95,900,100)):
             pg=await b.new_page(viewport={"width":w,"height":hh},device_scale_factor=2)
             await pg.set_content(h); await pg.evaluate("document.fonts.ready"); await pg.wait_for_timeout(300)
             over=await pg.evaluate("[...document.querySelectorAll('.p,body')].filter(e=>e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+1).length")
