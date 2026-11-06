@@ -1,5 +1,10 @@
 {
- "round": 8,
- "Editor": [],
+ "round": 9,
+ "Editor": [
+  {
+   "problem": "reproduce.sh step 5 sets both deployment.environment=$LAB_NAME and deployment.environment.name=$LAB_NAME in -Dotel.resource.attributes. That adds one dimension to every series. trim_numbers then sets title_changes=2 only when untrimmed_dims > 36, so the trim (the second change in the title) can look necessary only because of this duplicate. A reader who sets just one of these attributes might sit at 36 or below. Then the title's two agent changes would rest on a setup the lab added, not on what EKS and the Collector add.",
+   "fix": "Set only the attribute the Splunk chart and the reader's dashboards use (deployment.environment) and drop deployment.environment.name. If you keep both, have trim_numbers print the dimensions without the duplicate. Base title_changes on that count (untrimmed_dims minus 1 > 36), and log which lab-set attributes are in the count. Make the same change in the EKS_LIKE rehearsal string so kind still carries the dimension count EKS will have."
+  }
+ ],
  "Marketing": []
 }
