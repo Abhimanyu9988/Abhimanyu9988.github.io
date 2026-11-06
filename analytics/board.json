@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T22:14:31Z",
+ "updated": "2026-11-06T22:42:46Z",
  "columns": {
   "needs": [
    {
@@ -15,13 +15,6 @@
     "title": "Default ECS FireLens Dropped 76.59% in My Fargate Outage Test",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52838",
-    "kind": "Review",
-    "title": "[chore] Update core dependencies",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52838",
-    "where": "opentelemetry-collector-contrib"
    },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/152",
