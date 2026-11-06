@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T06:07:21Z",
+ "updated": "2026-11-06T06:25:55Z",
  "columns": {
   "needs": [
    {
@@ -29,6 +29,27 @@
     "title": "Draft: Default ECS FireLens Dropped 76.59% in My Fargate Outage Test",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-helm-charts/issues/2161",
+    "kind": "Assigned",
+    "title": "[Operator] Cert invalid after cluster restart",
+    "url": "https://github.com/open-telemetry/opentelemetry-helm-charts/issues/2161",
+    "where": "opentelemetry-helm-charts"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
+    "kind": "Assigned",
+    "title": "Opentelemetrycollector crd: Specific receivers do not create services",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
+    "where": "opentelemetry-operator"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
+    "kind": "Assigned",
+    "title": "[receiver/flinkmetrics] Flink 1.20/2.x compatibility audit and metric correctness follow-ups",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
+    "where": "opentelemetry-collector-contrib"
    }
   ],
   "maybe": [
@@ -38,13 +59,6 @@
     "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
     "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
-    "kind": "Mentioned",
-    "title": "Opentelemetrycollector crd: Specific receivers do not create services",
-    "url": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
-    "where": "opentelemetry-operator"
    },
    {
     "id": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
