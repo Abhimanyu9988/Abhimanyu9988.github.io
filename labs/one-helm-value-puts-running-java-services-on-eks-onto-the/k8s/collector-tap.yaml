@@ -1,0 +1,14 @@
+# A measuring aid. fix.sh adds it to the agent after the timed rounds, so no latency figure includes it. OBI's settings and the
+# export to Splunk don't change. OBI assigns its own trace IDs, so only its exported spans can say which traces to read back.
+# This second pipeline writes one line per span to the agent's log. Leave it out of your own cluster.
+agent:
+  config:
+    exporters:
+      debug/tap:
+        verbosity: normal
+        use_internal_logger: false   # the internal logger samples its output, and this needs every line
+    service:
+      pipelines:
+        traces/tap:
+          receivers: [otlp]
+          exporters: [debug/tap]
