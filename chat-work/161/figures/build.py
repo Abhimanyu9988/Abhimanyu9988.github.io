@@ -64,13 +64,13 @@ BASE=f"""*{{box-sizing:border-box;margin:0;padding:0}}{F}body{{background:#1436E
 chip=lambda n,t,z=30:f'<div style="display:flex;flex-direction:column;align-items:center;gap:3px;background:#fff;color:{INK};width:92px;height:66px;justify-content:center;font:600 10px Plex;overflow:hidden"><div style="height:30px;display:flex;align-items:center">{logo(n,z)}</div>{t}</div>'
 FOOT="Real series read from Splunk for my lab run (UTC), charted by me. Not a Splunk screen. Logos belong to their owners."
 COVER=f"""<!doctype html><meta charset=utf-8><style>{BASE}</style><body style="width:1200px;height:630px;padding:28px 36px 24px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
-<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px"><div><div style="font:400 13.5px 'Plex';color:#FFE14D">OPENTELEMETRY JAVA AGENT + SPLUNK OBSERVABILITY CLOUD</div><div style="font:700 42px/1.08 'Space Grotesk';letter-spacing:-.02em;margin-top:3px">One setting. <span style="color:#FFE14D">Postgres p95 in Splunk.</span></div></div>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px"><div><div style="font:400 13.5px 'Plex';color:#FFE14D">OPENTELEMETRY JAVA AGENT + SPLUNK OBSERVABILITY CLOUD</div><div style="font:700 42px/1.08 'Space Grotesk';letter-spacing:-.02em;margin-top:3px">One setting. <span style="color:#FFE14D">Postgres per statement.</span></div></div>
 <div style="display:flex;gap:6px">{chip("otel","OpenTelemetry")}{chip("eks","Amazon EKS")}{chip("splunk","Splunk",72)}</div></div>
 <div style="display:flex;gap:12px"><div class=p style="flex:1"><div class=h>The lab <span class=u>same jar and image before and after, no code changes</span></div>{smap(730)}</div>
 <div class=p style="width:366px;display:flex;justify-content:space-around;align-items:center;padding:12px 20px"><div class=s><b>0 to 14</b><span>series per statement</span></div><div class=s><b>36</b><span>dimensions per series</span></div></div></div>
 <div style="display:flex;gap:12px;flex:1;min-height:0">
 <div class=p style="flex:1;min-width:0"><div class=h>Requests <span class=u>per 10 s</span> <span style="float:right;font-weight:400">{key}</span></div>{req(340,272)}</div>
-<div class=p style="flex:1;min-width:0"><div class=h>inventory latency <span class=u>ms, cut at 120, dotted: no load</span></div>{lat(340,272)}</div>
+<div class=p style="flex:1;min-width:0"><div class=h>inventory latency <span class=u>ms, cut at 120</span></div>{lat(340,272)}</div>
 <div class=p style="flex:1;min-width:0"><div class=h>JVM memory used <span class=u>MiB</span></div>{mem(340,272)}</div></div>
 <div style="display:flex;justify-content:space-between;font:400 12.5px 'Plex'"><span>{FOOT}</span><span>showmerit.com/abhimanyu</span></div></body>"""
 WIDE=f"""<!doctype html><meta charset=utf-8><style>{BASE}</style><body style="width:900px;padding:16px;display:flex;flex-direction:column;gap:10px">
