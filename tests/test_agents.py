@@ -1756,6 +1756,8 @@ lab_mod._aws_json, lab_mod._aws = real_aj, real_a
 
 # ---------- free lab check ----------
 lc_y = __import__("yaml").safe_load((ROOT / ".github/workflows/lab-check.yml").read_text())
+check("lab check: rehearsal runs only if all three checks passed", all(f"needs.{j}.outputs.passed == 'true'" in lc_y["jobs"]["rehearsal"]["if"] for j in ("app", "splunk", "plan-review")))
+check("lab check: the verdict names all four results", all(k in lc_y["jobs"]["verdict"]["name"] for k in ("app=", "splunk=", "review=", "rehearsal=")))
 lc_text = json.dumps(lc_y["jobs"]["app"])
 rh_job = lc_y["jobs"]["rehearsal"]
 rh_text = json.dumps(rh_job)
