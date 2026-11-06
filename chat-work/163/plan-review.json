@@ -1,10 +1,5 @@
 {
- "round": 4,
- "Editor": [
-  {
-   "problem": "The pass/fail check and the headline count measure different things. The README and fix.sh call services_with_own_spans (variable `own`) the headline figure. But fix.sh prints `emit fixed` when `services` is at least 2, and `services` also counts nodes Splunk only inferred from a caller. The contract's services_on_map (ge 2) counts inferred nodes too. If OBI gave orders its own spans but inventory showed up only as an inferred node, the run would still pass. The title, 'One Helm Value Puts Running Java Services \u2026 onto the Splunk APM Map', would then be false for inventory, and the lab's verdict would hide it.",
-   "fix": "In fix.sh, change the final test to `[ \"${own:-0}\" -ge 2 ] && [ \"$restarts\" -eq 0 ]`. Add services_with_own_spans to the brief's measurements (kind count, accept ge 2, min_entities 1) as the measure the title rests on. Keep services_on_map as a present-only extra that includes inferred nodes."
-  }
- ],
+ "round": 5,
+ "Editor": [],
  "Marketing": []
 }
