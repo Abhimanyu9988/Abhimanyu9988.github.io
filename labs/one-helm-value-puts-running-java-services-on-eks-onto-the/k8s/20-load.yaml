@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: load
+  namespace: demo
+data:
+  load.py: |
+    # Sends one order request every 50 ms. Each carries a traceparent, as an instrumented caller would, and the lab never relies on those IDs.
+    import http.client, os, random, sys, time
+    seconds, warm = int(os.environ["SECONDS_TOTAL"]), int(os.environ["SECONDS_WARM"])
+    conn, took, errors, gap = http.client.HTTPConnection("orders", 8080, timeout=10), [], 0, 0.05
+    def cpu():
+        with open("/proc/stat") as f:
+            v = [int(x) for x in f.readline().split()[1:]]
+        return sum(v), v[3] + v[4]
+    cpu_start, start = cpu(), time.time()
+    while time.time() - start < seconds:
+        sent = time.time()
+        last = "%032x" % random.getrandbits(128)
+        try:
+            conn.request("GET", "/orders/%d" % random.randint(1, 1000), headers={"traceparent": "00-%s-%016x-01" % (last, random.getrandbits(64))})
+            r = conn.getresponse(); r.read()
+            ok = r.status == 200
+        except Exception:
+            ok = False
+            conn.close()
+        ms = (time.time() - sent) * 1000
+        if not ok:
+            errors += 1
+        elif sent - start >= warm:
+            took.append(ms)
+        time.sleep(max(0, gap - ms / 1000))
+    cpu_end = cpu()
+    print("LOAD node_busy_pct=%.0f" % (100 * (1 - (cpu_end[1] - cpu_start[1]) / max(1, cpu_end[0] - cpu_start[0]))))
+    took.sort()
+    if not took:
+        print("LOAD no successful requests after warm-up, errors=%d" % errors)
+        sys.exit(1)
+    print("LOAD requests=%d errors=%d p50_ms=%.2f p95_ms=%.2f" % (len(took), errors, took[len(took) // 2], took[int(len(took) * 0.95)]))
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  volumes:
+    - name: load
+      configMap:
+        name: load
+  containers:
+    - name: load
+      image: python:3.12-slim
+      command: ["python", "/load/load.py"]
+      env:
+        - { name: SECONDS_TOTAL, value: "20" }
+        - { name: SECONDS_WARM, value: "5" }
+      volumeMounts:
+        - { name: load, mountPath: /load }
