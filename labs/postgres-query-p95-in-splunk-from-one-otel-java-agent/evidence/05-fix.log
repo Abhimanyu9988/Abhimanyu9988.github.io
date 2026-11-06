@@ -1,0 +1,202 @@
+$ bash fix.sh
+# exit 0 after 666s
+
+[... earlier output cut ...]
+series=32, most dimensions=33
+  db.client.connections.usage: series=4, most dimensions=33
+  http.server.request.duration_count: series=4, most dimensions=36
+  http.server.request.duration_bucket: series=0, most dimensions=0
+  db.client.operation.duration_count: series=8, most dimensions=35
+  db.client.operation.duration_bucket: series=80, most dimensions=36
+stream resolution: "resolutionMs":60000
+-- db.client.operation.duration in Splunk, from /v2/metrictimeseries
+  _bucket: 80 series
+  _count: 8 series
+  _max: 8 series
+  _min: 8 series
+  _sum: 8 series
+  service.name=inventory db.query.summary=null: 14 series
+  service.name=inventory db.query.summary=SHOW: 14 series
+  service.name=inventory db.query.summary=select reserved: 14 series
+  service.name=inventory db.query.summary=select stock: 14 series
+  service.name=inventory db.query.summary=update stock: 14 series
+  service.name=orders db.query.summary=null: 14 series
+  service.name=orders db.query.summary=SHOW: 14 series
+  service.name=orders db.query.summary=select audit: 14 series
+  bucket boundaries in Splunk (le): 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10, +Inf
+-- database metric names in Splunk with the setting
+  db.client.connection.count
+  db.client.connection.create_time_bucket
+  db.client.connection.create_time_count
+  db.client.connection.create_time_max
+  db.client.connection.create_time_min
+  db.client.connection.create_time_sum
+  db.client.connection.idle.min
+  db.client.connection.limit
+  db.client.connection.pending_requests
+  db.client.connection.use_time_bucket
+  db.client.connection.use_time_count
+  db.client.connection.use_time_max
+  db.client.connection.use_time_min
+  db.client.connection.use_time_sum
+  db.client.connection.wait_time_bucket
+  db.client.connection.wait_time_count
+  db.client.connection.wait_time_max
+  db.client.connection.wait_time_min
+  db.client.connection.wait_time_sum
+  db.client.connections.create_time_bucket
+  db.client.connections.create_time_count
+  db.client.connections.create_time_max
+  db.client.connections.create_time_min
+  db.client.connections.create_time_sum
+  db.client.connections.idle.min
+  db.client.connections.max
+  db.client.connections.pending_requests
+  db.client.connections.usage
+  db.client.connections.use_time_bucket
+  db.client.connections.use_time_count
+  db.client.connections.use_time_max
+  db.client.connections.use_time_min
+  db.client.connections.use_time_sum
+  db.client.connections.wait_time_bucket
+  db.client.connections.wait_time_count
+  db.client.connections.wait_time_max
+  db.client.connections.wait_time_min
+  db.client.connections.wait_time_sum
+  db.client.operation.duration_bucket
+  db.client.operation.duration_count
+  db.client.operation.duration_max
+  db.client.operation.duration_min
+  db.client.operation.duration_sum
+-- the known statement, pg_sleep(0.03), one reading per minute
+  minute ending 2026-11-06T15:03:00Z: queries=282 p95_ms=48.41 in the bucket 10 to 50 ms
+  minute ending 2026-11-06T15:04:00Z: queries=275 p95_ms=48.56 in the bucket 10 to 50 ms
+  minute ending 2026-11-06T15:05:00Z: queries=292 p95_ms=48.13 in the bucket 10 to 50 ms
+  minute ending 2026-11-06T15:06:00Z: queries=296 p95_ms=48 in the bucket 10 to 50 ms
+  minute ending 2026-11-06T15:07:00Z: queries=299 p95_ms=48 in the bucket 10 to 50 ms
+  minute ending 2026-11-06T15:08:00Z: queries=298 p95_ms=48 in the bucket 10 to 50 ms
+  from the bucket series: median 48.00, min 48.00, max 48.56
+  program as it ran: data('db.client.operation.duration_bucket', filter=filter('deployment.environment', 'postgres-query-p95-in-sp-070544') and filter('db.query.summary', 'select reserved'), rollup='delta').sum(by=['le']).histogram_percentile(pct=95, bucket_name='le').scale(1000).publish('p95_ms')
+  readings from it: 6, stream resolution: "resolutionMs":60000
+  histogram_percentile() reading: 48.27956989247313
+  histogram_percentile() reading: 48.5239852398524
+  histogram_percentile() reading: 48.07560137457045
+  histogram_percentile() reading: 47.972972972972975
+  histogram_percentile() reading: 47.99331103678931
+  histogram_percentile() reading: 47.986577181208055
+  histogram_percentile() p95: median 47.99, min 47.97, max 48.52
+  pg_stat_statements calls|mean|max|stddev|query: 10272|0.14|35.99|0.74|update stock set qty = qty where id = $1
+  pg_stat_statements calls|mean|max|stddev|query: 10272|0.08|18.22|0.47|select sku, qty from stock where id = $1
+  pg_stat_statements calls|mean|max|stddev|query: 10272|0.04|12.05|0.27|select count(*) from audit
+  pg_stat_statements calls|mean|max|stddev|query: 2568|30.85|54.06|2.01|select pg_sleep(0.03), qty from reserved where id = $1
+  timer in inventory: minute_epoch=1793977320 calls=282 p95_ms=38.03 max_ms=58.83
+  timer in inventory: minute_epoch=1793977380 calls=276 p95_ms=42.17 max_ms=75.59
+  timer in inventory: minute_epoch=1793977440 calls=291 p95_ms=37.42 max_ms=58.29
+  timer in inventory: minute_epoch=1793977500 calls=296 p95_ms=36.33 max_ms=48.71
+  timer in inventory: minute_epoch=1793977560 calls=299 p95_ms=33.64 max_ms=37.97
+  timer in inventory: minute_epoch=1793977620 calls=298 p95_ms=32.55 max_ms=42.44
+  timer p95: median 36.33, min 32.55, max 42.17
+known statement p95 from the program: 47.99 ms, in the bucket from 10 to 50 ms as Splunk stores it
+known query p95 bucket crosscheck ms 48.00
+known statement p95 from the timer around the JDBC call: 36.33 ms, so the histogram reading sits 32.1% away from it
+known statement mean: 31.88 ms from Splunk's sum and count, 30.85 ms from pg_stat_statements, a gap of 3.3%
+beside that p95: CPU steal on the app node during the load 19.21%, CPU credit balance on the app node: min 0.0, max 0.8717240833333333, 4 points
+the timer's p95 of 36.33 ms sits in the stored bucket from 10 to 50 ms, and the SignalFlow p95 of 47.99 ms is in that bucket: 1
+-- the lookup, one reading per minute: median 4.33, min 1.46, max 8.46
+-- lookups in Splunk against requests the load sent, minute by minute
+  minute ending 2026-11-06T15:03:00Z: Splunk=1131, load sent 1086 the minute before and 1131 in this minute, bounds 1086 to 1131, kept
+  minute ending 2026-11-06T15:04:00Z: Splunk=1100, load sent 1131 the minute before and 1101 in this minute, bounds 1101 to 1131, kept
+  minute ending 2026-11-06T15:05:00Z: Splunk=1167, load sent 1101 the minute before and 1166 in this minute, bounds 1101 to 1166, kept
+  minute ending 2026-11-06T15:06:00Z: Splunk=1185, load sent 1166 the minute before and 1185 in this minute, bounds 1166 to 1185, kept
+  minute ending 2026-11-06T15:07:00Z: Splunk=1193, load sent 1185 the minute before and 1194 in this minute, bounds 1185 to 1194, kept
+  minute ending 2026-11-06T15:08:00Z: Splunk=1195, load sent 1194 the minute before and 1194 in this minute, bounds 1194 to 1194, kept
+lookups Splunk counted: 6971, requests the load sent for those minutes: 6917 (6863 to 6971 by export phase), minutes compared: 6
+minutes dropped because the load's own sent count dipped: 0, minutes with no Splunk point: 0
+queries gap: 0.8%
+== 5. The other two routes, on one short load with console output added
+name sets on the database/dup route: 2, with db.client.operation.duration exports=5 and span keys: db.connection_string db.name db.namespace db.operation db.query.summary db.query.text db.sql.table db.statement db.system db.system.name db.user 
+-- connection pool metric names, before and with the setting
+  before: db.client.connections.create_time_bucket
+  before: db.client.connections.create_time_count
+  before: db.client.connections.create_time_max
+  before: db.client.connections.create_time_min
+  before: db.client.connections.create_time_sum
+  before: db.client.connections.idle.min
+  before: db.client.connections.max
+  before: db.client.connections.pending_requests
+  before: db.client.connections.usage
+  before: db.client.connections.use_time_bucket
+  before: db.client.connections.use_time_count
+  before: db.client.connections.use_time_max
+  before: db.client.connections.use_time_min
+  before: db.client.connections.use_time_sum
+  before: db.client.connections.wait_time_bucket
+  before: db.client.connections.wait_time_count
+  before: db.client.connections.wait_time_max
+  before: db.client.connections.wait_time_min
+  before: db.client.connections.wait_time_sum
+  with the setting: db.client.connection.count
+  with the setting: db.client.connection.create_time_bucket
+  with the setting: db.client.connection.create_time_count
+  with the setting: db.client.connection.create_time_max
+  with the setting: db.client.connection.create_time_min
+  with the setting: db.client.connection.create_time_sum
+  with the setting: db.client.connection.idle.min
+  with the setting: db.client.connection.limit
+  with the setting: db.client.connection.pending_requests
+  with the setting: db.client.connection.use_time_bucket
+  with the setting: db.client.connection.use_time_count
+  with the setting: db.client.connection.use_time_max
+  with the setting: db.client.connection.use_time_min
+  with the setting: db.client.connection.use_time_sum
+  with the setting: db.client.connection.wait_time_bucket
+  with the setting: db.client.connection.wait_time_count
+  with the setting: db.client.connection.wait_time_max
+  with the setting: db.client.connection.wait_time_min
+  with the setting: db.client.connection.wait_time_sum
+pool metric names with the setting: 19
+the agent read this setting from 2 routes: the environment variable on inventory, and otel.semconv-stability.opt-in on orders with 6 exports
+series for lookup (select stock): 14
+HERO_MEASURE: series_per_statement[lookup]=14
+series for known (select reserved): 14
+HERO_MEASURE: series_per_statement[known]=14
+series for update (update stock): 14
+HERO_MEASURE: series_per_statement[update]=14
+series for audit (select audit): 14
+HERO_MEASURE: series_per_statement[audit]=14
+attributes the trim removes: process.command_args process.executable.path process.pid process.runtime.description process.runtime.name process.runtime.version 
+cloud and host attributes on these series: cloud.account.id cloud.availability_zone cloud.platform cloud.provider cloud.region host.id host.image.id host.type 
+this run's db.client.operation.duration bucket series: 36 dimensions, 0 under Splunk's 36. Title changes: 1
+the same series with the opt-in alone: 36 dimensions (20 agent attributes without the trim, 14 with it)
+known query p95 ms 47.99, known query p95 vs truth pct 32.1, known query mean gap pct 3.3, queries gap pct 0.8
+achieved rps 19.1, db duration max dimensions 36
+setting route results: dup_emits_both_names 2
+HERO_MEASURE: setting_route_results[dup_emits_both_names]=2
+setting route results: pool_metric_names_after 19
+HERO_MEASURE: setting_route_results[pool_metric_names_after]=19
+setting route results: where_the_setting_is_read 2
+HERO_MEASURE: setting_route_results[where_the_setting_is_read]=2
+trim evidence: untrimmed_resource_attribute_count 20
+HERO_MEASURE: trim_evidence[untrimmed_resource_attribute_count]=20
+trim evidence: trimmed_resource_attribute_count 14
+HERO_MEASURE: trim_evidence[trimmed_resource_attribute_count]=14
+trim evidence: collector_added_attribute_count 8
+HERO_MEASURE: trim_evidence[collector_added_attribute_count]=8
+trim evidence: untrimmed_db_series_dimensions 36
+HERO_MEASURE: trim_evidence[untrimmed_db_series_dimensions]=36
+known query p95 in timer bucket 1, known query p95 from program 1
+known query p95 minutes 6, known query bucket lower ms 10, known query bucket upper ms 50
+HERO_MEASURE: known_query_p95_ms=47.99
+HERO_MEASURE: known_query_p95_vs_truth_pct=32.1
+HERO_MEASURE: known_query_p95_bucket_crosscheck_ms=48.00
+HERO_MEASURE: known_query_p95_in_timer_bucket=1
+HERO_MEASURE: known_query_p95_from_program=1
+HERO_MEASURE: known_query_mean_gap_pct=3.3
+HERO_MEASURE: queries_gap_pct=0.8
+HERO_MEASURE: achieved_rps=19.1
+HERO_MEASURE: db_duration_max_dimensions=36
+HERO_MEASURE: known_query_p95_minutes=6
+HERO_MEASURE: known_query_bucket_lower_ms=10
+HERO_MEASURE: known_query_bucket_upper_ms=50
+HERO_RESULT: fixed
+
