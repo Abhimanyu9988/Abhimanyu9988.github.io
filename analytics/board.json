@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T19:32:30Z",
+ "updated": "2026-11-06T20:15:18Z",
  "columns": {
   "needs": [
    {
@@ -61,17 +61,17 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
-    "kind": "Mentioned",
-    "title": "[receiver/kubeletstats] Add optional per-pod ephemeral-storage inode metrics (InodesUsed / InodesFree / Inodes)",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
     "kind": "Mentioned",
     "title": "[receiver/kubelet_stats] Add ephemeral and projected volume types to k8s.volume.type",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
+    "kind": "Mentioned",
+    "title": "[receiver/kubeletstats] Add optional per-pod ephemeral-storage inode metrics (InodesUsed / InodesFree / Inodes)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
     "where": "opentelemetry-collector-contrib"
    },
    {
