@@ -1,0 +1,129 @@
+$ bash fix.sh
+# exit 0 after 632s
+
+== 2. The before-check: the cluster reaches Splunk, and the map is empty
+cluster metric time series in Splunk: 2421
+services on the map before the change: 0
+instance CPU credit mode: unlimited unlimited unlimited
+== 4. The first value
+helm upgrade --reuse-values --set obi.enabled=true
+JVMs OBI reports instrumenting: 2
+splunk-otel-collector splunk-otel-collector-0.163.1 app 0.163.1
+OBI hostPID=true hostNetwork=true privileged=true
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml
+helm values under obi: {"enabled":true}
+time=2026-11-06T11:57:27.834Z level=INFO msg="instrumenting process" component=discover.traceAttacher cmd=/usr/local/bin/postgres pid=4410 ino=58745810 type=cpp service="" logenricher=false
+time=2026-11-06T11:57:30.534Z level=INFO msg="instrumenting process" component=discover.traceAttacher cmd=/opt/java/openjdk/bin/java pid=4333 ino=33598069 type=java service=app logenricher=false
+time=2026-11-06T11:57:27.832Z level=INFO msg="instrumenting process" component=discover.traceAttacher cmd=/opt/java/openjdk/bin/java pid=4351 ino=33598198 type=java service=app logenricher=false
+== 5. One discarded round while OBI settles, then five rounds with OBI on, on the same pods
+tap lines during the timed rounds: 0
+LOAD node_busy_pct=16
+LOAD requests=297 errors=0 p50_ms=10.75 p95_ms=24.45
+LOAD node_busy_pct=6
+LOAD requests=299 errors=0 p50_ms=7.66 p95_ms=14.80
+ON round: p95 14.80 ms, CPU busy pct orders node 14, inventory node 9, load node 6
+LOAD node_busy_pct=9
+LOAD requests=299 errors=0 p50_ms=6.76 p95_ms=12.38
+ON round: p95 12.38 ms, CPU busy pct orders node 13, inventory node 9, load node 9
+LOAD node_busy_pct=7
+LOAD requests=299 errors=0 p50_ms=6.07 p95_ms=9.81
+ON round: p95 9.81 ms, CPU busy pct orders node 10, inventory node 7, load node 7
+LOAD node_busy_pct=12
+LOAD requests=298 errors=0 p50_ms=7.34 p95_ms=15.04
+ON round: p95 15.04 ms, CPU busy pct orders node 12, inventory node 13, load node 12
+LOAD node_busy_pct=9
+LOAD requests=298 errors=0 p50_ms=7.20 p95_ms=15.00
+ON round: p95 15.00 ms, CPU busy pct orders node 12, inventory node 10, load node 9
+inventory	3d5bff04-4f6e-4e43-acec-b2b5fa84b3a5	0	2026-11-06T11:52:49Z	maven:3.9.9-eclipse-temurin-21
+orders	e68c5092-f2f3-4d6a-b184-47d4fe8d685e	0	2026-11-06T11:52:48Z	maven:3.9.9-eclipse-temurin-21
+postgres	575f06e9-81da-42a8-ab14-5b0da9e93a1d	0	2026-11-06T11:52:55Z	postgres:16.4-alpine
+orders Java agent mappings after OBI: 4
+inventory Java agent mappings after OBI: 4
+== 6. The Collector tap and the first trace round
+tap lines for the trace rounds: 1
+helm values under obi, unchanged: {"enabled":true}
+LOAD node_busy_pct=11
+LOAD requests=298 errors=0 p50_ms=6.65 p95_ms=12.36
+default case, as OBI exported it: orders traces 398, inventory traces 326, in both 0
+== 7. The second value, in propagate.sh, while the first case waits
+helm upgrade --reuse-values --set-string obi.env.OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+JVMs OBI reports instrumenting: 2
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+running OBI pod: ghcr.io/open-telemetry/opentelemetry-ebpf-instrumentation/ebpf-instrument:v0.15.2 OTEL_EBPF_CONFIG_PATH=/etc/ebpf-instrument/config/ebpf-instrument-config.yml OTEL_EBPF_BPF_CONTEXT_PROPAGATION=headers
+helm values under obi: {"enabled":true,"env":{"OTEL_EBPF_BPF_CONTEXT_PROPAGATION":"headers"}}
+LOAD node_busy_pct=18
+LOAD requests=299 errors=0 p50_ms=5.89 p95_ms=10.15
+propagation case, as OBI exported it: orders traces 331, inventory traces 314, in both 314
+== 7b. Reading each case
+read delay default seconds after its round: 200, overshoot 0
+HERO_MEASURE: read_delay_default_s=200
+./propagate.sh: line 32: traces-default/207eb6ba53d82ad6b3a57fb13c2dac45.latest: No such file or directory
+./propagate.sh: line 32: traces-default/7b8551f722f805f7e509b4f09fd9d306.latest: No such file or directory
+traces-default pass 1, oldest first, F found: FFFFFFFFFFFFFFFF.FFFF.FFFFFFFF
+traces-default pass 2, oldest first, F found: FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+default misses:       2 pass 1 latest 000,  bytes, segments 000
+default lookup seconds, slowest: 8.003009, at the 8s limit: 4
+sample trace from the default case: 011a317b50f3e77b5d452e479336ffe5, 2 spans in 1 segments
+  orders client GET /stock/{id} span=4402cfde8c77194f parent=6877d60d833aa8ca
+  orders server GET /orders/{id} span=6877d60d833aa8ca parent=none
+read delay propagation seconds after its round: 200, overshoot 0
+HERO_MEASURE: read_delay_propagation_s=200
+traces-propagation pass 1, oldest first, F found: FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+propagation lookup seconds, slowest: 8.002502, at the 8s limit: 2
+sample trace from the propagation case: 002e06932894812bc84b7af32de7b100, 3 spans in 1 segments
+  inventory server GET /stock/{id} span=aad6f72a2e2688d5 parent=de19790582fb2b09
+  orders server GET /orders/{id} span=b7800369ed7c30c4 parent=e76355175e7d3f75
+  orders client GET /stock/{id} span=de19790582fb2b09 parent=b7800369ed7c30c4
+own-default-orders pass 1, oldest first, F found: FFFFF
+orders server spans returned by Splunk: 5, in 5 traces
+own-default-inventory pass 1, oldest first, F found: FFFFF
+inventory server spans returned by Splunk: 5, in 5 traces
+== 8. The result
+map inferred flag per service, second value window, 246s after its round: {"orders":true,"inventory":false,"load":false}
+-- service map from Splunk APM
+  inventory inferred=false
+  orders inferred=true
+  load inferred=false
+  load -> orders
+  orders -> inventory
+map inferred flag per service, first value window: {"inventory":false,"orders":true,"load":false}
+services with a request metric by then: inventory orders 
+inventory	3d5bff04-4f6e-4e43-acec-b2b5fa84b3a5	0	2026-11-06T11:52:49Z	maven:3.9.9-eclipse-temurin-21
+orders	e68c5092-f2f3-4d6a-b184-47d4fe8d685e	0	2026-11-06T11:52:48Z	maven:3.9.9-eclipse-temurin-21
+postgres	575f06e9-81da-42a8-ab14-5b0da9e93a1d	0	2026-11-06T11:52:55Z	postgres:16.4-alpine
+services with own spans, from a server span and a request metric, the headline figure: 2
+HERO_MEASURE: services_with_own_spans=2
+services on map from Splunk, inferred nodes included: 2
+HERO_MEASURE: services_on_map=2
+inventory pod restarts added by the first value: 0
+HERO_MEASURE: pod_restarts_added[inventory]=0
+orders pod restarts added by the first value: 0
+HERO_MEASURE: pod_restarts_added[orders]=0
+postgres pod restarts added by the first value: 0
+HERO_MEASURE: pod_restarts_added[postgres]=0
+inventory pod restarts after propagation, -1 means not run: 0
+HERO_MEASURE: pod_restarts_after_propagation[inventory]=0
+orders pod restarts after propagation, -1 means not run: 0
+HERO_MEASURE: pod_restarts_after_propagation[orders]=0
+postgres pod restarts after propagation, -1 means not run: 0
+HERO_MEASURE: pod_restarts_after_propagation[postgres]=0
+traces joined default 0 found 30 of 30, joined propagation 30 found 30 of 30
+HERO_MEASURE: traces_joined_default=0
+HERO_MEASURE: traces_found_default=30
+HERO_MEASURE: traces_joined_propagation=30
+HERO_MEASURE: traces_found_propagation=30
+orders jvm helper attached: 1
+HERO_MEASURE: jvm_helper_attached[orders]=1
+inventory jvm helper attached: 1
+HERO_MEASURE: jvm_helper_attached[inventory]=1
+p95 with OBI off: min 8.43, median 12.22, max 16.01 ms
+p95 with OBI on: min 9.81, median 14.80, max 15.04 ms
+p95 added ms, medians of five rounds, about 20 requests a second: 2.58
+HERO_MEASURE: p95_added_ms=2.58
+p95 noise ms, the spread of the five OFF rounds: 7.58
+HERO_MEASURE: p95_noise_ms=7.58
+HERO_RESULT: fixed
+
