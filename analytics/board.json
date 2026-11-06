@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T06:25:55Z",
+ "updated": "2026-11-06T07:51:54Z",
  "columns": {
   "needs": [
    {
@@ -58,6 +58,13 @@
     "kind": "Mentioned",
     "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
+    "kind": "Mentioned",
+    "title": "Memory Limit Utilization metrics do not use the Working Set",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
     "where": "opentelemetry-collector-contrib"
    },
    {
