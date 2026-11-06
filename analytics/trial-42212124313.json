@@ -1,0 +1,10 @@
+{
+ "run": "42212124313",
+ "issue": 163,
+ "title": "One Helm Value Puts Running Java Services on EKS onto the Splunk APM Map",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 28.2,
+ "lab_usd": 0.0
+}
