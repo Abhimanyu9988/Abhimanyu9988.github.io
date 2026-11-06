@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T15:42:04Z",
+ "updated": "2026-11-06T19:32:30Z",
  "columns": {
   "needs": [
    {
@@ -31,6 +31,13 @@
     "where": "Abhimanyu9988.github.io"
    },
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
+    "kind": "Assigned",
+    "title": "[receiver/flinkmetrics] Flink 1.20/2.x compatibility audit and metric correctness follow-ups",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-helm-charts/issues/2161",
     "kind": "Assigned",
     "title": "[Operator] Cert invalid after cluster restart",
@@ -43,13 +50,6 @@
     "title": "Opentelemetrycollector crd: Specific receivers do not create services",
     "url": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
     "where": "opentelemetry-operator"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
-    "kind": "Assigned",
-    "title": "[receiver/flinkmetrics] Flink 1.20/2.x compatibility audit and metric correctness follow-ups",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52405",
-    "where": "opentelemetry-collector-contrib"
    }
   ],
   "maybe": [
@@ -58,6 +58,27 @@
     "kind": "Mentioned",
     "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
+    "kind": "Mentioned",
+    "title": "[receiver/kubeletstats] Add optional per-pod ephemeral-storage inode metrics (InodesUsed / InodesFree / Inodes)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
+    "kind": "Mentioned",
+    "title": "[receiver/kubelet_stats] Add ephemeral and projected volume types to k8s.volume.type",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
+    "kind": "Mentioned",
+    "title": "Promote `kubeletstats` Receiver to Stable - Observability",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
     "where": "opentelemetry-collector-contrib"
    },
    {
@@ -73,23 +94,16 @@
     "title": "[k8s] Promote k8s pod volume metrics to release candidate",
     "url": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
     "where": "semantic-conventions"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
-    "kind": "Mentioned",
-    "title": "[receiver/kubeletstats] Add optional per-pod ephemeral-storage inode metrics (InodesUsed / InodesFree / Inodes)",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
-    "kind": "Mentioned",
-    "title": "[receiver/kubelet_stats] Add ephemeral and projected volume types to k8s.volume.type",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
-    "where": "opentelemetry-collector-contrib"
    }
   ],
   "working": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
+    "kind": "Your PR",
+    "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
     "kind": "Your PR",
