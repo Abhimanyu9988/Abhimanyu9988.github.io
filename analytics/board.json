@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T23:22:45Z",
+ "updated": "2026-11-07T00:09:00Z",
  "columns": {
   "needs": [
    {
@@ -176,13 +176,6 @@
     "kind": "Merged",
     "title": "[chore] receiver/flinkmetrics: update tested Flink versions and correct README configuration",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52500",
-    "kind": "Merged",
-    "title": "[exporter/azuredataexplorer] Add Abhimanyu9988 as code owner and restore beta stability",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52500",
     "where": "opentelemetry-collector-contrib"
    }
   ]
