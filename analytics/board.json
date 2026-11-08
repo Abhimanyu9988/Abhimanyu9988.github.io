@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-07T00:09:00Z",
+ "updated": "2026-11-08T19:51:47Z",
  "columns": {
   "needs": [
    {
@@ -53,6 +53,13 @@
    }
   ],
   "maybe": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
+    "kind": "Mentioned",
+    "title": "[receiver/kubeletstats] Added k8s.pod.filesystem.inode.used metric",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
     "kind": "Mentioned",
