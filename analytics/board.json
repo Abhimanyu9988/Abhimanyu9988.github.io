@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T15:04:24Z",
+ "updated": "2026-11-09T17:33:13Z",
  "columns": {
   "needs": [
    {
@@ -91,13 +91,6 @@
   ],
   "working": [
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
-    "kind": "Your PR",
-    "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Your PR",
     "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
@@ -157,6 +150,13 @@
    }
   ],
   "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "kind": "Merged",
+    "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
     "kind": "Merged",
