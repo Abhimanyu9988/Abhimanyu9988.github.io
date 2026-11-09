@@ -270,7 +270,7 @@ def publish(plan, goal, dropped):
         first.update(state="started", started_on=datetime.date.today().isoformat())
     _, sha = analytics.read_file(PLAN)
     analytics.write_file(PLAN, json.dumps({"week": week_id(), "target": goal, "created": datetime.date.today().isoformat(), "topics": rows}, indent=1), sha, "week: new plan")
-    slack.say("editor", plan_message(rows, goal, dropped))
+    # No Slack message: Abhi didn't ask for one, and it read as a plan when these are only candidates. Topics reach him from Claude chat.
     if first and os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as f:
             f.write(f"pick={int(first['issue'])}\npick_model={first['model']}\n")
