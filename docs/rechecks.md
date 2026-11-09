@@ -14,21 +14,27 @@ Every lab behind a live ShowMerit article keeps being tested, and each article s
   429) is not judged. Links inside code blocks are commands, not citations, and are skipped.
 - Labs with no `check.sh` get only the link check and their quarterly paid run.
 
-## Paid, one lab a week (`recheck-aws.yml`, Wednesdays 01:47 UTC)
+## Paid, the first Tuesday of each month (`recheck-aws.yml`, 02:23 UTC)
 
-- Labs are taken oldest article first. Lab *i* has week *i* of a 13-week cycle starting Monday 9 Nov 2026, so each lab runs
-  once a quarter and at most one runs a week. Past 13 labs, labs that share a week take turns.
-- The lab runs once on the AWS lab account with the newest versions, through `lab.py --recheck`: the same sandbox, sweep,
-  janitor, destroy and safety net as a replicate lab, with no repair. It queues behind any replicate lab.
-- Before anything is created, the run checks the month's spend. If about $1 more would pass the limit in
-  `analytics/budget.json`, it stops and says so in the run summary. The report job records the lab's estimate.
-- To run one now: `gh workflow run recheck-aws.yml --ref main -f lab=<article slug>`. It costs about $1.
+- Labs are taken oldest article first. Lab *i* belongs to month *i* % 3 of a 3-month cycle that starts in December 2026,
+  so each lab runs once a quarter. Eight labs run 3, 3 and 2 a month, and a new article joins a month without moving the
+  others. The schedule fires every Tuesday, and only the first Tuesday of the month runs labs.
+- The month's labs run one after another, never in parallel, because the janitor clears the whole account. Each one waits
+  behind any replicate lab. Each runs once on the AWS lab account with the newest versions, through `lab.py --recheck`:
+  the same sandbox, sweep, janitor, destroy and safety net as a replicate lab, with no repair.
+- The budget is checked before each lab, counting the labs before it in the same run at about $1 each. If the next lab
+  would pass the limit in `analytics/budget.json`, it and the labs after it are skipped, and the run summary and the
+  verdict list which ones. A skipped lab opens no issue. The report job records each lab's estimate.
+- First quarter: 1 Dec 2026 Fargate scale-to-zero, broken ingress, SQS. 5 Jan 2027 canary ALB, KEDA, one Helm value.
+  2 Feb 2027 one-annotation Java, Java agent. Then again from 2 Mar 2027.
+- To run one now: `gh workflow run recheck-aws.yml --ref main -f lab=<article slug>`, or leave `lab` empty for this
+  month's labs. Each lab costs about $1.
 
 ## Results
 
 - `analytics/rechecks.json` holds dates, versions, pass or fail and run links. It is public, so no lab output goes there.
   showmerit's daily build copies it into its `data/rechecks.json` and shows one line per article.
-- A failure opens one private issue in `team-admin`, labelled `recheck` and assigned to Abhi, with the article, lab,
+- Each lab keeps its own result, issue and site line. A failure opens one private issue in `team-admin`, labelled `recheck` and assigned to Abhi, with the article, lab,
   versions that passed and failed, the failing step, its error lines and the run. A repeat failure comments on the open
   issue. A pass opens nothing. Close the issue when it is dealt with.
 - Nothing is ever sent to a vendor or an upstream project. Abhi decides that.

@@ -4,8 +4,9 @@
 Free recheck (recheck.yml, the 1st and 16th of each month): every lab with a check.sh runs it twice on a GitHub runner,
 once with the versions the article used and once with the newest releases of the agent, charts and images the lab pins.
 Every external link each article cites is fetched again. No AWS and no model.
-Paid recheck (recheck-aws.yml, weekly): the lab whose week it is in a 13-week cycle runs once on the AWS lab account with
-the newest versions, through lab.py's own runner, only if the monthly budget has room for it. No model.
+Paid recheck (recheck-aws.yml, the first Tuesday of each month): the labs due that month in a 3-month cycle run on the AWS
+lab account one after another, with the newest versions, through lab.py's own runner. Each lab starts only if the monthly
+budget has room for it. No model.
 
 Inputs: a checkout of the showmerit repo (articles and labs), GitHub releases, Helm repository indexes, Docker Hub tags,
 the results the workflow jobs saved, and the spend record on the analytics branch.
@@ -26,8 +27,9 @@ ADMIN_REPO = "Abhimanyu9988/team-admin"            # private: error lines and fa
 OWNER = "Abhimanyu9988"
 RESULTS = "analytics/rechecks.json"
 LABEL = "recheck"
-EPOCH = datetime.date(2026, 11, 9)                 # a Monday: week 0 of the paid cycle
-CYCLE_WEEKS = 13                                   # one paid run per lab per quarter
+CYCLE_START = (2026, 12)                           # month 0 of the paid cycle
+CYCLE_MONTHS = 3                                   # each lab runs on AWS once a quarter
+RUN_WEEKDAY = 1                                    # Tuesday: the paid run is the first Tuesday of the month
 UA = {"User-Agent": "showmerit-recheck"}
 AGENT_RX = re.compile(r"https://github\.com/([\w.-]+/[\w.-]+)/releases/download/v?(\d+\.\d+\.\d+)/([\w.-]+\.jar)")
 REPO_ADD = re.compile(r"helm\s+repo\s+add\s+([\w.-]+)\s+(https://[^\s\"']+)")
@@ -278,10 +280,12 @@ def apply(files, found, changes):
 
 # ---------- plan, prepare, outcome ----------
 def plan(site, only=None):
-    """What to recheck, with both version sets. The matrix runs check.sh twice only when a newer version exists."""
+    """What to recheck, with both version sets. The matrix runs check.sh twice only when a newer version exists.
+    `only` limits it to some article slugs, given as a list or as one comma-separated string."""
+    only = set(only.split(",") if isinstance(only, str) else only or [])
     out = []
     for a in articles(site):
-        if only and a["slug"] != only:
+        if only and a["slug"] not in only:
             continue
         found = pins(lab_files(site, a["lab"]))
         changes, missed = newest(found)
@@ -368,37 +372,51 @@ def links(site, only=None):
     return out
 
 # ---------- the paid cycle ----------
-def due(listed, today, wanted=""):
-    """The article whose lab gets its paid recheck this week, or None. Lab i has week i of a 13-week cycle, so each lab
-    runs once a quarter and at most one runs a week. Past 13 labs, labs that share a week take turns."""
-    if wanted:
-        return next((a for a in listed if a["slug"] == wanted), None)
-    week = (today - EPOCH).days // 7
-    group = [a for i, a in enumerate(listed) if i % CYCLE_WEEKS == week % CYCLE_WEEKS]
-    return group[(week // CYCLE_WEEKS) % len(group)] if group else None
+def cycle_month(day):
+    """0, 1 or 2: where a month sits in the 3-month cycle that starts in December 2026."""
+    return (day.year * 12 + day.month - (CYCLE_START[0] * 12 + CYCLE_START[1])) % CYCLE_MONTHS
 
-def schedule(listed):
-    """Each lab's next paid week, for the plan job's summary."""
-    today = datetime.date.today()
-    rows = []
-    for d in range(0, 7 * CYCLE_WEEKS * max(1, -(-len(listed) // CYCLE_WEEKS)), 7):
-        a = due(listed, today + datetime.timedelta(days=d))
-        if a and a["slug"] not in [r[0] for r in rows]:
-            rows.append((a["slug"], (today + datetime.timedelta(days=d)).isoformat()))
+def run_day(year, month):
+    """The first Tuesday of a month: the paid run's day."""
+    first = datetime.date(year, month, 1)
+    return first + datetime.timedelta(days=(RUN_WEEKDAY - first.weekday()) % 7)
+
+def due(listed, today, wanted="", scheduled=False):
+    """The articles whose labs get their paid recheck this month, oldest first. Lab i belongs to month i % 3 of the
+    cycle, so 8 labs run 3, 3 and 2 a month and each runs once a quarter. A new article joins its month without moving
+    the others. The schedule fires every Tuesday, so a scheduled run only works on the first one."""
+    if wanted:
+        return [a for a in listed if a["slug"] == wanted]
+    if scheduled and today != run_day(today.year, today.month):
+        return []
+    return [a for i, a in enumerate(listed) if i % CYCLE_MONTHS == cycle_month(today)]
+
+def schedule(listed, today=None, months=CYCLE_MONTHS):
+    """[(run day, [slugs])] for the next paid runs, for the run summary."""
+    today = today or datetime.date.today()
+    rows, (y, m) = [], (today.year, today.month)
+    while len(rows) < months:
+        day = run_day(y, m)
+        if day >= today:
+            rows.append((day.isoformat(), [a["slug"] for a in due(listed, day)]))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
     return rows
 
-def budget_room(extra=None):
-    """(ok, message). The paid run adds the lab estimate, so it may start only if the total stays inside the limit."""
+def budget_room(earlier=0, slug="this lab"):
+    """(ok, message) before one lab. The labs that ran before it in the same run are recorded only at the end, so each
+    counts at the lab estimate here. A lab may start only if the total, with it, stays inside the limit."""
     import budget
-    extra = budget.AWS_LAB_USD if extra is None else extra
+    extra = budget.AWS_LAB_USD * (earlier + 1)
     try:
         total, cap = budget.spent()[0], budget.limit()
     except Exception as e:
-        return False, f"Paid recheck skipped: the month's spend could not be read ({' '.join(str(e).split())[:120]}), so nothing was spent."
+        return False, f"Skipped {slug}: the month's spend could not be read ({' '.join(str(e).split())[:120]}), so nothing was spent."
+    earlier_text = f", plus about ${budget.AWS_LAB_USD * earlier:.2f} for the {earlier} lab(s) before it in this run" if earlier else ""
     if total + extra > cap:
-        return False, (f"Paid recheck skipped: ${total:.2f} of the ${cap:.2f} monthly budget is spent, and this run would add "
-                       f"about ${extra:.2f}. Nothing was started. It runs again on its next turn, or when the budget allows.")
-    return True, f"Budget ok: ${total:.2f} of ${cap:.2f} spent, and this run adds about ${extra:.2f}."
+        return False, (f"Skipped {slug}: ${total:.2f} of the ${cap:.2f} monthly budget is spent{earlier_text}, and this lab "
+                       f"would add about ${budget.AWS_LAB_USD:.2f}. Nothing was started for it. It runs again next quarter, "
+                       "or by hand when the budget allows.")
+    return True, f"Budget ok for {slug}: ${total:.2f} of ${cap:.2f} spent{earlier_text}, and this lab adds about ${budget.AWS_LAB_USD:.2f}."
 
 # ---------- report ----------
 def admin(method, path, body=None):
@@ -574,6 +592,21 @@ def aws_result(slug, path):
             "errors": [] if passed else [l[:240] for l in picked], "aws_used": bool(res.get("aws_used")),
             "destroyed": res.get("destroyed")}
 
+def aws_results(planned, folder):
+    """(results, skipped) for each lab of the run, from the folder each lab job uploaded. A lab stopped by the budget,
+    or never started, is skipped: no issue and no spend. A lab that started but saved no result counts as a failure."""
+    results, skipped = [], []
+    for entry in planned:
+        where = pathlib.Path(folder) / f"lab-{entry['slug']}"
+        stop = where / "budget-stop.json"
+        if stop.is_file():
+            skipped.append((entry["slug"], json.loads(stop.read_text()).get("message", "the budget had no room")))
+        elif (where / "started.json").is_file() or (where / "result.json").is_file():
+            results.append(aws_result(entry["slug"], where / "result.json"))
+        else:
+            skipped.append((entry["slug"], "its job never started, so nothing was spent"))
+    return results, skipped
+
 def main(argv):
     cmd, args = argv[0], argv[1:]
     if cmd == "plan":                          # plan <site> <out.json> [slug]
@@ -596,18 +629,22 @@ def main(argv):
         pathlib.Path(args[4]).write_text(json.dumps(outcome(args[0], args[1], args[2] == "success", log)))
     elif cmd == "links":                       # links <site> <out.json>
         pathlib.Path(args[1]).write_text(json.dumps(links(args[0]), indent=1))
-    elif cmd == "due":                         # due <site> [slug]: this week's paid lab
+    elif cmd == "due":                         # due <site> [slug] [event]: this month's paid labs
         listed = articles(args[0])
         wanted = args[1] if len(args) > 1 else ""
         if wanted and not re.fullmatch(r"[a-z0-9-]{1,100}", wanted):
             raise SystemExit("the lab must be an article slug")
-        a = due(listed, datetime.date.today(), wanted)
-        print("Paid schedule (next run of each lab):\n" + "\n".join(f"- {d}: {s}" for s, d in schedule(listed)))
-        output(slug=a["slug"] if a else "")
-    elif cmd == "budget":
-        ok, message = budget_room()
+        got = due(listed, datetime.date.today(), wanted, scheduled=len(args) > 2 and args[2] == "schedule")
+        print("Next paid runs:\n" + "\n".join(f"- {d}: {', '.join(s)}" for d, s in schedule(listed)))
+        output(labs=json.dumps([{"slug": a["slug"], "earlier": i} for i, a in enumerate(got)]),
+               slugs=",".join(a["slug"] for a in got), count=len(got))
+    elif cmd == "budget":                      # budget <slug> <labs before it in this run> <out dir>
+        ok, message = budget_room(int(args[1]), args[0])
         print(f"::notice title=budget::{message}")
         output(budget="ok" if ok else "stopped")
+        if not ok:
+            pathlib.Path(args[2]).mkdir(parents=True, exist_ok=True)
+            (pathlib.Path(args[2]) / "budget-stop.json").write_text(json.dumps({"slug": args[0], "message": message}))
         path = os.environ.get("GITHUB_STEP_SUMMARY")
         if path:
             with open(path, "a") as f:
@@ -618,17 +655,25 @@ def main(argv):
             results = [json.loads(p.read_text()) for p in sorted(pathlib.Path(args[2]).glob("*.json"))]
             link_results = json.loads(pathlib.Path(args[3]).read_text()) if len(args) > 3 and pathlib.Path(args[3]).is_file() else None
         else:
-            results = [aws_result(planned[0]["slug"], pathlib.Path(args[2]) / "result.json")] if planned else []
+            results, skipped = aws_results(planned, args[2])
             link_results = None
-            if results and results[0]["aws_used"]:
-                import budget                  # the lab job holds no bot token, so the lab's AWS estimate is recorded here
-                budget.EXTRA_AWS.append(budget.AWS_LAB_USD)
+            used = [r for r in results if r["aws_used"]]
+            if used:
+                import budget                  # the lab jobs hold no bot token, so their AWS estimates are recorded here
+                budget.EXTRA_AWS.extend([budget.AWS_LAB_USD] * len(used))
                 budget.record()
-            if results and results[0].get("destroyed") is False:
-                print("::warning title=recheck::the lab may not have been destroyed: read the safety-net step")
+            for r in results:
+                if r.get("destroyed") is False:
+                    print(f"::warning title=recheck::{r['slug']} may not have been destroyed: read its safety-net step")
+            for slug, why in skipped:
+                print(f"::notice title=recheck::skipped {slug}: {why}")
         counts = report(kind, planned, results, link_results, os.environ.get("RUN_URL", ""))
-        summary(planned, counts)
-        output(**counts)
+        extra = ""
+        if kind == "aws":
+            counts["skipped"] = len(skipped)
+            extra = "Skipped: " + ("; ".join(f"{s} ({why})" for s, why in skipped) if skipped else "none")
+        summary(planned, counts, extra)
+        output(**counts, skipped_labs=",".join(s for s, _ in skipped) if kind == "aws" else "")
     else:
         raise SystemExit(f"unknown command {cmd}")
 
