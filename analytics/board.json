@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-08T19:51:47Z",
+ "updated": "2026-11-09T06:32:59Z",
  "columns": {
   "needs": [
    {
@@ -68,6 +68,13 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
+    "kind": "Mentioned",
+    "title": "Memory Limit Utilization metrics do not use the Working Set",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
     "kind": "Mentioned",
     "title": "[receiver/kubelet_stats] Add ephemeral and projected volume types to k8s.volume.type",
@@ -86,13 +93,6 @@
     "kind": "Mentioned",
     "title": "Promote `kubeletstats` Receiver to Stable - Observability",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
-    "kind": "Mentioned",
-    "title": "Memory Limit Utilization metrics do not use the Working Set",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
     "where": "opentelemetry-collector-contrib"
    },
    {
