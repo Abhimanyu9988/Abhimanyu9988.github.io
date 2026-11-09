@@ -14,6 +14,7 @@ Isolation: Terraform and every AI-written script run in a throwaway container (l
 only the AWS credentials and lab variables, as the runner's uid, with no access to the runner's processes,
 files or GitHub tokens. The model keys stay in this orchestrator process.
 Everything the draft job needs is written to out/.  `lab.py --destroy-only` is the safety-net step.
+`lab.py --recheck lab.json` reruns a published lab once, with no model, for recheck-aws.yml.
 """
 import base64, html, io, json, os, pathlib, re, shutil, signal, subprocess, sys, tarfile, time, urllib.error, urllib.request
 from radar import HOME_REPO, LAB_LIMITS, call, gh, used_sources
@@ -775,16 +776,60 @@ def main():
         print(f"error: {type(e).__name__}: {e}")
         result["error"] = redact(f"{type(e).__name__}: {e}")[:800]
     finally:
-        if lab_id and not DRY and BUCKET:
-            if (GOOD / "_runner.tf").exists():
-                result["destroyed"] = destroy(lab_id, WORK if WORK.exists() else GOOD, GOOD)
-            else:
-                result["destroyed"] = True        # nothing ever planned cleanly, so nothing was created
-            if result["destroyed"]:
-                result["janitor_after"] = janitor()
-            (OUT / "state.json").write_text(json.dumps({"lab_id": lab_id, "destroyed": result["destroyed"]}))
-        save(result, lab)
-        print(f"status={result['status']} destroyed={result['destroyed']} {llm.usage_summary()}")
+        finish(result, lab, lab_id)
+
+def finish(result, lab, lab_id):
+    """Always: destroy what was built, from the last config that planned cleanly, then save the result."""
+    if lab_id and not DRY and BUCKET:
+        if (GOOD / "_runner.tf").exists():
+            result["destroyed"] = destroy(lab_id, WORK if WORK.exists() else GOOD, GOOD)
+        else:
+            result["destroyed"] = True        # nothing ever planned cleanly, so nothing was created
+        if result["destroyed"]:
+            result["janitor_after"] = janitor()
+        (OUT / "state.json").write_text(json.dumps({"lab_id": lab_id, "destroyed": result["destroyed"]}))
+    save(result, lab)
+    print(f"status={result['status']} destroyed={result['destroyed']} {llm.usage_summary()}")
+
+def recheck(path):
+    """A paid recheck of a published lab (recheck-aws.yml). The lab comes from the showmerit repo with the newest
+    versions already applied by recheck.py. One attempt, no model, no issue, and no repair: a failure is the result.
+    The usual sweep, janitor, destroy and safety net all apply."""
+    OUT.mkdir(exist_ok=True)
+    lab = as_lab(json.loads(pathlib.Path(path).read_text()))
+    slug = slugify(str(lab.get("slug") or "lab"))
+    lab_id = f"rc-{slug[:21].strip('-')}-{RUN_ID[-6:]}"      # as long as a replicate lab id, so IAM names still fit
+    result = {"recheck": slug, "run_id": RUN_ID, "status": "failed", "destroyed": None, "attempts": 0,
+              "lab_id": lab_id, "summary": lab.get("summary", ""), "expected": lab.get("expected", "")}
+    built = None
+    try:
+        errs = validate(lab)
+        if errs:
+            result["last_failure"] = {"step": "validate (AWS was not touched)", "output": "\n".join(errs)[:3000]}
+            raise RuntimeError("the published lab does not pass the runner's file rules")
+        not_ready = ready_check(any("SPLUNK_" in str(f.get("content", "")) for f in lab["files"]))
+        if not_ready:
+            result["last_failure"] = {"step": "ready check (AWS was not touched)", "output": not_ready}
+            raise RuntimeError(not_ready)
+        if DRY:
+            result["status"] = "dry_run"
+            return
+        if not BUCKET:
+            raise RuntimeError("TF_STATE_BUCKET is not set")
+        built = lab_id
+        set_boundary()
+        result["swept"] = sweep()
+        result["janitor_before"] = janitor()
+        (OUT / "state.json").write_text(json.dumps({"lab_id": lab_id, "destroyed": False}))
+        result["attempts"], result["attempt_log_from"] = 1, len(EVIDENCE) + 1
+        failed, out = attempt_once(lab, lab_id, result)
+        if failed:
+            result["last_failure"] = {"step": failed, "output": tail(redact(out), 3000)}
+    except Exception as e:
+        print(f"error: {type(e).__name__}: {e}")
+        result["error"] = redact(f"{type(e).__name__}: {e}")[:800]
+    finally:
+        finish(result, lab, built)
 
 def destroy_only():
     """Safety net (fresh credentials): kill leftover sandboxes, then destroy from the saved good config."""
@@ -816,4 +861,9 @@ def destroy_only():
         sys.exit(1)
 
 if __name__ == "__main__":
-    destroy_only() if "--destroy-only" in sys.argv else main()
+    if "--destroy-only" in sys.argv:
+        destroy_only()
+    elif "--recheck" in sys.argv:
+        recheck(sys.argv[sys.argv.index("--recheck") + 1])
+    else:
+        main()

@@ -39,6 +39,15 @@ Everything below changes on merge, even with `EDITOR_MODE=shadow`. All variables
 
 Spend is model calls at list prices plus $1 for each lab. Three limits are deliberate. A manual `editor-eval --live` run and Tech Head reviews are not recorded, because neither should hold a token that can write files. The draft after a paid lab still runs past the limit, so a paid lab is never wasted. CTO replies also run past it, so you can always reach the CTO.
 
+## Lab rechecks
+
+| Area | Before | After | Undo |
+| --- | --- | --- | --- |
+| Free recheck | None | `recheck` runs each lab's `check.sh` with the article's and the newest versions, and fetches cited links, on the 1st and 16th. Free | Disable `recheck` |
+| Paid recheck | None | `recheck-aws` runs one lab a week on AWS, about $1, inside the monthly budget, queued behind replicate labs | Disable `recheck-aws` |
+| Failures | None | One private `team-admin` issue per failing article, assigned to you. A repeat failure comments on it | Disable both workflows |
+| Site | No recheck line | showmerit reads `analytics/rechecks.json` and shows each article's last recheck | Delete the file on the analytics branch |
+
 ## Tech Head trust boundary
 
 | Risk | State | Hardening |
