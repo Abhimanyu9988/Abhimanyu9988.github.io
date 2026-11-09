@@ -956,25 +956,33 @@ check("recheck: links answer ok, ok after a refused HEAD, blocked for robots, br
 rc.fetch = real_fetch
 
 labs8 = [{"slug": f"lab{i}"} for i in range(8)]
-weeks = [rc.due(labs8, rc.EPOCH + datetime.timedelta(days=7 * w + 2)) for w in range(13)]
-check("recheck: over one 13-week quarter each of 8 labs runs once on AWS, at most one a week",
-      sorted(a["slug"] for a in weeks if a) == [f"lab{i}" for i in range(8)] and weeks.count(None) == 5)
-check("recheck: the same lab comes back a quarter later", rc.due(labs8, rc.EPOCH + datetime.timedelta(days=7 * 13 + 2))["slug"] == "lab0")
-labs15 = [{"slug": f"lab{i}"} for i in range(15)]
-check("recheck: past 13 labs, labs sharing a week take turns",
-      [rc.due(labs15, rc.EPOCH + datetime.timedelta(days=7 * w))["slug"] for w in (0, 13, 26)] == ["lab0", "lab13", "lab0"])
+quarter = [[a["slug"] for a in rc.due(labs8, rc.run_day(y, m))] for y, m in ((2026, 12), (2027, 1), (2027, 2))]
+check("recheck: a quarter of monthly paid runs takes 8 labs 3, 3 and 2 at a time, oldest first, each once",
+      quarter == [["lab0", "lab3", "lab6"], ["lab1", "lab4", "lab7"], ["lab2", "lab5"]])
+check("recheck: the same labs come back a quarter later", [a["slug"] for a in rc.due(labs8, rc.run_day(2027, 3))] == quarter[0])
+check("recheck: a new article joins a month without moving the others",
+      [[a["slug"] for a in rc.due(labs8 + [{"slug": "lab8"}], rc.run_day(y, m))] for y, m in ((2026, 12), (2027, 1), (2027, 2))]
+      == [quarter[0], quarter[1], quarter[2] + ["lab8"]])
+check("recheck: the run day is the first Tuesday of the month",
+      [rc.run_day(y, m).isoformat() for y, m in ((2026, 12), (2027, 1), (2027, 2))] == ["2026-12-01", "2027-01-05", "2027-02-02"]
+      and all(rc.run_day(2027, m).weekday() == 1 and rc.run_day(2027, m).day <= 7 for m in range(1, 13)))
+check("recheck: a scheduled run on any other Tuesday runs nothing",
+      rc.due(labs8, datetime.date(2026, 12, 8), scheduled=True) == [] and len(rc.due(labs8, datetime.date(2026, 12, 1), scheduled=True)) == 3)
 check("recheck: a lab asked for by name, and nothing for an unknown name",
-      rc.due(labs8, rc.EPOCH, "lab5")["slug"] == "lab5" and rc.due(labs8, rc.EPOCH, "nope") is None)
+      [a["slug"] for a in rc.due(labs8, datetime.date(2026, 12, 9), "lab5", scheduled=True)] == ["lab5"] and rc.due(labs8, rc.run_day(2026, 12), "nope") == [])
+check("recheck: the summary lists the next three run days and their labs",
+      rc.schedule(labs8, datetime.date(2026, 11, 20)) == [("2026-12-01", quarter[0]), ("2027-01-05", quarter[1]), ("2027-02-02", quarter[2])])
 
 import budget
 real_spent, real_limit = budget.spent, budget.limit
-budget.spent, budget.limit = (lambda m=None: (49.5, {})), (lambda m=None: 50)
-ok_, msg = rc.budget_room()
-check("recheck: the paid run stops when it would pass the monthly budget, and says so", not ok_ and "$49.50 of the $50.00" in msg and "Nothing was started" in msg)
-budget.spent = lambda m=None: (12.0, {})
-check("recheck: the paid run starts when the budget has room", rc.budget_room()[0])
+budget.spent, budget.limit = (lambda m=None: (47.5, {})), (lambda m=None: 50)
+check("recheck: the budget is checked before each lab, counting the labs before it in the run",
+      rc.budget_room(0, "a")[0] and rc.budget_room(1, "b")[0] and not rc.budget_room(2, "c")[0])
+ok_, msg = rc.budget_room(2, "lab-c")
+check("recheck: a lab the budget would pass is skipped by name, and the message says why",
+      "Skipped lab-c" in msg and "$47.50 of the $50.00" in msg and "the 2 lab(s) before it" in msg and "Nothing was started" in msg)
 budget.spent = lambda m=None: (_ for _ in ()).throw(RuntimeError("HTTP 500"))
-check("recheck: an unreadable budget means no paid run", rc.budget_room()[0] is False)
+check("recheck: an unreadable budget means no paid lab", rc.budget_room(0, "a")[0] is False)
 budget.spent, budget.limit = real_spent, real_limit
 
 # report: public results on the analytics branch, private failures in team-admin
@@ -1055,6 +1063,22 @@ aws_plan = [p_ for p_ in planned if p_["slug"] == "old-alb"]
 rc.report("aws", aws_plan, [rc.aws_result("old-alb", rd / "result.json")], None, RUN, "2026-11-18")
 check("recheck aws: the public record has the newest versions and the run",
       json.loads(store["rechecks"])["articles"]["old-alb"]["aws"] == {"date": "2026-11-18", "run": RUN, "versions": aws_plan[0]["newest"], "passed": True})
+# a monthly run: one lab passes, one fails, and the budget skips the third
+month_plan = aws_plan + [p_ for p_ in planned if p_["slug"] == "java-agent"] + [{**aws_plan[0], "slug": "keda-lab", "title": "KEDA"}]
+md = pathlib.Path(tempfile.mkdtemp())
+for slug in ("old-alb", "java-agent", "keda-lab"):
+    (md / f"lab-{slug}").mkdir()
+(md / "lab-old-alb/result.json").write_text(json.dumps({"status": "reproduced_and_fixed", "aws_used": True}))
+(md / "lab-java-agent/started.json").write_text("{}")
+(md / "lab-java-agent/result.json").write_text(json.dumps({"status": "failed", "aws_used": True, "last_failure": {"step": "apply", "output": "Error: quota"}}))
+(md / "lab-keda-lab/budget-stop.json").write_text(json.dumps({"message": "Skipped keda-lab: $49.50 of the $50.00 monthly budget is spent"}))
+got, skipped = rc.aws_results(month_plan, md)
+check("recheck aws: each lab keeps its own result, and the budget's skip is listed, not failed",
+      [(x["slug"], x["passed"]) for x in got] == [("old-alb", True), ("java-agent", False)] and [s_ for s_, _ in skipped] == ["keda-lab"])
+shutil.rmtree(md / "lab-keda-lab")
+check("recheck aws: a lab whose job never started is skipped, and one that started with no result failed",
+      rc.aws_results(month_plan, md)[1] == [("keda-lab", "its job never started, so nothing was spent")])
+(md / "lab-keda-lab").mkdir(); (md / "lab-keda-lab/budget-stop.json").write_text(json.dumps({"message": "Skipped keda-lab: no room"}))
 spend_puts = []
 gh_before = r._send
 def spend_gh(m, u, b=None, h=None, timeout=30):
@@ -1062,16 +1086,26 @@ def spend_gh(m, u, b=None, h=None, timeout=30):
         spend_puts.append(u.rsplit("/", 1)[1]); return {}
     return gh_before(m, u, b, h, timeout)
 r._send = spend_gh
-(rd / "plan.json").write_text(json.dumps(aws_plan))
-env_keep = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_WORKFLOW", "GITHUB_JOB", "RUN_URL", "GITHUB_RUN_ID")}
-os.environ.update(GITHUB_ACTIONS="true", GITHUB_WORKFLOW="recheck-aws", GITHUB_JOB="report", RUN_URL=RUN, GITHUB_RUN_ID="42")
-budget.EXTRA_AWS.clear()
-rc.main(["report", "aws", str(rd / "plan.json"), str(rd)])
+(md / "plan.json").write_text(json.dumps(month_plan))
+outputs_file = md / "outputs.txt"
+env_keep = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_WORKFLOW", "GITHUB_JOB", "RUN_URL", "GITHUB_RUN_ID", "GITHUB_OUTPUT")}
+os.environ.update(GITHUB_ACTIONS="true", GITHUB_WORKFLOW="recheck-aws", GITHUB_JOB="report", RUN_URL=RUN, GITHUB_RUN_ID="42",
+                  GITHUB_OUTPUT=str(outputs_file))
+budget.EXTRA_AWS.clear(); admin_calls.clear()
+rc.main(["report", "aws", str(md / "plan.json"), str(md)])
 for k, v in env_keep.items():
     os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
 budget.EXTRA_AWS.clear(); r._send = gh_before
-check("recheck aws: the report job records the lab's AWS estimate in the monthly spend",
-      len(spend_puts) == 1 and spend_puts[0].endswith("-aws_estimate-c100.json"))
+check("recheck aws: the report records both labs' AWS estimates and none for the skipped lab",
+      len(spend_puts) == 1 and spend_puts[0].endswith("-aws_estimate-c200.json"))
+month_saved = json.loads(store["rechecks"])["articles"]
+check("recheck aws: each lab that ran gets its own public line, and the skipped one keeps its old record",
+      month_saved["old-alb"]["aws"]["passed"] is True and month_saved["java-agent"]["aws"]["passed"] is False and "keda-lab" not in month_saved)
+check("recheck aws: only the failed lab gets an issue comment or issue",
+      [p_ for m, p_, b in admin_calls if m == "POST"] == ["issues/7/comments"])
+check("recheck aws: the verdict counts passed, failed and skipped labs, and names the skipped one",
+      all(x in outputs_file.read_text() for x in ("passed=1", "failed=1", "skipped=1", "skipped_labs=keda-lab")))
+shutil.rmtree(md)
 try: rc.admin("PATCH", "issues/7", {"state": "closed"}); ok_ = False
 except PermissionError: ok_ = True
 try: rc.admin("POST", "contents/README.md", {}); ok2 = False

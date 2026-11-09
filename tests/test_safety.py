@@ -151,8 +151,15 @@ check("recheck: the paid lab waits behind any replicate lab, since the janitor c
       "group: replicate" in job(aws_wf, "lab") and "cancel-in-progress: false" in job(aws_wf, "lab"))
 check("recheck: the paid lab holds no model key and no bot token",
       not any(k in job(aws_wf, "lab") for k in ("ANTHROPIC", "OPENAI", "GEMINI", "BOT_PRIVATE_KEY", "BOT_TOKEN")))
-check("recheck: the paid run starts only from main, after the budget says ok",
-      "github.ref == 'refs/heads/main'" in job(aws_wf, "pick") and "needs.pick.outputs.budget == 'ok'" in job(aws_wf, "lab"))
+lab_job = job(aws_wf, "lab")
+check("recheck: the paid run starts only from main", "github.ref == 'refs/heads/main'" in job(aws_wf, "pick"))
+check("recheck: paid labs run one after another, never in parallel", "max-parallel: 1" in lab_job)
+check("recheck: each paid lab reads the budget before it gets AWS credentials, and every AWS step waits for its ok",
+      lab_job.index("recheck.py budget") < lab_job.index("configure-aws-credentials")
+      and all("steps.budget.outputs.budget == 'ok'" in step for step in _re.split(r"\n      - ", lab_job)
+              if "aws-actions/" in step or "lab.py" in step or "docker build" in step))
+check("recheck: the paid schedule is a weekly Tuesday that only acts on the first one", '"23 2 * * 2"' in aws_wf
+      and "$EVENT" in job(aws_wf, "pick"))
 check("recheck: every checkout of this repo is main",
       all("ref: main" in c for c in _re.split(r"- uses: actions/checkout@v4", free_wf + aws_wf)[1:]))
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)
