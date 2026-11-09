@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T13:52:06Z",
+ "updated": "2026-11-09T15:04:24Z",
  "columns": {
   "needs": [
    {
@@ -91,6 +91,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "kind": "Your PR",
+    "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Your PR",
     "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
@@ -102,13 +109,6 @@
     "kind": "Your PR",
     "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
-    "kind": "Your PR",
-    "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
     "where": "opentelemetry-collector-contrib"
    },
    {
