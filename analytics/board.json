@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T13:42:43Z",
+ "updated": "2026-11-09T13:52:06Z",
  "columns": {
   "needs": [
    {
@@ -91,6 +91,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "kind": "Your PR",
+    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "kind": "Your PR",
     "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
@@ -116,13 +123,6 @@
     "kind": "Your PR",
     "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
-    "kind": "Your PR",
-    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "where": "opentelemetry-collector-contrib"
    },
    {
