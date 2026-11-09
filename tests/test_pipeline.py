@@ -835,4 +835,285 @@ check("monthly: draft PR with the post, a cover, the PR list and a redraft marke
       and any(p_.endswith("/open-source-summary-2026-10/cover.png") for p_ in mputs)
       and "Closes" not in mpr["body"])
 os.environ.pop("MONTH"); os.chdir("/"); shutil.rmtree(tmp)
+# ---------- lab rechecks (pipeline/recheck.py and lab.py --recheck) ----------
+import datetime, hashlib, base64 as _b64, urllib.error
+import recheck as rc
+site = pathlib.Path(tempfile.mkdtemp())
+def put(rel, text):
+    (site / rel).parent.mkdir(parents=True, exist_ok=True); (site / rel).write_text(text)
+AGENT = "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.33.1/opentelemetry-javaagent.jar"
+OLD_SHA = "a" * 64
+put("content/abhimanyu/articles/java-agent.md", "---\ntitle: 'Java Agent: One Env Var, Zero Code, Full Service\n  Map'\ndate: '2026-11-05'\n"
+    "tags:\n- java\nlab_url: https://github.com/Abhimanyu9988/showmerit/tree/main/labs/java-agent\n---\nSee [the docs](https://docs.example.com/a) "
+    "and <https://spec.example.org/b>.\n\n```bash\ncurl https://in-code.example.com/x\n```\nAlso `https://inline.example.com` and [home](https://showmerit.com/x).\n")
+put("content/abhimanyu/articles/old-alb.md", "---\ntitle: Old ALB\ndate: '2026-10-19'\nlab_url: https://github.com/Abhimanyu9988/showmerit/tree/main/labs/old-alb\n---\nNo links.\n")
+put("content/abhimanyu/articles/summary.md", "---\ntitle: Summary\ndate: '2026-11-01'\n---\nNo lab.\n")
+put("labs/java-agent/check.sh", "IMAGE=$(grep -m1 -oE 'maven:[^ ]+' k8s/10-app.yaml)\ndocker run postgres:5432\n")
+put("labs/java-agent/providers.tf", 'provider "aws" {}\n')
+put("labs/java-agent/main.tf", "# main\n")
+put("labs/java-agent/README.md", "readme\n")
+put("labs/java-agent/evidence/01-apply.log", "old output\n")
+put("labs/java-agent/k8s/00-build.yaml", f'          image: python:3.12-slim\n              sha256 = "{OLD_SHA}"\n              url = "{AGENT}"\n')
+put("labs/java-agent/k8s/10-app.yaml", "          image: maven:3.9.9-eclipse-temurin-21\n          image: postgres:16.4-alpine\n          image: maven:3.9.9-eclipse-temurin-21\n")
+put("labs/java-agent/reproduce.sh", "helm repo add splunk-otel-collector-chart https://signalfx.github.io/splunk-otel-collector-chart\n"
+    "helm upgrade --install splunk-otel-collector splunk-otel-collector-chart/splunk-otel-collector \\\n  --version 0.163.1 --namespace splunk \\\n  --set a=b\n"
+    "helm repo add kedacore https://kedacore.github.io/charts\nhelm upgrade --install keda kedacore/keda --version 2.21.0\n")
+put("labs/old-alb/fix.sh", 'LBC_CHART_VERSION="${LBC_CHART_VERSION:-1.13.0}"\nhelm repo add eks https://aws.github.io/eks-charts\n'
+    'helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \\\n  --version "$LBC_CHART_VERSION" -n kube-system\n')
+put("labs/old-alb/k8s/app.yaml", "      image: public.ecr.aws/docker/library/busybox:1.36.1\n      image: public.ecr.aws/aws-cli/aws-cli:latest\n")
+for f in ("main.tf", "reproduce.sh", "cleanup.sh", "README.md"):
+    put(f"labs/old-alb/{f}", "x\n")
+
+meta = rc.front((site / "content/abhimanyu/articles/java-agent.md").read_text())
+check("recheck: front matter reads a quoted title that wraps", meta["title"] == "Java Agent: One Env Var, Zero Code, Full Service Map")
+listed = rc.articles(site)
+check("recheck: only articles with a lab, oldest first, and which have a free check",
+      [(a["slug"], a["has_check"]) for a in listed] == [("old-alb", False), ("java-agent", True)])
+files = rc.lab_files(site, "java-agent")
+check("recheck: the lab run leaves out providers.tf and the evidence", {f["path"] for f in files} ==
+      {"check.sh", "main.tf", "README.md", "k8s/00-build.yaml", "k8s/10-app.yaml", "reproduce.sh"})
+found = rc.pins(files)
+check("recheck: pins the agent, both charts and each image, never a port or a grep",
+      rc.versions(found) == {"agent": "2.33.1", "splunk-otel-collector chart": "0.163.1", "keda chart": "2.21.0",
+                             "python": "3.12-slim", "maven": "3.9.9-eclipse-temurin-21", "postgres": "16.4-alpine"})
+old_found = rc.pins(rc.lab_files(site, "old-alb"))
+check("recheck: a chart version set in a variable is pinned where the variable is set, and :latest is not a pin",
+      [(p["key"], p["version"], p["line"]) for p in old_found] == [("aws-load-balancer-controller chart", "1.13.0", 0), ("busybox", "1.36.1", 0)])
+
+NEW_SHA = "b" * 64
+INDEX = ("apiVersion: v1\nentries:\n  splunk-otel-collector:\n  - version: 0.163.1\n  - dependencies:\n    - name: x\n      version: 9.9.9\n"
+         "    version: 0.165.0\n  - version: 0.166.0-rc.1\n  other-chart:\n  - version: 5.0.0\n")
+HUB = {"python": ["3.14-slim", "3.13-slim", "3.14-rc-slim", "3.14.1-slim", "4.0-slim"], "maven": ["3.9.11-eclipse-temurin-21",
+       "4.0.0-eclipse-temurin-21", "3.9.11-eclipse-temurin-21-alpine"], "postgres": ["17.6-alpine", "16.10-alpine", "16.10-alpine3.22"],
+       "busybox": ["1.37.0", "1.36.1", "2.0.0"]}
+fetched = []
+def fake_fetch(url, headers=None, method="GET", timeout=30):
+    fetched.append((method, url))
+    if "api.github.com" in url and "releases/latest" in url:
+        return 200, url, json.dumps({"tag_name": "v2.34.0", "assets": [{"name": "opentelemetry-javaagent.jar", "digest": f"sha256:{NEW_SHA}"}]}).encode()
+    if url.endswith("index.yaml"):
+        if "kedacore" in url:
+            raise urllib.error.URLError("no route")
+        return 200, url, INDEX.encode()
+    if "hub.docker.com" in url:
+        repo = url.split("/repositories/")[1].split("/")[0]
+        return 200, url, json.dumps({"results": [{"name": t} for t in HUB.get(repo, [])], "next": None}).encode()
+    if "public.ecr.aws/token" in url:
+        return 200, url, b'{"token": "anon"}'
+    if "public.ecr.aws/v2/" in url:
+        return 200, url, b""
+    raise AssertionError("unexpected fetch " + url)
+real_fetch = rc.fetch; rc.fetch = fake_fetch
+changes, missed = rc.newest(found)
+check("recheck: newest agent with its checksum, newest stable chart, same-shape same-major images",
+      changes == {"agent": {"old": "2.33.1", "new": "2.34.0", "sha256": NEW_SHA}, "splunk-otel-collector chart": {"old": "0.163.1", "new": "0.165.0"},
+                  "python": {"old": "3.12-slim", "new": "3.14-slim"}, "maven": {"old": "3.9.9-eclipse-temurin-21", "new": "3.9.11-eclipse-temurin-21"},
+                  "postgres": {"old": "16.4-alpine", "new": "16.10-alpine"}})
+check("recheck: a lookup that fails keeps the article's version and is reported", missed == ["keda chart"])
+old_changes, _ = rc.newest(old_found)
+check("recheck: an ECR mirror image is looked up on Docker Hub and confirmed on ECR",
+      old_changes.get("busybox", {}).get("new") == "1.37.0" and any("public.ecr.aws/v2/docker/library/busybox/manifests/1.37.0" in u for _, u in fetched))
+new_files = {f["path"]: f["content"] for f in rc.apply(files, found, changes)}
+check("recheck: the newest set swaps the agent URL and its checksum",
+      "/download/v2.34.0/" in new_files["k8s/00-build.yaml"] and NEW_SHA in new_files["k8s/00-build.yaml"] and OLD_SHA not in new_files["k8s/00-build.yaml"])
+check("recheck: only the changed chart's line moves, and images change everywhere",
+      "--version 0.165.0" in new_files["reproduce.sh"] and "--version 2.21.0" in new_files["reproduce.sh"]
+      and new_files["k8s/10-app.yaml"].count("maven:3.9.11-eclipse-temurin-21") == 2 and "postgres:16.10-alpine" in new_files["k8s/10-app.yaml"]
+      and new_files["check.sh"] == "IMAGE=$(grep -m1 -oE 'maven:[^ ]+' k8s/10-app.yaml)\ndocker run postgres:5432\n")
+old_new = {f["path"]: f["content"] for f in rc.apply(rc.lab_files(site, "old-alb"), old_found, {"aws-load-balancer-controller chart": {"old": "1.13.0", "new": "1.14.0"}})}
+check("recheck: a variable's default version is changed where it is set", old_new["fix.sh"].startswith('LBC_CHART_VERSION="${LBC_CHART_VERSION:-1.14.0}"'))
+fetched.clear()
+planned = rc.plan(site)
+check("recheck: the free matrix runs a lab twice only when a newer version exists, and skips labs with no check.sh",
+      rc.matrix(planned) == [{"slug": "java-agent", "set": "article"}, {"slug": "java-agent", "set": "newest"}])
+same = [{**planned[1], "changes": {}}]
+check("recheck: no newer release means one run", rc.matrix(same) == [{"slug": "java-agent", "set": "article"}])
+out_dir = pathlib.Path(tempfile.mkdtemp())
+rc.prepare(site, planned[1], "newest", out_dir / "w")
+check("recheck: prepare writes the newest lab, executable, with no evidence or providers.tf",
+      "v2.34.0" in (out_dir / "w/k8s/00-build.yaml").read_text() and os.access(out_dir / "w/check.sh", os.X_OK)
+      and not (out_dir / "w/providers.tf").exists() and not (out_dir / "w/evidence").exists())
+rc.fetch = real_fetch
+
+log = "== No agent\nok\n== With the agent, printing what it exports\nspans in one request: 1\nERROR exporter refused\nCHECK FAILED: too little telemetry\n"
+o = rc.outcome("java-agent", "newest", False, log)
+check("recheck: a failed check names its step and the lines that say why",
+      o["step"] == "With the agent, printing what it exports" and "CHECK FAILED: too little telemetry" in o["errors"] and "ERROR exporter refused" in o["errors"])
+check("recheck: a pass carries no error text", rc.outcome("x", "article", True, log) == {"slug": "x", "set": "article", "passed": True, "step": "", "errors": []})
+check("recheck: cited links leave out code, inline code and the site itself",
+      rc.cited_links((site / "content/abhimanyu/articles/java-agent.md").read_text()) == ["https://docs.example.com/a", "https://spec.example.org/b"])
+def status_fetch(codes):
+    def f(url, headers=None, method="GET", timeout=30):
+        code = codes[(url, method)]
+        if code >= 400:
+            raise urllib.error.HTTPError(url, code, "x", {}, None)
+        return code, url, b""
+    return f
+rc.fetch = status_fetch({("https://a", "HEAD"): 200, ("https://b", "HEAD"): 405, ("https://b", "GET"): 200,
+                         ("https://c", "HEAD"): 403, ("https://c", "GET"): 403, ("https://d", "HEAD"): 404, ("https://d", "GET"): 404})
+check("recheck: links answer ok, ok after a refused HEAD, blocked for robots, broken only after two tries",
+      [rc.link_status(u, pause=0) for u in ("https://a", "https://b", "https://c", "https://d")] == ["ok", "ok", "blocked", "broken: HTTP 404"])
+rc.fetch = real_fetch
+
+labs8 = [{"slug": f"lab{i}"} for i in range(8)]
+weeks = [rc.due(labs8, rc.EPOCH + datetime.timedelta(days=7 * w + 2)) for w in range(13)]
+check("recheck: over one 13-week quarter each of 8 labs runs once on AWS, at most one a week",
+      sorted(a["slug"] for a in weeks if a) == [f"lab{i}" for i in range(8)] and weeks.count(None) == 5)
+check("recheck: the same lab comes back a quarter later", rc.due(labs8, rc.EPOCH + datetime.timedelta(days=7 * 13 + 2))["slug"] == "lab0")
+labs15 = [{"slug": f"lab{i}"} for i in range(15)]
+check("recheck: past 13 labs, labs sharing a week take turns",
+      [rc.due(labs15, rc.EPOCH + datetime.timedelta(days=7 * w))["slug"] for w in (0, 13, 26)] == ["lab0", "lab13", "lab0"])
+check("recheck: a lab asked for by name, and nothing for an unknown name",
+      rc.due(labs8, rc.EPOCH, "lab5")["slug"] == "lab5" and rc.due(labs8, rc.EPOCH, "nope") is None)
+
+import budget
+real_spent, real_limit = budget.spent, budget.limit
+budget.spent, budget.limit = (lambda m=None: (49.5, {})), (lambda m=None: 50)
+ok_, msg = rc.budget_room()
+check("recheck: the paid run stops when it would pass the monthly budget, and says so", not ok_ and "$49.50 of the $50.00" in msg and "Nothing was started" in msg)
+budget.spent = lambda m=None: (12.0, {})
+check("recheck: the paid run starts when the budget has room", rc.budget_room()[0])
+budget.spent = lambda m=None: (_ for _ in ()).throw(RuntimeError("HTTP 500"))
+check("recheck: an unreadable budget means no paid run", rc.budget_room()[0] is False)
+budget.spent, budget.limit = real_spent, real_limit
+
+# report: public results on the analytics branch, private failures in team-admin
+import importlib; importlib.reload(analytics)       # earlier tests leave its file functions stubbed
+store, admin_calls, issues = {}, [], []
+def fake_gh(m, u, b=None, h=None, timeout=30):
+    path = u.split("api.github.com")[1]
+    if m == "GET" and "/git/ref/heads/analytics" in path: return {"object": {"sha": "x"}}
+    if m == "GET" and "/contents/analytics/rechecks.json" in path:
+        if "rechecks" not in store: raise RuntimeError("HTTP 404")
+        return {"content": _b64.b64encode(store["rechecks"].encode()).decode(), "sha": "s1"}
+    if m == "PUT" and path.endswith("/contents/analytics/rechecks.json"):
+        assert b["branch"] == "analytics"; store["rechecks"] = _b64.b64decode(b["content"]).decode(); return {}
+    raise AssertionError(f"unexpected {m} {path}")
+def fake_admin(m, url, body):
+    path = url.split(f"/repos/{rc.ADMIN_REPO}/")[1]
+    admin_calls.append((m, path, body))
+    if path == "labels/recheck": return 200, url, b'{"name": "recheck"}'
+    if m == "GET" and path.startswith("issues?"): return 200, url, json.dumps(issues).encode()
+    if m == "POST" and path == "issues":
+        issues.append({"number": 7, "title": body["title"]}); return 201, url, b'{"number": 7}'
+    if m == "POST" and path.endswith("/comments"): return 201, url, b"{}"
+    raise AssertionError(f"unexpected admin {m} {path}")
+r._send, rc.admin_send = fake_gh, fake_admin
+os.environ["ADMIN_TOKEN"] = "admin-test"
+RUN = "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42"
+results = [{"slug": "java-agent", "set": "article", "passed": True, "step": "", "errors": []},
+           {"slug": "java-agent", "set": "newest", "passed": False, "step": "With the agent",
+            "errors": ["CHECK FAILED: see @someone and #12 in github.com/x/y/issues/3"]}]
+link_res = {"java-agent": {"checked": 2, "broken": {"https://docs.example.com/a": "HTTP 404"}, "blocked": []},
+            "old-alb": {"checked": 0, "broken": {}, "blocked": []}}
+counts = rc.report("free", planned, results, link_res, RUN, "2026-11-16")
+saved = json.loads(store["rechecks"])
+free = saved["articles"]["java-agent"]["free"]
+check("recheck report: public record has the date, run link, both version sets and pass or fail",
+      free["date"] == "2026-11-16" and free["run"] == RUN and [(x["set"], x["passed"]) for x in free["results"]] == [("article", True), ("newest", False)]
+      and free["results"][1]["versions"]["agent"] == "2.34.0" and free["links"] == {"checked": 2, "broken": 1})
+check("recheck report: nothing from the lab's output reaches the public file", "CHECK FAILED" not in store["rechecks"] and "someone" not in store["rechecks"])
+check("recheck report: a lab with only the paid recheck still gets its link check", saved["articles"]["old-alb"]["free"]["results"] == [])
+new_issue = next(b for m, p_, b in admin_calls if m == "POST" and p_ == "issues")
+check("recheck report: a failure opens one private issue, assigned to Abhi and labelled",
+      sum(1 for m, p_, b in admin_calls if m == "POST" and p_ == "issues") == 1 and new_issue["assignees"] == ["Abhimanyu9988"]
+      and new_issue["labels"] == ["recheck"] and new_issue["title"] == "Recheck failed: java-agent")
+body = new_issue["body"]
+check("recheck report: the issue names the article, lab, versions that passed and failed, step, errors and run",
+      "showmerit.com/abhimanyu/articles/java-agent/" in body and "labs/java-agent" in body and "Passed with the article's versions:** agent 2.33.1" in body
+      and "Failed with the newest versions:** agent 2.34.0" in body and "With the agent" in body and "CHECK FAILED" in body and RUN in body
+      and "https://docs.example.com/a (HTTP 404)" in body)
+check("recheck report: lab output in the issue can't mention or link anyone", "@someone" not in body and "#12" not in body and "github.com/x/y" not in body)
+check("recheck report: counts for the verdict", counts == {"passed": 1, "failed": 1, "broken_links": 1, "issues": 1})
+admin_calls.clear()
+rc.report("free", planned, results, {}, RUN, "2026-12-01")
+check("recheck report: a repeat failure comments on the open issue instead of opening another",
+      not any(m == "POST" and p_ == "issues" for m, p_, b in admin_calls)
+      and any(m == "POST" and p_ == "issues/7/comments" and "failed again" in b["body"] for m, p_, b in admin_calls))
+admin_calls.clear()
+rc.report("free", planned, [{**results[0]}, {**results[1], "passed": True, "errors": [], "step": ""}], {}, RUN, "2026-12-16")
+check("recheck report: a pass opens nothing", not any(m == "POST" for m, p_, b in admin_calls)
+      and all(x["passed"] for x in json.loads(store["rechecks"])["articles"]["java-agent"]["free"]["results"]))
+try: rc.report("free", planned, results, {}, "https://example.com/run", "2026-12-16"); ok_ = False
+except SystemExit: ok_ = True
+check("recheck report: only a run link of this repo can be saved", ok_)
+os.environ.pop("ADMIN_TOKEN")
+admin_calls.clear()
+rc.report("free", planned, results, {}, RUN, "2026-12-17")
+check("recheck report: with no team-admin token the results still save and nothing is filed",
+      admin_calls == [] and json.loads(store["rechecks"])["articles"]["java-agent"]["free"]["date"] == "2026-12-17")
+os.environ["ADMIN_TOKEN"] = "admin-test"
+rd = pathlib.Path(tempfile.mkdtemp())
+(rd / "result.json").write_text(json.dumps({"status": "failed", "aws_used": True, "destroyed": True,
+                                            "last_failure": {"step": "fix", "output": "installing\nError: chart 0.165.0 needs Kubernetes 1.32\nHERO_RESULT: not_fixed"}}))
+aws = rc.aws_result("old-alb", rd / "result.json")
+check("recheck aws: a failed run names its step and error", not aws["passed"] and aws["step"] == "fix" and any("needs Kubernetes" in l for l in aws["errors"]))
+(rd / "result.json").write_text(json.dumps({"status": "reproduced_and_fixed", "aws_used": True}))
+check("recheck aws: only reproduced and fixed counts as working", rc.aws_result("old-alb", rd / "result.json")["passed"])
+check("recheck aws: no result file is a failure, not a pass", rc.aws_result("old-alb", rd / "missing.json")["passed"] is False)
+aws_plan = [p_ for p_ in planned if p_["slug"] == "old-alb"]
+rc.report("aws", aws_plan, [rc.aws_result("old-alb", rd / "result.json")], None, RUN, "2026-11-18")
+check("recheck aws: the public record has the newest versions and the run",
+      json.loads(store["rechecks"])["articles"]["old-alb"]["aws"] == {"date": "2026-11-18", "run": RUN, "versions": aws_plan[0]["newest"], "passed": True})
+spend_puts = []
+gh_before = r._send
+def spend_gh(m, u, b=None, h=None, timeout=30):
+    if m == "PUT" and "/contents/analytics/spend-" in u:
+        spend_puts.append(u.rsplit("/", 1)[1]); return {}
+    return gh_before(m, u, b, h, timeout)
+r._send = spend_gh
+(rd / "plan.json").write_text(json.dumps(aws_plan))
+env_keep = {k: os.environ.get(k) for k in ("GITHUB_ACTIONS", "GITHUB_WORKFLOW", "GITHUB_JOB", "RUN_URL", "GITHUB_RUN_ID")}
+os.environ.update(GITHUB_ACTIONS="true", GITHUB_WORKFLOW="recheck-aws", GITHUB_JOB="report", RUN_URL=RUN, GITHUB_RUN_ID="42")
+budget.EXTRA_AWS.clear()
+rc.main(["report", "aws", str(rd / "plan.json"), str(rd)])
+for k, v in env_keep.items():
+    os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+budget.EXTRA_AWS.clear(); r._send = gh_before
+check("recheck aws: the report job records the lab's AWS estimate in the monthly spend",
+      len(spend_puts) == 1 and spend_puts[0].endswith("-aws_estimate-c100.json"))
+try: rc.admin("PATCH", "issues/7", {"state": "closed"}); ok_ = False
+except PermissionError: ok_ = True
+try: rc.admin("POST", "contents/README.md", {}); ok2 = False
+except PermissionError: ok2 = True
+check("recheck: team-admin writes are only new issues, comments and the label", ok_ and ok2)
+os.environ.pop("ADMIN_TOKEN")
+
+# lab.py --recheck: the published lab runs once, with no model, and is always destroyed
+def recheck_sim(files, repro="reproduced", fix="fixed"):
+    tmp = tempfile.mkdtemp(); os.chdir(tmp)
+    lab.OUT, lab.WORK, lab.GOOD, lab.TFCACHE = pathlib.Path("out"), pathlib.Path("work/lab"), pathlib.Path("work/good"), pathlib.Path("work/.tfcache")
+    lab.EVIDENCE.clear(); lab.DRY = False; lab.BUCKET = "b"
+    calls = []
+    def fake_run(step, cmd, timeout, cwd=None, env=None, record=True, sandbox=False):
+        c = " ".join(cmd); calls.append((c, sandbox))
+        if "terraform plan" in c: return 0, "planned"
+        if "terraform show" in c: return 0, '{"resource_changes": []}'
+        if "reproduce.sh" in c: return 0, f"HERO_RESULT: {repro}"
+        if "fix.sh" in c: return 0, f"HERO_RESULT: {fix}"
+        if "sts" in c: return 0, "300054528837"
+        if "list-objects-v2" in c: return 0, "[]"
+        if cmd[0] == "aws" and "--output" in cmd: return 0, "{}"
+        return 0, ""
+    lab.run, lab.s3 = fake_run, (lambda *a: (0, ""))
+    llm.claude_json = lambda *a, **k: (_ for _ in ()).throw(AssertionError("a recheck never calls a model"))
+    pathlib.Path("lab.json").write_text(json.dumps({"slug": "Old ALB", "summary": "s", "expected": "e", "files": files}))
+    lab.recheck("lab.json")
+    res = json.loads((lab.OUT / "result.json").read_text())
+    os.chdir("/"); shutil.rmtree(tmp)
+    return res, calls
+good = [{"path": f, "content": "x"} for f in lab.REQUIRED]
+res, calls = recheck_sim(good)
+check("lab recheck: one attempt, reproduced and fixed, destroyed, short lab id",
+      res["status"] == "reproduced_and_fixed" and res["attempts"] == 1 and res["destroyed"] is True and res["lab_id"] == "rc-old-alb-456789"
+      and any("terraform destroy" in c for c, _ in calls))
+check("lab recheck: every lab script and Terraform command runs in the sandbox",
+      all(sb for c, sb in calls if "terraform" in c or c.startswith("bash ")))
+res, calls = recheck_sim(good, fix="not_fixed")
+check("lab recheck: a fix that no longer works is the result, with no repair", res["status"] == "reproduced_fix_failed" and res["attempts"] == 1
+      and res["last_failure"]["step"].startswith("fix") and res["destroyed"] is True)
+res, calls = recheck_sim(good + [{"path": "providers.tf", "content": "x"}])
+check("lab recheck: a lab that breaks the file rules never touches AWS", res["status"] == "failed" and res["last_failure"]["step"].startswith("validate")
+      and not any("terraform" in c or "sts" in c for c, _ in calls))
+shutil.rmtree(site); shutil.rmtree(out_dir); shutil.rmtree(rd)
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)

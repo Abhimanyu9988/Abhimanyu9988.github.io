@@ -36,7 +36,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
     Disposable labs run on their own, inside the monthly budget.
 12. **No agent starts another agent.** The order is fixed in workflows. The one exception is `radar.yml` and `problems.yml`, which start
     `replicate.yml` for the panel's pick, with a numeric issue only, behind the budget and `AUTO_LAB`, and `cto.yml`, which
-    starts the next picked API topic. Slack never starts a lab, and a topic planned in chat starts from chat. Editor, Tech Head, Executive Assistant and CTO have
+    starts the next picked API topic. The rechecks (`recheck.yml`, `recheck-aws.yml`) start on a schedule and start nothing. Slack never starts a lab, and a topic planned in chat starts from chat. Editor, Tech Head, Executive Assistant and CTO have
     call and input budgets. Older pipeline stages still rely on job timeouts, and web research is capped by `max_uses`.
 13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words, in
     Slack or the CTO desk issue, can raise the limit, for that month. No model can change it. Costs are list prices plus lab
@@ -51,7 +51,8 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | --- | --- | --- | --- |
 | `pipeline/radar.py` | Topic discovery, GitHub safety, gate 1 wiring | News, docs, goals | Issues |
 | `pipeline/problems.py` | Manual problem finder | Stack Overflow, issues | Issues |
-| `pipeline/lab.py` | Runs the lab in the sandbox | Topic issue | `out/` |
+| `pipeline/lab.py` | Runs the lab in the sandbox. `--recheck` reruns a published lab once, with no model | Topic issue, or a recheck's lab | `out/` |
+| `pipeline/recheck.py` | Rechecks the labs behind live ShowMerit articles: free `check.sh` runs with the article's and the newest versions, cited links, and the weekly paid pick. No model | showmerit labs and articles, releases, Helm indexes, Docker Hub, budget | `analytics/rechecks.json` (public results only), one private `team-admin` issue per failing article |
 | `pipeline/lab_check.py` | Unpacks a chat lab for the free check, whose `check.sh` runs in a job with no secrets | `chat/<issue>` | `work/` |
 | `pipeline/rehearse.sh` | Runs a lab's real scripts on a small Kubernetes cluster, with the Splunk tokens only | Lab scripts | Nothing |
 | `pipeline/plan_review.py` | The Editor and Marketing review a lab plan before AWS, twice at most. A rerun checks the earlier points | Brief, lab files as data | Log, `plan-review.json` on the lab's branch |
@@ -77,6 +78,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/live_board.py` | His board of open source and articles only: cards for `site/board.html`, and a Slack message linking to it. No model | GitHub, ideas, spend | `analytics/board.json` (public data only), that message, `analytics/slack-board.json` |
 | `pipeline/week.py` | The Editor plans the week in one call, Lab Check, the panel and code filter it, then survivors get a brief. Also runs an article he asks for | New items, his ideas, goals, `TOPIC` | Issues, `analytics/week-plan.json`, Slack, first lab |
 | `docs/chat-article.md` | How a Claude chat writes a lab and article with no API writing | A confirmed topic | `chat/<issue>` branch, then the normal review and PR |
+| `docs/rechecks.md` | How published labs are rechecked, where results go and what Abhi does with a failure | Live articles | Nothing |
 | `docs/weekly-plan.md` | How a Claude chat plans the week, with `week.py --check` and one ChatGPT approval | Real complaints, goals | The `plan_json` input to `radar.yml` |
 | `pipeline/slack.py` | Team channel, one name per agent | `#general` | Slack messages |
 | `pipeline/budget.py` | Spend record and monthly stop, code only | `analytics/spend-*` | `analytics/spend-*`, `budget.json` |

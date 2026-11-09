@@ -133,4 +133,26 @@ def run(code, env):
     return q.stdout.strip(), q.returncode
 check("radar/problems runs can't write", run("import radar; print(radar.PUBLISH)", {"HERO_PUBLISH": ""})[0] == "False")
 check("wrong repo refuses to start", run("import radar", {"REPO": "someone/else"})[1] != 0)
+# 4. the lab recheck workflows: lab code never runs next to a secret, a failed lab stays green, one AWS lab at a time
+import re as _re
+WF = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".github", "workflows")
+free_wf = open(os.path.join(WF, "recheck.yml")).read()
+aws_wf = open(os.path.join(WF, "recheck-aws.yml")).read()
+def job(text, name):
+    m = _re.search(rf"(?ms)^  {name}:\n(.*?)(?=^  [\w-]+:\n|\Z)", text)
+    return m[1] if m else ""
+check("recheck: the job that runs check.sh holds no secret and no token",
+      "bash check.sh" in job(free_wf, "check") and "secrets." not in job(free_wf, "check") and "token" not in job(free_wf, "check").lower())
+check("recheck: check.sh failing leaves the run green", "continue-on-error: true" in job(free_wf, "check").split("bash check.sh")[0].rsplit("- name", 1)[1])
+check("recheck: the reports can't turn the runs red", all("continue-on-error: true" in job(w, "report") for w in (free_wf, aws_wf)))
+crons = _re.findall(r'cron: "(\S+) ', free_wf + aws_wf)
+check("recheck: schedules start off the hour", crons and all(c not in ("0", "00", "*") and not c.startswith("*/") for c in crons))
+check("recheck: the paid lab waits behind any replicate lab, since the janitor clears the account",
+      "group: replicate" in job(aws_wf, "lab") and "cancel-in-progress: false" in job(aws_wf, "lab"))
+check("recheck: the paid lab holds no model key and no bot token",
+      not any(k in job(aws_wf, "lab") for k in ("ANTHROPIC", "OPENAI", "GEMINI", "BOT_PRIVATE_KEY", "BOT_TOKEN")))
+check("recheck: the paid run starts only from main, after the budget says ok",
+      "github.ref == 'refs/heads/main'" in job(aws_wf, "pick") and "needs.pick.outputs.budget == 'ok'" in job(aws_wf, "lab"))
+check("recheck: every checkout of this repo is main",
+      all("ref: main" in c for c in _re.split(r"- uses: actions/checkout@v4", free_wf + aws_wf)[1:]))
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)

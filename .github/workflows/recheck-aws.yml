@@ -1,0 +1,191 @@
+name: recheck-aws
+# The paid recheck: one published lab a week on the AWS lab account, with the newest versions, so each lab runs once a
+# quarter (pipeline/recheck.py `due`). It runs only if the monthly budget has room for about one more lab, and calls no
+# model. A failed lab is a normal result: it goes to a private issue and the verdict job's name, and the run stays green.
+on:
+  schedule: [{ cron: "47 1 * * 3" }]
+  workflow_dispatch:
+    inputs:
+      lab:
+        description: "Article slug to recheck now, instead of this week's lab. Costs about $1"
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  pick:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      slug: ${{ steps.pick.outputs.slug }}
+      budget: ${{ steps.budget.outputs.budget }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Abhimanyu9988/showmerit
+          ref: main
+          path: showmerit
+          persist-credentials: false
+      - name: this week's lab
+        id: pick
+        env:
+          LAB: ${{ inputs.lab }}
+        run: python3 pipeline/recheck.py due showmerit "$LAB"
+      # The budget is read before anything is created. A stop is a normal result with a clear message.
+      - name: budget
+        id: budget
+        if: steps.pick.outputs.slug != ''
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: python3 pipeline/recheck.py budget
+      - name: the lab's newest versions
+        if: steps.pick.outputs.slug != '' && steps.budget.outputs.budget == 'ok'
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          SLUG: ${{ steps.pick.outputs.slug }}
+        run: python3 pipeline/recheck.py plan showmerit plan.json "$SLUG"
+      - uses: actions/upload-artifact@v4
+        if: steps.pick.outputs.slug != '' && steps.budget.outputs.budget == 'ok'
+        with:
+          name: plan
+          path: plan.json
+          retention-days: 30
+  # The same runner as a replicate lab: sandbox, sweep, janitor, destroy and safety net. No model keys and no bot token.
+  lab:
+    needs: pick
+    if: needs.pick.outputs.slug != '' && needs.pick.outputs.budget == 'ok'
+    runs-on: ubuntu-latest
+    environment: aws-lab
+    timeout-minutes: 150
+    # The lab account runs one lab at a time, and its janitor removes anything else, so this queues behind replicate.
+    concurrency:
+      group: replicate
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SLUG: ${{ needs.pick.outputs.slug }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Abhimanyu9988/showmerit
+          ref: main
+          path: showmerit
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan
+      - name: write the lab with the newest versions
+        run: python3 pipeline/recheck.py prepare showmerit plan.json "$SLUG" newest recheck-src recheck-lab.json
+      - name: build lab sandbox
+        timeout-minutes: 10
+        run: docker build -q -t hero-lab:local -f pipeline/lab.Dockerfile pipeline
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 7200
+          role-session-name: recheck-${{ github.run_id }}
+      - name: recheck on AWS
+        timeout-minutes: 112
+        run: python3 pipeline/lab.py --recheck recheck-lab.json
+        env:
+          SPLUNK_REALM: ${{ vars.SPLUNK_REALM }}
+          SPLUNK_ACCESS_TOKEN: ${{ secrets.SPLUNK_ACCESS_TOKEN }}
+          SPLUNK_API_TOKEN: ${{ secrets.SPLUNK_API_TOKEN }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+      # Fresh credentials: the first session may be close to its 2-hour limit by now.
+      - if: always()
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-duration-seconds: 3600
+          role-session-name: recheck-safety-${{ github.run_id }}
+      - name: safety-net destroy
+        if: always()
+        timeout-minutes: 30
+        run: python3 pipeline/lab.py --destroy-only
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab
+          path: out/
+          retention-days: 30
+          if-no-files-found: ignore
+  # Code from main only. Records the lab's AWS estimate, saves the public result and files a private issue on failure.
+  report:
+    needs: [pick, lab]
+    if: always() && needs.pick.outputs.slug != '' && needs.pick.outputs.budget == 'ok'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      passed: ${{ steps.report.outputs.passed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: lab
+          path: out
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+      - uses: actions/create-github-app-token@v2
+        id: admin
+        continue-on-error: true
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          owner: Abhimanyu9988
+          repositories: team-admin
+          permission-issues: write
+      - name: report
+        id: report
+        continue-on-error: true
+        run: python3 pipeline/recheck.py report aws plan.json out
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
+          REPO: ${{ github.repository }}
+  verdict:
+    name: verdict lab=${{ needs.pick.outputs.slug || 'none this week' }} budget=${{ needs.pick.outputs.budget || 'not checked' }} passed=${{ needs.report.outputs.passed || '0' }}
+    if: always() && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    needs: [pick, report]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "Read the job name for the result of this recheck."

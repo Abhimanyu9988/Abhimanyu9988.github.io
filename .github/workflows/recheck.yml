@@ -1,0 +1,177 @@
+name: recheck
+# The free recheck of every published lab, on the 1st and 16th of each month. See pipeline/recheck.py.
+# Each lab's check.sh runs with the article's versions and with the newest ones, in a job with no secrets, and every
+# link the article cites is fetched again. A failed lab is a normal result, not a broken run: it is reported through the
+# results file, a private issue and the verdict job's name, so the run stays green and no failed-run email goes out.
+on:
+  schedule: [{ cron: "37 2 1,16 * *" }]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  plan:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      checks: ${{ steps.plan.outputs.checks }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Abhimanyu9988/showmerit
+          ref: main
+          path: showmerit
+          persist-credentials: false
+      - name: find each lab's versions and the newest releases
+        id: plan
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+        run: python3 pipeline/recheck.py plan showmerit plan.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: plan
+          path: plan.json
+          retention-days: 30
+  # The lab's own check.sh, the same one the article's "On your laptop" box runs. It holds no secrets and no token.
+  check:
+    needs: plan
+    if: needs.plan.outputs.checks != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Abhimanyu9988/showmerit
+          ref: main
+          path: showmerit
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan
+      - name: write the lab with the ${{ matrix.set }} versions
+        env:
+          SLUG: ${{ matrix.slug }}
+          SET: ${{ matrix.set }}
+        run: python3 pipeline/recheck.py prepare showmerit plan.json "$SLUG" "$SET" work
+      - name: run the lab's check
+        id: check
+        continue-on-error: true
+        working-directory: work
+        shell: bash
+        run: bash check.sh 2>&1 | tee ../check.log
+      - name: save the result
+        if: always()
+        env:
+          SLUG: ${{ matrix.slug }}
+          SET: ${{ matrix.set }}
+          OUTCOME: ${{ steps.check.outcome }}
+        run: python3 pipeline/recheck.py outcome "$SLUG" "$SET" "$OUTCOME" check.log "result-$SLUG-$SET.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: result-${{ matrix.slug }}-${{ matrix.set }}
+          path: result-*.json
+          retention-days: 30
+  links:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: Abhimanyu9988/showmerit
+          ref: main
+          path: showmerit
+          persist-credentials: false
+      - name: fetch every link the articles cite
+        continue-on-error: true
+        run: python3 pipeline/recheck.py links showmerit links.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: links
+          path: links.json
+          retention-days: 30
+          if-no-files-found: ignore
+  # Code from main only. Saves the public results and files a private issue for each failure.
+  report:
+    needs: [plan, check, links]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      passed: ${{ steps.report.outputs.passed }}
+      failed: ${{ steps.report.outputs.failed }}
+      broken: ${{ steps.report.outputs.broken_links }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: plan
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: links
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: result-*
+          path: results
+          merge-multiple: true
+      - uses: actions/create-github-app-token@v2
+        id: bot
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          permission-contents: write
+      # The private repo where failures go. If this token can't be made, results are still saved and the log says so.
+      - uses: actions/create-github-app-token@v2
+        id: admin
+        continue-on-error: true
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          owner: Abhimanyu9988
+          repositories: team-admin
+          permission-issues: write
+      - name: report
+        id: report
+        continue-on-error: true
+        run: |
+          mkdir -p results
+          python3 pipeline/recheck.py report free plan.json results links.json
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HERO_PUBLISH: "1"
+          BOT_TOKEN: ${{ steps.bot.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
+          REPO: ${{ github.repository }}
+  # The result of the whole recheck, in one place.
+  verdict:
+    name: verdict passed=${{ needs.report.outputs.passed || '?' }} failed=${{ needs.report.outputs.failed || '?' }} broken_links=${{ needs.report.outputs.broken || '?' }}
+    if: always() && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    needs: [report]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - run: echo "Read the job name for the result of this recheck."
