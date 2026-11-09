@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T19:32:44Z",
+ "updated": "2026-11-09T19:42:31Z",
  "columns": {
   "needs": [
    {
@@ -47,27 +47,83 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "Check failed:Could not check mentions",
-    "kind": "Check failed",
-    "title": "Could not check mentions",
-    "url": "",
-    "where": ""
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
+    "kind": "Mentioned",
+    "title": "[receiver/kubeletstats] Add optional per-pod ephemeral-storage inode metrics (InodesUsed / InodesFree / Inodes)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
+    "kind": "Mentioned",
+    "title": "Memory Limit Utilization metrics do not use the Working Set",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
+    "kind": "Mentioned",
+    "title": "[receiver/kubelet_stats] Add ephemeral and projected volume types to k8s.volume.type",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
+    "kind": "Mentioned",
+    "title": "Promote `kubeletstats` Receiver to Stable - Observability",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
+    "kind": "Mentioned",
+    "title": "[k8s] Promote k8s pod volume metrics to release candidate",
+    "url": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
+    "where": "semantic-conventions"
    }
   ],
   "working": [
    {
-    "id": "Check failed:Could not check your open PRs",
-    "kind": "Check failed",
-    "title": "Could not check your open PRs",
-    "url": "",
-    "where": ""
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "kind": "Your PR",
+    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "Check failed:Could not check your merged PRs",
-    "kind": "Check failed",
-    "title": "Could not check your merged PRs",
-    "url": "",
-    "where": ""
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "kind": "Your PR",
+    "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
+    "kind": "Your PR",
+    "title": "[chore] Generate a list of collector components with specific operator support",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
+    "where": "opentelemetry-operator"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
+    "kind": "Your PR",
+    "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/Appdynamics/process-monitoring-extension/pull/25",
+    "kind": "Your PR",
+    "title": "Update dependencies to remediate reported vulnerabilities (2.3.6)",
+    "url": "https://github.com/Appdynamics/process-monitoring-extension/pull/25",
+    "where": "process-monitoring-extension"
+   },
+   {
+    "id": "https://github.com/CiscoDevNet/appdynamics-charts/pull/36",
+    "kind": "Your PR",
+    "title": "ENV variables fix in InfraViz",
+    "url": "https://github.com/CiscoDevNet/appdynamics-charts/pull/36",
+    "where": "appdynamics-charts"
    }
   ],
   "next": [
@@ -86,6 +142,28 @@
     "where": ""
    }
   ],
-  "done": []
+  "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "kind": "Merged",
+    "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
+    "kind": "Merged",
+    "title": "[receiver/flinkmetrics] Record JVM GC metrics for both JobManager and TaskManager",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
+    "kind": "Merged",
+    "title": "[chore] receiver/flinkmetrics: update tested Flink versions and correct README configuration",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
+    "where": "opentelemetry-collector-contrib"
+   }
+  ]
  }
 }
