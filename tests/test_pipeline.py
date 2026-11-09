@@ -949,11 +949,31 @@ def status_fetch(codes):
             raise urllib.error.HTTPError(url, code, "x", {}, None)
         return code, url, b""
     return f
+real_resolve = rc.resolve
+addresses = {"a": ["93.184.216.34"], "b": ["93.184.216.34"], "c": ["2606:4700::1"], "d": ["93.184.216.34"],
+             "local": ["127.0.0.1"], "meta": ["169.254.169.254"], "lan": ["10.0.0.5"], "v6": ["::1"], "mixed": ["93.184.216.34", "192.168.1.2"]}
+rc.resolve = lambda host: addresses[host]
+check("recheck: a cited link is fetched only if every address it resolves to is public",
+      rc.public("https://a") and rc.public("http://c/x")
+      and not any(rc.public(u) for u in ("https://local", "http://meta/latest/meta-data", "https://lan", "https://v6", "https://mixed", "file:///etc/passwd", "ftp://a")))
+check("recheck: a link to a private or metadata address is skipped, never fetched or called broken",
+      rc.link_status("http://meta/latest", pause=0) == "skipped")
+try: rc._PublicRedirects().redirect_request(None, None, 302, "Found", {}, "http://meta/latest"); ok_ = False
+except urllib.error.URLError: ok_ = True
+check("recheck: a redirect to a non-public address is refused", ok_)
 rc.fetch = status_fetch({("https://a", "HEAD"): 200, ("https://b", "HEAD"): 405, ("https://b", "GET"): 200,
                          ("https://c", "HEAD"): 403, ("https://c", "GET"): 403, ("https://d", "HEAD"): 404, ("https://d", "GET"): 404})
 check("recheck: links answer ok, ok after a refused HEAD, blocked for robots, broken only after two tries",
       [rc.link_status(u, pause=0) for u in ("https://a", "https://b", "https://c", "https://d")] == ["ok", "ok", "blocked", "broken: HTTP 404"])
-rc.fetch = real_fetch
+rc.fetch, rc.resolve = real_fetch, real_resolve
+
+forged = [{"slug": "java-agent", "set": "article", "passed": False, "step": "s", "errors": ["e"]},
+          {"slug": "java-agent", "set": "article", "passed": True, "step": "", "errors": []},
+          {"slug": "old-alb", "set": "article", "passed": True, "step": "", "errors": []},
+          {"slug": "java-agent", "set": "newest", "passed": "yes", "step": "", "errors": []},
+          {"slug": "nope", "set": "article", "passed": True, "step": "", "errors": []}, ["not", "a", "dict"]]
+check("recheck: the report keeps only expected results, once each and in the right form",
+      [(x["slug"], x["set"], x["passed"]) for x in rc.valid_results(planned, forged)] == [("java-agent", "article", False)])
 
 labs8 = [{"slug": f"lab{i}"} for i in range(8)]
 quarter = [[a["slug"] for a in rc.due(labs8, rc.run_day(y, m))] for y, m in ((2026, 12), (2027, 1), (2027, 2))]
@@ -1106,6 +1126,53 @@ check("recheck aws: only the failed lab gets an issue comment or issue",
 check("recheck aws: the verdict counts passed, failed and skipped labs, and names the skipped one",
       all(x in outputs_file.read_text() for x in ("passed=1", "failed=1", "skipped=1", "skipped_labs=keda-lab")))
 shutil.rmtree(md)
+# the report steps stay green, so a crash in the report itself must reach Abhi privately, or the run summary
+cd_ = pathlib.Path(tempfile.mkdtemp())
+summary_file = cd_ / "summary.md"
+keep_env = {k: os.environ.get(k) for k in ("GITHUB_STEP_SUMMARY", "RUN_URL")}
+os.environ.update(GITHUB_STEP_SUMMARY=str(summary_file), RUN_URL=RUN)
+admin_calls.clear()
+rc.main(["report", "free", str(cd_ / "missing-plan.json"), str(cd_)])
+crash = [b for m, p_, b in admin_calls if m == "POST" and p_ == "issues"]
+check("recheck report: a crash in the report opens the private report issue, with the error and the run",
+      len(crash) == 1 and crash[0]["title"] == "Recheck report failed" and crash[0]["assignees"] == ["Abhimanyu9988"]
+      and crash[0]["labels"] == ["recheck"] and "FileNotFoundError" in crash[0]["body"] and RUN in crash[0]["body"])
+admin_calls.clear()
+rc.main(["report", "aws", str(cd_ / "missing-plan.json"), str(cd_)])
+check("recheck report: a second crash comments on that issue instead of opening another",
+      not any(m == "POST" and p_ == "issues" for m, p_, b in admin_calls)
+      and any(m == "POST" and p_.endswith("/comments") and "happened again" in b["body"] for m, p_, b in admin_calls))
+real_admin_send = rc.admin_send
+rc.admin_send = lambda *a, **k: (_ for _ in ()).throw(urllib.error.HTTPError("u", 403, "Resource not accessible by integration", {}, None))
+rc.main(["report", "free", str(cd_ / "missing-plan.json"), str(cd_)])
+text = summary_file.read_text() if summary_file.exists() else ""
+check("recheck report: if the issue can't be written either, the crash goes to the run summary",
+      "Recheck report problem" in text and "FileNotFoundError" in text and "could not be written either" in text and "HTTP Error 403" in text)
+summary_file.write_text("")
+rc.report("free", planned, results, {}, RUN, "2026-12-20")
+text = summary_file.read_text()
+check("recheck report: a lab failure that can't be filed goes to the run summary with its details",
+      "java-agent failed, not filed" in text and "private issue could not be written" in text and "CHECK FAILED" in text)
+rc.admin_send = real_admin_send
+summary_file.write_text("")
+os.environ.pop("ADMIN_TOKEN")
+rc.main(["report", "free", str(cd_ / "missing-plan.json"), str(cd_)])
+check("recheck report: with no team-admin token a crash still reaches the run summary", "Recheck report problem" in summary_file.read_text())
+os.environ["ADMIN_TOKEN"] = "admin-test"
+gh_keep = r._send
+def save_fails(m, u, b=None, h=None, timeout=30):
+    if m == "PUT" and u.endswith("/contents/analytics/rechecks.json"):
+        raise RuntimeError("HTTP 500: server error")
+    return gh_keep(m, u, b, h, timeout)
+r._send = save_fails
+admin_calls.clear()
+rc.report("free", planned, [results[0]], {}, RUN, "2026-12-21")
+r._send = gh_keep
+check("recheck report: results that can't be saved are reported privately, not just logged",
+      any(m == "POST" and p_.endswith("/comments") and "were not saved" in b["body"] for m, p_, b in admin_calls))
+for k, v in keep_env.items():
+    os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
+shutil.rmtree(cd_)
 try: rc.admin("PATCH", "issues/7", {"state": "closed"}); ok_ = False
 except PermissionError: ok_ = True
 try: rc.admin("POST", "contents/README.md", {}); ok2 = False

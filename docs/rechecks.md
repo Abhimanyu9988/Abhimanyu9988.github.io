@@ -11,7 +11,8 @@ Every lab behind a live ShowMerit article keeps being tested, and each article s
 - A newer image keeps the tag's shape and major version, so `postgres:16.4-alpine` can become `16.10-alpine` but not
   `17.6-alpine`. The agent and charts move to their newest stable release.
 - Every link the article cites is fetched again, twice before it counts as broken. A site that refuses robots (401, 403,
-  429) is not judged. Links inside code blocks are commands, not citations, and are skipped.
+  429) is not judged. Links inside code blocks are commands, not citations, and are skipped. A link or redirect to a
+  private, local or cloud metadata address is never fetched.
 - Labs with no `check.sh` get only the link check and their quarterly paid run.
 
 ## Paid, the first Tuesday of each month (`recheck-aws.yml`, 02:23 UTC)
@@ -39,3 +40,5 @@ Every lab behind a live ShowMerit article keeps being tested, and each article s
   issue. A pass opens nothing. Close the issue when it is dealt with.
 - Nothing is ever sent to a vendor or an upstream project. Abhi decides that.
 - A failed lab never turns a run red. Read the `verdict` job's name for the counts.
+- If the report itself crashes or can't save the results, it opens or comments on the private `Recheck report failed`
+  issue, and if that fails too, it writes the problem to the run summary. The run stays green either way.

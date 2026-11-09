@@ -144,6 +144,9 @@ def job(text, name):
 check("recheck: the job that runs check.sh holds no secret and no token",
       "bash check.sh" in job(free_wf, "check") and "secrets." not in job(free_wf, "check") and "token" not in job(free_wf, "check").lower())
 check("recheck: check.sh failing leaves the run green", "continue-on-error: true" in job(free_wf, "check").split("bash check.sh")[0].rsplit("- name", 1)[1])
+check("recheck: each check leg uploads only its own result file, written after check.sh ends",
+      "path: result-*.json" not in free_wf and "recheck-result/result-${{ matrix.slug }}-${{ matrix.set }}.json" in job(free_wf, "check")
+      and "max-parallel:" in job(free_wf, "check"))
 check("recheck: the reports can't turn the runs red", all("continue-on-error: true" in job(w, "report") for w in (free_wf, aws_wf)))
 crons = _re.findall(r'cron: "(\S+) ', free_wf + aws_wf)
 check("recheck: schedules start off the hour", crons and all(c not in ("0", "00", "*") and not c.startswith("*/") for c in crons))

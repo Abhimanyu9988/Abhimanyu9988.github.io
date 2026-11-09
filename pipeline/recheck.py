@@ -16,7 +16,7 @@ on the open one for that article.
 Must not: contact or file anything with a vendor or an upstream project, call a model, run lab code (the workflow runs
 check.sh in a job with no secrets), write anywhere but those two places, or fail a run because a lab failed.
 """
-import datetime, hashlib, json, os, pathlib, re, sys, time, urllib.error, urllib.parse, urllib.request
+import datetime, hashlib, ipaddress, json, os, pathlib, re, socket, sys, time, urllib.error, urllib.parse, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lab_check import SAFE
@@ -39,10 +39,35 @@ TAG_RX = re.compile(r"(\d+(?:[._]\d+)*)((?:-[a-z0-9.]+)*)")
 FAILED_LINE = re.compile(r"CHECK FAILED|HERO_RESULT: not_|error|fail|refused|denied|timed out|not found|exception", re.I)
 RUN_URL = re.compile(r"https://github\.com/Abhimanyu9988/Abhimanyu9988\.github\.io/actions/runs/\d+")
 
+def resolve(host):
+    """Every address a host name resolves to. Tests replace this."""
+    return [a[4][0] for a in socket.getaddrinfo(host, None)]
+
+def public(url):
+    """True only for an http(s) URL whose host resolves to public addresses. An article's link must never make the
+    runner reach its own network, a private range or a cloud metadata address."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return False
+    try:
+        found = resolve(parts.hostname)
+    except OSError:
+        return True                            # an unknown name reaches nothing, and the fetch reports it as broken
+    return bool(found) and all(ipaddress.ip_address(a.split("%")[0]).is_global for a in found)
+
+class _PublicRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not public(newurl):
+            raise urllib.error.URLError(f"redirect to a non-public address refused: {urllib.parse.urlsplit(newurl).hostname}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+_OPENER = urllib.request.build_opener(_PublicRedirects)
+
 def fetch(url, headers=None, method="GET", timeout=30):
-    """(status, final url, body bytes). Tests replace this, so no test reaches the network."""
+    """(status, final url, body bytes). A redirect may only lead to a public address. Tests replace this, so no test
+    reaches the network."""
     req = urllib.request.Request(url, method=method, headers={**UA, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _OPENER.open(req, timeout=timeout) as r:
         return r.status, r.geturl(), r.read()
 
 def fetch_json(url, headers=None):
@@ -342,8 +367,10 @@ def cited_links(markdown):
     return sorted({u for u in got if not (urllib.parse.urlsplit(u).hostname or "showmerit.com").endswith("showmerit.com")})
 
 def link_status(url, tries=2, pause=10):
-    """'ok', 'blocked' (the site refuses robots, so it is not judged) or 'broken: why'. A link is broken only if it
-    fails twice, so one slow answer never opens an issue."""
+    """'ok', 'blocked' (the site refuses robots, so it is not judged), 'skipped' (not a public address, so it is never
+    fetched) or 'broken: why'. A link is broken only if it fails twice, so one slow answer never opens an issue."""
+    if not public(url):
+        return "skipped"
     why = ""
     for n in range(tries):
         for method in ("HEAD", "GET"):            # some servers refuse HEAD but answer GET
@@ -368,7 +395,8 @@ def links(site, only=None):
         text = (pathlib.Path(site) / "content/abhimanyu/articles" / f"{a['slug']}.md").read_text()
         got = {u: link_status(u) for u in cited_links(text)}
         out[a["slug"]] = {"checked": len(got), "broken": {u: s[8:] for u, s in got.items() if s.startswith("broken")},
-                          "blocked": sorted(u for u, s in got.items() if s == "blocked")}
+                          "blocked": sorted(u for u, s in got.items() if s == "blocked"),
+                          "skipped": sorted(u for u, s in got.items() if s == "skipped")}
     return out
 
 # ---------- the paid cycle ----------
@@ -476,6 +504,38 @@ def file_failure(entry, text):
     made = admin("POST", "issues", {"title": title, "body": text, "labels": [LABEL], "assignees": [OWNER]})
     return "opened", made.get("number")
 
+REPORT_ISSUE = "Recheck report failed"
+
+def to_summary(text):
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        with open(path, "a") as f:
+            f.write(text + "\n\n")
+
+def report_problem(kind, what, run_url):
+    """The report steps stay green, so a crash or a lost save must never be silent: it goes to the private issue, or
+    when that fails too, to the run summary and log. Returns where it went."""
+    from radar import neutralize
+    run = run_url if RUN_URL.fullmatch(run_url or "") else "(no run link)"
+    text = "\n".join([f"The {kind} recheck report did not finish. Results, issues or the AWS spend estimate may be missing for this run.",
+                      "", "```", neutralize(str(what)).replace("```", "'''")[-1500:], "```", "", f"**Run:** {run}"])
+    if os.environ.get("ADMIN_TOKEN"):
+        try:
+            open_ = admin("GET", "issues?labels=recheck&state=open&per_page=100") or []
+            found = next((i for i in open_ if i.get("title") == REPORT_ISSUE and "pull_request" not in i), None)
+            if found:
+                admin("POST", f"issues/{int(found['number'])}/comments", {"body": "It happened again.\n\n" + text})
+            else:
+                admin("POST", "issues", {"title": REPORT_ISSUE, "body": text, "labels": [LABEL], "assignees": [OWNER]})
+            print(f"::warning title=recheck::the report did not finish; see the private issue")
+            return "issue"
+        except Exception as e:
+            text += f"\n\nThe private issue could not be written either: {' '.join(str(e).split())[:200]}"
+    last = ([l for l in str(what).split("\n") if l.strip()] or ["unknown error"])[-1]
+    print(f"::error title=recheck report::The {kind} recheck report did not finish: {' '.join(neutralize(last).split())[:300]}. See the run summary.")
+    to_summary("## Recheck report problem\n\n" + text)
+    return "summary"
+
 def merge(saved, entry, kind, results, link_result, run_url, day):
     """The public record for one article. Only code-made fields: no lab output and no error text."""
     rec = saved.setdefault("articles", {}).setdefault(entry["slug"], {})
@@ -511,6 +571,21 @@ def save_results(update):
                 raise
     return None
 
+def valid_results(planned, results):
+    """Only the free results the plan expects, one per lab and version set, in the expected form. The report job holds
+    tokens, so a file a lab's check.sh left behind can't add or change a record."""
+    expected = {(r["slug"], r["set"]) for r in matrix(planned)}
+    kept, seen = [], set()
+    for r in results:
+        key = (r.get("slug"), r.get("set")) if isinstance(r, dict) else None
+        if key not in expected or key in seen or not isinstance(r.get("passed"), bool) or not isinstance(r.get("step"), str) \
+                or not isinstance(r.get("errors"), list) or not all(isinstance(x, str) for x in r["errors"]):
+            print(f"::warning title=recheck::left out an unexpected result file: {str(key)[:120]}")
+            continue
+        seen.add(key)
+        kept.append({"slug": key[0], "set": key[1], "passed": r["passed"], "step": r["step"][:160], "errors": [x[:240] for x in r["errors"][:10]]})
+    return kept
+
 def report(kind, planned, results, link_results, run_url, day=None):
     """Saves the public results and files the private failures. Every write is tried, a failed one is reported in the
     log, and the run stays green. Returns counts for the verdict."""
@@ -543,17 +618,19 @@ def report(kind, planned, results, link_results, run_url, day=None):
         save_results(lambda data: [merge(data, e, kind, m, lr, run_url, day) for e, m, lr in updates])
         print(f"saved {len(updates)} result(s) to {RESULTS}")
     except Exception as e:
-        print(f"::warning title=recheck::results not saved: {' '.join(str(e).split())[:200]}")
+        report_problem(kind, f"The results were not saved to {RESULTS}: {' '.join(str(e).split())[:300]}", run_url)
     for entry, text in failures:
-        if not os.environ.get("ADMIN_TOKEN"):
-            print(f"::warning title=recheck::{entry['slug']} failed, but there is no team-admin token to report it")
-            continue
-        try:
-            what, number = file_failure(entry, text)
-            counts["issues"] += 1
-            print(f"{entry['slug']}: {what} the private issue")
-        except Exception as e:
-            print(f"::warning title=recheck::{entry['slug']}: issue not filed: {' '.join(str(e).split())[:200]}")
+        why = "there is no team-admin token"
+        if os.environ.get("ADMIN_TOKEN"):
+            try:
+                what, number = file_failure(entry, text)
+                counts["issues"] += 1
+                print(f"{entry['slug']}: {what} the private issue")
+                continue
+            except Exception as e:
+                why = f"the private issue could not be written: {' '.join(str(e).split())[:200]}"
+        print(f"::warning title=recheck::{entry['slug']} failed, and {why}. The details are in the run summary")
+        to_summary(f"## {entry['slug']} failed, not filed\n\n{why[0].upper() + why[1:]}.\n\n{text}")
     return counts
 
 def summary(planned, counts=None, extra=""):
@@ -650,32 +727,46 @@ def main(argv):
             with open(path, "a") as f:
                 f.write(message + "\n")
     elif cmd == "report":                      # report <free|aws> <plan.json> <results dir> [links.json]
-        kind, planned = args[0], json.loads(pathlib.Path(args[1]).read_text())
-        if kind == "free":
-            results = [json.loads(p.read_text()) for p in sorted(pathlib.Path(args[2]).glob("*.json"))]
-            link_results = json.loads(pathlib.Path(args[3]).read_text()) if len(args) > 3 and pathlib.Path(args[3]).is_file() else None
-        else:
-            results, skipped = aws_results(planned, args[2])
-            link_results = None
-            used = [r for r in results if r["aws_used"]]
-            if used:
-                import budget                  # the lab jobs hold no bot token, so their AWS estimates are recorded here
-                budget.EXTRA_AWS.extend([budget.AWS_LAB_USD] * len(used))
-                budget.record()
-            for r in results:
-                if r.get("destroyed") is False:
-                    print(f"::warning title=recheck::{r['slug']} may not have been destroyed: read its safety-net step")
-            for slug, why in skipped:
-                print(f"::notice title=recheck::skipped {slug}: {why}")
-        counts = report(kind, planned, results, link_results, os.environ.get("RUN_URL", ""))
-        extra = ""
-        if kind == "aws":
-            counts["skipped"] = len(skipped)
-            extra = "Skipped: " + ("; ".join(f"{s} ({why})" for s, why in skipped) if skipped else "none")
-        summary(planned, counts, extra)
-        output(**counts, skipped_labs=",".join(s for s, _ in skipped) if kind == "aws" else "")
+        try:
+            report_command(args)
+        except Exception:
+            import traceback
+            report_problem(args[0] if args else "?", traceback.format_exc(limit=6), os.environ.get("RUN_URL", ""))
     else:
         raise SystemExit(f"unknown command {cmd}")
+
+def report_command(args):
+    """report <free|aws> <plan.json> <results dir> [links.json]. main() turns any crash into a report_problem."""
+    kind, planned = args[0], json.loads(pathlib.Path(args[1]).read_text())
+    if kind == "free":
+        results = []
+        for p in sorted(pathlib.Path(args[2]).glob("*.json")):
+            try:
+                results.append(json.loads(p.read_text()))
+            except ValueError:
+                print(f"::warning title=recheck::{p.name} is not JSON, so it was left out")
+        results = valid_results(planned, results)
+        link_results = json.loads(pathlib.Path(args[3]).read_text()) if len(args) > 3 and pathlib.Path(args[3]).is_file() else None
+    else:
+        results, skipped = aws_results(planned, args[2])
+        link_results = None
+        used = [r for r in results if r["aws_used"]]
+        if used:
+            import budget                  # the lab jobs hold no bot token, so their AWS estimates are recorded here
+            budget.EXTRA_AWS.extend([budget.AWS_LAB_USD] * len(used))
+            budget.record()
+        for r in results:
+            if r.get("destroyed") is False:
+                print(f"::warning title=recheck::{r['slug']} may not have been destroyed: read its safety-net step")
+        for slug, why in skipped:
+            print(f"::notice title=recheck::skipped {slug}: {why}")
+    counts = report(kind, planned, results, link_results, os.environ.get("RUN_URL", ""))
+    extra = ""
+    if kind == "aws":
+        counts["skipped"] = len(skipped)
+        extra = "Skipped: " + ("; ".join(f"{s} ({why})" for s, why in skipped) if skipped else "none")
+    summary(planned, counts, extra)
+    output(**counts, skipped_labs=",".join(s for s, _ in skipped) if kind == "aws" else "")
 
 if __name__ == "__main__":
     main(sys.argv[1:])
