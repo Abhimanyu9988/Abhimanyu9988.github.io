@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T13:25:32Z",
+ "updated": "2026-11-09T13:42:43Z",
  "columns": {
   "needs": [
    {
@@ -91,6 +91,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "kind": "Your PR",
+    "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
     "kind": "Your PR",
     "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
@@ -109,13 +116,6 @@
     "kind": "Your PR",
     "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
-    "kind": "Your PR",
-    "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "where": "opentelemetry-collector-contrib"
    },
    {
