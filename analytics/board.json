@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T19:03:58Z",
+ "updated": "2026-11-09T19:13:29Z",
  "columns": {
   "needs": [
    {
@@ -124,13 +124,6 @@
     "title": "ENV variables fix in InfraViz",
     "url": "https://github.com/CiscoDevNet/appdynamics-charts/pull/36",
     "where": "appdynamics-charts"
-   },
-   {
-    "id": "Check failed:Could not check your merged PRs",
-    "kind": "Check failed",
-    "title": "Could not check your merged PRs",
-    "url": "",
-    "where": ""
    }
   ],
   "next": [
@@ -149,6 +142,28 @@
     "where": ""
    }
   ],
-  "done": []
+  "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "kind": "Merged",
+    "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
+    "kind": "Merged",
+    "title": "[receiver/flinkmetrics] Record JVM GC metrics for both JobManager and TaskManager",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
+    "kind": "Merged",
+    "title": "[chore] receiver/flinkmetrics: update tested Flink versions and correct README configuration",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
+    "where": "opentelemetry-collector-contrib"
+   }
+  ]
  }
 }
