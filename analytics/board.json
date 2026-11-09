@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T18:36:26Z",
+ "updated": "2026-11-09T18:43:45Z",
  "columns": {
   "needs": [
    {
@@ -29,13 +29,6 @@
     "title": "Opentelemetrycollector crd: Specific receivers do not create services",
     "url": "https://github.com/open-telemetry/opentelemetry-operator/issues/5742",
     "where": "opentelemetry-operator"
-   },
-   {
-    "id": "Check failed:Could not check changes requested on his prs",
-    "kind": "Check failed",
-    "title": "Could not check changes requested on his prs",
-    "url": "",
-    "where": ""
    }
   ],
   "maybe": [
