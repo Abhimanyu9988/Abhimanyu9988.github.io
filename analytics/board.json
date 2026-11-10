@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09T19:42:31Z",
+ "updated": "2026-11-10T00:09:11Z",
  "columns": {
   "needs": [
    {
@@ -37,13 +37,6 @@
     "kind": "Mentioned",
     "title": "[receiver/kubeletstats] Added k8s.pod.filesystem.inode.used metric",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
-    "kind": "Mentioned",
-    "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
     "where": "opentelemetry-collector-contrib"
    },
    {
@@ -155,13 +148,6 @@
     "kind": "Merged",
     "title": "[receiver/flinkmetrics] Record JVM GC metrics for both JobManager and TaskManager",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52450",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
-    "kind": "Merged",
-    "title": "[chore] receiver/flinkmetrics: update tested Flink versions and correct README configuration",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52485",
     "where": "opentelemetry-collector-contrib"
    }
   ]
