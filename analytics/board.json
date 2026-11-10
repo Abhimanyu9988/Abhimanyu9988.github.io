@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-10T03:51:57Z",
+ "updated": "2026-11-10T04:34:09Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52911",
+    "kind": "Review",
+    "title": "Update All github.com/azure packages",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52911",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "kind": "Review",
