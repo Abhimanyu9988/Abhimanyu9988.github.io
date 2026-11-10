@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-10T00:09:11Z",
+ "updated": "2026-11-10T03:51:57Z",
  "columns": {
   "needs": [
    {
@@ -37,6 +37,13 @@
     "kind": "Mentioned",
     "title": "[receiver/kubeletstats] Added k8s.pod.filesystem.inode.used metric",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52906",
+    "kind": "Mentioned",
+    "title": "[exporter/azuredataexplorer] ingestion_type: managed never streams (plain JSON sent with gzip declared) and payloads are uploaded uncompressed",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52906",
     "where": "opentelemetry-collector-contrib"
    },
    {
