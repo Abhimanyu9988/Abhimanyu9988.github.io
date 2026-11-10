@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-10T15:42:01Z",
+ "updated": "2026-11-10T15:52:04Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52958",
+    "kind": "Review",
+    "title": "Update module github.com/testcontainers/testcontainers-go to v0.45.0",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52958",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "kind": "Review",
