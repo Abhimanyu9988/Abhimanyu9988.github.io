@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-09",
+ "updated": "2026-11-10",
  "team": [
   {
    "role": "Executive Assistant",
@@ -117,9 +117,6 @@
    "mission": "Find domains we can buy within budget, and tell the CFO what is open, leaving or unlikely to free up."
   }
  ],
- "in_review": [
-  "Draft: OpenTelemetry Java Agent in Splunk APM: One Env Var, Zero Code, Full Service Map",
-  "Draft: Default ECS FireLens Dropped 76.59% in My Fargate Outage Test"
- ],
+ "in_review": [],
  "published": []
 }
