@@ -1,0 +1,13 @@
+{
+ "articles": {
+  "scale-to-zero-sqs-workers-on-ecs-fargate": {
+   "aws": {
+    "date": "2026-11-11",
+    "passed": true,
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42941795412",
+    "versions": {}
+   }
+  }
+ },
+ "updated": "2026-11-11T02:07:45Z"
+}
