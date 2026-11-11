@@ -1,13 +1,15 @@
 name: recheck-aws
-# The paid recheck: one published lab a week on the AWS lab account, with the newest versions, so each lab runs once a
-# quarter (pipeline/recheck.py `due`). It runs only if the monthly budget has room for about one more lab, and calls no
-# model. A failed lab is a normal result: it goes to a private issue and the verdict job's name, and the run stays green.
+# The paid recheck, on the first Tuesday of each month: the labs due that month in a 3-month cycle run on the AWS lab
+# account with the newest versions, oldest article first, one after another, so each lab runs once a quarter
+# (pipeline/recheck.py `due`). The schedule fires every Tuesday and only the first one runs labs. Each lab starts only if
+# the monthly budget has room for it. No model is called. A failed lab is a normal result: it goes to a private issue and
+# the verdict job's name, and the run stays green.
 on:
-  schedule: [{ cron: "47 1 * * 3" }]
+  schedule: [{ cron: "23 2 * * 2" }]
   workflow_dispatch:
     inputs:
       lab:
-        description: "Article slug to recheck now, instead of this week's lab. Costs about $1"
+        description: "Article slug to recheck now. Leave empty for this month's labs. Each lab costs about $1"
         required: false
         type: string
 permissions:
@@ -16,10 +18,10 @@ jobs:
   pick:
     if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     outputs:
-      slug: ${{ steps.pick.outputs.slug }}
-      budget: ${{ steps.budget.outputs.budget }}
+      labs: ${{ steps.pick.outputs.labs }}
+      count: ${{ steps.pick.outputs.count }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,39 +33,38 @@ jobs:
           ref: main
           path: showmerit
           persist-credentials: false
-      - name: this week's lab
+      - name: this month's labs
         id: pick
         env:
           LAB: ${{ inputs.lab }}
-        run: python3 pipeline/recheck.py due showmerit "$LAB"
-      # The budget is read before anything is created. A stop is a normal result with a clear message.
-      - name: budget
-        id: budget
-        if: steps.pick.outputs.slug != ''
+          EVENT: ${{ github.event_name }}
+        run: python3 pipeline/recheck.py due showmerit "$LAB" "$EVENT"
+      - name: their newest versions
+        if: steps.pick.outputs.count != '0'
         env:
           GH_READ_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: python3 pipeline/recheck.py budget
-      - name: the lab's newest versions
-        if: steps.pick.outputs.slug != '' && steps.budget.outputs.budget == 'ok'
-        env:
-          GH_READ_TOKEN: ${{ github.token }}
-          SLUG: ${{ steps.pick.outputs.slug }}
-        run: python3 pipeline/recheck.py plan showmerit plan.json "$SLUG"
+          SLUGS: ${{ steps.pick.outputs.slugs }}
+        run: python3 pipeline/recheck.py plan showmerit plan.json "$SLUGS"
       - uses: actions/upload-artifact@v4
-        if: steps.pick.outputs.slug != '' && steps.budget.outputs.budget == 'ok'
+        if: steps.pick.outputs.count != '0'
         with:
           name: plan
           path: plan.json
           retention-days: 30
-  # The same runner as a replicate lab: sandbox, sweep, janitor, destroy and safety net. No model keys and no bot token.
+  # One lab per job, one job at a time: the lab account runs one lab at a time and its janitor removes anything else.
+  # Each job also waits behind any replicate lab. The same runner as a replicate lab: sandbox, sweep, janitor, destroy and
+  # safety net. No model keys and no bot token.
   lab:
     needs: pick
-    if: needs.pick.outputs.slug != '' && needs.pick.outputs.budget == 'ok'
+    if: needs.pick.outputs.count != '0' && needs.pick.outputs.count != ''
     runs-on: ubuntu-latest
     environment: aws-lab
     timeout-minutes: 150
-    # The lab account runs one lab at a time, and its janitor removes anything else, so this queues behind replicate.
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include: ${{ fromJSON(needs.pick.outputs.labs) }}
     concurrency:
       group: replicate
       cancel-in-progress: false
@@ -71,33 +72,49 @@ jobs:
       contents: read
       id-token: write
     env:
-      SLUG: ${{ needs.pick.outputs.slug }}
+      SLUG: ${{ matrix.slug }}
+      EARLIER: ${{ matrix.earlier }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           persist-credentials: false
+      # Before each lab, not once per run, so a run stops before the lab that would pass the limit.
+      - name: budget
+        id: budget
+        env:
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: python3 pipeline/recheck.py budget "$SLUG" "$EARLIER" out
       - uses: actions/checkout@v4
+        if: steps.budget.outputs.budget == 'ok'
         with:
           repository: Abhimanyu9988/showmerit
           ref: main
           path: showmerit
           persist-credentials: false
       - uses: actions/download-artifact@v4
+        if: steps.budget.outputs.budget == 'ok'
         with:
           name: plan
       - name: write the lab with the newest versions
-        run: python3 pipeline/recheck.py prepare showmerit plan.json "$SLUG" newest recheck-src recheck-lab.json
+        if: steps.budget.outputs.budget == 'ok'
+        run: |
+          python3 pipeline/recheck.py prepare showmerit plan.json "$SLUG" newest recheck-src recheck-lab.json
+          mkdir -p out && echo '{"started": true}' > out/started.json
       - name: build lab sandbox
+        if: steps.budget.outputs.budget == 'ok'
         timeout-minutes: 10
         run: docker build -q -t hero-lab:local -f pipeline/lab.Dockerfile pipeline
-      - uses: aws-actions/configure-aws-credentials@v4
+      - if: steps.budget.outputs.budget == 'ok'
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           role-duration-seconds: 7200
           role-session-name: recheck-${{ github.run_id }}
       - name: recheck on AWS
+        if: steps.budget.outputs.budget == 'ok'
         timeout-minutes: 112
         run: python3 pipeline/lab.py --recheck recheck-lab.json
         env:
@@ -110,7 +127,7 @@ jobs:
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
       # Fresh credentials: the first session may be close to its 2-hour limit by now.
-      - if: always()
+      - if: always() && steps.budget.outputs.budget == 'ok'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
@@ -118,7 +135,7 @@ jobs:
           role-duration-seconds: 3600
           role-session-name: recheck-safety-${{ github.run_id }}
       - name: safety-net destroy
-        if: always()
+        if: always() && steps.budget.outputs.budget == 'ok'
         timeout-minutes: 30
         run: python3 pipeline/lab.py --destroy-only
         env:
@@ -130,18 +147,21 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lab
+          name: lab-${{ matrix.slug }}
           path: out/
           retention-days: 30
           if-no-files-found: ignore
-  # Code from main only. Records the lab's AWS estimate, saves the public result and files a private issue on failure.
+  # Code from main only. Records the labs' AWS estimates, saves each lab's public result, files a private issue for each
+  # failed lab, and lists the labs the budget skipped.
   report:
     needs: [pick, lab]
-    if: always() && needs.pick.outputs.slug != '' && needs.pick.outputs.budget == 'ok'
+    if: always() && needs.pick.outputs.count != '0' && needs.pick.outputs.count != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       passed: ${{ steps.report.outputs.passed }}
+      failed: ${{ steps.report.outputs.failed }}
+      skipped: ${{ steps.report.outputs.skipped }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -153,7 +173,7 @@ jobs:
       - uses: actions/download-artifact@v4
         continue-on-error: true
         with:
-          name: lab
+          pattern: lab-*
           path: out
       - uses: actions/create-github-app-token@v2
         id: bot
@@ -173,7 +193,9 @@ jobs:
       - name: report
         id: report
         continue-on-error: true
-        run: python3 pipeline/recheck.py report aws plan.json out
+        run: |
+          mkdir -p out
+          python3 pipeline/recheck.py report aws plan.json out
         env:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           HERO_PUBLISH: "1"
@@ -182,7 +204,7 @@ jobs:
           ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
           REPO: ${{ github.repository }}
   verdict:
-    name: verdict lab=${{ needs.pick.outputs.slug || 'none this week' }} budget=${{ needs.pick.outputs.budget || 'not checked' }} passed=${{ needs.report.outputs.passed || '0' }}
+    name: verdict labs=${{ needs.pick.outputs.count || '0' }} passed=${{ needs.report.outputs.passed || '0' }} failed=${{ needs.report.outputs.failed || '0' }} skipped=${{ needs.report.outputs.skipped || '0' }}
     if: always() && github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
     needs: [pick, report]
     runs-on: ubuntu-latest

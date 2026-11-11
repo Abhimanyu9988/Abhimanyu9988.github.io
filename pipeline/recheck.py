@@ -4,8 +4,9 @@
 Free recheck (recheck.yml, the 1st and 16th of each month): every lab with a check.sh runs it twice on a GitHub runner,
 once with the versions the article used and once with the newest releases of the agent, charts and images the lab pins.
 Every external link each article cites is fetched again. No AWS and no model.
-Paid recheck (recheck-aws.yml, weekly): the lab whose week it is in a 13-week cycle runs once on the AWS lab account with
-the newest versions, through lab.py's own runner, only if the monthly budget has room for it. No model.
+Paid recheck (recheck-aws.yml, the first Tuesday of each month): the labs due that month in a 3-month cycle run on the AWS
+lab account one after another, with the newest versions, through lab.py's own runner. Each lab starts only if the monthly
+budget has room for it. No model.
 
 Inputs: a checkout of the showmerit repo (articles and labs), GitHub releases, Helm repository indexes, Docker Hub tags,
 the results the workflow jobs saved, and the spend record on the analytics branch.
@@ -15,7 +16,7 @@ on the open one for that article.
 Must not: contact or file anything with a vendor or an upstream project, call a model, run lab code (the workflow runs
 check.sh in a job with no secrets), write anywhere but those two places, or fail a run because a lab failed.
 """
-import datetime, hashlib, json, os, pathlib, re, sys, time, urllib.error, urllib.parse, urllib.request
+import datetime, hashlib, ipaddress, json, os, pathlib, re, socket, sys, time, urllib.error, urllib.parse, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lab_check import SAFE
@@ -26,8 +27,9 @@ ADMIN_REPO = "Abhimanyu9988/team-admin"            # private: error lines and fa
 OWNER = "Abhimanyu9988"
 RESULTS = "analytics/rechecks.json"
 LABEL = "recheck"
-EPOCH = datetime.date(2026, 11, 9)                 # a Monday: week 0 of the paid cycle
-CYCLE_WEEKS = 13                                   # one paid run per lab per quarter
+CYCLE_START = (2026, 12)                           # month 0 of the paid cycle
+CYCLE_MONTHS = 3                                   # each lab runs on AWS once a quarter
+RUN_WEEKDAY = 1                                    # Tuesday: the paid run is the first Tuesday of the month
 UA = {"User-Agent": "showmerit-recheck"}
 AGENT_RX = re.compile(r"https://github\.com/([\w.-]+/[\w.-]+)/releases/download/v?(\d+\.\d+\.\d+)/([\w.-]+\.jar)")
 REPO_ADD = re.compile(r"helm\s+repo\s+add\s+([\w.-]+)\s+(https://[^\s\"']+)")
@@ -37,10 +39,35 @@ TAG_RX = re.compile(r"(\d+(?:[._]\d+)*)((?:-[a-z0-9.]+)*)")
 FAILED_LINE = re.compile(r"CHECK FAILED|HERO_RESULT: not_|error|fail|refused|denied|timed out|not found|exception", re.I)
 RUN_URL = re.compile(r"https://github\.com/Abhimanyu9988/Abhimanyu9988\.github\.io/actions/runs/\d+")
 
+def resolve(host):
+    """Every address a host name resolves to. Tests replace this."""
+    return [a[4][0] for a in socket.getaddrinfo(host, None)]
+
+def public(url):
+    """True only for an http(s) URL whose host resolves to public addresses. An article's link must never make the
+    runner reach its own network, a private range or a cloud metadata address."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        return False
+    try:
+        found = resolve(parts.hostname)
+    except OSError:
+        return True                            # an unknown name reaches nothing, and the fetch reports it as broken
+    return bool(found) and all(ipaddress.ip_address(a.split("%")[0]).is_global for a in found)
+
+class _PublicRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not public(newurl):
+            raise urllib.error.URLError(f"redirect to a non-public address refused: {urllib.parse.urlsplit(newurl).hostname}")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+_OPENER = urllib.request.build_opener(_PublicRedirects)
+
 def fetch(url, headers=None, method="GET", timeout=30):
-    """(status, final url, body bytes). Tests replace this, so no test reaches the network."""
+    """(status, final url, body bytes). A redirect may only lead to a public address. Tests replace this, so no test
+    reaches the network."""
     req = urllib.request.Request(url, method=method, headers={**UA, **(headers or {})})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+    with _OPENER.open(req, timeout=timeout) as r:
         return r.status, r.geturl(), r.read()
 
 def fetch_json(url, headers=None):
@@ -278,10 +305,12 @@ def apply(files, found, changes):
 
 # ---------- plan, prepare, outcome ----------
 def plan(site, only=None):
-    """What to recheck, with both version sets. The matrix runs check.sh twice only when a newer version exists."""
+    """What to recheck, with both version sets. The matrix runs check.sh twice only when a newer version exists.
+    `only` limits it to some article slugs, given as a list or as one comma-separated string."""
+    only = set(only.split(",") if isinstance(only, str) else only or [])
     out = []
     for a in articles(site):
-        if only and a["slug"] != only:
+        if only and a["slug"] not in only:
             continue
         found = pins(lab_files(site, a["lab"]))
         changes, missed = newest(found)
@@ -338,8 +367,10 @@ def cited_links(markdown):
     return sorted({u for u in got if not (urllib.parse.urlsplit(u).hostname or "showmerit.com").endswith("showmerit.com")})
 
 def link_status(url, tries=2, pause=10):
-    """'ok', 'blocked' (the site refuses robots, so it is not judged) or 'broken: why'. A link is broken only if it
-    fails twice, so one slow answer never opens an issue."""
+    """'ok', 'blocked' (the site refuses robots, so it is not judged), 'skipped' (not a public address, so it is never
+    fetched) or 'broken: why'. A link is broken only if it fails twice, so one slow answer never opens an issue."""
+    if not public(url):
+        return "skipped"
     why = ""
     for n in range(tries):
         for method in ("HEAD", "GET"):            # some servers refuse HEAD but answer GET
@@ -364,41 +395,56 @@ def links(site, only=None):
         text = (pathlib.Path(site) / "content/abhimanyu/articles" / f"{a['slug']}.md").read_text()
         got = {u: link_status(u) for u in cited_links(text)}
         out[a["slug"]] = {"checked": len(got), "broken": {u: s[8:] for u, s in got.items() if s.startswith("broken")},
-                          "blocked": sorted(u for u, s in got.items() if s == "blocked")}
+                          "blocked": sorted(u for u, s in got.items() if s == "blocked"),
+                          "skipped": sorted(u for u, s in got.items() if s == "skipped")}
     return out
 
 # ---------- the paid cycle ----------
-def due(listed, today, wanted=""):
-    """The article whose lab gets its paid recheck this week, or None. Lab i has week i of a 13-week cycle, so each lab
-    runs once a quarter and at most one runs a week. Past 13 labs, labs that share a week take turns."""
-    if wanted:
-        return next((a for a in listed if a["slug"] == wanted), None)
-    week = (today - EPOCH).days // 7
-    group = [a for i, a in enumerate(listed) if i % CYCLE_WEEKS == week % CYCLE_WEEKS]
-    return group[(week // CYCLE_WEEKS) % len(group)] if group else None
+def cycle_month(day):
+    """0, 1 or 2: where a month sits in the 3-month cycle that starts in December 2026."""
+    return (day.year * 12 + day.month - (CYCLE_START[0] * 12 + CYCLE_START[1])) % CYCLE_MONTHS
 
-def schedule(listed):
-    """Each lab's next paid week, for the plan job's summary."""
-    today = datetime.date.today()
-    rows = []
-    for d in range(0, 7 * CYCLE_WEEKS * max(1, -(-len(listed) // CYCLE_WEEKS)), 7):
-        a = due(listed, today + datetime.timedelta(days=d))
-        if a and a["slug"] not in [r[0] for r in rows]:
-            rows.append((a["slug"], (today + datetime.timedelta(days=d)).isoformat()))
+def run_day(year, month):
+    """The first Tuesday of a month: the paid run's day."""
+    first = datetime.date(year, month, 1)
+    return first + datetime.timedelta(days=(RUN_WEEKDAY - first.weekday()) % 7)
+
+def due(listed, today, wanted="", scheduled=False):
+    """The articles whose labs get their paid recheck this month, oldest first. Lab i belongs to month i % 3 of the
+    cycle, so 8 labs run 3, 3 and 2 a month and each runs once a quarter. A new article joins its month without moving
+    the others. The schedule fires every Tuesday, so a scheduled run only works on the first one."""
+    if wanted:
+        return [a for a in listed if a["slug"] == wanted]
+    if scheduled and today != run_day(today.year, today.month):
+        return []
+    return [a for i, a in enumerate(listed) if i % CYCLE_MONTHS == cycle_month(today)]
+
+def schedule(listed, today=None, months=CYCLE_MONTHS):
+    """[(run day, [slugs])] for the next paid runs, for the run summary."""
+    today = today or datetime.date.today()
+    rows, (y, m) = [], (today.year, today.month)
+    while len(rows) < months:
+        day = run_day(y, m)
+        if day >= today:
+            rows.append((day.isoformat(), [a["slug"] for a in due(listed, day)]))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
     return rows
 
-def budget_room(extra=None):
-    """(ok, message). The paid run adds the lab estimate, so it may start only if the total stays inside the limit."""
+def budget_room(earlier=0, slug="this lab"):
+    """(ok, message) before one lab. The labs that ran before it in the same run are recorded only at the end, so each
+    counts at the lab estimate here. A lab may start only if the total, with it, stays inside the limit."""
     import budget
-    extra = budget.AWS_LAB_USD if extra is None else extra
+    extra = budget.AWS_LAB_USD * (earlier + 1)
     try:
         total, cap = budget.spent()[0], budget.limit()
     except Exception as e:
-        return False, f"Paid recheck skipped: the month's spend could not be read ({' '.join(str(e).split())[:120]}), so nothing was spent."
+        return False, f"Skipped {slug}: the month's spend could not be read ({' '.join(str(e).split())[:120]}), so nothing was spent."
+    earlier_text = f", plus about ${budget.AWS_LAB_USD * earlier:.2f} for the {earlier} lab(s) before it in this run" if earlier else ""
     if total + extra > cap:
-        return False, (f"Paid recheck skipped: ${total:.2f} of the ${cap:.2f} monthly budget is spent, and this run would add "
-                       f"about ${extra:.2f}. Nothing was started. It runs again on its next turn, or when the budget allows.")
-    return True, f"Budget ok: ${total:.2f} of ${cap:.2f} spent, and this run adds about ${extra:.2f}."
+        return False, (f"Skipped {slug}: ${total:.2f} of the ${cap:.2f} monthly budget is spent{earlier_text}, and this lab "
+                       f"would add about ${budget.AWS_LAB_USD:.2f}. Nothing was started for it. It runs again next quarter, "
+                       "or by hand when the budget allows.")
+    return True, f"Budget ok for {slug}: ${total:.2f} of ${cap:.2f} spent{earlier_text}, and this lab adds about ${budget.AWS_LAB_USD:.2f}."
 
 # ---------- report ----------
 def admin(method, path, body=None):
@@ -458,6 +504,38 @@ def file_failure(entry, text):
     made = admin("POST", "issues", {"title": title, "body": text, "labels": [LABEL], "assignees": [OWNER]})
     return "opened", made.get("number")
 
+REPORT_ISSUE = "Recheck report failed"
+
+def to_summary(text):
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if path:
+        with open(path, "a") as f:
+            f.write(text + "\n\n")
+
+def report_problem(kind, what, run_url):
+    """The report steps stay green, so a crash or a lost save must never be silent: it goes to the private issue, or
+    when that fails too, to the run summary and log. Returns where it went."""
+    from radar import neutralize
+    run = run_url if RUN_URL.fullmatch(run_url or "") else "(no run link)"
+    text = "\n".join([f"The {kind} recheck report did not finish. Results, issues or the AWS spend estimate may be missing for this run.",
+                      "", "```", neutralize(str(what)).replace("```", "'''")[-1500:], "```", "", f"**Run:** {run}"])
+    if os.environ.get("ADMIN_TOKEN"):
+        try:
+            open_ = admin("GET", "issues?labels=recheck&state=open&per_page=100") or []
+            found = next((i for i in open_ if i.get("title") == REPORT_ISSUE and "pull_request" not in i), None)
+            if found:
+                admin("POST", f"issues/{int(found['number'])}/comments", {"body": "It happened again.\n\n" + text})
+            else:
+                admin("POST", "issues", {"title": REPORT_ISSUE, "body": text, "labels": [LABEL], "assignees": [OWNER]})
+            print(f"::warning title=recheck::the report did not finish; see the private issue")
+            return "issue"
+        except Exception as e:
+            text += f"\n\nThe private issue could not be written either: {' '.join(str(e).split())[:200]}"
+    last = ([l for l in str(what).split("\n") if l.strip()] or ["unknown error"])[-1]
+    print(f"::error title=recheck report::The {kind} recheck report did not finish: {' '.join(neutralize(last).split())[:300]}. See the run summary.")
+    to_summary("## Recheck report problem\n\n" + text)
+    return "summary"
+
 def merge(saved, entry, kind, results, link_result, run_url, day):
     """The public record for one article. Only code-made fields: no lab output and no error text."""
     rec = saved.setdefault("articles", {}).setdefault(entry["slug"], {})
@@ -493,6 +571,21 @@ def save_results(update):
                 raise
     return None
 
+def valid_results(planned, results):
+    """Only the free results the plan expects, one per lab and version set, in the expected form. The report job holds
+    tokens, so a file a lab's check.sh left behind can't add or change a record."""
+    expected = {(r["slug"], r["set"]) for r in matrix(planned)}
+    kept, seen = [], set()
+    for r in results:
+        key = (r.get("slug"), r.get("set")) if isinstance(r, dict) else None
+        if key not in expected or key in seen or not isinstance(r.get("passed"), bool) or not isinstance(r.get("step"), str) \
+                or not isinstance(r.get("errors"), list) or not all(isinstance(x, str) for x in r["errors"]):
+            print(f"::warning title=recheck::left out an unexpected result file: {str(key)[:120]}")
+            continue
+        seen.add(key)
+        kept.append({"slug": key[0], "set": key[1], "passed": r["passed"], "step": r["step"][:160], "errors": [x[:240] for x in r["errors"][:10]]})
+    return kept
+
 def report(kind, planned, results, link_results, run_url, day=None):
     """Saves the public results and files the private failures. Every write is tried, a failed one is reported in the
     log, and the run stays green. Returns counts for the verdict."""
@@ -525,17 +618,19 @@ def report(kind, planned, results, link_results, run_url, day=None):
         save_results(lambda data: [merge(data, e, kind, m, lr, run_url, day) for e, m, lr in updates])
         print(f"saved {len(updates)} result(s) to {RESULTS}")
     except Exception as e:
-        print(f"::warning title=recheck::results not saved: {' '.join(str(e).split())[:200]}")
+        report_problem(kind, f"The results were not saved to {RESULTS}: {' '.join(str(e).split())[:300]}", run_url)
     for entry, text in failures:
-        if not os.environ.get("ADMIN_TOKEN"):
-            print(f"::warning title=recheck::{entry['slug']} failed, but there is no team-admin token to report it")
-            continue
-        try:
-            what, number = file_failure(entry, text)
-            counts["issues"] += 1
-            print(f"{entry['slug']}: {what} the private issue")
-        except Exception as e:
-            print(f"::warning title=recheck::{entry['slug']}: issue not filed: {' '.join(str(e).split())[:200]}")
+        why = "there is no team-admin token"
+        if os.environ.get("ADMIN_TOKEN"):
+            try:
+                what, number = file_failure(entry, text)
+                counts["issues"] += 1
+                print(f"{entry['slug']}: {what} the private issue")
+                continue
+            except Exception as e:
+                why = f"the private issue could not be written: {' '.join(str(e).split())[:200]}"
+        print(f"::warning title=recheck::{entry['slug']} failed, and {why}. The details are in the run summary")
+        to_summary(f"## {entry['slug']} failed, not filed\n\n{why[0].upper() + why[1:]}.\n\n{text}")
     return counts
 
 def summary(planned, counts=None, extra=""):
@@ -574,6 +669,21 @@ def aws_result(slug, path):
             "errors": [] if passed else [l[:240] for l in picked], "aws_used": bool(res.get("aws_used")),
             "destroyed": res.get("destroyed")}
 
+def aws_results(planned, folder):
+    """(results, skipped) for each lab of the run, from the folder each lab job uploaded. A lab stopped by the budget,
+    or never started, is skipped: no issue and no spend. A lab that started but saved no result counts as a failure."""
+    results, skipped = [], []
+    for entry in planned:
+        where = pathlib.Path(folder) / f"lab-{entry['slug']}"
+        stop = where / "budget-stop.json"
+        if stop.is_file():
+            skipped.append((entry["slug"], json.loads(stop.read_text()).get("message", "the budget had no room")))
+        elif (where / "started.json").is_file() or (where / "result.json").is_file():
+            results.append(aws_result(entry["slug"], where / "result.json"))
+        else:
+            skipped.append((entry["slug"], "its job never started, so nothing was spent"))
+    return results, skipped
+
 def main(argv):
     cmd, args = argv[0], argv[1:]
     if cmd == "plan":                          # plan <site> <out.json> [slug]
@@ -596,41 +706,67 @@ def main(argv):
         pathlib.Path(args[4]).write_text(json.dumps(outcome(args[0], args[1], args[2] == "success", log)))
     elif cmd == "links":                       # links <site> <out.json>
         pathlib.Path(args[1]).write_text(json.dumps(links(args[0]), indent=1))
-    elif cmd == "due":                         # due <site> [slug]: this week's paid lab
+    elif cmd == "due":                         # due <site> [slug] [event]: this month's paid labs
         listed = articles(args[0])
         wanted = args[1] if len(args) > 1 else ""
         if wanted and not re.fullmatch(r"[a-z0-9-]{1,100}", wanted):
             raise SystemExit("the lab must be an article slug")
-        a = due(listed, datetime.date.today(), wanted)
-        print("Paid schedule (next run of each lab):\n" + "\n".join(f"- {d}: {s}" for s, d in schedule(listed)))
-        output(slug=a["slug"] if a else "")
-    elif cmd == "budget":
-        ok, message = budget_room()
+        got = due(listed, datetime.date.today(), wanted, scheduled=len(args) > 2 and args[2] == "schedule")
+        print("Next paid runs:\n" + "\n".join(f"- {d}: {', '.join(s)}" for d, s in schedule(listed)))
+        output(labs=json.dumps([{"slug": a["slug"], "earlier": i} for i, a in enumerate(got)]),
+               slugs=",".join(a["slug"] for a in got), count=len(got))
+    elif cmd == "budget":                      # budget <slug> <labs before it in this run> <out dir>
+        ok, message = budget_room(int(args[1]), args[0])
         print(f"::notice title=budget::{message}")
         output(budget="ok" if ok else "stopped")
+        if not ok:
+            pathlib.Path(args[2]).mkdir(parents=True, exist_ok=True)
+            (pathlib.Path(args[2]) / "budget-stop.json").write_text(json.dumps({"slug": args[0], "message": message}))
         path = os.environ.get("GITHUB_STEP_SUMMARY")
         if path:
             with open(path, "a") as f:
                 f.write(message + "\n")
     elif cmd == "report":                      # report <free|aws> <plan.json> <results dir> [links.json]
-        kind, planned = args[0], json.loads(pathlib.Path(args[1]).read_text())
-        if kind == "free":
-            results = [json.loads(p.read_text()) for p in sorted(pathlib.Path(args[2]).glob("*.json"))]
-            link_results = json.loads(pathlib.Path(args[3]).read_text()) if len(args) > 3 and pathlib.Path(args[3]).is_file() else None
-        else:
-            results = [aws_result(planned[0]["slug"], pathlib.Path(args[2]) / "result.json")] if planned else []
-            link_results = None
-            if results and results[0]["aws_used"]:
-                import budget                  # the lab job holds no bot token, so the lab's AWS estimate is recorded here
-                budget.EXTRA_AWS.append(budget.AWS_LAB_USD)
-                budget.record()
-            if results and results[0].get("destroyed") is False:
-                print("::warning title=recheck::the lab may not have been destroyed: read the safety-net step")
-        counts = report(kind, planned, results, link_results, os.environ.get("RUN_URL", ""))
-        summary(planned, counts)
-        output(**counts)
+        try:
+            report_command(args)
+        except Exception:
+            import traceback
+            report_problem(args[0] if args else "?", traceback.format_exc(limit=6), os.environ.get("RUN_URL", ""))
     else:
         raise SystemExit(f"unknown command {cmd}")
+
+def report_command(args):
+    """report <free|aws> <plan.json> <results dir> [links.json]. main() turns any crash into a report_problem."""
+    kind, planned = args[0], json.loads(pathlib.Path(args[1]).read_text())
+    if kind == "free":
+        results = []
+        for p in sorted(pathlib.Path(args[2]).glob("*.json")):
+            try:
+                results.append(json.loads(p.read_text()))
+            except ValueError:
+                print(f"::warning title=recheck::{p.name} is not JSON, so it was left out")
+        results = valid_results(planned, results)
+        link_results = json.loads(pathlib.Path(args[3]).read_text()) if len(args) > 3 and pathlib.Path(args[3]).is_file() else None
+    else:
+        results, skipped = aws_results(planned, args[2])
+        link_results = None
+        used = [r for r in results if r["aws_used"]]
+        if used:
+            import budget                  # the lab jobs hold no bot token, so their AWS estimates are recorded here
+            budget.EXTRA_AWS.extend([budget.AWS_LAB_USD] * len(used))
+            budget.record()
+        for r in results:
+            if r.get("destroyed") is False:
+                print(f"::warning title=recheck::{r['slug']} may not have been destroyed: read its safety-net step")
+        for slug, why in skipped:
+            print(f"::notice title=recheck::skipped {slug}: {why}")
+    counts = report(kind, planned, results, link_results, os.environ.get("RUN_URL", ""))
+    extra = ""
+    if kind == "aws":
+        counts["skipped"] = len(skipped)
+        extra = "Skipped: " + ("; ".join(f"{s} ({why})" for s, why in skipped) if skipped else "none")
+    summary(planned, counts, extra)
+    output(**counts, skipped_labs=",".join(s for s, _ in skipped) if kind == "aws" else "")
 
 if __name__ == "__main__":
     main(sys.argv[1:])

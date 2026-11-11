@@ -52,7 +52,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/radar.py` | Topic discovery, GitHub safety, gate 1 wiring | News, docs, goals | Issues |
 | `pipeline/problems.py` | Manual problem finder | Stack Overflow, issues | Issues |
 | `pipeline/lab.py` | Runs the lab in the sandbox. `--recheck` reruns a published lab once, with no model | Topic issue, or a recheck's lab | `out/` |
-| `pipeline/recheck.py` | Rechecks the labs behind live ShowMerit articles: free `check.sh` runs with the article's and the newest versions, cited links, and the weekly paid pick. No model | showmerit labs and articles, releases, Helm indexes, Docker Hub, budget | `analytics/rechecks.json` (public results only), one private `team-admin` issue per failing article |
+| `pipeline/recheck.py` | Rechecks the labs behind live ShowMerit articles: free `check.sh` runs with the article's and the newest versions, cited links, and the monthly paid labs. No model | showmerit labs and articles, releases, Helm indexes, Docker Hub, budget | `analytics/rechecks.json` (public results only), one private `team-admin` issue per failing article |
 | `pipeline/lab_check.py` | Unpacks a chat lab for the free check, whose `check.sh` runs in a job with no secrets | `chat/<issue>` | `work/` |
 | `pipeline/rehearse.sh` | Runs a lab's real scripts on a small Kubernetes cluster, with the Splunk tokens only | Lab scripts | Nothing |
 | `pipeline/plan_review.py` | The Editor and Marketing review a lab plan before AWS, twice at most. A rerun checks the earlier points | Brief, lab files as data | Log, `plan-review.json` on the lab's branch |

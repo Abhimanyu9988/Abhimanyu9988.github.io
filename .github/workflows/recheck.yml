@@ -45,6 +45,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
+      max-parallel: 4              # a burst of Docker pulls and registry calls would hit rate limits as labs grow
       matrix:
         include: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
@@ -72,18 +73,21 @@ jobs:
         working-directory: work
         shell: bash
         run: bash check.sh 2>&1 | tee ../check.log
+      # A fresh folder made after check.sh ends, and only this leg's own file uploaded, so the lab can't add results.
       - name: save the result
         if: always()
         env:
           SLUG: ${{ matrix.slug }}
           SET: ${{ matrix.set }}
           OUTCOME: ${{ steps.check.outcome }}
-        run: python3 pipeline/recheck.py outcome "$SLUG" "$SET" "$OUTCOME" check.log "result-$SLUG-$SET.json"
+        run: |
+          rm -rf "$RUNNER_TEMP/recheck-result" && mkdir "$RUNNER_TEMP/recheck-result"
+          python3 pipeline/recheck.py outcome "$SLUG" "$SET" "$OUTCOME" check.log "$RUNNER_TEMP/recheck-result/result-$SLUG-$SET.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: result-${{ matrix.slug }}-${{ matrix.set }}
-          path: result-*.json
+          path: ${{ runner.temp }}/recheck-result/result-${{ matrix.slug }}-${{ matrix.set }}.json
           retention-days: 30
   links:
     needs: plan

@@ -144,6 +144,9 @@ def job(text, name):
 check("recheck: the job that runs check.sh holds no secret and no token",
       "bash check.sh" in job(free_wf, "check") and "secrets." not in job(free_wf, "check") and "token" not in job(free_wf, "check").lower())
 check("recheck: check.sh failing leaves the run green", "continue-on-error: true" in job(free_wf, "check").split("bash check.sh")[0].rsplit("- name", 1)[1])
+check("recheck: each check leg uploads only its own result file, written after check.sh ends",
+      "path: result-*.json" not in free_wf and "recheck-result/result-${{ matrix.slug }}-${{ matrix.set }}.json" in job(free_wf, "check")
+      and "max-parallel:" in job(free_wf, "check"))
 check("recheck: the reports can't turn the runs red", all("continue-on-error: true" in job(w, "report") for w in (free_wf, aws_wf)))
 crons = _re.findall(r'cron: "(\S+) ', free_wf + aws_wf)
 check("recheck: schedules start off the hour", crons and all(c not in ("0", "00", "*") and not c.startswith("*/") for c in crons))
@@ -151,8 +154,15 @@ check("recheck: the paid lab waits behind any replicate lab, since the janitor c
       "group: replicate" in job(aws_wf, "lab") and "cancel-in-progress: false" in job(aws_wf, "lab"))
 check("recheck: the paid lab holds no model key and no bot token",
       not any(k in job(aws_wf, "lab") for k in ("ANTHROPIC", "OPENAI", "GEMINI", "BOT_PRIVATE_KEY", "BOT_TOKEN")))
-check("recheck: the paid run starts only from main, after the budget says ok",
-      "github.ref == 'refs/heads/main'" in job(aws_wf, "pick") and "needs.pick.outputs.budget == 'ok'" in job(aws_wf, "lab"))
+lab_job = job(aws_wf, "lab")
+check("recheck: the paid run starts only from main", "github.ref == 'refs/heads/main'" in job(aws_wf, "pick"))
+check("recheck: paid labs run one after another, never in parallel", "max-parallel: 1" in lab_job)
+check("recheck: each paid lab reads the budget before it gets AWS credentials, and every AWS step waits for its ok",
+      lab_job.index("recheck.py budget") < lab_job.index("configure-aws-credentials")
+      and all("steps.budget.outputs.budget == 'ok'" in step for step in _re.split(r"\n      - ", lab_job)
+              if "aws-actions/" in step or "lab.py" in step or "docker build" in step))
+check("recheck: the paid schedule is a weekly Tuesday that only acts on the first one", '"23 2 * * 2"' in aws_wf
+      and "$EVENT" in job(aws_wf, "pick"))
 check("recheck: every checkout of this repo is main",
       all("ref: main" in c for c in _re.split(r"- uses: actions/checkout@v4", free_wf + aws_wf)[1:]))
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)
