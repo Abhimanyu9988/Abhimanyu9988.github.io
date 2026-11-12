@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-11T13:33:06Z",
+ "updated": "2026-11-12T13:04:15Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53054",
+    "kind": "Review",
+    "title": "[chore] Update core dependencies",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53054",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "kind": "Review",
