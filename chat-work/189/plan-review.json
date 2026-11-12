@@ -1,0 +1,27 @@
+{
+ "round": 1,
+ "Editor": [
+  {
+   "problem": "The title promises changes in 'your Splunk charts'. The brief's decision covers 'charts and detectors', and the takeaway says 'thresholds written in milliseconds need converting'. But no chart, SignalFlow chart program or detector is ever run. The lab only counts metric series and reads one mean. So the article could not show a reader what happens to their chart or detector, which is the part the docs don't cover.",
+   "fix": "Add a measurement 'detector_threshold_check' (kind comparison, op present, min_entities 3). Run one SignalFlow program written the way a user would, `data('db.client.connections.use_time', filter('deployment.environment', ENV)).mean()` with `detect(when(x > 50))`, against both environments through /v2/signalflow/execute. Record for each: data points returned and whether the alert condition was met. Then run the same program on `db.client.connection.use_time` in the preview environment, once with threshold 50 and once with 0.05. Store the program text and outputs in files. If you don't want to add this, cut 'charts' from the title and 'detectors' from the decision."
+  },
+  {
+   "problem": "The seconds-versus-milliseconds result comes from one mean in each run. They are separate pods on a burstable t3.large, sharing a node with Postgres and the build job, with the first run on cold JVMs. Neither mean has an acceptance band. So one default-run reading next to one preview-run reading can't separate a 1000x unit change from run-to-run noise. The '30 ms pg_sleep known answer' in load.py's comment is not in load.py, and the app code that would do it isn't in the plan.",
+   "fix": "Add 'use_time_ratio' (kind comparison): default_mean / preview_mean, accept between 500 and 2000. Run the load 3 times in each mode, alternating default, preview, default, preview, default, preview by changing only the env var and deployment.environment. Report every mean and the spread. Either ship the app source that runs pg_sleep(0.03) on every fourth request and report the stored max or p99 as a reading with a known answer, or delete that comment."
+  },
+  {
+   "problem": "The span-key result is gated too weakly to support 'span fields get new names'. fix.sh passes when new_k >= 1, even if old keys remain in the preview run. LEGACY_KEYS, NEW_KEYS, trace_keys and count_in live in tools.sh, which isn't in the plan. The output gives only counts, so the README's db.system to db.system.name, db.name to db.namespace and db.statement to db.query.text mapping comes from the OpenTelemetry blog, not from this lab.",
+   "fix": "Add 'preview_old_span_keys' (op eq 0) and make it part of the fix.sh pass condition. Print the exact sorted key=value list for every database span on the trace in both runs, for both orders and inventory, and save the raw trace JSON. Include tools.sh in the plan. Rewrite the README's 'What to change' list using only the keys that appear in those files."
+  },
+  {
+   "problem": "The entity counts and load checks are loose. Every pool-series measurement has min_entities 1, but there are two services with two pools, so one service can pass for both. achieved_rps is measured only in the preview run, so the plan never shows the default run got the same load. Both scripts print `errors=${errors:-0}`, so a missing log line is reported as zero errors, while the gate uses `:-1`.",
+   "fix": "Set min_entities 2 on default_pool_series, preview_new_pool_series and preview_legacy_pool_series, broken down by service.name. Add achieved_rps[default] to reproduce.sh, and require both rates within 5% of each other and of the 20 rps target. Report errors as `${errors:-missing}` and fail the run when it's missing."
+  }
+ ],
+ "Marketing": [
+  {
+   "problem": "The title promises \"what OTel Java Agent 3.0 changes in your Splunk charts\", which sounds like all of 3.0. The lab only measures connection pool metrics, the db.client.operation.duration series and database span keys. The code and messaging renames aren't measured. A platform engineer who relies on those would feel misled. The title also leaves out the words people search for, such as connection pool, database spans, and the milliseconds-to-seconds change.",
+   "fix": "Retitle to match what the run shows, in searchable words. For example: \"Preview OTel Java Agent 3.0 in Splunk with One Flag: See Your Connection Pool Metrics and DB Spans Before You Upgrade\". Alternatively, add a code or messaging measurement to the lab and keep the broad title. Keep the tone about getting ready, not about things going wrong."
+  }
+ ]
+}
