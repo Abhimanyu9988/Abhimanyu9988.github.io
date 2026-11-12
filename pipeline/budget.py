@@ -10,7 +10,11 @@ Costs are list prices plus a fixed estimate for each AWS lab. They are not invoi
 Claude is paid from the $100 of Claude API credit that comes with Abhi's Max plan, which arrives on CLAUDE_CREDIT_DAY
 and expires a cycle later. Claude's share of a job goes to analytics/claude-<date>-...-c<cents>.json instead, and only
 the part of a cycle above the credit counts toward the monthly limit. A cycle that crosses a month boundary can count
-its overflow in both months, which errs on the side of stopping early.
+its overflow in both months, which errs on the side of stopping early. A grant expires a few days after the next one
+arrives (the 29 Oct 2026 grant expires 2 Dec), so the cycle is counted from the grant day.
+
+A claude-...-console_backfill-... file records Claude credit the Console showed as already used before this split
+existed. Those dollars were also recorded in that month's spend files, so the month's total subtracts them once.
 """
 import datetime, json, math, os, re
 
@@ -85,6 +89,10 @@ def spent(m=None):
             actual[aws[2]] = int(aws[3])
     if actual:
         jobs["aws"] = max(actual[max(actual)], jobs.pop("aws_estimate", 0))
+    backfill = sum(int(h[2]) for h in (CLAUDE_SPEND.fullmatch(f.get("name", "")) for f in files)
+                   if h and h[1][:7] == (m or month()) and "-console_backfill-" in h[0])
+    if backfill:
+        jobs["paid_by_claude_credit"] = -min(backfill, sum(jobs.values()))
     return sum(jobs.values()) / 100, {k: v / 100 for k, v in jobs.items()}
 
 def check():

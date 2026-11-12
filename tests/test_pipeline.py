@@ -1137,5 +1137,11 @@ check("credit: the monthly limit sees per-use spend plus Claude above the credit
       _total == 13.0 and _jobs == {"claude_over_credit": 10.0, "draft": 3.0})
 r.gh = lambda m, p, b=None: [{"name": "claude-2026-11-12-3-1-1-radar-c5000.json"}, {"name": "spend-2026-11-4-1-1-draft-c300.json"}]
 check("credit: Claude inside the credit costs the budget nothing", _b.spent("2026-11")[0] == 3.0)
+r.gh = lambda m, p, b=None: [{"name": "claude-2026-11-12-0-0-0-console_backfill-c5007.json"},
+                              {"name": "spend-2026-11-4-1-1-draft-c8027.json"}]
+_b.cycle_start = lambda today=None: "2026-10-29"
+check("credit: Claude the Console showed as already used comes off the month once and counts toward the cycle",
+      _b.spent("2026-11")[0] == 30.2 and _b.claude_used(["claude-2026-11-12-0-0-0-console_backfill-c5007.json"],
+                                                         _dt.date(2026, 11, 12)) == 50.07)
 r.gh, _b.cycle_start = _real_gh, _real_cs
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)
