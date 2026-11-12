@@ -474,8 +474,8 @@ check("draft: front matter has the cover; body opens with it on the site URL",
       "image: /assets/posts/why-ecs-tasks-stay-pending/cover.png" in text and "image_alt: " in text
       and "\n---\n![Lab output  x ](https://abhimanyu9988.github.io/assets/posts/why-ecs-tasks-stay-pending/cover.png)" in text)
 check("draft: front matter has channels and cleaned tags", 'tags: ["aws", "ecs", "fargate", "devops"]' in text and "channels:" in text)
-check("draft: ChatGPT writes, Claude reviews, Gemini judges", writer_calls == ["chatgpt"] and roles == [("chatgpt", "claude", "gemini")])
-writer_prompt = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
+check("draft: Claude writes (plan credit), ChatGPT reviews, Gemini judges", writer_calls == ["claude"] and roles == [("claude", "chatgpt", "gemini")])
+writer_prompt = next(p for w, t, p in prompts_seen if w == "claude" and t == "submit" and "Write the article" in p)
 check("headline round: ChatGPT writes five, Claude vetoes the untrue pick, the next best goes to the writer",
       [w for w, t, p in prompts_seen if t == "submit_headlines"] == ["chatgpt"]
       and "TITLE: From stuck queue to running tasks" in writer_prompt
@@ -517,7 +517,7 @@ sent.clear(); TAKEN.add("draft/why-ecs-tasks-stay-pending-v2"); prompts_seen.cle
 os.environ.update(REDRAFT_NOTES="/redraft make the title about the stuck queue", OLD_PR="31")
 draft.main()
 os.environ.pop("REDRAFT_NOTES"); os.environ.pop("OLD_PR")
-wp = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
+wp = next(p for w, t, p in prompts_seen if w == "claude" and t == "submit" and "Write the article" in p)
 check("/redraft: notes reach the writer, the old PR gets a note and is closed (nothing else changed)",
       "make the title about the stuck queue" in wp and ("PATCH", f"/repos/{HOME}/pulls/31", {"state": "closed"}) in sent
       and any(p.endswith("/issues/31/comments") for m, p, b in sent))
@@ -530,7 +530,7 @@ check("write rules: cover images only on draft branches", ok)
 sent.clear(); TAKEN.clear(); prompts_seen.clear()
 (draft.OUT / "topic.json").write_text(json.dumps({"sources": [{"url": "https://stackoverflow.com/questions/1/a"}], "kind": "build"}))
 draft.main()
-wp = next(p for w, t, p in prompts_seen if w == "chatgpt" and t == "submit" and "Write the article" in p)
+wp = next(p for w, t, p in prompts_seen if w == "claude" and t == "submit" and "Write the article" in p)
 vq = [p for w, t, p in prompts_seen if t == "submit_verdict"]
 pr_b = next(b for m, p_, b in sent if p_.endswith("/pulls"))
 check("build draft: build rules, build verdict, build check in the PR",
@@ -1116,4 +1116,26 @@ res, calls = recheck_sim(good + [{"path": "providers.tf", "content": "x"}])
 check("lab recheck: a lab that breaks the file rules never touches AWS", res["status"] == "failed" and res["last_failure"]["step"].startswith("validate")
       and not any("terraform" in c or "sts" in c for c, _ in calls))
 shutil.rmtree(site); shutil.rmtree(out_dir); shutil.rmtree(rd)
+# ---------- Claude plan credit: Claude is paid from the Max plan's credit, only the overflow counts ----------
+import budget as _b, datetime as _dt
+check("credit: the cycle starts on the credit day", _b.cycle_start(_dt.date(2026, 11, 12)) == "2026-10-29"
+      and _b.cycle_start(_dt.date(2026, 11, 29)) == "2026-11-29" and _b.cycle_start(_dt.date(2027, 3, 1)) == "2027-02-28")
+_names = ["claude-2026-10-28-1-1-1-draft-c5000.json", "claude-2026-10-29-2-1-1-draft-c6000.json",
+          "claude-2026-11-12-3-1-1-radar-c5000.json", "spend-2026-11-4-1-1-draft-c300.json"]
+check("credit: only this cycle's Claude files count", _b.claude_used(_names, _dt.date(2026, 11, 12)) == 110.0)
+_saved_ledger = list(llm.LEDGER)
+llm.LEDGER[:] = [{"who": "claude", "model": "claude-opus-5-5", "in": 1_000_000, "out": 0},
+                 {"who": "web_search", "searches": 10},
+                 {"who": "chatgpt", "model": "gpt-5.5", "in": 1_000_000, "out": 0}]
+check("credit: Claude and its web search are split from per-use models", llm.cost_split() == (4.1, 5.0))
+llm.LEDGER[:] = _saved_ledger
+_real_gh, _real_cs = r.gh, _b.cycle_start
+r.gh = lambda m, p, b=None: [{"name": n} for n in _names]
+_b.cycle_start = lambda today=None: "2026-10-29"
+_total, _jobs = _b.spent("2026-11")
+check("credit: the monthly limit sees per-use spend plus Claude above the credit only",
+      _total == 13.0 and _jobs == {"claude_over_credit": 10.0, "draft": 3.0})
+r.gh = lambda m, p, b=None: [{"name": "claude-2026-11-12-3-1-1-radar-c5000.json"}, {"name": "spend-2026-11-4-1-1-draft-c300.json"}]
+check("credit: Claude inside the credit costs the budget nothing", _b.spent("2026-11")[0] == 3.0)
+r.gh, _b.cycle_start = _real_gh, _real_cs
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED"); sys.exit(1 if fails else 0)

@@ -1138,7 +1138,7 @@ check("oss: a failed search is reported, not guessed", cto.needed()["assigned_to
 check("oss: every search names issues or PRs, as GitHub requires", all(" is:issue " in q or " is:pr " in q for q in cto.NEEDED_QUERIES.values()))
 check("oss: his own repos' topics and drafts never count as needing him", all("-user:" in cto.NEEDED_QUERIES[k] for k in ("assigned_to_him", "mentions")))
 cto.gh = real_ghn
-check("oss: uses ChatGPT", roles_mod.get("oss_scout")["vendor"] == "chatgpt")
+check("oss: uses Claude, paid from the plan credit", roles_mod.get("oss_scout")["vendor"] == "claude")
 check("oss: a thread he commented on doesn't count", "Never list a PR only because he commented" in (ROOT / "pipeline/roles/prompts/oss_scout.md").read_text())
 check("oss: reaches OSS Scout", cto.route("OSS: am I needed on 51874?") == ("oss_scout", "am I needed on 51874?") and cto.route("oss-scout: hi")[0] == "oss_scout")
 acted, real_cd, real_si = [], cto.close_drafts, cto.save_ideas

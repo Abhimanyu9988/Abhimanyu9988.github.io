@@ -146,16 +146,16 @@ def monthly():
     if not p:
         print("no published posts yet; nothing to build"); return
     ctx = f"ARTICLE ({p['url']}):\n# {p['title']}\n{p['body'][:30000]}"
-    talk = llm.ask("chatgpt", "You help Abhimanyu turn his replicated AWS labs into short meetup talks.",
+    talk = llm.ask(llm.WRITER, "You help Abhimanyu turn his replicated AWS labs into short meetup talks.",
                    "Draft a 10-minute talk for an AWS User Group or AWS Community Day from this article: the "
                    "replication is the live demo. Human, specific, no hype.\n\n" + ctx, TALK_SCHEMA)
     talk, tlog = llm.refine("10-minute talk kit", talk, KIT_RUBRIC, ctx, TALK_SCHEMA,
-                            writer="chatgpt", reviewer="claude", judge="gemini")
-    ses = llm.ask("chatgpt", "You help Abhimanyu teach AWS containers to students at a coaching institute.",
+                            **llm.ARTICLE_PANEL)
+    ses = llm.ask(llm.WRITER, "You help Abhimanyu teach AWS containers to students at a coaching institute.",
                   "Draft a 60-minute hands-on session from this article for students new to AWS containers. They use "
                   "their own AWS accounts; keep it safe and cheap.\n\n" + ctx, SESSION_SCHEMA)
     ses, slog = llm.refine("student session pack", ses, KIT_RUBRIC, ctx, SESSION_SCHEMA,
-                           writer="chatgpt", reviewer="claude", judge="gemini")
+                           **llm.ARTICLE_PANEL)
     month = NOW.strftime("%B %Y")
     for label in ("talk-kit", "teaching"):
         ensure_label(label)
@@ -213,11 +213,10 @@ def reply():
     catalog = [{"title": p["title"], "url": p["url"], "description": p["description"]} for p in posts()]
     ctx = f"QUESTION ({url}):\n{q}\n\nABHI'S NOTE: {note or 'none'}\n\nABHI'S POSTS:\n{json.dumps(catalog)}"
     sysmsg = "You draft answers Abhimanyu posts himself on AWS re:Post, Stack Overflow or GitHub."
-    d = llm.ask("chatgpt", sysmsg, "Draft a helpful answer in Abhi's voice. Answer the question first; link one of his "
+    d = llm.ask(llm.WRITER, sysmsg, "Draft a helpful answer in Abhi's voice. Answer the question first; link one of his "
                 "posts only if it genuinely covers this, as 'I reproduced this here: <url>'. No greetings, no fluff.\n\n"
                 + ctx, REPLY_SCHEMA)
-    d, log = llm.refine("community answer", d, REPLY_RUBRIC, ctx, REPLY_SCHEMA, writer="chatgpt", reviewer="claude",
-                        judge="gemini")
+    d, log = llm.refine("community answer", d, REPLY_RUBRIC, ctx, REPLY_SCHEMA, **llm.ARTICLE_PANEL)
     where = ("Stack Overflow doesn't allow AI-written answers: rewrite this in your own words before posting."
              if "stackoverflow.com" in url else "Read it through and post it yourself; the bot never posts outside "
              "your repos.")

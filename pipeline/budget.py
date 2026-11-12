@@ -6,6 +6,11 @@ the listing alone gives the month's total. The first model call in a job checks 
 spends and a lab stops before it creates anything. Work already running finishes, so a month can pass the limit slightly.
 
 Costs are list prices plus a fixed estimate for each AWS lab. They are not invoices.
+
+Claude is paid from the $100 of Claude API credit that comes with Abhi's Max plan, which arrives on CLAUDE_CREDIT_DAY
+and expires a cycle later. Claude's share of a job goes to analytics/claude-<date>-...-c<cents>.json instead, and only
+the part of a cycle above the credit counts toward the monthly limit. A cycle that crosses a month boundary can count
+its overflow in both months, which errs on the side of stopping early.
 """
 import datetime, json, math, os, re
 
@@ -13,7 +18,11 @@ LIMIT_USD = 50
 AWS_LAB_USD = 1.0                              # the upper estimate quoted for a lab. Nothing reads AWS billing yet
 LIMITS = "analytics/budget.json"
 SPEND = re.compile(r"spend-(\d{4}-\d{2})-.*-c(\d+)\.json")
+CLAUDE_SPEND = re.compile(r"claude-(\d{4}-\d{2}-\d{2})-.*-c(\d+)\.json")
+CLAUDE_CREDIT_USD = 100                        # Max 5x plan, monthly Claude API credit
+CLAUDE_CREDIT_DAY = 29                         # the day the credit arrives (next one 29 Nov 2026)
 EXTRA, EXTRA_AWS = [], []                      # dollars this job adds: models from its lab, and that lab's AWS estimate
+EXTRA_CLAUDE = []                              # the Claude part of EXTRA, paid from the plan's credit
 AWS_ACTUAL = re.compile(r"aws-(\d{4}-\d{2})-(\d{2})-c(\d+)\.json")
 _checked = False
 
@@ -34,12 +43,40 @@ def limit(m=None):
     got = json.loads(text).get(m or month()) if text.strip() else None
     return got if isinstance(got, (int, float)) and got > 0 else LIMIT_USD
 
+def cycle_start(today=None):
+    """The first day of the current Claude credit cycle, as YYYY-MM-DD."""
+    import calendar
+    t = today or datetime.datetime.now(datetime.timezone.utc).date()
+    def day_in(y, mo):
+        return datetime.date(y, mo, min(CLAUDE_CREDIT_DAY, calendar.monthrange(y, mo)[1]))
+    start = day_in(t.year, t.month)
+    if start > t:
+        y, mo = (t.year, t.month - 1) if t.month > 1 else (t.year - 1, 12)
+        start = day_in(y, mo)
+    return start.isoformat()
+
+def claude_used(names, today=None):
+    """Dollars of Claude credit used this cycle, at list prices, from file names alone."""
+    start = cycle_start(today)
+    return sum(int(h[2]) for h in (CLAUDE_SPEND.fullmatch(n) for n in names) if h and h[1] >= start) / 100
+
+def claude_credit():
+    """What the CFO reports: Claude credit used and left this cycle, at list prices. Not the Console's own balance."""
+    from radar import HOME_REPO, gh
+    used = claude_used([f.get("name", "") for f in gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []])
+    return {"used": round(used, 2), "credit": CLAUDE_CREDIT_USD, "left": round(max(0, CLAUDE_CREDIT_USD - used), 2),
+            "cycle_started": cycle_start(), "note": "list prices; the Console billing page has the real balance"}
+
 def spent(m=None):
     """(dollars, {job: dollars}) for the month, from file names alone. AWS reports late, so the higher of its figure and
-    the lab estimates counts, and a lab that ran today is never missed."""
+    the lab estimates counts, and a lab that ran today is never missed. Claude counts only above the plan's credit."""
     from radar import HOME_REPO, gh
     jobs, actual = {}, {}
-    for f in gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []:
+    files = gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or []
+    over = claude_used([f.get("name", "") for f in files]) - CLAUDE_CREDIT_USD
+    if over > 0:
+        jobs["claude_over_credit"] = math.ceil(over * 100)
+    for f in files:
         hit, aws = SPEND.fullmatch(f.get("name", "")), AWS_ACTUAL.fullmatch(f.get("name", ""))
         if hit and hit[1] == (m or month()):
             job = f["name"].split("-")[-2]
@@ -95,6 +132,7 @@ def add_lab(res):
     """The lab job holds no bot token, so the draft job records the lab's spend for it."""
     if os.environ.get("GITHUB_WORKFLOW") == "replicate" and not os.environ.get("FROM_RUN"):
         EXTRA.append(float(res.get("usd") or 0))
+        EXTRA_CLAUDE.append(float(res.get("claude_usd") or 0))
         EXTRA_AWS.extend([AWS_LAB_USD] if res.get("aws_used") else [])
 
 def record():
@@ -102,10 +140,13 @@ def record():
     import llm
     if not in_pipeline():
         return
-    usd = llm.cost_usd()[0] + sum(EXTRA)
+    claude, other = llm.cost_split()
+    claude += sum(EXTRA_CLAUDE)
+    other += sum(EXTRA) - sum(EXTRA_CLAUDE)
+    usd = claude + other
     if usd <= 0 and not EXTRA_AWS:
         return
-    print(f"::notice title=spend::${usd:.3f}")
+    print(f"::notice title=spend::${usd:.3f} (Claude credit ${claude:.3f}, paid per use ${other:.3f})")
     if not os.environ.get("BOT_TOKEN") or os.environ.get("HERO_PUBLISH") != "1":
         return
     try:
@@ -113,10 +154,14 @@ def record():
         job = re.sub(r"\W", "_", os.environ.get("GITHUB_JOB", "job"))
         run = f"{os.environ.get('GITHUB_RUN_ID', '0')}-{os.environ.get('GITHUB_RUN_ATTEMPT', '1')}-{os.getpid()}"
         analytics.ensure_branch()
-        for name, amount in ((job, usd), ("aws_estimate", sum(EXTRA_AWS))):
+        day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+        files = ((f"spend-{month()}", job, other), (f"spend-{month()}", "aws_estimate", sum(EXTRA_AWS)),
+                 (f"claude-{day}", job, claude))
+        for prefix, name, amount in files:
             if amount > 0:
-                analytics.write_file(f"analytics/spend-{month()}-{run}-{name}-c{math.ceil(amount * 100)}.json",
-                                     json.dumps({"usd": amount, "workflow": os.environ.get("GITHUB_WORKFLOW"), "job": name}),
+                analytics.write_file(f"analytics/{prefix}-{run}-{name}-c{math.ceil(amount * 100)}.json",
+                                     json.dumps({"usd": amount, "workflow": os.environ.get("GITHUB_WORKFLOW"), "job": name,
+                                                 "paid_by": "claude_credit" if prefix.startswith("claude") else "per_use"}),
                                      None, f"spend: {name}")
     except Exception as e:
         print(f"::warning title=budget::spend not recorded: {' '.join(str(e).split())[:200]}")
