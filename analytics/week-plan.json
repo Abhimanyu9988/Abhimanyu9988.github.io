@@ -1,29 +1,18 @@
 {
  "week": "2026-W46",
  "target": 3,
- "created": "2026-11-09",
+ "created": "2026-11-12",
  "topics": [
   {
-   "issue": 181,
-   "title": "Put Request Baggage on Exported Logback Records With the OTel Java Agent",
+   "issue": 189,
+   "title": "One Flag Shows What OTel Java Agent 3.0 Changes in Your Splunk Charts",
    "state": "queued",
-   "signal": "7 comments and 0 reactions on a GitHub issue opened 2 Nov 2026",
+   "signal": "The OpenTelemetry project's own blog asks Java agent users to preview 3.0 now and lists renamed database, code and messaging names and a pool metric unit change from milliseconds to seconds.",
    "confirmed": true,
-   "picked": false,
+   "picked": true,
    "chat": true,
    "scores": "Marketing 3/5, Editor 3/5",
    "model": "claude-sonnet-5-5"
-  },
-  {
-   "issue": 182,
-   "title": "Ready Pod, Quiet Network? Measuring New-ENI Pods on Amazon EKS",
-   "state": "queued",
-   "signal": "9 reactions and 0 comments on a GitHub issue opened 20 Oct 2026",
-   "confirmed": true,
-   "picked": false,
-   "chat": true,
-   "scores": "Marketing 3/5, Editor 3/5",
-   "model": "claude-opus-5-5"
   }
  ]
 }
