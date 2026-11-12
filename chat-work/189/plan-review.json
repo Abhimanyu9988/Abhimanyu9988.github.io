@@ -1,10 +1,5 @@
 {
- "round": 3,
- "Editor": [
-  {
-   "problem": "Earlier point 2 is still open for the known-answer reading. The load.py comment in k8s/20-load.yaml still says 'on every fourth order, a short pg_sleep read in inventory, so pool connections are held for a range of times'. load.py only sends GET /orders/{id}. The orders and inventory source that would run pg_sleep isn't in the plan. Nothing measures it either: no max or p99 use time is read against 30 ms. A reader would take that sentence as part of the setup, but the run cannot show it is true.",
-   "fix": "Choose one. (a) Add the orders and inventory source with pg_sleep(0.03) on every fourth request to the plan. Then add a contract measurement 'use_time_known_answer' (kind comparison, min_entities 2) that reads the stored max or p99 use time for each pair and accepts 25 to 60 ms for the default pair and 0.025 to 0.060 s for the preview pair. Gate HERO_RESULT on it. (b) Delete the pg_sleep sentence from load.py and say nothing in the README or the article about a range of hold times. Option (b) is enough, because the ratio rounds already carry the unit finding."
-  }
- ],
+ "round": 4,
+ "Editor": [],
  "Marketing": []
 }
