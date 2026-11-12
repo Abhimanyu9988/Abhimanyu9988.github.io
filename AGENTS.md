@@ -40,7 +40,9 @@ Do not add approval requests, manual commands or setup steps for routine decisio
     call and input budgets. Older pipeline stages still rely on job timeouts, and web research is capped by `max_uses`.
 13. **The monthly budget is code.** `budget.check()` runs before a job's first model call, and only Abhi's own words, in
     Slack or the CTO desk issue, can raise the limit, for that month. No model can change it. Costs are list prices plus lab
-    estimates, never invoices, so never present them as billing data.
+    estimates, never invoices, so never present them as billing data. Claude is paid from the $100 of Claude API credit
+   that comes with Abhi's Max plan (it arrives on the 29th), so Claude's share is recorded as `analytics/claude-*` and
+   only the part above the credit counts toward the limit. ChatGPT, Gemini and AWS count in full.
 14. **This repo is public, and so is its `analytics` branch and every issue.** Nothing private goes there. Abhi's requests
     and the admin page live in the private `team-admin` repository, and his conversations belong in Slack.
 15. **Few emails.** Abhi hears about an article once, when its PR is ready. Routine progress belongs in the CTO digest.
@@ -64,7 +66,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `draft.voice_edit` | Voice Editor: removes AI patterns. `voice_safe` rejects any changed fact, code line or disclosure | Reviewed post, `author.md`, `field-notes.md` | The post body |
 | `pipeline/publish.py` | Publishes merged posts | `site/_posts` | dev.to, Hashnode, Medium draft |
 | `pipeline/analytics.py` | Weekly numbers | dev.to, GoatCounter | `analytics` branch |
-| `pipeline/llm.py` | All model calls, pins, cost | `prices.json` | `LEDGER` |
+| `pipeline/llm.py` | All model calls, pins, cost. `WRITER` (Claude) writes; ChatGPT reviews and Gemini judges | `prices.json` | `LEDGER` |
 | `pipeline/roles.py` | The team: budgets, prompts, contracts | `roles/` | Nothing |
 | `pipeline/sources.py` | Data-source adapters | Varies | Nothing |
 | `pipeline/contract.py` | Validates agent output | `schemas/` | Nothing |

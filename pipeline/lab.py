@@ -628,6 +628,7 @@ def save(result, lab=None):
     result["steps"] = [{k: e[k] for k in ("step", "code", "seconds")} for e in EVIDENCE]
     result["usage"] = llm.usage_summary()
     result["usd"] = llm.cost_usd()[0]
+    result["claude_usd"] = llm.cost_split()[0]      # paid from the Max plan's Claude credit; the rest is per use
     result["aws_used"] = bool(result.get("applied"))   # a lab stopped by pre-flight built nothing, so it adds no AWS estimate
     result["minutes"] = round((time.time() - START) / 60, 1)
     (OUT / "result.json").write_text(json.dumps(result, indent=1))

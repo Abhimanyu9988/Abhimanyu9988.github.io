@@ -242,6 +242,14 @@ def recent_labs(limit=4):
         print(f"::warning title=cto::labs not read: {' '.join(str(e).split())[:200]}")
         return []
 
+def credit_left():
+    """The Claude plan credit used and left this cycle, or None when the record can't be read (never guessed)."""
+    try:
+        return budget.claude_credit()
+    except Exception as e:
+        print(f"::warning title=cto::Claude credit not read: {' '.join(str(e).split())[:200]}")
+        return None
+
 def progress():
     """Facts from GitHub and the spend record. A failed source is left out by the caller, never guessed."""
     since = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)).isoformat()[:19] + "Z"
@@ -264,7 +272,7 @@ def progress():
             "failed_runs": sorted({r.get("name", "?") for r in runs.get("workflow_runs", [])}),
             "running": sorted({r.get("name", "?") for r in running.get("workflow_runs", [])}),
             "lab_running_now": any(r.get("name") == "replicate" for r in running.get("workflow_runs", [])),
-            "spent": total, "limit": budget.limit(), "by_job": jobs, "tasks": [t for t in tasks()[0] if t.get("status") == "open"]}
+            "spent": total, "limit": budget.limit(), "by_job": jobs, "claude_credit": credit_left(), "tasks": [t for t in tasks()[0] if t.get("status") == "open"]}
 
 def roster(p):
     """Everyone, by department, with what each one is doing now."""

@@ -208,10 +208,10 @@ def min_votes():
 def linkedin_round(post, kind):
     """The writer's LinkedIn post plus one each from the other two; all three vote on which would stop the scroll;
     Claude checks the winner against the article (falling back to the runner-up). Returns (post, log)."""
-    who_wrote = {"chatgpt": post.get("linkedin", "")}
+    who_wrote = {llm.WRITER: post.get("linkedin", "")}
     angle = {"build": "something I built", "monthly": "what I shipped in open source this month"}.get(
         kind, "a problem I solved")
-    for who in ("claude", "gemini"):
+    for who in (w for w in llm.PANEL if w != llm.WRITER):
         try:
             got = llm.ask(who, "You write LinkedIn posts for Abhimanyu, an AWS containers engineer, from his own articles.",
                           f"Write the LinkedIn post for this article, as {angle}.\n\nLINKEDIN RULES:\n{LINKEDIN_RULES}"
@@ -487,7 +487,7 @@ def tighten(post, kind="problem"):
         if not over(m, kind):
             break
         try:
-            cut = llm.ask("chatgpt", "You edit hands-on posts down to length without changing what they say.",
+            cut = llm.ask(llm.WRITER, "You edit hands-on posts down to length without changing what they say.",
                           f"This post is too long: {m['prose']} words of prose (limit {P}), {m['blocks']} code blocks "
                           f"(limit {B}), longest block {m['longest']} lines (limit {L}). Cut it to fit. REMOVE, don't "
                           "rewrite: keep the title, the opening, the section structure, every fact and the voice. "
@@ -541,11 +541,11 @@ def write_post(context, kind="problem", extra=""):
     head = headline_round(context, signals, author, kind)
     chosen = (f"TITLE: {head['title']}\nHOOK: {head['hook']}" if head else "TITLE/HOOK: write your own")
     context = f"{chosen}\n\nAUTHOR:\n{author}\n\nSTYLE SIGNALS:\n{signals}\n\n{context}"
-    post = llm.ask("chatgpt", "You write hands-on AWS container articles for Abhimanyu's blog, strictly from real lab "
+    post = llm.ask(llm.WRITER, "You write hands-on AWS container articles for Abhimanyu's blog, strictly from real lab "
                               "output, in a warm human voice.", f"Write the article and the LinkedIn post.\n\n"
-                   f"RULES:\n{K['rules']}{extra}\n\nLINKEDIN RULES:\n{LINKEDIN_RULES}\n\n{context}", POST_SCHEMA)
+                   f"RULES:\n{K['rules']}{extra}\n\nLINKEDIN RULES:\n{LINKEDIN_RULES}\n\n{context}", POST_SCHEMA, tier="best")
     post, log = llm.refine("blog article and LinkedIn post", post, K["rubric"], f"RULES:\n{K['rules']}{extra}\n\n{context}",
-                           POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
+                           POST_SCHEMA, **llm.ARTICLE_PANEL)
     log["headline"] = head
     post, log["tightened"] = tighten(post, kind)
     post, log["question"] = voice_edit(post)
@@ -572,7 +572,7 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
     report, card, verdict, reasons = judge(post)
     if verdict == "revise" and editor.mode() in ("warn", "enforce") and os.environ.get("CHAT_WORK") != "true":   # a chat revises its own work
         try:
-            fixed = llm.ask("chatgpt", "You revise hands-on articles without inventing anything.",
+            fixed = llm.ask(llm.WRITER, "You revise hands-on articles without inventing anything.",
                             "Fix every problem below. Never invent a result: if a result is missing, say so plainly "
                             f"and narrow the claim.\n\nPROBLEMS:\n{json.dumps(reasons)}\n\nPOST:\n{json.dumps(post)}"
                             f"\n\n{context}", POST_SCHEMA, tool="revise")
@@ -580,8 +580,7 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
                 K = KINDS[kind]
                 changed = {**post, **{k: fixed[k] for k in ("title", "description", "body") if fixed.get(k)}}
                 changed, _ = llm.refine("blog article and LinkedIn post", changed, K["rubric"],
-                                        f"RULES:\n{K['rules']}\n\n{context}", POST_SCHEMA, writer="chatgpt",
-                                        reviewer="claude", judge="gemini")
+                                        f"RULES:\n{K['rules']}\n\n{context}", POST_SCHEMA, **llm.ARTICLE_PANEL)
                 changed["linkedin"] = post.get("linkedin", "")
                 post = {**changed, "body": drop_pipeline_lines(fix_output_tabs(changed["body"]))}
                 report, card, verdict, reasons = judge(post)

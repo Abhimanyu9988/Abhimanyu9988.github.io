@@ -291,3 +291,12 @@ Abhi is moving away from dev.to and Hashnode, so new posts set no channels. The 
 ## 2026-11-05: Posts stay on our own site only
 
 Abhi wants nothing on Medium or anywhere else for now. A post with no channels creates no draft elsewhere and sends no ready-to-post email.
+
+## 2026-11-12: Claude writes and finds, paid from the Max plan's credit
+
+Abhi's Max plan includes $100 of Claude API credit a month, and the team was paying per use for ChatGPT to write articles,
+talk kits, answers and monthly summaries, and for the OSS Scout. Claude now writes them (`llm.WRITER`, Opus for articles)
+and the OSS Scout uses Claude. Topic finding uses Opus for Claude's proposals and votes instead of Haiku. No model was
+downgraded: ChatGPT (gpt-5.5) stays as reviewer, Tech Head and headline writer and checker, and Gemini Pro stays as judge.
+The budget records Claude separately and counts it only above the credit, so the monthly limit now covers the money
+actually paid.

@@ -6,8 +6,10 @@
   verdict()      all three answer one yes/no question independently; 2 of 3 decides.
   refine()       a writer drafts, a reviewer raises points, the writer accepts or rejects each one, and a
                  judge rules on every rejected blocking point (the writer must apply the ones it loses).
-                 Labs: Claude writes, ChatGPT reviews, Gemini judges. Articles: ChatGPT writes, Claude
-                 reviews, Gemini judges.
+                 Labs and articles: Claude writes, ChatGPT reviews, Gemini judges (ARTICLE_PANEL).
+
+Claude does the writing and finding because Abhi's Max plan includes $100 of Claude API credit each cycle, which
+pays for these calls at the best models. ChatGPT and Gemini stay as the reviewer and the judge.
 
 Every call is logged (model + token usage) to LEDGER so runs can report what they cost.
 Source material passed in `context` is untrusted: every system prompt says so.
@@ -53,18 +55,22 @@ def _pin(key):
     """Pinned default, so a model or its price never changes without a commit."""
     return "" if os.environ.get("MODEL_AUTO", "").lower() == "true" else PRICES["defaults"].get(key, "")
 
+CLAUDE_TIERS = {"scout": ("RADAR_MODEL", "claude_scout"), "write": ("CLAUDE_MODEL", "claude_write"),
+                "best": ("CLAUDE_BEST_MODEL", "claude_best")}     # tier: (repository variable, pin in prices.json)
+
 def claude_model(tier="write"):
-    env = os.environ.get("RADAR_MODEL" if tier == "scout" else "CLAUDE_MODEL", "").strip()
+    var, pin_key = CLAUDE_TIERS.get(tier, CLAUDE_TIERS["write"])
+    env = os.environ.get(var, "").strip()
     if env:
         return env
     if tier not in _models.setdefault("claude", {}):
-        pin = _pin("claude_scout" if tier == "scout" else "claude_write")
+        pin = _pin(pin_key)
         if pin:
             _models["claude"][tier] = pin
             return pin
         data = call("GET", "https://api.anthropic.com/v1/models?limit=100",
                     headers=_anthropic_headers())["data"]              # newest first
-        prefs = ("haiku", "sonnet") if tier == "scout" else ("sonnet", "opus")
+        prefs = {"best": ("opus",), "write": ("sonnet", "opus")}.get(tier, ("opus", "sonnet"))
         ids = [m["id"] for m in data]
         _models["claude"][tier] = next((i for p in prefs for i in ids if p in i), ids[0])
     return _models["claude"][tier]
@@ -321,6 +327,8 @@ def gemini_json(system, prompt, max_tokens=32768, model=None):
 # ---------- deciding together ----------
 NAMES = {"claude": "Claude", "chatgpt": "ChatGPT", "gemini": "Gemini"}
 PANEL = ("claude", "chatgpt", "gemini")
+WRITER = "claude"            # paid from the Max plan's Claude API credit; change here to move all writing at once
+ARTICLE_PANEL = {"writer": WRITER, "reviewer": "chatgpt", "judge": "gemini"}
 
 def ask(who, system, prompt, schema, tool="submit", tier="write", model=None):
     """One JSON answer shaped like `schema` from any of the three. `model` overrides the default for this call."""
@@ -486,6 +494,13 @@ def cost_usd(entries=None):
         else:
             unknown.add(e["model"])
     return round(total, 4), sorted(unknown)
+
+def cost_split(entries=None):
+    """(claude_usd, other_usd). Claude calls and Claude web search are paid from the Max plan's API credit first;
+    ChatGPT and Gemini are paid per use."""
+    entries = LEDGER if entries is None else entries
+    claude = [e for e in entries if e.get("who") in ("claude", "web_search")]
+    return cost_usd(claude)[0], cost_usd([e for e in entries if e not in claude])[0]
 
 def cost_line():
     usd, unknown = cost_usd()

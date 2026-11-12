@@ -312,8 +312,8 @@
    "mission": "Tell Abhi where open source projects need him, from his contribution board.",
    "module": "pipeline/cto.py",
    "status": "active",
-   "vendor": "chatgpt",
-   "model": "gpt-5.5",
+   "vendor": "claude",
+   "model": "claude-opus-5-5",
    "model_env": "OSS_SCOUT_MODEL",
    "prompt": "oss_scout.md",
    "outputs": [

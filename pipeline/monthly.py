@@ -124,12 +124,12 @@ def write(prs, in_review, start):
                + f"MONTH: {month}\n\nAUTHOR:\n{author}\n\nDATA:\n{json.dumps(prs)[:60000]}\n\n"
                f"IN_REVIEW:\n{json.dumps(in_review)}")
     rules = f"{RULES}\n\nLINKEDIN RULES:\n{draft.LINKEDIN_RULES}"
-    post = llm.ask("chatgpt", "You write Abhimanyu's monthly open-source summary, strictly from the PR data.",
+    post = llm.ask(llm.WRITER, "You write Abhimanyu's monthly open-source summary, strictly from the PR data.",
                    f"Write the post and the LinkedIn post. Title: specific to this month's work, under 75 "
                    f"characters (for example what the PRs add up to for users, with the month).\n\nRULES:\n{rules}"
                    f"\n\n{context}", draft.POST_SCHEMA)
     post, log = llm.refine("monthly open-source summary", post, RUBRIC, f"RULES:\n{rules}\n\n{context}",
-                           draft.POST_SCHEMA, writer="chatgpt", reviewer="claude", judge="gemini")
+                           draft.POST_SCHEMA, **llm.ARTICLE_PANEL)
     post, log["linkedin"] = draft.linkedin_round(post, "monthly")
     return post, log
 
