@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-12T18:04:38Z",
+ "updated": "2026-11-12T19:47:00Z",
  "columns": {
   "needs": [
    {
@@ -33,17 +33,17 @@
   ],
   "maybe": [
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
-    "kind": "Mentioned",
-    "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
     "kind": "Mentioned",
     "title": "[receiver/kubeletstats] Added k8s.pod.filesystem.inode.used metric",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
+    "kind": "Mentioned",
+    "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
     "where": "opentelemetry-collector-contrib"
    },
    {
