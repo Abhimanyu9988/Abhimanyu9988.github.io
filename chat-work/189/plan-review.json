@@ -1,17 +1,9 @@
 {
- "round": 2,
+ "round": 3,
  "Editor": [
   {
-   "problem": "Earlier point 2 is not fixed: the known-answer reading is still missing. The load.py comment in k8s/20-load.yaml still says 'Every fourth request adds a statement with pg_sleep(0.03), so one reading has a known answer'. But load.py only sends GET /orders/{id}. The app source that would run pg_sleep isn't in the plan, and no measurement reads a max or p99 against 30 ms. Separately, the contract's use_time_ratio only accepts 'ge 500'. The 500 to 2000 band lives only in fix.sh, and the plan never shows that ratios_ok feeds HERO_RESULT. A ratio of 5000 would pass the contract, and a run that fails the script's band could still report 'fixed'.",
-   "fix": "Choose one: (a) add the orders/inventory source with pg_sleep(0.03) on every fourth request to the plan, plus a measurement 'use_time_known_answer' (kind comparison) that reads the stored max or p99 for each pair and accepts 25 to 60 ms default and 0.025 to 0.060 s preview; or (b) delete the pg_sleep sentence from load.py. Also change use_time_ratio's accept to a range (500 to 2000) in the contract, and make ratios_ok=1 a required part of fix.sh's pass condition before it emits HERO_RESULT: fixed."
-  },
-  {
-   "problem": "Earlier point 3 is not fixed: tools.sh is still missing from the plan. reproduce.sh and fix.sh both `source ./tools.sh`, and every core reading is defined there: pool_series (does it filter by service.name, so min_entities 2 means anything?), use_time_mean (does it really compute sum/count of the stored histogram, and which SignalFlow program does it run?), names_in, op_series, fetch_trace, db_keys, db_spans, count_in, LEGACY_KEYS, NEW_KEYS, LEGACY_POOL, NEW_POOL, DEFAULT_ENV and PREVIEW_ENV. None of these can be reviewed. The fix.sh shown is also cut off before the span-key section, so the plan doesn't show that preview_old_span_keys = 0 gates the result.",
-   "fix": "Add tools.sh to the plan in full. Include the exact SignalFlow program text that use_time_mean sends, and have the scripts save it to a file. Show the rest of fix.sh, where HERO_MEASURE preview_old_span_keys is printed and the pass condition requires old_k == 0 and new_k >= 1 on the preview trace for both orders-v3 and inventory-v3 spans."
-  },
-  {
-   "problem": "Earlier point 4 is only partly fixed. achieved_rps now covers both pairs, and a missing error count now fails the run. But rate_gap is only printed, never checked, and neither rate is compared with the 20 rps target. If the default pair runs at 19 rps and the preview pair at 12, the run still passes and says 'the same load'.",
-   "fix": "In fix.sh, after rate_gap, fail the run unless rate_gap <= 5 and both default_rps and preview_rps are between 19 and 21. Put the same acceptance band on achieved_rps in the contract instead of 'present'."
+   "problem": "Earlier point 2 is still open for the known-answer reading. The load.py comment in k8s/20-load.yaml still says 'on every fourth order, a short pg_sleep read in inventory, so pool connections are held for a range of times'. load.py only sends GET /orders/{id}. The orders and inventory source that would run pg_sleep isn't in the plan. Nothing measures it either: no max or p99 use time is read against 30 ms. A reader would take that sentence as part of the setup, but the run cannot show it is true.",
+   "fix": "Choose one. (a) Add the orders and inventory source with pg_sleep(0.03) on every fourth request to the plan. Then add a contract measurement 'use_time_known_answer' (kind comparison, min_entities 2) that reads the stored max or p99 use time for each pair and accepts 25 to 60 ms for the default pair and 0.025 to 0.060 s for the preview pair. Gate HERO_RESULT on it. (b) Delete the pg_sleep sentence from load.py and say nothing in the README or the article about a range of hold times. Option (b) is enough, because the ratio rounds already carry the unit finding."
   }
  ],
  "Marketing": []
