@@ -1891,5 +1891,10 @@ pub_src = (ROOT / "pipeline/publish.py").read_text()
 check("publish: nothing goes to Medium unless a post asks for it", '+ ["medium"]' not in pub_src and 'for ch in post.get("channels", []):' in pub_src)
 check("publish: a post with no channels sends no ready-to-post email", 'if post.get("channels") and not done.get("announced"):' in pub_src)
 
+news_md = "## 2026-11-12 (Thursday), posts\nCandidates...\n### Post 1 (pick)\nFirst line.\n\nhttps://x.example\n\n### Post 2\nOther.\n## 2026-11-13 (Friday), for today's article\n- **Opening line:** News line here. https://y.example\n"
+check("secretary: finds the picked post", cto.todays_post(news_md, "2026-11-12") == "First line.\n\nhttps://x.example")
+check("secretary: finds an article day's opening line", cto.todays_post(news_md, "2026-11-13") == "News line here. https://y.example")
+check("secretary: nothing for a day with no entry", cto.todays_post(news_md, "2026-11-14") == "")
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

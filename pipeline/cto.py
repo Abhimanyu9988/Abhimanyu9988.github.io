@@ -42,6 +42,7 @@ PLAN = "analytics/week-plan.json"
 BOARD_ISSUE = "/repos/Abhimanyu9988/oss-scout/issues/1"
 STATED_GOAL = re.compile(r"(?i)\b(goals?|targets?|aim|want|objective)\b")
 BRIEF = "analytics/market-brief.md"
+NEWS, SENT = "news-scout.md", "secretary-sent.json"   # private repo: the scouts' posts, and which ones she has sent him
 MAX_REPLIES = 5                                # each poll. CTO replies run past the monthly limit, so this bounds them
 
 def desk():
@@ -688,6 +689,36 @@ def poll():
                 print(f"::warning title=cto::reply failed: {' '.join(str(e).split())[:200]}")
                 post("I could not answer that just now. Please send it again.", role)
 
+def todays_post(text, day):
+    """The ready-to-paste post the News Scout wrote for `day`: the picked post on Tue/Thu, the opening line on article days."""
+    m = re.search(rf"^## {day}\b.*?(?=^## |\Z)", text, re.M | re.S)
+    if not m:
+        return ""
+    entry = m.group(0)
+    pick = re.search(r"^### [^\n]*\(pick\)[^\n]*\n(.*?)(?=^### |^## |\Z)", entry, re.M | re.S)
+    if pick:
+        return pick.group(1).strip()
+    line = re.search(r"^- \*\*Opening line:\*\*\s*(.+)$", entry, re.M)
+    return line.group(1).strip() if line else ""
+
+def deliver_posts(today=None):
+    """The Secretary sends him today's LinkedIn post in Slack, once. GitHub doesn't email him about issues opened as himself."""
+    if not (admin_on() and slack.enabled()):
+        return False
+    day = today or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1))).date().isoformat()
+    sent_text, sha = read_private(SENT)
+    sent = json.loads(sent_text) if sent_text.strip() else {"news": []}
+    if day in sent.get("news", []):
+        return False
+    body = todays_post(read_private(NEWS)[0], day)
+    if not body:
+        return False
+    if not slack.say("secretary", f"Today's LinkedIn post, ready to paste:\n```\n{body}\n```"):
+        return False
+    sent["news"] = (sent.get("news", []) + [day])[-60:]
+    write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: sent {day} post")
+    return True
+
 def refresh_board():
     """Never stops the work around it. If this fails, the board keeps its old time, which shows it's out of date."""
     try:
@@ -701,6 +732,10 @@ def refresh_board():
 def main():
     if os.environ.get("POLL") == "true":
         poll()
+        try:
+            deliver_posts()
+        except Exception as e:
+            print(f"::warning title=secretary::post not sent: {' '.join(str(e).split())[:200]}")
         refresh_board()
         return
     text = os.environ.get("COMMENT_BODY", "").strip()
