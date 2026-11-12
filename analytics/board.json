@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-12T13:16:19Z",
+ "updated": "2026-11-12T18:04:38Z",
  "columns": {
   "needs": [
    {
@@ -112,13 +112,6 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
-    "kind": "Your PR",
-    "title": "[chore] Generate a list of collector components with specific operator support",
-    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
-    "where": "opentelemetry-operator"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
     "kind": "Your PR",
     "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
@@ -157,6 +150,13 @@
    }
   ],
   "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
+    "kind": "Merged",
+    "title": "[chore] Generate a list of collector components with specific operator support",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
+    "where": "opentelemetry-operator"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
     "kind": "Merged",
