@@ -1,0 +1,10 @@
+{
+ "run": "43328948210",
+ "issue": 189,
+ "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 29.6,
+ "lab_usd": 0.0
+}
