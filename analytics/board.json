@@ -1,61 +1,12 @@
 {
- "updated": "2026-11-13T00:38:09Z",
+ "updated": "2026-11-13T00:52:08Z",
  "columns": {
   "needs": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/197",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/198",
     "kind": "Approve or reject",
     "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/197",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/196",
-    "kind": "Approve or reject",
-    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/196",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/195",
-    "kind": "Approve or reject",
-    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/195",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/194",
-    "kind": "Approve or reject",
-    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/194",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/193",
-    "kind": "Approve or reject",
-    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/193",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/192",
-    "kind": "Approve or reject",
-    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/192",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/191",
-    "kind": "Approve or reject",
-    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/191",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/190",
-    "kind": "Approve or reject",
-    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/190",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/198",
     "where": "Abhimanyu9988.github.io"
    },
    {
