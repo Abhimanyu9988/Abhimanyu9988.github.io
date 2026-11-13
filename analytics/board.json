@@ -1,7 +1,21 @@
 {
- "updated": "2026-11-12T23:32:40Z",
+ "updated": "2026-11-13T00:09:37Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/191",
+    "kind": "Approve or reject",
+    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/191",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/190",
+    "kind": "Approve or reject",
+    "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/190",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "kind": "Review",
@@ -87,23 +101,9 @@
     "title": "Promote `kubeletstats` Receiver to Stable - Observability",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
     "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
-    "kind": "Mentioned",
-    "title": "[k8s] Promote k8s pod volume metrics to release candidate",
-    "url": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
-    "where": "semantic-conventions"
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43328948210",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43328948210",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5924",
     "kind": "Your PR",
