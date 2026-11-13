@@ -1,0 +1,394 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "technical: The opening states a count of names that the lab did not measure. The contract and logs report pool series (65 per service), not 19 metric names. Fix: Replace 19 with the number of distinct pool names in names-preview.txt (and the comm -3 output) from 05-fix.log, and cite the line. If that count isn't printed, say 'every pool metric name the agent sent (65 series per service)'.",
+  "technical: The claim that new-key searches work for both agents goes further than one default trace shows. The post's own evidence contradicts it for db.namespace, whose value changes from postgres to postgres|postgres. The section also leans on Docker check.sh output, not this EKS run, for 'the agent itself sent only old keys', and it doesn't say what adds the new keys. Fix: Quote the db_spans lines for trace-default-round3.json and trace-preview-round3.json from 05-fix.log. Name the component that adds the new keys to default spans, or say it is unexplained. Limit the advice to keys whose values match across both modes (db.system.name, db.query.text), and warn that db.namespace filters on 'postgres' won't match the preview.",
+  "technical: The span-name and tag screenshots, and the 'SELECT postgres.stock' to 'select stock' rename, come from an earlier run, not the run whose contract passed. Fix: Use the span names and keys printed by fix.sh's db_spans step in this run, with log line refs. Alternatively, retake the screenshots from traces dt and pt of round 3 and say so.",
+  "technical: The repo link and setup don't match the published lab. The post clones showmerit/labs/preview-otel-java-agent-3-0-in-splunk-with-one-flag, but LAB_URL is Abhimanyu9988.github.io/.../preview-otel-java-agent-3-0-in-splunk-wi. The post says the cluster takes about 7 minutes; the README says about 10 for the control plane alone. The terraform invocation also differs from the README's -var region/lab_name. Fix: Point the clone and footer links at LAB_URL, copy the README's terraform commands exactly, and use the measured apply time from the run log.",
+  "editorial: The suggested one-liner enables the preview in place on a production deployment. Because the preview turns off /dup dual emission, the reader's existing pool charts and detectors lose their data. That contradicts the side-by-side method the post itself uses. Fix: Make the recommended command the copy-deployment approach from fix.sh (a -v3 copy with its own deployment.environment), or follow the one-liner with a sentence that in-place use moves existing charts off their data until they are renamed.",
+  "editorial: The reader gains little beyond the docs where the post puts its weight. The ~1000x ratio is what the blog's ms-to-s note guarantees. The results only this lab shows are a one-line aside or buried: the APM database node changing to postgresql:postgres|postgres, db.namespace changing value, Splunk storing values unconverted, and db.client.operation.duration appearing with 112 series. Fix: Lead the proof section with what changes in Splunk itself: the inferred database node and service-map name, db.namespace values, and the new operation.duration histogram, plus what to point charts at. Keep the ratio table as confirmation that Splunk stores exactly what the agent sends, and explain what postgres|postgres stands for."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "3.0 in Splunk With",
+    "number": "3.0",
+    "noun": "",
+    "supported": true,
+    "where": "05-fix.log:51",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "default_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:66"
+    },
+    {
+     "id": "preview_new_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:121"
+    },
+    {
+     "id": "preview_legacy_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:122"
+    },
+    {
+     "id": "use_time_ratio",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "self_reported",
+     "where": "05-fix.log:138"
+    },
+    {
+     "id": "use_time_ratio_max",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "05-fix.log:159"
+    },
+    {
+     "id": "span_db_keys",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:81"
+    },
+    {
+     "id": "preview_old_span_keys",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "05-fix.log:175"
+    },
+    {
+     "id": "operation_duration_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:70"
+    },
+    {
+     "id": "load_errors",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:23"
+    },
+    {
+     "id": "achieved_rps",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:24"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The core contract is backed by Splunk reads: 65 pool series per service under db.client.connection.* and 0 under the old names, ratios of 989.4, 1009.7 and 992.5 from SignalFlow with the programs printed, and matching rps and error checks for both pairs.",
+     "The opening's 'All 19 connection pool metric names' has no matching measurement. The contract counts series (65 per service), not names, and no 19 appears in the evidence report.",
+     "The 'Good news' section turns one default-run trace into 'filters built on the new keys work for both agents today', and the post itself shows db.namespace changing value from postgres to postgres|postgres.",
+     "The span-name screenshots come from an earlier run, not the run this contract describes. Setup steps and the repo link also don't match the lab README or LAB_URL."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "Clear reader and decision. The checklist in 'Use it before your own upgrade' is something a reader can act on.",
+     "The ~1000x ratio is exactly what the OTel blog's ms-to-s note predicts, so the round-by-round table could not have come out otherwise. The findings the docs don't give are buried: the APM database node renamed to postgresql:postgres|postgres, db.namespace changing value, Splunk storing values without unit conversion, and db.client.operation.duration appearing with 112 series.",
+     "It reads as generated: stock section names ('The trick', 'The proof', 'Good news'), a templated TL;DR, and a 'default run, orders: ...' text block that looks assembled rather than copied from a log.",
+     "The one-line kubectl set env suggestion would switch a live service off its old names, because the preview stops dual emission. That works against the side-by-side method the post recommends."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "Demand evidence is weak. The only signal is the OpenTelemetry project's own call to preview 3.0. There are no reactions, views or search data, so 3 is the ceiling.",
+     "The title uses words the target reader would search for (OTel Java agent 3.0, preview, Splunk, pool metrics, DB spans) and credits the product's flag with the answer.",
+     "Splunk fits naturally: the reader's dashboards and detectors live there."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The opening states a count of names that the lab did not measure. The contract and logs report pool series (65 per service), not 19 metric names.",
+    "evidence": "\"All 19 connection pool metric names moved to `db.client.connection.*`\"",
+    "fix": "Replace 19 with the number of distinct pool names in names-preview.txt (and the comm -3 output) from 05-fix.log, and cite the line. If that count isn't printed, say 'every pool metric name the agent sent (65 series per service)'."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The claim that new-key searches work for both agents goes further than one default trace shows. The post's own evidence contradicts it for db.namespace, whose value changes from postgres to postgres|postgres. The section also leans on Docker check.sh output, not this EKS run, for 'the agent itself sent only old keys', and it doesn't say what adds the new keys.",
+    "evidence": "\"So searches and filters built on the new keys work for both agents today.\"",
+    "fix": "Quote the db_spans lines for trace-default-round3.json and trace-preview-round3.json from 05-fix.log. Name the component that adds the new keys to default spans, or say it is unexplained. Limit the advice to keys whose values match across both modes (db.system.name, db.query.text), and warn that db.namespace filters on 'postgres' won't match the preview."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The span-name and tag screenshots, and the 'SELECT postgres.stock' to 'select stock' rename, come from an earlier run, not the run whose contract passed.",
+    "evidence": "\"These are real Splunk APM screenshots from the first EKS run of this same lab.\"",
+    "fix": "Use the span names and keys printed by fix.sh's db_spans step in this run, with log line refs. Alternatively, retake the screenshots from traces dt and pt of round 3 and say so."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The repo link and setup don't match the published lab. The post clones showmerit/labs/preview-otel-java-agent-3-0-in-splunk-with-one-flag, but LAB_URL is Abhimanyu9988.github.io/.../preview-otel-java-agent-3-0-in-splunk-wi. The post says the cluster takes about 7 minutes; the README says about 10 for the control plane alone. The terraform invocation also differs from the README's -var region/lab_name.",
+    "evidence": "\"git clone https://github.com/Abhimanyu9988/showmerit.git\" / \"Step 1: Create the cluster (about 7 minutes)\"",
+    "fix": "Point the clone and footer links at LAB_URL, copy the README's terraform commands exactly, and use the measured apply time from the run log."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The suggested one-liner enables the preview in place on a production deployment. Because the preview turns off /dup dual emission, the reader's existing pool charts and detectors lose their data. That contradicts the side-by-side method the post itself uses.",
+    "evidence": "\"kubectl set env deployment/your-service OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true\"",
+    "fix": "Make the recommended command the copy-deployment approach from fix.sh (a -v3 copy with its own deployment.environment), or follow the one-liner with a sentence that in-place use moves existing charts off their data until they are renamed."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The reader gains little beyond the docs where the post puts its weight. The ~1000x ratio is what the blog's ms-to-s note guarantees. The results only this lab shows are a one-line aside or buried: the APM database node changing to postgresql:postgres|postgres, db.namespace changing value, Splunk storing values unconverted, and db.client.operation.duration appearing with 112 series.",
+    "evidence": "\"**A new metric.** `db.client.operation.duration` went from 0 series to 112, with no other change.\" and \"the database node reads `postgresql:postgres|postgres`\"",
+    "fix": "Lead the proof section with what changes in Splunk itself: the inferred database node and service-map name, db.namespace values, and the new operation.duration histogram, plus what to point charts at. Keep the ratio table as confirmation that Splunk stores exactly what the agent sends, and explain what postgres|postgres stands for."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The OpenTelemetry project shipped 2.32.0 as the release candidate for 3.0 and asks users to preview it now",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "3.0 renames database, code and messaging attributes and moves pool timing from milliseconds to seconds",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The preview turns off /dup dual emission for database, code and messaging",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "2.33.1's preview can still change before 3.0",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "Agent release 2.33.1 is the version used",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v2.33.1"
+   },
+   {
+    "text": "All 19 connection pool metric names moved to db.client.connection.*",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Span names change from 'SELECT postgres.stock' to 'select stock' (from an earlier run's screenshots)",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Searches and filters built on the new keys work for both agents today",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The default 2.x agent itself sent only the old keys (from the Docker free check, not the EKS run)",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "About 7 minutes to create the cluster, 7 and 12 minutes for the two scripts",
+    "class": "estimate",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Java services on Kubernetes with the OTel Java agent and Splunk Observability Cloud",
+  "decision": "What to rename and convert in Splunk before the agent's 3.0 defaults arrive: pool metric names, pool timing units and database span keys",
+  "question": "What will OTel Java agent 3.0 change in the connection pool metrics and database spans I see in Splunk, and how can I see it before I upgrade?",
+  "takeaway": "One environment variable on the agent you already run shows 3.0's database names in Splunk today. Side by side with the default agent under the same load, the run shows which pool metrics and span keys get new names, and that the same pool timing is stored about 1000 times smaller because it is now in seconds, so any threshold written on the old values is worth checking.",
+  "adds": "The OpenTelemetry blog lists the renamed fields and the testing steps. This post runs both modes side by side on one live system and shows the result in Splunk: the pool metric names per service, the same pool timing stored in milliseconds and in seconds over three rounds, and every database key on real traces.",
+  "open_question": "With OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true alone on the same jar, running next to the default agent under the same load on EKS, which pool metric names does Splunk store per service, does any old name or old span key remain, and what is the ratio of the stored connection use time means in each of three rounds?",
+  "tradeoffs": [
+   "The preview turns off the /dup dual emission for database, code and messaging, so old and new names are not sent side by side while it is on",
+   "The same pool timing is stored in seconds after the change, so anything built on the old millisecond values needs converting",
+   "The 2.33.1 preview can still change before 3.0, as the OpenTelemetry blog says",
+   "This run measures database pool metrics and database spans only; code and messaging renames are not measured",
+   "The preview pair uses its own deployment.environment so Splunk keeps the pairs apart; that label is the only other difference in the agent options"
+  ],
+  "existing_pages": [
+   {
+    "title": "The OpenTelemetry Java agent 3.0 is almost here \u2014 preview it today",
+    "url": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/",
+    "covers": "The 3.0 release candidate, the umbrella flag, the renamed database, code and messaging names, the pool metric unit change and a testing checklist. It shows no backend result."
+   },
+   {
+    "title": "Release v2.33.1",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v2.33.1",
+    "covers": "The agent release used in the lab."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "The OpenTelemetry project published a blog post asking Java agent users to preview 3.0 before it becomes the default, with a testing checklist. That shows the topic is timely; no search volume, reactions or views were found."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist on 12 November 2026",
+   "Serves the OpenTelemetry auto-instrumentation and Splunk MVP goals",
+   "Timely: 3.0 is imminent and the project asks users to test now",
+   "Reuses the Postgres lab system that already ran on EKS"
+  ],
+  "measurements": [
+   {
+    "id": "default_pool_series",
+    "what": "connection pool metric series under the old db.client.connections names in Splunk with the default agent, per service (orders, inventory)",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "preview_new_pool_series",
+    "what": "connection pool metric series under the new db.client.connection names in Splunk with the preview flag, per service (orders, inventory)",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "preview_legacy_pool_series",
+    "what": "connection pool metric series under the old names in Splunk from the preview pair, per service (orders, inventory)",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "use_time_ratio",
+    "what": "stored mean connection use time of the default pair (old metric, milliseconds) divided by the preview pair's (new metric, seconds), over the same minutes, in each of three rounds",
+    "kind": "comparison",
+    "unit": "ratio",
+    "accept": {
+     "op": "ge",
+     "value": 500
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "use_time_ratio_max",
+    "what": "the largest of the three rounds' use time ratios",
+    "kind": "comparison",
+    "unit": "ratio",
+    "accept": {
+     "op": "le",
+     "value": 2000
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "span_db_keys",
+    "what": "database span keys on a trace read back from Splunk's trace API: old and new keys in the default run, old and new keys in the preview pair",
+    "kind": "comparison",
+    "unit": "keys",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "preview_old_span_keys",
+    "what": "old database span keys left on the preview pair's trace in Splunk",
+    "kind": "comparison",
+    "unit": "keys",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "operation_duration_series",
+    "what": "db.client.operation.duration series in Splunk for each pair: default and preview",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "load_errors",
+    "what": "failed requests across the three rounds for each pair: default and preview",
+    "kind": "failure",
+    "unit": "requests",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "achieved_rps",
+    "what": "requests per second each pair reached across the three rounds after warm-up, against a target of 20: default and preview. fix.sh also requires both at most 21 and within 5% of each other",
+    "kind": "rate",
+    "unit": "requests per second",
+    "accept": {
+     "op": "ge",
+     "value": 18
+    },
+    "min_entities": 2
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.8192
+}
