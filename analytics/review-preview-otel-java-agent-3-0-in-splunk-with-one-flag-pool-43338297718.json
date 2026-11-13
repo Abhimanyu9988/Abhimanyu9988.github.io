@@ -1,0 +1,370 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "technical: The new database keys on the default span in Splunk (db.query.text, db.system.name, db.namespace, db.operation.name, db.collection.name) have no demonstrated source. The agent's console output shows only the old keys, the lab never captured the effective Collector or Splunk config, and the post just asserts that Splunk 'lists normalized keys'. Fix: Capture the effective Splunk OTel Collector pipeline (helm get values plus the rendered config) in reproduce.sh, and either cite Splunk APM documentation for the attribute normalization or run one trace with the Collector's debug exporter, so the post shows which layer adds these keys. If they really are Splunk APM normalization, make it a headline finding: Splunk APM lets the reader search old and new spans with the same keys during the move.",
+  "editorial: The checklist tells readers that anything on db.statement or db.system 'needs the agent's new keys' and that the normalized keys are 'worth checking'. If Splunk already shows the new keys on old spans, the reader may be able to move span searches to the new keys before upgrading. The post leaves that decision open. Fix: After the source of the keys is verified, rewrite this item as a concrete step: for example, move APM filters to db.query.text and db.system.name now, since Splunk APM shows them for both modes. Then say which old keys have no equivalent (db.user, db.connection_string).",
+  "technical: The span screenshots, the visual evidence for span names and tags, come from an earlier run that stopped partway. They are not from the run whose numbers the post reports. Fix: Take the screenshots from the measured run (the same trace IDs as load-d3 and load-v3 in 05-fix.log), or remove them and rely on the trace API output at 05-fix.log lines 164 and 168.",
+  "editorial: The advice to plot both names with the old use_time scaled by 0.001 only holds for the _sum and the mean. Histogram _bucket boundaries are in different units in each mode, so percentile charts or bucket-based detectors can't be compared by scaling. The lab didn't test that. Fix: Limit the advice to sum/count means, which is what was measured. Add one line saying the bucket boundaries were not compared, or add a measurement of the bucket le values for each mode."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "3.0 in Splunk With",
+    "number": "3.0",
+    "noun": "",
+    "supported": true,
+    "where": "05-fix.log:51",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "default_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:66"
+    },
+    {
+     "id": "preview_new_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:121"
+    },
+    {
+     "id": "preview_legacy_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:122"
+    },
+    {
+     "id": "use_time_ratio",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "self_reported",
+     "where": "05-fix.log:138"
+    },
+    {
+     "id": "use_time_ratio_max",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "05-fix.log:159"
+    },
+    {
+     "id": "span_db_keys",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:81"
+    },
+    {
+     "id": "preview_old_span_keys",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "05-fix.log:175"
+    },
+    {
+     "id": "operation_duration_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:70"
+    },
+    {
+     "id": "load_errors",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:23"
+    },
+    {
+     "id": "achieved_rps",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:24"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The pool names, the 65/0 series counts per service, the operation.duration 0\u2192112 count and the load parity (19.89 rps, 0 failed) are all corroborated by the logs. The ratio arithmetic checks out: 989.4, 1009.7 and 992.5, with the scaled values within 0.7\u20131.1%.",
+     "use_time_ratio, span_db_keys and preview_old_span_keys are self_reported in the evidence report, not corroborated.",
+     "The default span in Splunk carries db.query.text, db.system.name, db.namespace, db.operation.name and db.collection.name, but the agent's console output shows only the old keys. The post says Splunk 'normalizes' them, but the lab never captured the Collector config or any Splunk doc that shows where they come from. That matters for the reader's span-search decision.",
+     "Both screenshots come from an earlier, incomplete run (43319570384), not the measured run. The post says so, but they still can't support the measured result."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader and the decision are clear, and the checklist is something a reader can act on: scale use_time, rename usage\u2192count and max\u2192limit, and watch for the postgres|postgres namespace.",
+     "Most of the finding restates the OpenTelemetry blog (names moved, ms\u2192s). What it adds beyond the blog is that Splunk stores the raw values without converting units, and the new metric goes from 0 to 112 series. That is useful but thin.",
+     "The most interesting thing here is the Splunk APM default span already showing the new keys next to the old ones. The post hides it in a confusing aside ('the agent's own keys are in the next section') instead of explaining it, which leaves the reader unsure whether their db.query.text searches already work.",
+     "Step 1 says the cluster took 6m34s, but the lab README says about 10 minutes. The chart advice to scale by 0.001 skips the histogram buckets, whose boundaries differ between the two units."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "There is no demand data: no search volume, reactions or views. The only signal is the OpenTelemetry project's own call to preview, which makes the topic timely but is not evidence that readers want it.",
+     "The title uses the project's own words ('preview', 'one flag') and names a specific audience (Java agent + Splunk), which fits.",
+     "The score stays at 3 because nothing linked shows reader demand."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The new database keys on the default span in Splunk (db.query.text, db.system.name, db.namespace, db.operation.name, db.collection.name) have no demonstrated source. The agent's console output shows only the old keys, the lab never captured the effective Collector or Splunk config, and the post just asserts that Splunk 'lists normalized keys'.",
+    "evidence": "\"Splunk also lists normalized keys such as `db.query.text` on the default span; the agent's own keys are in the next section\"",
+    "fix": "Capture the effective Splunk OTel Collector pipeline (helm get values plus the rendered config) in reproduce.sh, and either cite Splunk APM documentation for the attribute normalization or run one trace with the Collector's debug exporter, so the post shows which layer adds these keys. If they really are Splunk APM normalization, make it a headline finding: Splunk APM lets the reader search old and new spans with the same keys during the move."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The checklist tells readers that anything on db.statement or db.system 'needs the agent's new keys' and that the normalized keys are 'worth checking'. If Splunk already shows the new keys on old spans, the reader may be able to move span searches to the new keys before upgrading. The post leaves that decision open.",
+    "evidence": "\"Span searches and filters: anything on `db.statement`... needs the agent's new keys, and Splunk APM's own normalized keys are worth checking on your data.\"",
+    "fix": "After the source of the keys is verified, rewrite this item as a concrete step: for example, move APM filters to db.query.text and db.system.name now, since Splunk APM shows them for both modes. Then say which old keys have no equivalent (db.user, db.connection_string)."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The span screenshots, the visual evidence for span names and tags, come from an earlier run that stopped partway. They are not from the run whose numbers the post reports.",
+    "evidence": "\"These Splunk APM screenshots come from the first EKS run of this same lab (workflow run 43319570384...), which stopped on one Splunk read.\"",
+    "fix": "Take the screenshots from the measured run (the same trace IDs as load-d3 and load-v3 in 05-fix.log), or remove them and rely on the trace API output at 05-fix.log lines 164 and 168."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The advice to plot both names with the old use_time scaled by 0.001 only holds for the _sum and the mean. Histogram _bucket boundaries are in different units in each mode, so percentile charts or bucket-based detectors can't be compared by scaling. The lab didn't test that.",
+    "evidence": "\"Pool charts during the move: plot both names, with the old `use_time` scaled by 0.001 so both read in seconds\"",
+    "fix": "Limit the advice to sum/count means, which is what was measured. Add one line saying the bucket boundaries were not compared, or add a measurement of the bucket le values for each mode."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The OpenTelemetry project shipped 2.32.0 as the 3.0 release candidate and asks users to preview it now",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The preview turns off dual emission for these names, so switching a live service would move its charts at once",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The OpenTelemetry blog's example of the new db.namespace format is orders|public",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The preview can still change before 3.0",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "Code and messaging names are also renamed in 3.0",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "Splunk APM lists normalized keys such as db.query.text on the default agent's spans",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Splunk stored values as sent, with no unit conversion",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Agent release v2.33.1 is the version used",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v2.33.1"
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Java services on Kubernetes with the OTel Java agent and Splunk Observability Cloud",
+  "decision": "What to rename and convert in Splunk before the agent's 3.0 defaults arrive: pool metric names, pool timing units and database span keys",
+  "question": "What will OTel Java agent 3.0 change in the connection pool metrics and database spans I see in Splunk, and how can I see it before I upgrade?",
+  "takeaway": "One environment variable on the agent you already run shows 3.0's database names in Splunk today. Side by side with the default agent under the same load, the run shows which pool metrics and span keys get new names, and that the same pool timing is stored about 1000 times smaller because it is now in seconds, so any threshold written on the old values is worth checking.",
+  "adds": "The OpenTelemetry blog lists the renamed fields and the testing steps. This post runs both modes side by side on one live system and shows the result in Splunk: the pool metric names per service, the same pool timing stored in milliseconds and in seconds over three rounds, and every database key on real traces.",
+  "open_question": "With OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true alone on the same jar, running next to the default agent under the same load on EKS, which pool metric names does Splunk store per service, does any old name or old span key remain, and what is the ratio of the stored connection use time means in each of three rounds?",
+  "tradeoffs": [
+   "The preview turns off the /dup dual emission for database, code and messaging, so old and new names are not sent side by side while it is on",
+   "The same pool timing is stored in seconds after the change, so anything built on the old millisecond values needs converting",
+   "The 2.33.1 preview can still change before 3.0, as the OpenTelemetry blog says",
+   "This run measures database pool metrics and database spans only; code and messaging renames are not measured",
+   "The preview pair uses its own deployment.environment so Splunk keeps the pairs apart; that label is the only other difference in the agent options"
+  ],
+  "existing_pages": [
+   {
+    "title": "The OpenTelemetry Java agent 3.0 is almost here \u2014 preview it today",
+    "url": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/",
+    "covers": "The 3.0 release candidate, the umbrella flag, the renamed database, code and messaging names, the pool metric unit change and a testing checklist. It shows no backend result."
+   },
+   {
+    "title": "Release v2.33.1",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v2.33.1",
+    "covers": "The agent release used in the lab."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "The OpenTelemetry project published a blog post asking Java agent users to preview 3.0 before it becomes the default, with a testing checklist. That shows the topic is timely; no search volume, reactions or views were found."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist on 12 November 2026",
+   "Serves the OpenTelemetry auto-instrumentation and Splunk MVP goals",
+   "Timely: 3.0 is imminent and the project asks users to test now",
+   "Reuses the Postgres lab system that already ran on EKS"
+  ],
+  "measurements": [
+   {
+    "id": "default_pool_series",
+    "what": "connection pool metric series under the old db.client.connections names in Splunk with the default agent, per service (orders, inventory)",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "preview_new_pool_series",
+    "what": "connection pool metric series under the new db.client.connection names in Splunk with the preview flag, per service (orders, inventory)",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "preview_legacy_pool_series",
+    "what": "connection pool metric series under the old names in Splunk from the preview pair, per service (orders, inventory)",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "use_time_ratio",
+    "what": "stored mean connection use time of the default pair (old metric, milliseconds) divided by the preview pair's (new metric, seconds), over the same minutes, in each of three rounds",
+    "kind": "comparison",
+    "unit": "ratio",
+    "accept": {
+     "op": "ge",
+     "value": 500
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "use_time_ratio_max",
+    "what": "the largest of the three rounds' use time ratios",
+    "kind": "comparison",
+    "unit": "ratio",
+    "accept": {
+     "op": "le",
+     "value": 2000
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "span_db_keys",
+    "what": "database span keys on a trace read back from Splunk's trace API: old and new keys in the default run, old and new keys in the preview pair",
+    "kind": "comparison",
+    "unit": "keys",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "preview_old_span_keys",
+    "what": "old database span keys left on the preview pair's trace in Splunk",
+    "kind": "comparison",
+    "unit": "keys",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "operation_duration_series",
+    "what": "db.client.operation.duration series in Splunk for each pair: default and preview",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "load_errors",
+    "what": "failed requests across the three rounds for each pair: default and preview",
+    "kind": "failure",
+    "unit": "requests",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "achieved_rps",
+    "what": "requests per second each pair reached across the three rounds after warm-up, against a target of 20: default and preview. fix.sh also requires both at most 21 and within 5% of each other",
+    "kind": "rate",
+    "unit": "requests per second",
+    "accept": {
+     "op": "ge",
+     "value": 18
+    },
+    "min_entities": 2
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.7894
+}
