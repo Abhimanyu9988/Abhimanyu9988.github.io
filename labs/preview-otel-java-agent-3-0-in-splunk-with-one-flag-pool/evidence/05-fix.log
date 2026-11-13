@@ -1,0 +1,177 @@
+$ bash fix.sh
+# exit 0 after 720s
+
+[... earlier output cut ...]
+porter.otlp.endpoint=http://$(HOST_IP):4318 -Dotel.resource.attributes=deployment.environment=preview-otel-java-agent-948210-v3 -Dotel.logs.exporter=none
+  OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true
+same jar in all four pods: yes
+== 2. Three rounds: the same load on both pairs at the same time, 90 seconds each, the first 30 as warm-up
+warm-up on the preview pair: requests=1181 errors=0
+  round 1 load-d1: LOAD target=orders started_epoch=1794527136
+  round 1 load-d1: LOAD requests=1192 errors=0 p50_ms=8.35 p95_ms=42.23
+  round 1 load-v1: LOAD target=orders-v3 started_epoch=1794527138
+  round 1 load-v1: LOAD requests=1191 errors=0 p50_ms=8.88 p95_ms=41.37
+  round 2 load-d2: LOAD target=orders started_epoch=1794527298
+  round 2 load-d2: LOAD requests=1193 errors=0 p50_ms=7.71 p95_ms=42.24
+  round 2 load-v2: LOAD target=orders-v3 started_epoch=1794527300
+  round 2 load-v2: LOAD requests=1194 errors=0 p50_ms=8.12 p95_ms=41.03
+  round 3 load-d3: LOAD target=orders started_epoch=1794527459
+  round 3 load-d3: LOAD requests=1196 errors=0 p50_ms=6.54 p95_ms=38.19
+  round 3 load-v3: LOAD target=orders-v3 started_epoch=1794527461
+  round 3 load-v3: LOAD requests=1196 errors=0 p50_ms=6.64 p95_ms=37.83
+default: failed requests 0, requests after warm-up 3581 over 3 x 60 s, 19.89 per second (target 20)
+HERO_MEASURE: load_errors[default]=0
+HERO_MEASURE: achieved_rps[default]=19.89
+preview: failed requests 0, requests after warm-up 3581 over 3 x 60 s, 19.89 per second (target 20)
+HERO_MEASURE: load_errors[preview]=0
+HERO_MEASURE: achieved_rps[preview]=19.89
+the two pairs' rates differ by 0.0%
+== 3. What Splunk Observability Cloud stores for each pair
+  t+0s: preview pool series under db.client.connection.* for inventory: 65
+-- database metric names in Splunk with the agent's defaults
+  db.client.connections.create_time_bucket
+  db.client.connections.create_time_count
+  db.client.connections.create_time_max
+  db.client.connections.create_time_min
+  db.client.connections.create_time_sum
+  db.client.connections.idle.min
+  db.client.connections.max
+  db.client.connections.pending_requests
+  db.client.connections.usage
+  db.client.connections.use_time_bucket
+  db.client.connections.use_time_count
+  db.client.connections.use_time_max
+  db.client.connections.use_time_min
+  db.client.connections.use_time_sum
+  db.client.connections.wait_time_bucket
+  db.client.connections.wait_time_count
+  db.client.connections.wait_time_max
+  db.client.connections.wait_time_min
+  db.client.connections.wait_time_sum
+-- database metric names in Splunk with the 3.0 preview
+  db.client.connection.count
+  db.client.connection.create_time_bucket
+  db.client.connection.create_time_count
+  db.client.connection.create_time_max
+  db.client.connection.create_time_min
+  db.client.connection.create_time_sum
+  db.client.connection.idle.min
+  db.client.connection.limit
+  db.client.connection.pending_requests
+  db.client.connection.use_time_bucket
+  db.client.connection.use_time_count
+  db.client.connection.use_time_max
+  db.client.connection.use_time_min
+  db.client.connection.use_time_sum
+  db.client.connection.wait_time_bucket
+  db.client.connection.wait_time_count
+  db.client.connection.wait_time_max
+  db.client.connection.wait_time_min
+  db.client.connection.wait_time_sum
+  db.client.operation.duration_bucket
+  db.client.operation.duration_count
+  db.client.operation.duration_max
+  db.client.operation.duration_min
+  db.client.operation.duration_sum
+-- names in only one mode
+  preview only: db.client.connection.count
+  preview only: db.client.connection.create_time_bucket
+  preview only: db.client.connection.create_time_count
+  preview only: db.client.connection.create_time_max
+  preview only: db.client.connection.create_time_min
+  preview only: db.client.connection.create_time_sum
+  preview only: db.client.connection.idle.min
+  preview only: db.client.connection.limit
+  preview only: db.client.connection.pending_requests
+  preview only: db.client.connection.use_time_bucket
+  preview only: db.client.connection.use_time_count
+  preview only: db.client.connection.use_time_max
+  preview only: db.client.connection.use_time_min
+  preview only: db.client.connection.use_time_sum
+  preview only: db.client.connection.wait_time_bucket
+  preview only: db.client.connection.wait_time_count
+  preview only: db.client.connection.wait_time_max
+  preview only: db.client.connection.wait_time_min
+  preview only: db.client.connection.wait_time_sum
+  default only: db.client.connections.create_time_bucket
+  default only: db.client.connections.create_time_count
+  default only: db.client.connections.create_time_max
+  default only: db.client.connections.create_time_min
+  default only: db.client.connections.create_time_sum
+  default only: db.client.connections.idle.min
+  default only: db.client.connections.max
+  default only: db.client.connections.pending_requests
+  default only: db.client.connections.usage
+  default only: db.client.connections.use_time_bucket
+  default only: db.client.connections.use_time_count
+  default only: db.client.connections.use_time_max
+  default only: db.client.connections.use_time_min
+  default only: db.client.connections.use_time_sum
+  default only: db.client.connections.wait_time_bucket
+  default only: db.client.connections.wait_time_count
+  default only: db.client.connections.wait_time_max
+  default only: db.client.connections.wait_time_min
+  default only: db.client.connections.wait_time_sum
+  preview only: db.client.operation.duration_bucket
+  preview only: db.client.operation.duration_count
+  preview only: db.client.operation.duration_max
+  preview only: db.client.operation.duration_min
+  preview only: db.client.operation.duration_sum
+preview, orders: pool series under db.client.connection.* 65, under db.client.connections.* 0
+HERO_MEASURE: preview_new_pool_series[orders]=65
+HERO_MEASURE: preview_legacy_pool_series[orders]=0
+preview, inventory: pool series under db.client.connection.* 65, under db.client.connections.* 0
+HERO_MEASURE: preview_new_pool_series[inventory]=65
+HERO_MEASURE: preview_legacy_pool_series[inventory]=0
+preview: db.client.operation.duration series 112
+HERO_MEASURE: operation_duration_series[preview]=112
+-- the same pool timing per round, read for both pairs over the same minutes
+  program: data('db.client.connections.use_time_sum', filter=filter('deployment.environment', 'preview-otel-java-agent-948210'), rollup='delta').sum().publish('s')
+  program: data('db.client.connections.use_time_count', filter=filter('deployment.environment', 'preview-otel-java-agent-948210'), rollup='delta').sum().publish('c')
+  db.client.connections.use_time in preview-otel-java-agent-948210 from 1794527136 to 1794527289: sum 17123.000000 over 5572 uses
+  program: data('db.client.connection.use_time_sum', filter=filter('deployment.environment', 'preview-otel-java-agent-948210-v3'), rollup='delta').sum().publish('s')
+  program: data('db.client.connection.use_time_count', filter=filter('deployment.environment', 'preview-otel-java-agent-948210-v3'), rollup='delta').sum().publish('c')
+  db.client.connection.use_time in preview-otel-java-agent-948210-v3 from 1794527136 to 1794527289: sum 22.887000 over 7368 uses
+round 1: default 3.073044 (stored in ms), preview 0.003106 (stored in s), ratio 989.4
+stored use time, round 1: default 3.073044
+stored use time, round 1: preview 0.003106
+HERO_MEASURE: use_time_ratio[round_1]=989.4
+  program: data('db.client.connections.use_time_sum', filter=filter('deployment.environment', 'preview-otel-java-agent-948210'), rollup='delta').sum().publish('s')
+  program: data('db.client.connections.use_time_count', filter=filter('deployment.environment', 'preview-otel-java-agent-948210'), rollup='delta').sum().publish('c')
+  db.client.connections.use_time in preview-otel-java-agent-948210 from 1794527298 to 1794527451: sum 8838.000000 over 3124 uses
+  program: data('db.client.connection.use_time_sum', filter=filter('deployment.environment', 'preview-otel-java-agent-948210-v3'), rollup='delta').sum().publish('s')
+  program: data('db.client.connection.use_time_count', filter=filter('deployment.environment', 'preview-otel-java-agent-948210-v3'), rollup='delta').sum().publish('c')
+  db.client.connection.use_time in preview-otel-java-agent-948210-v3 from 1794527298 to 1794527451: sum 13.180000 over 4703 uses
+round 2: default 2.829065 (stored in ms), preview 0.002802 (stored in s), ratio 1009.7
+stored use time, round 2: default 2.829065
+stored use time, round 2: preview 0.002802
+HERO_MEASURE: use_time_ratio[round_2]=1009.7
+  program: data('db.client.connections.use_time_sum', filter=filter('deployment.environment', 'preview-otel-java-agent-948210'), rollup='delta').sum().publish('s')
+  program: data('db.client.connections.use_time_count', filter=filter('deployment.environment', 'preview-otel-java-agent-948210'), rollup='delta').sum().publish('c')
+  db.client.connections.use_time in preview-otel-java-agent-948210 from 1794527459 to 1794527612: sum 19980.000000 over 7041 uses
+  program: data('db.client.connection.use_time_sum', filter=filter('deployment.environment', 'preview-otel-java-agent-948210-v3'), rollup='delta').sum().publish('s')
+  program: data('db.client.connection.use_time_count', filter=filter('deployment.environment', 'preview-otel-java-agent-948210-v3'), rollup='delta').sum().publish('c')
+  db.client.connection.use_time in preview-otel-java-agent-948210-v3 from 1794527459 to 1794527612: sum 19.767000 over 6915 uses
+round 3: default 2.837665 (stored in ms), preview 0.002859 (stored in s), ratio 992.5
+stored use time, round 3: default 2.837665
+stored use time, round 3: preview 0.002859
+HERO_MEASURE: use_time_ratio[round_3]=992.5
+HERO_MEASURE: use_time_ratio_max=1009.7
+every ratio within 500 to 2000: yes
+-- database spans on one trace per pair, from Splunk APM
+default pair, trace 4d4147f1511bb8890e7274daa58ba2fe:
+  inventory SELECT postgres.stock: db.collection.name=stock db.connection_string=postgresql://postgres:5432 db.name=postgres db.namespace=postgres db.operation=SELECT db.operation.name=SELECT db.query.text=select sku, qty from stock where id = ? db.sql.table=stock db.statement=select sku, qty from stock where id = ? db.system=postgresql db.system.name=postgresql db.user=postgres
+  inventory UPDATE postgres.stock: db.collection.name=stock db.connection_string=postgresql://postgres:5432 db.name=postgres db.namespace=postgres db.operation=UPDATE db.operation.name=UPDATE db.query.text=update stock set qty = qty where id = ? db.sql.table=stock db.statement=update stock set qty = qty where id = ? db.system=postgresql db.system.name=postgresql db.user=postgres
+  orders SELECT postgres.audit: db.collection.name=audit db.connection_string=postgresql://postgres:5432 db.name=postgres db.namespace=postgres db.operation=SELECT db.operation.name=SELECT db.query.text=select count(*) from audit db.sql.table=audit db.statement=select count(*) from audit db.system=postgresql db.system.name=postgresql db.user=postgres
+preview pair, trace bf4dba45a5479091174f83ebc8f12d4b:
+  inventory select stock: db.namespace=postgres|postgres db.query.summary=select stock db.query.text=select sku, qty from stock where id = ? db.system.name=postgresql
+  inventory update stock: db.namespace=postgres|postgres db.query.summary=update stock db.query.text=update stock set qty = qty where id = ? db.system.name=postgresql
+  orders select audit: db.namespace=postgres|postgres db.query.summary=select audit db.query.text=select count(*) from audit db.system.name=postgresql
+database span keys, default: db.collection.name db.connection_string db.name db.namespace db.operation db.operation.name db.query.text db.sql.table db.statement db.system db.system.name db.user
+database span keys, preview: db.namespace db.query.summary db.query.text db.system.name
+preview keys: old 0, new 4, from 2 services
+HERO_MEASURE: span_db_keys[preview_old]=0
+HERO_MEASURE: span_db_keys[preview_new]=4
+HERO_MEASURE: preview_old_span_keys=0
+HERO_RESULT: fixed
+
