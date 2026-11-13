@@ -1,0 +1,368 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "technical: The default spans in Splunk carry new-style keys (db.namespace, db.query.text, db.system.name, db.operation.name, db.collection.name) that the agent's own default output lacks. The post admits it can't say which step adds them, yet section 4 ('A filter on db.collection.name that works today would stop matching') and the span-search checklist depend on those keys being there by default. Fix: In reproduce.sh, save the Collector's effective config (kubectl -n splunk get configmap of the agent collector, plus helm get values). Also run one default pod with otel.traces.exporter=otlp,console on EKS so the agent's output and the Splunk readback come from the same span. Then say which component adds the keys, and give the matching Collector setting so readers can check their own pipeline. Until that is done, qualify the db.collection.name and db.operation.name advice as specific to this pipeline.",
+  "editorial: The opening's headline result is the db.namespace value change to 'postgres|postgres', and the next sentence admits its cause was not recorded. The opening promises a finding the lab cannot explain, and it pushes the verified result out of the lead. Fix: Lead with the verified result: every pool metric renamed, use_time stored in seconds, and the old values \u00d70.001 matching within 1.1% in all three rounds. Move db.namespace into the body. To explain it, record `select current_database(), current_schema()` and the JDBC URL in check.sh and print the db.namespace value from the console exporter. Otherwise present it as an observation with no cause given.",
+  "technical: The screenshots come from a different run that did not finish, not from the run whose logs are cited, so they do not support the cited result. Fix: Capture both APM screenshots from the passing run (the traces in last_trace_id from load-d3.txt and load-v3.txt). If that isn't possible, put the run ID and 'earlier, incomplete run' in each image caption, and keep the 05-fix.log span lines as the primary evidence."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "3.0 in Splunk With",
+    "number": "3.0",
+    "noun": "",
+    "supported": true,
+    "where": "05-fix.log:51",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "default_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:66"
+    },
+    {
+     "id": "preview_new_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:121"
+    },
+    {
+     "id": "preview_legacy_pool_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:122"
+    },
+    {
+     "id": "use_time_ratio",
+     "status": "ok",
+     "values": 3,
+     "needed": 3,
+     "provenance": "self_reported",
+     "where": "05-fix.log:138"
+    },
+    {
+     "id": "use_time_ratio_max",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "05-fix.log:159"
+    },
+    {
+     "id": "span_db_keys",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:81"
+    },
+    {
+     "id": "preview_old_span_keys",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "05-fix.log:175"
+    },
+    {
+     "id": "operation_duration_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:70"
+    },
+    {
+     "id": "load_errors",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:23"
+    },
+    {
+     "id": "achieved_rps",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:24"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The pool rename and unit change hold up. Splunk stored 65 series per service under db.client.connection.* and none under the old names. The use_time ratio was 989.4, 1009.7 and 992.5 across three rounds, at 19.89 rps per pair with 0 errors, and the 500 to 2000 check could have failed.",
+     "The span-key findings rest on a gap the post leaves open. The agent's own console output from the default run has only the old keys. The default spans read back from Splunk also carry db.namespace, db.query.text, db.system.name, db.operation.name and db.collection.name. Section 4 and the checklist depend on those extra keys, but the lab never shows which step adds them.",
+     "The db.namespace value 'postgres|postgres' is never explained. The post says the schema settings were not recorded, and check.sh prints key names but not their values.",
+     "Both APM screenshots come from an earlier workflow run (43319570384) that stopped early, not from the passing run whose logs the post cites."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader and decision are clear, and there is a real finding beyond the docs: the 0.001 factor is confirmed on stored Splunk values, and the rename table is grouped by base metric. That is something a reader can act on.",
+     "The opening leads with the least certain result (db.namespace becoming postgres|postgres) and hedges it in the next sentence. The strongest, verified result (pool timing stored in seconds, 1,000 times smaller, needs a \u00d70.001 conversion) should come first.",
+     "db.client.operation.duration going from 0 to 112 series is something to plan for, but the post never says which dimensions produce 112 series.",
+     "Trade-offs are honest, and the 'What I didn't test' section is good. Code blocks look like real session output."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "No demand data: no search volume, reactions, comments or views in BRIEF. The only signal is that the OpenTelemetry blog asks users to preview 3.0 now. That makes the topic timely but does not show demand.",
+     "The title uses words a searcher would use ('OTel Java Agent 3.0', 'preview', 'pool metrics', 'DB spans') and credits Splunk and the flag with the answer.",
+     "A 4 would need a linked signal, such as GitHub issues or discussions from users hitting the use_time unit change."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The default spans in Splunk carry new-style keys (db.namespace, db.query.text, db.system.name, db.operation.name, db.collection.name) that the agent's own default output lacks. The post admits it can't say which step adds them, yet section 4 ('A filter on db.collection.name that works today would stop matching') and the span-search checklist depend on those keys being there by default.",
+    "evidence": "\"On EKS, the default spans read from Splunk also carried new-style keys. The check ran in Docker and the EKS run read Splunk, so the lab doesn't show which step adds them\" vs check.sh output \"default run: database span keys: db.connection_string db.name db.operation db.sql.table db.statement db.system db.user\"",
+    "fix": "In reproduce.sh, save the Collector's effective config (kubectl -n splunk get configmap of the agent collector, plus helm get values). Also run one default pod with otel.traces.exporter=otlp,console on EKS so the agent's output and the Splunk readback come from the same span. Then say which component adds the keys, and give the matching Collector setting so readers can check their own pipeline. Until that is done, qualify the db.collection.name and db.operation.name advice as specific to this pipeline."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The opening's headline result is the db.namespace value change to 'postgres|postgres', and the next sentence admits its cause was not recorded. The opening promises a finding the lab cannot explain, and it pushes the verified result out of the lead.",
+    "evidence": "\"**`db.namespace` changes value, from `postgres` to `postgres|postgres`.** ... I didn't record this lab's schema settings, so check what your own value looks like.\"",
+    "fix": "Lead with the verified result: every pool metric renamed, use_time stored in seconds, and the old values \u00d70.001 matching within 1.1% in all three rounds. Move db.namespace into the body. To explain it, record `select current_database(), current_schema()` and the JDBC URL in check.sh and print the db.namespace value from the console exporter. Otherwise present it as an observation with no cause given."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The screenshots come from a different run that did not finish, not from the run whose logs are cited, so they do not support the cited result.",
+    "evidence": "\"These Splunk APM screenshots come from the first EKS run of this same lab (workflow run 43319570384, 12 November 2026), which stopped on one Splunk read.\"",
+    "fix": "Capture both APM screenshots from the passing run (the traces in last_trace_id from load-d3.txt and load-v3.txt). If that isn't possible, put the run ID and 'earlier, incomplete run' in each image caption, and keep the 05-fix.log span lines as the primary evidence."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "The OpenTelemetry project shipped 2.32.0 as the 3.0 release candidate and asks users to preview it now",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The preview turns off dual emission for these names",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The OpenTelemetry blog's example of the new db.namespace format is orders|public",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The preview can still change before 3.0",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The blog lists code and messaging renames as well",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "Agent release v2.33.1 is the version used",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v2.33.1"
+   },
+   {
+    "text": "A filter on db.collection.name that works today would stop matching after the upgrade",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Switching a live service to the preview would move its charts at once",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "wait_time and create_time likely follow the same ms-to-s change and should be checked",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Java services on Kubernetes with the OTel Java agent and Splunk Observability Cloud",
+  "decision": "What to rename and convert in Splunk before the agent's 3.0 defaults arrive: pool metric names, pool timing units and database span keys",
+  "question": "What will OTel Java agent 3.0 change in the connection pool metrics and database spans I see in Splunk, and how can I see it before I upgrade?",
+  "takeaway": "One environment variable on the agent you already run shows 3.0's database names in Splunk today. Side by side with the default agent under the same load, the run shows which pool metrics and span keys get new names, and that the same pool timing is stored about 1000 times smaller because it is now in seconds, so any threshold written on the old values is worth checking.",
+  "adds": "The OpenTelemetry blog lists the renamed fields and the testing steps. This post runs both modes side by side on one live system and shows the result in Splunk: the pool metric names per service, the same pool timing stored in milliseconds and in seconds over three rounds, and every database key on real traces.",
+  "open_question": "With OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true alone on the same jar, running next to the default agent under the same load on EKS, which pool metric names does Splunk store per service, does any old name or old span key remain, and what is the ratio of the stored connection use time means in each of three rounds?",
+  "tradeoffs": [
+   "The preview turns off the /dup dual emission for database, code and messaging, so old and new names are not sent side by side while it is on",
+   "The same pool timing is stored in seconds after the change, so anything built on the old millisecond values needs converting",
+   "The 2.33.1 preview can still change before 3.0, as the OpenTelemetry blog says",
+   "This run measures database pool metrics and database spans only; code and messaging renames are not measured",
+   "The preview pair uses its own deployment.environment so Splunk keeps the pairs apart; that label is the only other difference in the agent options"
+  ],
+  "existing_pages": [
+   {
+    "title": "The OpenTelemetry Java agent 3.0 is almost here \u2014 preview it today",
+    "url": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/",
+    "covers": "The 3.0 release candidate, the umbrella flag, the renamed database, code and messaging names, the pool metric unit change and a testing checklist. It shows no backend result."
+   },
+   {
+    "title": "Release v2.33.1",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/tag/v2.33.1",
+    "covers": "The agent release used in the lab."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "The OpenTelemetry project published a blog post asking Java agent users to preview 3.0 before it becomes the default, with a testing checklist. That shows the topic is timely; no search volume, reactions or views were found."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic from the Editor shortlist on 12 November 2026",
+   "Serves the OpenTelemetry auto-instrumentation and Splunk MVP goals",
+   "Timely: 3.0 is imminent and the project asks users to test now",
+   "Reuses the Postgres lab system that already ran on EKS"
+  ],
+  "measurements": [
+   {
+    "id": "default_pool_series",
+    "what": "connection pool metric series under the old db.client.connections names in Splunk with the default agent, per service (orders, inventory)",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "preview_new_pool_series",
+    "what": "connection pool metric series under the new db.client.connection names in Splunk with the preview flag, per service (orders, inventory)",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "preview_legacy_pool_series",
+    "what": "connection pool metric series under the old names in Splunk from the preview pair, per service (orders, inventory)",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "use_time_ratio",
+    "what": "stored mean connection use time of the default pair (old metric, milliseconds) divided by the preview pair's (new metric, seconds), over the same minutes, in each of three rounds",
+    "kind": "comparison",
+    "unit": "ratio",
+    "accept": {
+     "op": "ge",
+     "value": 500
+    },
+    "min_entities": 3
+   },
+   {
+    "id": "use_time_ratio_max",
+    "what": "the largest of the three rounds' use time ratios",
+    "kind": "comparison",
+    "unit": "ratio",
+    "accept": {
+     "op": "le",
+     "value": 2000
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "span_db_keys",
+    "what": "database span keys on a trace read back from Splunk's trace API: old and new keys in the default run, old and new keys in the preview pair",
+    "kind": "comparison",
+    "unit": "keys",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "preview_old_span_keys",
+    "what": "old database span keys left on the preview pair's trace in Splunk",
+    "kind": "comparison",
+    "unit": "keys",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "operation_duration_series",
+    "what": "db.client.operation.duration series in Splunk for each pair: default and preview",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "load_errors",
+    "what": "failed requests across the three rounds for each pair: default and preview",
+    "kind": "failure",
+    "unit": "requests",
+    "accept": {
+     "op": "eq",
+     "value": 0
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "achieved_rps",
+    "what": "requests per second each pair reached across the three rounds after warm-up, against a target of 20: default and preview. fix.sh also requires both at most 21 and within 5% of each other",
+    "kind": "rate",
+    "unit": "requests per second",
+    "accept": {
+     "op": "ge",
+     "value": 18
+    },
+    "min_entities": 2
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.8276
+}
