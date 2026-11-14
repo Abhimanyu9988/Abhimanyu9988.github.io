@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-14T08:42:21Z",
+ "updated": "2026-11-14T15:52:28Z",
  "columns": {
   "needs": [
    {
@@ -45,13 +45,6 @@
     "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
     "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-operator/issues/5896",
-    "kind": "Mentioned",
-    "title": "Target allocator: `/debug/target` writes two pages when `target_hash` is not a number",
-    "url": "https://github.com/open-telemetry/opentelemetry-operator/issues/5896",
-    "where": "opentelemetry-operator"
    },
    {
     "id": "https://github.com/open-telemetry/semantic-conventions/issues/4074",
