@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-13",
+ "updated": "2026-11-14",
  "team": [
   {
    "role": "Executive Assistant",
@@ -117,8 +117,6 @@
    "mission": "Find domains we can buy within budget, and tell the CFO what is open, leaving or unlikely to free up."
   }
  ],
- "in_review": [
-  "Draft: Preview OTel Java Agent 3.0 in Splunk With One Flag: Pool Metrics and DB Spans"
- ],
+ "in_review": [],
  "published": []
 }
