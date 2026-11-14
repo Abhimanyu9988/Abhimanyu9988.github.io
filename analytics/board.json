@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-14T00:09:16Z",
+ "updated": "2026-11-14T08:42:21Z",
  "columns": {
   "needs": [
    {
@@ -98,13 +98,6 @@
   ],
   "working": [
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5924",
-    "kind": "Your PR",
-    "title": "Fix _link in target allocator /jobs/{job}/targets response",
-    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5924",
-    "where": "opentelemetry-operator"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "kind": "Your PR",
     "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
@@ -157,6 +150,13 @@
    }
   ],
   "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5924",
+    "kind": "Merged",
+    "title": "Fix _link in target allocator /jobs/{job}/targets response",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5924",
+    "where": "opentelemetry-operator"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
     "kind": "Merged",
