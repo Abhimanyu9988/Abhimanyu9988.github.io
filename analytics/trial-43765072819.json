@@ -1,0 +1,10 @@
+{
+ "run": "43765072819",
+ "issue": 201,
+ "title": "OpenTelemetry Java Agent 3.0 Preview on SQS: Your New Traces in Splunk Today",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 22.0,
+ "lab_usd": 0.0
+}
