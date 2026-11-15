@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-15T21:41:51Z",
+ "updated": "2026-11-15T22:13:53Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/202",
+    "kind": "Approve or reject",
+    "title": "OTel Java Agent 3.0 Preview: SQS Receive Spans Now Stay in One Trace in Splunk",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/202",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "kind": "Review",
@@ -90,13 +97,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43765072819",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43765072819",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "kind": "Your PR",
