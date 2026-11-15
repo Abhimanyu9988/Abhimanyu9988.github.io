@@ -17,7 +17,7 @@ What it cannot do: publish, spend, deploy, change the budget, or hold a credenti
 """
 import base64, datetime, ipaddress, json, os, re, socket, urllib.error, urllib.parse, urllib.request
 from radar import HOME_REPO, comment, ensure_label, gh, post_issue, safe_text
-import analytics, budget, contract, live_board, roles, slack, sources
+import analytics, budget, comments, contract, live_board, roles, slack, sources
 
 TASKS, STATUS, CURSOR = "analytics/tasks.json", "analytics/status.json", "analytics/slack-cursor.json"
 INBOX = "analytics/slack-inbox.md"             # a path name only: read_private and write_private keep it in the private repo
@@ -727,6 +727,15 @@ def deliver_posts(today=None):
     write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: sent {day} post")
     return True
 
+def answer_comments():
+    """New comments on his LinkedIn posts: the Community Manager drafts, the Fact Checker and Editor check, and the
+    Secretary sends each reply in Slack, tagging him. The cto job is exempt from the budget for his own messages, but
+    these replies are the team's own work, so they stop at the monthly limit like any other."""
+    if not (admin_on() and slack.enabled() and comments.configured()):
+        return 0
+    return comments.run(read_private, write_private, lambda role, text: slack.say(role, text, mention=True),
+                        budget_left=lambda: budget.spent()[0] < budget.limit())
+
 def refresh_board():
     """Never stops the work around it. If this fails, the board keeps its old time, which shows it's out of date."""
     try:
@@ -744,6 +753,10 @@ def main():
             deliver_posts()
         except Exception as e:
             print(f"::warning title=secretary::post not sent: {' '.join(str(e).split())[:200]}")
+        try:
+            answer_comments()
+        except Exception as e:
+            print(f"::warning title=community::comments not read: {type(e).__name__}")
         refresh_board()
         return
     text = os.environ.get("COMMENT_BODY", "").strip()

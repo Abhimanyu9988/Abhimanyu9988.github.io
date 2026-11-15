@@ -1,0 +1,22 @@
+{
+ "type": "object",
+ "required": ["items"],
+ "additionalProperties": false,
+ "properties": {
+  "items": {
+   "type": "array",
+   "maxItems": 5,
+   "description": "one entry per comment on Abhi's post in the email, newest first; empty if the email holds no comment text",
+   "items": {
+    "type": "object",
+    "required": ["name", "comment", "reply"],
+    "additionalProperties": false,
+    "properties": {
+     "name": {"type": "string", "description": "the commenter's name as written in the email"},
+     "comment": {"type": "string", "description": "their comment, copied exactly from the email"},
+     "reply": {"type": "string", "description": "Abhi's reply, ready to paste, under 120 words, no links, hashtags or mentions"}
+    }
+   }
+  }
+ }
+}

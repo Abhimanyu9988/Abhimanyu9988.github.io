@@ -1,0 +1,11 @@
+{
+ "type": "object",
+ "required": ["ok", "blocking", "notes"],
+ "additionalProperties": false,
+ "properties": {
+  "ok": {"type": "boolean", "description": "true only if the reply can be posted as it is"},
+  "blocking": {"type": "array", "maxItems": 5, "items": {"type": "string"},
+               "description": "each thing that must change before posting, as one short instruction; empty when ok"},
+  "notes": {"type": "string", "description": "one short sentence for the record"}
+ }
+}

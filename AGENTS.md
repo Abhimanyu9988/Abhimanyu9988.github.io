@@ -75,6 +75,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/tech_head.py` | Code review | PR diff, scanners | PR comment |
 | `pipeline/assistant.py` | Goals to team plan | `/goal` comments | `analytics/goals.json`, `plan.json` |
 | `pipeline/cto.py` | Secretary, CEO, CTO, CMO and CFO: talks to Abhi, market research, digest, tasks, public status, starts builds | CTO desk issue, spend, PRs | One issue, `analytics/tasks.json`, `status.json` |
+| `pipeline/comments.py` | LinkedIn comment replies: the Community Manager drafts from the post's article, code checks numbers, links and commands, the Fact Checker and Editor can block, and the Secretary sends the reply in Slack, tagging Abhi. Runs on the cto poll | His LinkedIn comment emails through `infra/linkedin-inbox.gs`, ShowMerit articles | Slack, private `team-admin` `linkedin-replies.json` |
 | `Abhimanyu9988/team-admin` | Private admin page and daily log, written by `cto.py` | Spend, runs, ledger | `README.md`, `log-*.md`, `tasks.json` |
 | `infra/slack-listener.yml` | AWS Lambda that wakes `cto.yml` when Abhi messages Slack | Signed Slack events | One workflow start |
 | `pipeline/live_board.py` | His board of open source and articles only: cards for `site/board.html`, and a Slack message linking to it. No model | GitHub, ideas, spend | `analytics/board.json` (public data only), that message, `analytics/slack-board.json` |

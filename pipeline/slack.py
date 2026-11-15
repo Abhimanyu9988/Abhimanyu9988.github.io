@@ -38,14 +38,16 @@ def display(role):
     r = roles.get(role)
     return f"{r.get('display', role)} ({r.get('dept', 'Team')})"
 
-def say(role, text):
-    """True when posted. A Slack outage must never stop the work it reports on."""
+def say(role, text, mention=False):
+    """True when posted. A Slack outage must never stop the work it reports on. `mention` tags the workspace owner,
+    Abhi, for messages he has to act on. The tag is added after escaping, so model text can never ping anyone."""
     if not enabled():
         return False
     try:
         cid = channel()
         api("conversations.join", channel=cid)
-        api("chat.postMessage", channel=cid, text=clean(text), username=display(role), unfurl_links="false")
+        body = f"<@{owner()}> {clean(text)}" if mention else clean(text)
+        api("chat.postMessage", channel=cid, text=body, username=display(role), unfurl_links="false")
         return True
     except Exception as e:
         print(f"::warning title=slack::message not sent: {' '.join(str(e).split())[:200]}")

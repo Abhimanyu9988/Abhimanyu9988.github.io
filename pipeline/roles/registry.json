@@ -39,7 +39,8 @@
     "scorecard",
     "weekplan",
     "topicconfirm",
-    "planreview"
+    "planreview",
+    "replycheck"
    ],
    "data_sources": [
     "goals",
@@ -450,6 +451,44 @@
    "outputs": [],
    "display": "Domain Scout",
    "dept": "Finance"
+  },
+  "community": {
+   "mission": "Draft Abhi's replies to comments on his LinkedIn posts from the post's article, for the Fact Checker and Editor to check.",
+   "module": "pipeline/comments.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-opus-5-5",
+   "model_env": "COMMUNITY_MODEL",
+   "prompt": "community.md",
+   "outputs": [
+    "commentreply"
+   ],
+   "data_sources": [],
+   "budget": {
+    "max_input_tokens": 20000,
+    "max_calls": 8
+   },
+   "display": "Community Manager",
+   "dept": "Marketing"
+  },
+  "fact_check": {
+   "mission": "Check each LinkedIn reply against the article's lab results before Abhi sees it.",
+   "module": "pipeline/comments.py",
+   "status": "active",
+   "vendor": "claude",
+   "model": "claude-opus-5-5",
+   "model_env": "FACT_CHECK_MODEL",
+   "prompt": "fact_check.md",
+   "outputs": [
+    "replycheck"
+   ],
+   "data_sources": [],
+   "budget": {
+    "max_input_tokens": 20000,
+    "max_calls": 8
+   },
+   "display": "Fact Checker",
+   "dept": "Engineering"
   }
  }
 }
