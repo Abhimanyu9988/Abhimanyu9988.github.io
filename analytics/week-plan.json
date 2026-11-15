@@ -4,10 +4,10 @@
  "created": "2026-11-15",
  "topics": [
   {
-   "issue": 201,
-   "title": "OTel Java Agent 3.0 on SQS: See Your New Traces in Splunk Before You Upgrade",
+   "issue": 203,
+   "title": "Your Dependency Recovered. Your Service Didn't. A Retry Storm in Splunk APM",
    "state": "queued",
-   "signal": "open issue, 6 comments, on SQS and Kafka receive telemetry under the new messaging conventions",
+   "signal": "global Microsoft 365 outage on 12-13 November 2026, covered by TechCrunch and others, with restored servers going unresponsive under traffic",
    "confirmed": true,
    "picked": true,
    "chat": true,
