@@ -1,0 +1,396 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "the evidence checks did not pass: title claim not found in evidence: 3.0 Preview",
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "technical: The title says 'in Splunk' for the receive-telemetry result, but Splunk was only read back for the preview run with receive telemetry off. Fix: Either add a Splunk read-back of 10 sampled receive_preview traces to fix.sh and report the found and both-services counts, or retitle without 'in Splunk' for this result. For example: 'OTel Java Agent 3.0 Preview on SQS: Consumers Stay in the Producer's Trace, Even With Receive Telemetry On'.",
+  "technical: The title and opening say the receive spans stay in the one trace. The lab's own output shows the process span joining the producer's trace while the receive spans only link to it. With 72 receive spans for 100 messages, a receive span cannot be the child of each message's producer. Fix: Rewrite to: 'the process span stays in the producer's trace, and receive spans (now CLIENT kind) link to the producer traces'. Remove 'receive spans included' and 'Receive Spans ... Stay' from the title.",
+  "technical: The lab path in the post does not match the published lab, so the reproduce steps fail as written. Fix: Point the git clone, the cd path and the footer link at the real lab slug and repository, then run the three commands once from a clean checkout.",
+  "editorial: The post does not say that maintainers already describe this behaviour, so the headline result reads as new when it confirms the plan in issue 19414. Fix: Under 'What changed in the trace', add one sentence: the maintainers describe this in issue 19414, and this run confirms it on a real SQS queue and in Splunk APM. The operation-name table then becomes the post's own contribution.",
+  "outside claim without a known source: The Postgres preview article covers the database side"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "3.0 Preview",
+    "number": "3.0",
+    "noun": "preview",
+    "supported": false,
+    "where": "",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "messages_fulfilled",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:57"
+    },
+    {
+     "id": "joined_messages",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:58"
+    },
+    {
+     "id": "one_trace_messages",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:59"
+    },
+    {
+     "id": "process_links_to_producer",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:60"
+    },
+    {
+     "id": "receive_spans",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:101"
+    },
+    {
+     "id": "new_style_span_names",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:63"
+    },
+    {
+     "id": "legacy_style_span_names",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:64"
+    },
+    {
+     "id": "splunk_preview_traces_found",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "self_reported",
+     "where": "05-fix.log:122"
+    },
+    {
+     "id": "splunk_preview_traces_both_services",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:123"
+    },
+    {
+     "id": "splunk_operation_first_names",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:104"
+    }
+   ]
+  },
+  "failures": [
+   "title claim not found in evidence: 3.0 Preview"
+  ],
+  "passed": false
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The four-run join on SQS message ID is solid work. Fresh pods, an empty queue, separate order ranges, the preview flag confirmed inside each pod and a jar hash check make each count trustworthy.",
+     "The title and opening claim more than the evidence shows. Splunk was never checked for the receive-telemetry runs (the post says so itself), and the receive spans are not in the producer's trace. The preview's own span tree shows only process and delete under the producer context, and there are 72 receive spans for 100 messages.",
+     "The repo path in Step 1 and the footer (showmerit/labs/otel-java-agent-3-0-preview-sqs-receive-spans-one-trace) does not match the lab's LAB_URL (Abhimanyu9988.github.io/labs/opentelemetry-java-agent-3-0-preview-on). A reader who copies the commands would hit a path that does not exist.",
+     "The evidence report marks splunk_preview_traces_found as self_reported, not corroborated, and its headline check failed ('3.0 Preview' not found in evidence)."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "Clear reader, and the four-row table is a real finding. With receive telemetry on, the shared-trace count goes from 0 of 100 to 100 of 100. The Splunk operation-name table is useful and goes beyond the docs.",
+     "Issue 19414, which the post cites, already says that under stable semconv the SQS process span's parent is the ambient context whatever the receive flag is set to. The post should present its result as the measured confirmation of what maintainers described, not as a discovery.",
+     "The span-tree code blocks use hand-written <queue> and <producer context> placeholders, so they don't read like real agent output. A trimmed excerpt from 05-fix.log would be more convincing.",
+     "The checklist and the 'What I didn't test' section deal with trade-offs honestly, and the tone credits OpenTelemetry and Splunk throughout."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "Demand is weak, as the brief says. The only signal is issue 19433 (open, 6 comments) and the OpenTelemetry blog asking users to try the preview. There is no search volume and there are no reactions, so 3 is the ceiling.",
+     "Timing is good: the 3.0 preview is current, and the blog shows no SQS example.",
+     "'Receive Spans Now Stay in One Trace' is not how users describe this, and it is not what was measured. A headline built around renamed operations, or around SQS consumers staying in the producer's trace, matches the reader's decision better."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The title says 'in Splunk' for the receive-telemetry result, but Splunk was only read back for the preview run with receive telemetry off.",
+    "evidence": "Post: \"I didn't read Splunk back for the receive telemetry runs.\" Title: \"SQS Receive Spans Now Stay in One Trace in Splunk\"",
+    "fix": "Either add a Splunk read-back of 10 sampled receive_preview traces to fix.sh and report the found and both-services counts, or retitle without 'in Splunk' for this result. For example: 'OTel Java Agent 3.0 Preview on SQS: Consumers Stay in the Producer's Trace, Even With Receive Telemetry On'."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The title and opening say the receive spans stay in the one trace. The lab's own output shows the process span joining the producer's trace while the receive spans only link to it. With 72 receive spans for 100 messages, a receive span cannot be the child of each message's producer.",
+    "evidence": "Opening: \"one trace from the HTTP request to the consumer, receive spans included\"; preview span tree lists only process and delete under parent=<producer context>; \"those 72 receive spans carried links to all 100 producer traces\"",
+    "fix": "Rewrite to: 'the process span stays in the producer's trace, and receive spans (now CLIENT kind) link to the producer traces'. Remove 'receive spans included' and 'Receive Spans ... Stay' from the title."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The lab path in the post does not match the published lab, so the reproduce steps fail as written.",
+    "evidence": "Step 1: \"cd showmerit/labs/otel-java-agent-3-0-preview-sqs-receive-spans-one-trace\" vs LAB_URL https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/opentelemetry-java-agent-3-0-preview-on",
+    "fix": "Point the git clone, the cd path and the footer link at the real lab slug and repository, then run the three commands once from a clean checkout."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The post does not say that maintainers already describe this behaviour, so the headline result reads as new when it confirms the plan in issue 19414.",
+    "evidence": "Issue 19414: \"In AWS SQS (SqsImpl), the 'Process' span parent is now the ambient context regardless of whether a 'Receive' span was created, and creation-context links are added under stable semconv independent of the flag.\"",
+    "fix": "Under 'What changed in the trace', add one sentence: the maintainers describe this in issue 19414, and this run confirms it on a real SQS queue and in Splunk APM. The operation-name table then becomes the post's own contribution."
+   }
+  ],
+  "flags_addressed": [
+   {
+    "id": "headline:3.0 Preview",
+    "addressed": false,
+    "how": "The evidence scan could not match the title claim '3.0 Preview' to the evidence. The lab ran agent 2.33.1 with the preview flag. The body says so, but the title should too, e.g. '3.0 Preview (Agent 2.33.1)', or the title should be reworded so the scan can match it."
+   }
+  ],
+  "claims": [
+   {
+    "text": "The OpenTelemetry project asks Java agent users to preview 3.0 now",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The blog's messaging examples are Kafka and Pulsar, with operation-first span names and new process-span parent rules",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "Maintainers have been discussing how receive telemetry and trace structure fit together under the new conventions",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/19414"
+   },
+   {
+    "text": "Preview behaviour can still change before 3.0",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "That matches the direction the OpenTelemetry blog describes for Kafka",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "The same flag also changes database and code conventions",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/"
+   },
+   {
+    "text": "Earlier SQS article measured today's agent on the same two services and queue",
+    "class": "sourced",
+    "source_ref": "https://showmerit.com/abhimanyu/articles/follow-sqs-messages-through-splunk-apm-with-the-otel-java/"
+   },
+   {
+    "text": "The Postgres preview article covers the database side",
+    "class": "sourced",
+    "source_ref": "https://showmerit.com/abhimanyu/articles/preview-otel-java-agent-3-0-in-splunk-with-one-flag/"
+   },
+   {
+    "text": "Batch listeners (List<Message>) follow a different model",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Per-trace counts and durations that span the queue will look different after the change",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The cluster costs money while it runs",
+    "class": "estimate",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform engineer running Spring Boot services that exchange messages over Amazon SQS, with the OTel Java agent and Splunk Observability Cloud",
+  "decision": "Whether their SQS traces, and the span and operation names their Splunk APM filters and charts use, change under the Java agent's 3.0 messaging defaults, which they can preview today",
+  "question": "Will OTel Java agent 3.0 still put an SQS producer and its consumer in one trace in Splunk, and what changes in the spans?",
+  "takeaway": "One environment variable on the agent you already run shows 3.0's messaging behaviour on a real SQS queue today: whether each message stays in one trace, whether consumers link back to the producer, with and without receive telemetry, and which operation names Splunk APM then holds, so filters and charts can be checked before 3.0 is the default.",
+  "adds": "The OpenTelemetry blog shows 3.0's messaging changes with Kafka and Pulsar examples and describes no SQS result. This post runs the same two Spring Boot services on a real SQS queue in four configurations, counts per message the shared traces, links and span names, and reads sampled traces back from Splunk APM.",
+  "open_question": "With OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true on agent 2.33.1, how many of 400 SQS messages keep their producer and process spans in one trace, how many process spans link to the producer, what are the spans named, and how do those counts change with receive telemetry on, compared with the default agent on the same queue?",
+  "tradeoffs": [
+   "The 2.33.1 preview can still change before 3.0, as the OpenTelemetry blog says",
+   "The preview flag also changes database and code conventions; this run measures messaging spans only",
+   "Single-message @SqsListener only; batch listeners follow a different model",
+   "The four runs are sequential on the same services and queue, not side by side; span structure is measured, not timing",
+   "Preview runs report under their own deployment.environment so Splunk keeps the two modes apart"
+  ],
+  "existing_pages": [
+   {
+    "title": "The OpenTelemetry Java agent 3.0 is almost here \u2014 preview it today",
+    "url": "https://opentelemetry.io/blog/2026/java-agent-3.0-preview/",
+    "covers": "The preview flag, new messaging span names and kinds, and parent and link rules, with Kafka and Pulsar examples. No SQS result and no backend view."
+   },
+   {
+    "title": "Follow SQS Messages Through Splunk APM With the OTel Java Agent, Zero Code",
+    "url": "https://showmerit.com/abhimanyu/articles/follow-sqs-messages-through-splunk-apm-with-the-otel-java/",
+    "covers": "Today's agent on the same SQS lab: 400 of 400 messages in one trace on defaults, and linked per-consumer traces with receive telemetry. Nothing about 3.0."
+   },
+   {
+    "title": "Revisit the messaging receive telemetry flag now that stable messaging semconv no longer depends on it",
+    "url": "https://github.com/open-telemetry/opentelemetry-java-instrumentation/issues/19414",
+    "covers": "Maintainer discussion of how the receive telemetry flag and SQS trace structure relate under the new messaging conventions. No measured result."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "Java instrumentation issues 19414 (closed) and 19433 (open, 6 comments) discuss how SQS receive telemetry and trace structure behave under the new messaging conventions, and the OpenTelemetry blog asks users to preview 3.0 now. No search volume or reactions were found."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "measurements": [
+   {
+    "id": "messages_fulfilled",
+    "what": "orders sent and fulfilled in each run: default, preview, receive_telemetry, receive_preview",
+    "kind": "count",
+    "unit": "messages",
+    "accept": {
+     "op": "ge",
+     "value": 100
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "joined_messages",
+    "what": "messages whose producer and process spans were both found and paired on the SQS message ID, the denominator for every other count in that run: default, preview, receive_telemetry, receive_preview",
+    "kind": "count",
+    "unit": "messages",
+    "accept": {
+     "op": "ge",
+     "value": 100
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "one_trace_messages",
+    "what": "messages whose producer span and process span share one trace ID, joined on the SQS message ID, in each run: default, preview, receive_telemetry, receive_preview",
+    "kind": "comparison",
+    "unit": "messages",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "process_links_to_producer",
+    "what": "process spans carrying a span link to their own message's producer trace, in each run: default, preview, receive_telemetry, receive_preview",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "receive_spans",
+    "what": "receive or poll spans in the two receive runs, the positive control that the setting applied: receive_telemetry, receive_preview",
+    "kind": "count",
+    "unit": "spans",
+    "accept": {
+     "op": "ge",
+     "value": 1
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "new_style_span_names",
+    "what": "producer and process spans named operation first (send or process, then the queue), in the default and preview runs",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "legacy_style_span_names",
+    "what": "producer and process spans named queue first (the queue, then publish or process), in the default and preview runs",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "splunk_preview_traces_found",
+    "what": "of 10 sampled preview-run producer traces, how many Splunk APM's trace API returns",
+    "kind": "comparison",
+    "unit": "traces",
+    "accept": {
+     "op": "eq",
+     "value": 10
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "splunk_preview_traces_both_services",
+    "what": "of the same 10 sampled preview-run traces, how many hold both orders and fulfilment spans in Splunk APM",
+    "kind": "comparison",
+    "unit": "traces",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "splunk_operation_first_names",
+    "what": "distinct operation names Splunk APM holds on sampled traces that start with the operation (send, process, receive, poll or delete), for 5 default-run traces and the 10 preview-run traces",
+    "kind": "comparison",
+    "unit": "names",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   }
+  ],
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic in chat on 15 November 2026 for Monday 16 November",
+   "Serves the OpenTelemetry auto-instrumentation, Splunk MVP and AWS Hero goals",
+   "Timely: 3.0 is close and the project asks users to preview it now, and its blog shows no SQS result",
+   "Reuses the SQS lab system that already ran on EKS and passed its paid run"
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 0.6913
+}
