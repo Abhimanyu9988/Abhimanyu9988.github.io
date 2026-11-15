@@ -1,9 +1,7 @@
 name: monthly-oss
-# 1st of the month: a draft post summarising every PR you got merged last month (what it does, how it's used
-# today, what it changes next). Merging it publishes like any other post.
+# Manual only. The monthly open-source recap now runs in chat on the 1st of each month and publishes to
+# ShowMerit (scheduled task "Monthly open-source recap"). Keep this for a one-off rerun of an old month.
 on:
-  schedule:
-    - cron: "0 9 1 * *"
   workflow_dispatch:
     inputs:
       month:
