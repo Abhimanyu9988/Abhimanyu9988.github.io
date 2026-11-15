@@ -1,0 +1,109 @@
+$ bash reproduce.sh
+# exit 0 after 341s
+
+== 1. Waiting for 2 worker nodes
+NAME                                         STATUS   ROLES    AGE   VERSION                INTERNAL-IP   EXTERNAL-IP      OS-IMAGE                        KERNEL-VERSION                     CONTAINER-RUNTIME
+ip-10-0-0-67.eu-central-1.compute.internal   Ready    <none>   44s   v1.34.12-eks-9adbfea   10.0.0.67     63.176.160.186   Amazon Linux 2023.12.20261112   6.12.115-140.210.amzn2023.x86_64   containerd://2.3.7+unknown
+ip-10-0-1-75.eu-central-1.compute.internal   Ready    <none>   40s   v1.34.12-eks-9adbfea   10.0.1.75     18.156.171.5     Amazon Linux 2023.12.20261112   6.12.115-140.210.amzn2023.x86_64   containerd://2.3.7+unknown
+deployment "coredns" successfully rolled out
+app node: ip-10-0-0-67.eu-central-1.compute.internal
+load node: ip-10-0-1-75.eu-central-1.compute.internal
+== 2. Installing the Splunk OTel Collector (chart 0.163.1) first, so it is running in every run
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 0 of 2 updated pods are available...
+Waiting for daemon set "splunk-otel-collector-agent" rollout to finish: 1 of 2 updated pods are available...
+daemon set "splunk-otel-collector-agent" successfully rolled out
+== 3. Building the jar in the cluster, once, and fetching the agent
+agent v2.33.1 downloaded and verified on attempt 1
+total 58376
+-rw-r--r--. 1 root root 33265005 Nov 15 21:52 app.jar
+-rw-r--r--. 1 root root 26507624 Nov 15 21:51 opentelemetry-javaagent.jar
+build took 59s
+== 4. Deploying orders and fulfilment
+queue: opentelemetry-java-agent-072819-orders in eu-central-1
+Waiting for deployment "fulfilment" rollout to finish: 0 of 1 updated replicas are available...
+deployment "fulfilment" successfully rolled out
+deployment "orders" successfully rolled out
+jar: 337f3a76efb619187127f075bb171414526d554c7701532247ce41ed9e28e087
+listener: @SqsListener takes one String, so single-message mode, polling up to 10 messages. Spring Cloud AWS observation is not enabled.
+== 5. Today's agent on its defaults: one environment variable on each service, no preview flag
+queue before the change: visible 0, in flight 0
+orders pod/orders-947ff8b44-8pvm5
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=orders -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819,deployment.environment.name=opentelemetry-java-agent-072819 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console
+orders preview flag inside the pod: absent
+fulfilment pod/fulfilment-6cb58bb4b-mfzlc
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=fulfilment -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819,deployment.environment.name=opentelemetry-java-agent-072819 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console,logging-otlp
+fulfilment preview flag inside the pod: absent
+jar unchanged from the first run
+pod/load condition met
+LOAD sent=400 errors=0
+default run: orders 1 to 400, sent 400, fulfilled 400, producer spans 400, process spans 400, joined on message ID 400
+default run: of 400 joined, sharing one trace 400, in a different trace 0, process spans linked to their producer trace 0
+default run: unpaired, no process span 0, no producer span 0. Most process spans for one message: 1
+default run: receive or poll spans 0, linked to a producer trace 0, process spans whose parent is one 0
+default run: producer and process spans named operation first 0, queue first 800
+-- default run, messaging span names and kinds the agent printed
+  400 spans: CONSUMER <queue> process
+  400 spans: PRODUCER <queue> publish
+-- default run, three joined rows: message ID, producer trace, process trace
+  007a5b22-207d-4fae-a37b-61d6f4f96f0d 4b187f972cb9832aa89b6121538a51db 4b187f972cb9832aa89b6121538a51db
+  00eb59be-6299-473d-b5eb-8be02f6e831d 93137ec1e20152b7c200fea495e8324a 93137ec1e20152b7c200fea495e8324a
+  013d8507-2a32-4c47-afc2-3e0b781f143e ff359ba8fdf29bd45590764b10ef22e3 ff359ba8fdf29bd45590764b10ef22e3
+HERO_MEASURE: messages_fulfilled[default]=400
+HERO_MEASURE: joined_messages[default]=400
+HERO_MEASURE: one_trace_messages[default]=400
+HERO_MEASURE: process_links_to_producer[default]=0
+HERO_MEASURE: unpaired_no_producer[default]=0
+HERO_MEASURE: unpaired_no_process[default]=0
+HERO_MEASURE: new_style_span_names[default]=0
+HERO_MEASURE: legacy_style_span_names[default]=800
+== 6. One setting changed: receive telemetry on, on fulfilment only, for 100 orders
+queue before the change: visible 0, in flight 0
+orders pod/orders-5fcdddcb7b-wbvll
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=orders -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819,deployment.environment.name=opentelemetry-java-agent-072819 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console
+orders preview flag inside the pod: absent
+fulfilment pod/fulfilment-5495fc48f7-6v4l5
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=fulfilment -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819,deployment.environment.name=opentelemetry-java-agent-072819 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console,logging-otlp -Dotel.instrumentation.common.messaging.experimental.receive-telemetry.enabled=true
+fulfilment preview flag inside the pod: absent
+jar unchanged from the first run
+pod/load condition met
+LOAD sent=100 errors=0
+receive_telemetry run: orders 1001 to 1100, sent 100, fulfilled 100, producer spans 100, process spans 100, joined on message ID 100
+receive_telemetry run: of 100 joined, sharing one trace 0, in a different trace 100, process spans linked to their producer trace 100
+receive_telemetry run: unpaired, no process span 0, no producer span 0. Most process spans for one message: 1
+receive_telemetry run: receive or poll spans 72, linked to a producer trace 0, process spans whose parent is one 100
+receive_telemetry run: producer and process spans named operation first 0, queue first 200
+-- receive_telemetry run, messaging span names and kinds the agent printed
+  100 spans: CONSUMER <queue> process
+  72 spans: CONSUMER <queue> receive
+  100 spans: PRODUCER <queue> publish
+-- receive_telemetry run, three joined rows: message ID, producer trace, process trace
+  009a0b1f-ba45-40f4-9021-aad2330a1647 b537ade49e388fa29b842f1d3a3d2aa4 405d30e8b9b107273408a5cb946b8c03
+  02a5a441-336f-43af-951f-ae6c4d201952 dee823cf221e72b2a2af1ecf40dca152 9d3c7f52f76c5d3390b6aca712bb1094
+  03b86d78-b2c3-4bb3-832e-c2601bfd2267 b9a8c80cce62c729dfa7a0c9ae795ff6 20e8cb90708560b8dcf9bbfff5efd6ba
+HERO_MEASURE: messages_fulfilled[receive_telemetry]=100
+HERO_MEASURE: joined_messages[receive_telemetry]=100
+HERO_MEASURE: one_trace_messages[receive_telemetry]=0
+HERO_MEASURE: process_links_to_producer[receive_telemetry]=100
+HERO_MEASURE: unpaired_no_producer[receive_telemetry]=0
+HERO_MEASURE: unpaired_no_process[receive_telemetry]=0
+HERO_MEASURE: receive_spans[receive_telemetry]=72
+HERO_MEASURE: receive_links_to_producer[receive_telemetry]=0
+HERO_MEASURE: process_under_receive[receive_telemetry]=100
+-- one consumer trace, from the agent's OTLP output
+  opentelemetry-java-agent-072819-orders receive kind=5 span=40a0f266b5a6d9da parent=none links=
+    opentelemetry-java-agent-072819-orders process kind=5 span=caf5bdbab4cbb246 parent=40a0f266b5a6d9da links=e64d5691c37ec04b5d241b4bbf520b98
+    Sqs.DeleteMessageBatch kind=3 span=163722709ceac8b5 parent=40a0f266b5a6d9da links=
+HERO_RESULT: reproduced
+
