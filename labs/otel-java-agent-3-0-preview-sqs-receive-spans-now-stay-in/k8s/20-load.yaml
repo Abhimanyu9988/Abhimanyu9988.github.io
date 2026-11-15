@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: load
+  namespace: demo
+data:
+  load.py: |
+    # Places one order every 50 ms. Each order is one HTTP request, and orders turns it into one SQS message.
+    # FIRST gives each run its own order numbers, so a message from another run can never be counted as this run's.
+    import http.client, os, time
+    count, gap, first = int(os.environ["MESSAGES"]), 0.05, int(os.environ.get("FIRST", "1"))
+    conn, sent, errors = http.client.HTTPConnection("orders", 8080, timeout=30), 0, 0
+    for order in range(first, first + count):
+        began = time.time()
+        try:
+            conn.request("POST", "/orders/%d" % order)
+            reply = conn.getresponse()
+            reply.read()
+            ok = reply.status == 200
+        except Exception:
+            ok = False
+            conn.close()
+        sent, errors = sent + ok, errors + (not ok)
+        time.sleep(max(0, gap - (time.time() - began)))
+    print("LOAD sent=%d errors=%d" % (sent, errors))
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  volumes:
+    - name: load
+      configMap:
+        name: load
+  containers:
+    - name: load
+      image: python:3.12-slim
+      command: ["python", "/load/load.py"]
+      env:
+        - { name: MESSAGES, value: "400" }
+        - { name: FIRST, value: "FIRST" }
+      volumeMounts:
+        - { name: load, mountPath: /load }
