@@ -1,0 +1,31 @@
+{
+ "round": 1,
+ "Editor": [
+  {
+   "problem": "The brief's decision and takeaway promise that 'traces and detectors in Splunk are ready before 3.0', but nothing in the contract or in fix.sh looks at detectors or at what Splunk APM does with the new span names. The Splunk read-back only counts whether 10 preview traces come back and whether they contain both services. A reader whose detectors filter on operation names learns nothing they can act on, and that is the part of the story the docs do not cover.",
+   "fix": "Add a measurement 'splunk_operations_by_env' (kind comparison, op present, min_entities 2). In fix.sh, query Splunk APM for the sf_operation values on orders and fulfilment in both environments, $LAB_NAME and $LAB_NAME-v3. Use the service.request / spans MetricSets or the trace API on the sampled default and preview traces. Print the old and new operation names next to each other, so readers can see exactly which detector filters to update. If this cannot be measured, remove 'detectors' from the decision and the takeaway."
+  },
+  {
+   "problem": "The preview flag has no positive control, and the effective config is never captured. The receive runs check receive_spans > 0, but the preview run does not check that OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW actually took effect. If attach() fails to set it, the preview run quietly repeats the default run, and the article would report 'nothing changes on SQS' as a finding. attach() is not in the plan, so nobody can check it.",
+   "fix": "After each attach, print `kubectl exec <pod> -c app -- env | grep -E 'OTEL_|JAVA_TOOL'` for both services, along with the agent's startup version line from the logs. Save both as config-<run>.txt. In fix.sh, fail the preview run unless the pod env shows the flag set to true. Report new_style for the preview run as the observed effect, not as the gate."
+  },
+  {
+   "problem": "Runs follow one another on the same queue, and order numbers repeat (1\u2013100 appear in every run). A message left over from an earlier run can reach the next run's fresh fulfilment pod. That pushes up 'handled', and the gate handled >= sent can pass even when this run's own messages are missing. It also adds consumer spans with no producer, which skews the per-run counts.",
+   "fix": "Before each attach, wait until ApproximateNumberOfMessages and ApproximateNumberOfMessagesNotVisible are both 0 (or purge the queue and wait the 60 s purge window), and print the values. Give each run its own order-number prefix (for example default-1..400, preview-1..400) so fulfilled_count counts only the current run. Report no_producer and no_consumer for every run as HERO_MEASURE lines."
+  },
+  {
+   "problem": "The contract's headline measurements, one_trace_messages and process_links_to_producer, depend on a report() function that the plan does not show. The plan also never states the per-run denominators. Runs have 400 or 100 messages, so raw counts cannot be compared across runs.",
+   "fix": "Show report() in the plan. Have it emit HERO_MEASURE lines for one_trace_messages[run], process_links_to_producer[run], produced[run] and joined[run], plus linked_receive and under_receive for the receive runs, so the article can give each figure as N of joined. Every run's measurement then has its own denominator printed next to it."
+  }
+ ],
+ "Marketing": [
+  {
+   "problem": "The brief's decision and takeaway promise readers that their detectors in Splunk will be ready. No measurement looks at detectors. The lab only counts traces, links and span names, and reads 10 traces back. An article that opens on detectors would promise more than the proof shows.",
+   "fix": "Either remove detectors from the decision and takeaway and keep the promise to traces and span names, or add one measurement that shows a detector-relevant result. One example is the span names or operation names a detector would filter on, read back from Splunk APM in default and preview runs."
+  },
+  {
+   "problem": "The title says 'OTel Java Agent 3.0' and 'Your New Traces', but every number comes from the 2.33.1 agent with the preview flag. 3.0 is not released and the blog says the preview can still change. A reader who searches 3.0 and finds preview data may feel misled. 'Before You Upgrade' also points to an upgrade that can't be done yet.",
+   "fix": "Put the preview in the title and replace 'Upgrade' with what the reader gets. For example: 'OTel Java Agent 3.0 Preview on SQS: See Your New Traces in Splunk Before 3.0 Lands'. Keep the 2.33.1 preview wording near the top of the article."
+  }
+ ]
+}
