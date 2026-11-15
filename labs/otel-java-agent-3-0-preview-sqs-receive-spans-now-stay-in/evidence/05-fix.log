@@ -1,0 +1,125 @@
+$ bash fix.sh
+# exit 0 after 299s
+
+== 1. The before-check: the cluster's own data reaches Splunk
+cluster metric time series in Splunk: 2263
+== 2. The whole change: OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true on both services, receive telemetry at its default
+queue before the change: visible 0, in flight 0
+orders pod/orders-5b6b87cd86-qdm9d
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=orders -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819-v3,deployment.environment.name=opentelemetry-java-agent-072819-v3 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console
+orders preview flag inside the pod: true
+fulfilment pod/fulfilment-94bc747dd-jj275
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=fulfilment -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819-v3,deployment.environment.name=opentelemetry-java-agent-072819-v3 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console,logging-otlp
+fulfilment preview flag inside the pod: true
+jar unchanged from the first run
+pod/load condition met
+LOAD sent=400 errors=0
+preview run: orders 2001 to 2400, sent 400, fulfilled 400, producer spans 400, process spans 400, joined on message ID 400
+preview run: of 400 joined, sharing one trace 400, in a different trace 0, process spans linked to their producer trace 400
+preview run: unpaired, no process span 0, no producer span 0. Most process spans for one message: 1
+preview run: receive or poll spans 0, linked to a producer trace 0, process spans whose parent is one 0
+preview run: producer and process spans named operation first 800, queue first 0
+-- preview run, messaging span names and kinds the agent printed
+  41 spans: CLIENT delete <queue>
+  400 spans: CONSUMER process <queue>
+  400 spans: PRODUCER send <queue>
+-- preview run, three joined rows: message ID, producer trace, process trace
+  00111379-786e-4059-bd7e-bf1f99a821d2 56db67988b84f9e6b6338f605eb31f69 56db67988b84f9e6b6338f605eb31f69
+  00492040-e230-44e0-b06c-24b1d1f6d201 fef13cbc760f6b698bca1019e6fa7385 fef13cbc760f6b698bca1019e6fa7385
+  009b8889-7491-47b2-9cb0-c301a02e19e0 ea4b0ce6b5080620948e7c6432d7d5ef ea4b0ce6b5080620948e7c6432d7d5ef
+HERO_MEASURE: messages_fulfilled[preview]=400
+HERO_MEASURE: joined_messages[preview]=400
+HERO_MEASURE: one_trace_messages[preview]=400
+HERO_MEASURE: process_links_to_producer[preview]=400
+HERO_MEASURE: unpaired_no_producer[preview]=0
+HERO_MEASURE: unpaired_no_process[preview]=0
+HERO_MEASURE: new_style_span_names[preview]=800
+HERO_MEASURE: legacy_style_span_names[preview]=0
+-- one preview consumer trace from the agent's OTLP output, with parents and links
+  process opentelemetry-java-agent-072819-orders kind=5 span=b26e22d1a012ec15 parent=dc5b86ea8236734a links=0f873dfde46b28afd47705ecae7019f6
+  delete opentelemetry-java-agent-072819-orders kind=3 span=687f5a59bef805c2 parent=dc5b86ea8236734a links=
+== 3. One setting changed: receive telemetry on, on fulfilment only, preview still on, for 100 orders
+queue before the change: visible 0, in flight 0
+orders pod/orders-6957645fdd-wpnqv
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=orders -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819-v3,deployment.environment.name=opentelemetry-java-agent-072819-v3 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console
+orders preview flag inside the pod: true
+fulfilment pod/fulfilment-7464f8f555-zklfb
+  opentelemetry-javaagent - version: 2.33.1
+  image: maven:3.9.9-eclipse-temurin-21
+  agent jar: e43a270df53c6f423e0ab157be9c27ccc01d5dc3232e162fe54777573db2f149
+  JAVA_TOOL_OPTIONS=-javaagent:/lab/opentelemetry-javaagent.jar -Dotel.service.name=fulfilment -Dotel.exporter.otlp.endpoint=http://10.0.0.67:4318 -Dotel.resource.attributes=deployment.environment=opentelemetry-java-agent-072819-v3,deployment.environment.name=opentelemetry-java-agent-072819-v3 -Dotel.logs.exporter=none -Dotel.traces.exporter=otlp,console,logging-otlp -Dotel.instrumentation.common.messaging.experimental.receive-telemetry.enabled=true
+  OTEL_INSTRUMENTATION_COMMON_V3_PREVIEW=true
+fulfilment preview flag inside the pod: true
+jar unchanged from the first run
+pod/load condition met
+LOAD sent=100 errors=0
+receive_preview run: orders 3001 to 3100, sent 100, fulfilled 100, producer spans 100, process spans 100, joined on message ID 100
+receive_preview run: of 100 joined, sharing one trace 100, in a different trace 0, process spans linked to their producer trace 100
+receive_preview run: unpaired, no process span 0, no producer span 0. Most process spans for one message: 1
+receive_preview run: receive or poll spans 72, linked to a producer trace 100, process spans whose parent is one 0
+receive_preview run: producer and process spans named operation first 200, queue first 0
+-- receive_preview run, messaging span names and kinds the agent printed
+  10 spans: CLIENT delete <queue>
+  72 spans: CLIENT receive <queue>
+  100 spans: CONSUMER process <queue>
+  100 spans: PRODUCER send <queue>
+-- receive_preview run, three joined rows: message ID, producer trace, process trace
+  00832524-2dcc-4385-b98f-6f5b20e9f004 7a914222f6b1780fcb2f003ba25bbf7f 7a914222f6b1780fcb2f003ba25bbf7f
+  04729bfd-d94c-4f5a-a3fe-1f74b3a92eae e837f03d56e81cc754693f93ae2ad36e e837f03d56e81cc754693f93ae2ad36e
+  099f9a22-ffca-41ae-bd67-792a5a5d363e c64144190ad7a1f9fbe5837483bbd930 c64144190ad7a1f9fbe5837483bbd930
+HERO_MEASURE: messages_fulfilled[receive_preview]=100
+HERO_MEASURE: joined_messages[receive_preview]=100
+HERO_MEASURE: one_trace_messages[receive_preview]=100
+HERO_MEASURE: process_links_to_producer[receive_preview]=100
+HERO_MEASURE: unpaired_no_producer[receive_preview]=0
+HERO_MEASURE: unpaired_no_process[receive_preview]=0
+HERO_MEASURE: receive_spans[receive_preview]=72
+HERO_MEASURE: receive_links_to_producer[receive_preview]=100
+HERO_MEASURE: process_under_receive[receive_preview]=0
+-- one consumer trace, from the agent's OTLP output
+  process opentelemetry-java-agent-072819-orders kind=5 span=012491f5224f1496 parent=e0ae8f04704990b2 links=27c50779b0dcaab5d0f6a5cb4b80daa5
+  delete opentelemetry-java-agent-072819-orders kind=3 span=4b95eb8ad32c49fc parent=e0ae8f04704990b2 links=
+== 4. What Splunk Observability Cloud shows: sampled preview traces, then the operation names a filter or chart in Splunk APM would use
+  t+20s: sampled preview traces Splunk returns=7, holding both services=7, of 10
+  t+48s: sampled preview traces Splunk returns=7, holding both services=7, of 10
+  t+72s: sampled preview traces Splunk returns=10, holding both services=10, of 10
+-- operation names Splunk APM holds for the default traces (service, operation)
+  fulfilment Sqs.DeleteMessageBatch
+  fulfilment opentelemetry-java-agent-{ID}-orders process
+  orders POST /orders/{id}
+  orders opentelemetry-java-agent-{ID}-orders publish
+default operation names in Splunk that start with the operation: 0
+HERO_MEASURE: splunk_operation_first_names[default]=0
+-- operation names Splunk APM holds for the preview traces (service, operation)
+  fulfilment delete opentelemetry-java-agent-{ID}-orders
+  fulfilment process opentelemetry-java-agent-{ID}-orders
+  orders POST /orders/{id}
+  orders send opentelemetry-java-agent-{ID}-orders
+preview operation names in Splunk that start with the operation: 3
+HERO_MEASURE: splunk_operation_first_names[preview]=3
+-- the preview service map in Splunk (environment opentelemetry-java-agent-072819-v3)
+  fulfilment inferred=false
+  sqs inferred=true
+  orders inferred=false
+  fulfilment -> sqs
+  orders -> fulfilment
+  orders -> sqs
+  sqs -> fulfilment
+sampled preview traces Splunk returns: 10 of 10
+sampled preview traces holding both services in Splunk: 10 of 10
+HERO_MEASURE: splunk_preview_traces_found=10
+HERO_MEASURE: splunk_preview_traces_both_services=10
+HERO_RESULT: fixed
+
