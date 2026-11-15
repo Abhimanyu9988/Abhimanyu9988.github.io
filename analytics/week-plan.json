@@ -1,13 +1,13 @@
 {
  "week": "2026-W46",
  "target": 3,
- "created": "2026-11-12",
+ "created": "2026-11-15",
  "topics": [
   {
-   "issue": 189,
-   "title": "One Flag Shows What OTel Java Agent 3.0 Changes in Your Splunk Charts",
+   "issue": 201,
+   "title": "OTel Java Agent 3.0 on SQS: See Your New Traces in Splunk Before You Upgrade",
    "state": "queued",
-   "signal": "The OpenTelemetry project's own blog asks Java agent users to preview 3.0 now and lists renamed database, code and messaging names and a pool metric unit change from milliseconds to seconds.",
+   "signal": "open issue, 6 comments, on SQS and Kafka receive telemetry under the new messaging conventions",
    "confirmed": true,
    "picked": true,
    "chat": true,
