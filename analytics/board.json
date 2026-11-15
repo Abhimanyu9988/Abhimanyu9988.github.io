@@ -1,14 +1,7 @@
 {
- "updated": "2026-11-15T22:13:53Z",
+ "updated": "2026-11-15T22:22:50Z",
  "columns": {
   "needs": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/202",
-    "kind": "Approve or reject",
-    "title": "OTel Java Agent 3.0 Preview: SQS Receive Spans Now Stay in One Trace in Splunk",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/202",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
     "kind": "Review",
