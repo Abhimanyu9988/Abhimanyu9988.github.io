@@ -264,6 +264,12 @@ A pod pinned with `nodeName` asked for 500m of CPU, and the rollout never finish
 
 The sweep spent 40 minutes on a leftover VPC, and one 504 on a download then failed a paid lab. `destroy` now also clears leftover security groups, the sweep tries a lab once, and lab rules say every download retries.
 
+## 2026-11-16: The rehearsal checks the lab runner's tools and the evidence size
+
+Issue 203 lost two paid runs to what the rehearsal couldn't see: the analysis used python3, which the runner has and
+`lab.Dockerfile` doesn't, and a step printed more than the 12,000 characters the evidence keeps. `rehearse.sh` now replaces
+the tools the lab image lacks with stubs that fail, and fails a step that prints more than 11,000 characters.
+
 ## 2026-11-05: Labs rehearse on Kubernetes before AWS
 
 The free check ran in Docker, so a failure that only appears on a cluster still cost a paid run. `lab-check.yml` now runs the real scripts on a small cluster with a t3.large's CPU. It can't test Terraform or EKS.
