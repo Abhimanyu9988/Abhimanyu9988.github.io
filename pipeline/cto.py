@@ -714,7 +714,8 @@ def todays_post(text, day):
     return todays_entry(text, day)[1]
 
 def todays_article(day):
-    """The ShowMerit article dated `day` that has LinkedIn text, or None."""
+    """The ShowMerit article whose LinkedIn post is due on `day`, or None. That's its `linkedin_date` when set (an article
+    published off-schedule, with its post sent on a later morning), otherwise its publish `date`."""
     try:
         import yaml, comments
     except ImportError:
@@ -727,7 +728,7 @@ def todays_article(day):
             meta = yaml.safe_load(parts[1]) or {}
         except yaml.YAMLError:
             continue
-        if str(meta.get("date")) == day and str(meta.get("linkedin") or "").strip():
+        if str(meta.get("linkedin_date") or meta.get("date")) == day and str(meta.get("linkedin") or "").strip():
             return {"name": a["name"], "title": str(meta.get("title", "")), "linkedin": str(meta["linkedin"]).strip(),
                     "body": parts[2]}
     return None
