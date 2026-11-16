@@ -1,0 +1,440 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 3 is below 4",
+  "editorial: The opening promises more than the evidence shows. It says Splunk's Kubernetes metrics stayed at available 1 after every one of the five deletions. The body says the chart caught one dip in phase 2, and splunk_k8s_view only measured the two phase-1 deletions. Fix: Limit the opening to what was measured: in the two phase-1 deletions, the 10 s k8s.deployment.available points stayed at 1 while kubectl showed 0 for about 2 s. Mention the one phase-2 dip. Otherwise, add per-deletion Kubernetes measurements for receiver-1..3.",
+  "technical: Time not RUNNING is understated when one deletion causes several restarts. analyze.sh takes only the first RESTARTING and the next RUNNING after each deletion, so a deletion that caused 3 restarts is reported as 5.0 s. Fix: Add up every RESTARTING-to-RUNNING interval between one deletion and the next, and publish a phase-2 table with restarts per deletion and total seconds not RUNNING. Rewrite the TL;DR line to match.",
+  "technical: Phase 2 changed more than the receiver, and the headline's 7 restarts come from extra restarts per deletion that the post doesn't explain. Phase 1 deletions were 45 s apart and phase 2 deletions 30 s apart. Restarts per deletion went from 1 to 2 or 3 with no cause recorded. Fix: Remove 'the only change' and state the different spacing. Record Flink's /jobs/<jid>/exceptions root cause for each restart, so the reader can see why one deletion produced 3 restarts. Otherwise, rerun phase 2 with 45 s spacing, so only the receiver changes.",
+  "technical: The explanation for the checkpoint gap doesn't fit its size. With checkpoints every 5 s, a scrape inside a 10 s point is off by at most about 2 checkpoints at each instant. The gap was 5 (53 vs 58), and the post presents the explanation as fact. Fix: Show the raw Splunk points and REST samples at tb and te, and work out the largest offset the timing could cause. If 5 is beyond it, say the cause is unknown and present it as an open item, not an explanation.",
+  "technical: Readers can't run the lab from the post, because the repository link doesn't match the lab that ran. Fix: Point the git clone, cd and footer links to the published LAB_URL and slug, and check that the 3-step commands run from that path.",
+  "editorial: One sentence makes Splunk the subject of what the Kubernetes view didn't show, when the cause is the 10 s k8s_cluster interval and how Kubernetes replaces pods. Fix: Rewrite it to give the reason and what Splunk makes possible: 'At the chart's 10 s k8s_cluster interval, a 2 s replacement usually falls between reports, and that is why the Flink receiver's restart counter is the signal to watch in Splunk.'",
+  "ChatGPT did not approve: The article and LinkedIn post overstate the Kubernetes/Splunk evidence for all five deletions. Evidence shows Splunk Kubernetes metrics were read and stayed flat only for the two baseline deletions: `k8s.deployment.available` stayed 1 and `k8s.container.restarts` stayed 0. The fix phase log does not Fix: Either add evidence for the receiver-phase Kubernetes metrics for all three deletions, or narrow the claim to the two baseline deletions. Remove \u201cevery time\u201d/\u201cEach time\u201d and reconcile the \u201cone dip in the second phase\u201d statement with the actual data.",
+  "ChatGPT did not approve: The claim that Kubernetes had a new pod Ready in 2 seconds for each of the five deletions is unsupported. The evidence contains Ready-gap measurements of 2.0 s only for the two baseline deletions; no Ready-gap data is shown for the three receiver-phase deletions. Fix: Change the claim to say the two baseline deletions had new pods Ready after 2.0 s, or provide receiver-phase Ready-gap evidence for the remaining three deletions.",
+  "ChatGPT did not approve: The run instructions and public-code link do not match the provided lab evidence. The article tells readers to clone `github.com/Abhimanyu9988/showmerit` and `cd showmerit/labs/count-flink-restarts-in-splunk-with-opentelemetry-3-pod`, but the provided lab URL/path is `github.com/Abhimanyu9988/Abhima Fix: Update the clone command, `cd` path, and final lab-code link to the actual repository/path shown by the evidence, or provide evidence that the `showmerit` path exists and contains the same runnable lab.",
+  "ChatGPT did not approve: The article claims \u201cThe receiver type is `flink_metrics`; the older `flinkmetrics` name still works.\u201d The evidence only shows the `flink_metrics` receiver being used; it does not show or cite proof that the older `flinkmetrics` name still works. Fix: Remove the `flinkmetrics` compatibility claim, or add evidence from the receiver documentation or a command run showing that alias works."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "3 Pod Deletions",
+    "number": "3",
+    "noun": "deletion",
+    "supported": true,
+    "where": "05-fix.log:24",
+    "basis": "measurement",
+    "validated": true
+   },
+   {
+    "claim": "7 Restarts",
+    "number": "7",
+    "noun": "restart",
+    "supported": true,
+    "where": "05-fix.log:11",
+    "basis": "measurement",
+    "validated": true
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "restarts_injected",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:17"
+    },
+    {
+     "id": "flink_rest_restarts",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:18"
+    },
+    {
+     "id": "deletion_not_running_s",
+     "status": "ok",
+     "values": 5,
+     "needed": 5,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:19"
+    },
+    {
+     "id": "deletion_running_unrecovered_s",
+     "status": "ok",
+     "values": 5,
+     "needed": 5,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:20"
+    },
+    {
+     "id": "splunk_k8s_view",
+     "status": "ok",
+     "values": 9,
+     "needed": 9,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:35"
+    },
+    {
+     "id": "restart_increase",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:30"
+    },
+    {
+     "id": "splunk_rest_restart_diff",
+     "status": "ok",
+     "values": 1,
+     "needed": 1,
+     "provenance": "corroborated",
+     "where": "05-fix.log:32"
+    },
+    {
+     "id": "restart_visible_lag_s",
+     "status": "ok",
+     "values": 14,
+     "needed": 6,
+     "provenance": "self_reported",
+     "where": "05-fix.log:35"
+    },
+    {
+     "id": "checkpoints",
+     "status": "ok",
+     "values": 4,
+     "needed": 4,
+     "provenance": "self_reported",
+     "where": "05-fix.log:58"
+    },
+    {
+     "id": "splunk_gc_series",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:66"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The restart match holds up. Splunk's flink.job.restart.count and Flink's numRestarts both went from 2 to 9 when read at the same two instants, a difference of 0. The analysis code shows how the comparison was made.",
+     "The opening says Splunk's Kubernetes metrics 'stayed flat' after every one of the five deletions. Later the post admits the chart dipped once in phase 2, and the contract only measured the Kubernetes view for the two phase-1 deletions.",
+     "analyze.sh times only the first RESTARTING-to-RUNNING interval after each deletion. In phase 2 one deletion caused 3 restarts and two caused 2, so 'each job-state gap was still 5.0 s' leaves out most of the time the job was not RUNNING.",
+     "The post says the receiver was 'the only change' in phase 2, but the deletions were 30 s apart instead of 45 s. Restarts per deletion also went from 1 to 2 or 3 with no cause given. The checkpoint explanation also fails: 5 checkpoints of difference (53 vs 58) is more than a 10 s point offset at each end can produce."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader and the decision are clear, and the main finding is useful: pod-level Kubernetes metrics and job state miss the restarts, and the receiver's counter in Splunk matches Flink's own count exactly.",
+     "The opening sentence promises more than the body shows. It says the Kubernetes view stayed flat 'each time', and the body later says one dip appeared.",
+     "The title's '7 restarts' depends on extra restarts per deletion that the post never explains. A sharp reader will ask why phase 1 counted 1 restart per deletion and phase 2 counted 2 or 3.",
+     "Trade-offs and the untested areas are stated honestly. The tables and the SignalFlow program read like a real session, not generated text."
+    ]
+   },
+   "marketing": {
+    "score": 3,
+    "reasons": [
+     "The brief rates demand as weak. No reactions, comments or view counts are linked, so the score cannot go above 3.",
+     "The title uses words a Flink-on-Kubernetes engineer would search for: count Flink restarts, Splunk, OpenTelemetry.",
+     "Abhi is a code owner of the receiver, which gives the post credibility with the OpenTelemetry audience. That is not evidence of demand."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "editorial",
+    "problem": "The opening promises more than the evidence shows. It says Splunk's Kubernetes metrics stayed at available 1 after every one of the five deletions. The body says the chart caught one dip in phase 2, and splunk_k8s_view only measured the two phase-1 deletions.",
+    "evidence": "\"I deleted a Flink TaskManager pod five times... the Kubernetes metrics in Splunk Observability Cloud stayed flat\" vs \"In five deletions, this chart caught one dip, in the second phase.\"",
+    "fix": "Limit the opening to what was measured: in the two phase-1 deletions, the 10 s k8s.deployment.available points stayed at 1 while kubectl showed 0 for about 2 s. Mention the one phase-2 dip. Otherwise, add per-deletion Kubernetes measurements for receiver-1..3."
+   },
+   {
+    "dimension": "technical",
+    "problem": "Time not RUNNING is understated when one deletion causes several restarts. analyze.sh takes only the first RESTARTING and the next RUNNING after each deletion, so a deletion that caused 3 restarts is reported as 5.0 s.",
+    "evidence": "analyze.sh: down = next(... 'RESTARTING' and tk - 1 <= at < bound); post: \"Each job-state gap was still 5.0 s.\"",
+    "fix": "Add up every RESTARTING-to-RUNNING interval between one deletion and the next, and publish a phase-2 table with restarts per deletion and total seconds not RUNNING. Rewrite the TL;DR line to match."
+   },
+   {
+    "dimension": "technical",
+    "problem": "Phase 2 changed more than the receiver, and the headline's 7 restarts come from extra restarts per deletion that the post doesn't explain. Phase 1 deletions were 45 s apart and phase 2 deletions 30 s apart. Restarts per deletion went from 1 to 2 or 3 with no cause recorded.",
+    "evidence": "\"Phase 2 added the receiver, the only change.\"; fix.sh: kill_tm ...; sleep 30; \"I recorded the counts, not the cause.\"",
+    "fix": "Remove 'the only change' and state the different spacing. Record Flink's /jobs/<jid>/exceptions root cause for each restart, so the reader can see why one deletion produced 3 restarts. Otherwise, rerun phase 2 with 45 s spacing, so only the receiver changes."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The explanation for the checkpoint gap doesn't fit its size. With checkpoints every 5 s, a scrape inside a 10 s point is off by at most about 2 checkpoints at each instant. The gap was 5 (53 vs 58), and the post presents the explanation as fact.",
+    "evidence": "\"Completed checkpoints were +53 in Flink's REST API and +58 in Splunk. ... a 10 s Splunk point holds a value scraped somewhere inside it\"",
+    "fix": "Show the raw Splunk points and REST samples at tb and te, and work out the largest offset the timing could cause. If 5 is beyond it, say the cause is unknown and present it as an open item, not an explanation."
+   },
+   {
+    "dimension": "technical",
+    "problem": "Readers can't run the lab from the post, because the repository link doesn't match the lab that ran.",
+    "evidence": "Post: github.com/Abhimanyu9988/showmerit/.../labs/count-flink-restarts-in-splunk-with-opentelemetry-3-pod; LAB_URL: github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/flink-restarts-hide-behind-running-count",
+    "fix": "Point the git clone, cd and footer links to the published LAB_URL and slug, and check that the 3-step commands run from that path."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "One sentence makes Splunk the subject of what the Kubernetes view didn't show, when the cause is the 10 s k8s_cluster interval and how Kubernetes replaces pods.",
+    "evidence": "\"Kubernetes saw the gap: kubectl read 0 available TaskManagers for about 2 seconds each time. Splunk didn't.\"",
+    "fix": "Rewrite it to give the reason and what Splunk makes possible: 'At the chart's 10 s k8s_cluster interval, a 2 s replacement usually falls between reports, and that is why the Flink receiver's restart counter is the signal to watch in Splunk.'"
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "Flink's monitoring guide lists restarts and checkpoints among the first metrics to watch",
+    "class": "sourced",
+    "source_ref": "https://flink.apache.org/2019/02/21/monitoring-apache-flink-applications-101/"
+   },
+   {
+    "text": "An AWS Managed Flink application can report RUNNING while its job keeps failing and restarting",
+    "class": "sourced",
+    "source_ref": "https://aws.amazon.com/blogs/big-data/part-2-deep-dive-into-the-amazon-managed-service-for-apache-fink-application-lifecycle"
+   },
+   {
+    "text": "Flink's own test suite detects restarts with numRestarts",
+    "class": "sourced",
+    "source_ref": "https://issues.apache.org/jira/browse/FLINK-23807"
+   },
+   {
+    "text": "Flink marks a job RUNNING when scheduling starts, before every task runs",
+    "class": "sourced",
+    "source_ref": "https://issues.apache.org/jira/browse/FLINK-34907"
+   },
+   {
+    "text": "The Flink receiver is alpha, so metric names can still change",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/flinkmetricsreceiver"
+   },
+   {
+    "text": "The Flink receiver isn't included in the Splunk distribution of the Collector",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The older 'flinkmetrics' receiver type name still works",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The chart's k8s_cluster receiver reports every 10 s by default",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "A dashboard that polls job state every 10 s or more can miss the RESTARTING period entirely",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Most of the 17 to 21 s visibility lag comes from the 10 s collection interval and the 5 s batch timeout",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "A 5 s collection_interval should shorten the lag",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The completed-checkpoint gap (53 vs 58) comes from where the scrape falls inside each 10 s point",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Deleting a TaskManager pod stands in for a node drain, an eviction or an out-of-memory kill",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "A detector on the increase of flink.job.restart.count catches restarts that job state and pod health don't show",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/dce97c8b60"
+ },
+ "brief": {
+  "reader": "Data or platform engineer running Apache Flink streaming jobs on Kubernetes, watching them in Splunk Observability Cloud",
+  "decision": "Whether job state and pod health are enough to know a Flink job is healthy, or whether they need Flink's restart and checkpoint counters in Splunk, and how to get them there",
+  "question": "My Flink job says RUNNING, so is it fine, and how do I see its restarts and checkpoints in Splunk?",
+  "takeaway": "When a TaskManager is lost, Flink restarts the job and says RUNNING again, sometimes before every task runs, and Kubernetes replaces the pod rather than restarting a container. Measured on EKS, per deletion: seconds not RUNNING, seconds RUNNING before every task ran and a new checkpoint completed, what Splunk's Kubernetes metrics show, and whether Splunk's flink.job.restart.count from the OpenTelemetry Flink receiver rose by exactly the restarts Flink's REST API counted between the same two instants, with point and arrival lag.",
+  "open_question": "With a Flink 1.20 job on EKS and a fixed-delay restart strategy, when TaskManager pods are deleted two times without the receiver and three times with it: per deletion, how long is the job not RUNNING and how long does it say RUNNING before every task runs and a new checkpoint completes; what do Splunk's TaskManager Kubernetes metrics show; does Splunk's restart counter rise by exactly the restarts Flink's REST API counts between the same instants; how many seconds until each restart is in a 10-second point and in a 3-second poll; and do checkpoint counters and JobManager and TaskManager GC series arrive?",
+  "reasons": [
+   "Title rule: the title is chosen only after splunk_rest_restart_diff is known. Diff 0: 'Flink Restarts Hide Behind RUNNING: Count Them in Splunk With OpenTelemetry'. Diff above 0: 'Flink Says RUNNING After Every Restart: What the OpenTelemetry Receiver Shows in Splunk, and How to Line It Up'. If deletion_running_unrecovered_s is near 0, lead with the restart count instead of 'hide behind RUNNING'",
+   "Abhi asked for a Flink article for Wednesday 18 November 2026; he is a code owner of the OpenTelemetry Flink metrics receiver",
+   "Serves the OpenTelemetry and Splunk MVP goals with a lab on EKS",
+   "Uses only released components: Flink 1.20, Collector contrib 0.165.0 and the Splunk OTel Collector chart 0.163.1"
+  ],
+  "measurements": [
+   {
+    "id": "restarts_injected",
+    "what": "TaskManager pods deleted in each phase: baseline, receiver",
+    "kind": "count",
+    "unit": "deletions",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "flink_rest_restarts",
+    "what": "increase of Flink's own numRestarts in each phase, from its REST API: baseline, receiver",
+    "kind": "failure",
+    "unit": "restarts",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "deletion_not_running_s",
+    "what": "seconds from Flink's RESTARTING timestamp to its next RUNNING timestamp, per deletion: baseline-1..2, receiver-1..3",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 5
+   },
+   {
+    "id": "deletion_running_unrecovered_s",
+    "what": "one-second samples where the job said RUNNING but not every task ran or no new checkpoint had completed, per deletion: baseline-1..2, receiver-1..3",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 5
+   },
+   {
+    "id": "splunk_k8s_view",
+    "what": "TaskManager in Splunk's k8s metrics (restarts rollup max, available rollup min) and kubectl each second; per deletion the new pod's Ready gap: ready_gap_s-1/2, kubectl_available_min-1/2, available_min-1/2, kubectl_container_restarts_max, container_restarts_max, taskmanager_pod_series",
+    "kind": "comparison",
+    "unit": "values",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 9
+   },
+   {
+    "id": "restart_increase",
+    "what": "increase of the restart counter between two instants around the receiver deletions, in Splunk's flink.job.restart.count and in Flink's REST API numRestarts: splunk, rest",
+    "kind": "comparison",
+    "unit": "restarts",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "splunk_rest_restart_diff",
+    "what": "absolute difference between those two increases: receiver",
+    "kind": "comparison",
+    "unit": "restarts",
+    "accept": {
+     "op": "le",
+     "value": 0
+    },
+    "min_entities": 1
+   },
+   {
+    "id": "restart_visible_lag_s",
+    "what": "seconds from each restart in Flink's REST API to the end of the first 10 s Splunk point holding it, and to the first 3 s poll returning it: point-1..3, arrival-1..3",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "checkpoints",
+    "what": "checkpoints completed and failed between the same two instants, from Flink's REST API and from Splunk's flink.job.checkpoint.count: rest-completed, rest-failed, splunk-completed, splunk-failed",
+    "kind": "comparison",
+    "unit": "checkpoints",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 4
+   },
+   {
+    "id": "splunk_gc_series",
+    "what": "flink.jvm.gc.collections.count series in Splunk for each Flink process type: jobmanager, taskmanager",
+    "kind": "count",
+    "unit": "series",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   }
+  ],
+  "adds": "Flink's monitoring guide, FLINK-34907 and the AWS Managed Flink blog say job state alone hides restarts; Flink's own tests count restarts with numRestarts (FLINK-23807). Splunk's docs show Flink through the Prometheus receiver. This lab runs the OpenTelemetry Flink receiver (contrib 0.165.0) next to the Splunk distribution on EKS, deletes TaskManager pods on purpose, and checks Splunk's counters against Flink's REST API at the same instants, restart by restart.",
+  "tradeoffs": [
+   "The Flink receiver is in the upstream contrib Collector, not the Splunk distribution, so the lab runs a second, small Collector that sends through the Splunk agent",
+   "Deleting a TaskManager pod stands in for a node drain, an eviction or an out-of-memory kill; other failure causes are not tested",
+   "One job, one TaskManager with two slots, one restart strategy, and a 10-second collection interval; visibility lag depends on that interval",
+   "The receiver is alpha; metric names can still change",
+   "Kubernetes metrics see pods, not jobs: a deleted pod is replaced by a new one, so the container restart count need not move"
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "Abhi asked for this topic: he is a code owner of the receiver. FLINK-34907 and the AWS blog above describe a job that says RUNNING while it is not fully running or is restarting. No reaction or view counts were collected."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "existing_pages": [
+   {
+    "title": "Monitoring Apache Flink Applications 101",
+    "url": "https://flink.apache.org/2019/02/21/monitoring-apache-flink-applications-101/",
+    "covers": "Which Flink metrics to watch, including restarts and checkpoints, with Grafana examples."
+   },
+   {
+    "title": "Deep dive into the Amazon Managed Service for Apache Flink application lifecycle (part 2)",
+    "url": "https://aws.amazon.com/blogs/big-data/part-2-deep-dive-into-the-amazon-managed-service-for-apache-fink-application-lifecycle",
+    "covers": "That the application can say RUNNING while the Flink job fails and restarts."
+   },
+   {
+    "title": "Monitor applications with Prometheus metrics (Splunk docs)",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/available-data-sources/supported-integrations-in-splunk-observability-cloud/opentelemetry-other-ingestion-methods/monitor-applications-with-prometheus-metrics",
+    "covers": "Getting Flink metrics into Splunk with the Prometheus receiver."
+   },
+   {
+    "title": "FLINK-34907: jobRunningTs should be the timestamp that all tasks are running",
+    "url": "https://issues.apache.org/jira/browse/FLINK-34907",
+    "covers": "Flink marks a job RUNNING when scheduling starts, before all tasks are running."
+   },
+   {
+    "title": "FLINK-23807: use numRestarts to detect restarts in tests",
+    "url": "https://issues.apache.org/jira/browse/FLINK-23807",
+    "covers": "Flink's own test suite detects job restarts through the numRestarts metric."
+   },
+   {
+    "title": "Flink metrics receiver (OpenTelemetry Collector contrib)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/flinkmetricsreceiver",
+    "covers": "The receiver's settings and metric list."
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 1.0674
+}
