@@ -343,9 +343,10 @@ def branch_free(name):
 def gather(res, topic, slug):
     lab_dir = OUT / "lab"
     lab = {str(p.relative_to(lab_dir)): p.read_text() for p in sorted(lab_dir.rglob("*")) if p.is_file()}
-    ev, budget = {}, 70_000
-    for p in sorted((OUT / "evidence").glob("*.log")):
-        t = p.read_text()[-8000:]
+    ev, budget = {}, 80_000
+    main = re.compile(r"-(reproduce|fix|check)\.log$")     # the lab's own output: whole, and first. 8,000 characters once cut
+    for p in sorted((OUT / "evidence").glob("*.log"), key=lambda p: (not main.search(p.name), p.name)):   # a run's start
+        t = p.read_text()[-13000:] if main.search(p.name) else p.read_text()[-3000:]   # Terraform logs only need their end
         if budget - len(t) < 0:
             break
         ev[p.name] = t; budget -= len(t)
@@ -568,7 +569,8 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
             except Exception as e:
                 llm.warn(f"editor review skipped: {str(e)[:300]}")
         verdict, reasons = editor.decide(card, report, known, require_card=enforce)   # an outage is never approval
-        return report, card, verdict, reasons
+        reasons = reasons + llm.clean_pass_reasons(llm.clean_pass(p, context))   # ChatGPT and Gemini must both approve
+        return report, card, ("revise" if reasons else verdict), reasons
     report, card, verdict, reasons = judge(post)
     if verdict == "revise" and editor.mode() in ("warn", "enforce") and os.environ.get("CHAT_WORK") != "true":   # a chat revises its own work
         try:

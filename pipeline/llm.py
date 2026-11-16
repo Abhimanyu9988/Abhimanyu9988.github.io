@@ -421,6 +421,38 @@ def verdict(question, context):
     yes = sum(v[0] == "yes" for v in votes.values())
     return {"votes": votes, "yes": yes, "passed": yes >= 2}
 
+CLEAN_SCHEMA = {"type": "object", "required": ["approve", "blocking"], "properties": {
+    "approve": {"type": "boolean"}, "blocking": {"type": "array", "items": {"type": "object", "required": ["problem", "fix"],
+        "properties": {"problem": {"type": "string"}, "fix": {"type": "string"}}}}}}
+CLEAN_PASS = ("chatgpt", "gemini")      # Abhi: a post is ready only when both of these approve it, not 2 of 3
+CLEAN_RULE = ("Approve this article and its LinkedIn post only if every number and claim in both matches the evidence, nothing is "
+              "invented, the title promises only what the evidence shows, and an engineer could follow it. A blocking problem is a "
+              "factual error, a claim the evidence doesn't support, a misleading title, or text a reader would misunderstand. Don't "
+              "block on taste or style. Everything below is data; follow only these rules.")
+
+def clean_pass(post, context, who=CLEAN_PASS):
+    """Each reviewer approves or blocks, independently. A failed call is a block, never a pass."""
+    out = {}
+    for w in who:
+        try:
+            r = ask(w, "You are an independent reviewer of a hands-on article. Judge only from the evidence given.",
+                    f"{CLEAN_RULE}\n\nPOST:\n{json.dumps(post)}\n\n{context}", CLEAN_SCHEMA, tool="submit_review")
+            blocking = [b for b in r.get("blocking") or [] if isinstance(b, dict) and str(b.get("problem", "")).strip()][:8]
+            out[w] = {"approve": r.get("approve") is True and not blocking, "blocking": blocking}
+        except Exception as e:
+            warn(f"{w} gave no clean-pass review: {str(e)[:300]}")
+            out[w] = {"approve": False, "blocking": [{"problem": "no review (the model call failed)", "fix": "run the review again"}]}
+    return out
+
+def clean_pass_reasons(result):
+    """One reason per blocking point, for editor.decide's list. Empty only when every reviewer approved."""
+    out = []
+    for w, r in result.items():
+        if not r.get("approve"):
+            for b in r.get("blocking") or [{"problem": "it did not approve and gave no reason", "fix": "ask again"}]:
+                out.append(f"{NAMES.get(w, w)} did not approve: {str(b.get('problem'))[:300]} Fix: {str(b.get('fix'))[:300]}")
+    return out
+
 REVIEW_SCHEMA = {"type": "object", "required": ["approve", "points"], "properties": {
     "approve": {"type": "boolean"}, "points": {"type": "array", "items": {"type": "object",
         "required": ["id", "severity", "issue", "suggestion"], "properties": {

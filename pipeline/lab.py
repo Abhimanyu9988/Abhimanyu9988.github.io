@@ -697,6 +697,18 @@ def main():
         refused = editor.lab_refusal(issue.get("body"))
         if refused:                                 # before any model or AWS money is spent
             raise RuntimeError(refused)
+        if not DRY:                                 # before any model or AWS money is spent on this topic again
+            import budget
+            try:
+                comments = gh("GET", f"/repos/{HOME_REPO}/issues/{issue_no}/comments?per_page=100") or []
+                used, cap = budget.lab_spent(issue_no), budget.lab_cap(comments)
+            except Exception as e:                      # a limit that can't be read stops the run, like the monthly budget
+                raise RuntimeError(f"the topic's lab spend could not be read, so AWS was not touched: {str(e)[:200]}")
+            if used + budget.AWS_LAB_USD > cap:
+                result["last_failure"] = {"step": "topic lab limit (AWS was not touched)",
+                                          "output": f"this topic has used ${used:.2f} of its ${cap:.2f} limit for paid lab runs"}
+                raise RuntimeError(f"this topic has used ${used:.2f} of its ${cap:.2f} lab limit, so AWS was not touched. "
+                                   "Abhi can comment \"raise lab limit to $N\" on the issue")
         rules = LAB_RULES + ("\n\n" + BUILD_RULES if kind == "build" else "") + editor.lab_rules(issue.get("body"))
         goal = ("build something useful on AWS and prove it works with real output" if kind == "build" else
                 "reproduce a real problem on AWS and then fix it")
