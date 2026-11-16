@@ -31,7 +31,8 @@ LANES = {"otel_auto_instrumentation": "OpenTelemetry auto-instrumentation, the O
          "splunk_observability": "Observability on Splunk Observability Cloud"}
 MAX_PER_LANE = 2                               # no lane fills a week, so the plan keeps its variety
 WISHLIST = re.compile(r"(?i)\b(request|enhancement|feature|proposal|roadmap)\b")   # someone wanting something new isn't someone stuck
-MIN_REACTIONS, MIN_VIEWS = 3, 100               # below this, one person's question isn't yet a hot problem
+MIN_REACTIONS, MIN_VIEWS = 8, 500               # below this, one person's question isn't yet a hot problem. Raised from 3 and
+                                               # 100 on 16 Nov 2026: single low-reaction issues never reached 4/5
 ROUNDS = 2                                     # a second Editor call, told why the first topics were refused
 SPARES, EXTRA_IDEAS = 1, 3                     # a spare covers a failed lab. Extra ideas cover topics the checks reject
 # Abhi's model trial. Each lab and article uses one, in turn, and the same reviewers judge them all, so the stats compare like with like.

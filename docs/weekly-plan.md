@@ -3,7 +3,11 @@
 Planning here adds no API cost. A chat session does the research and writing, and one ChatGPT call gives the second opinion.
 
 1. Clone `Abhimanyu9988/Abhimanyu9988.github.io` and read `AGENTS.md`, `pipeline/week.py`, `pipeline/schemas/brief.json` and `pipeline/roles/prompts/editor.md`.
-2. Find real complaints from the last 30 days in the repos in `week.HOT_REPOS` and `radar.WATCH`, with `gh api search/issues`, and on the web. Skip feature requests. Record real counts.
+2. Find real complaints from the last 30 days in the repos in `week.HOT_REPOS` and `radar.WATCH`, with `gh api search/issues`, and on the web. Skip feature requests. Record real counts. Demand must be strong: code refuses a topic unless its issue has at least 8 reactions and comments together, or its Stack Overflow question at least 500 views (`week.MIN_REACTIONS`, `week.MIN_VIEWS`). Search where strong demand lives:
+   - GitHub issues sorted by reactions and by comments, not by date, and duplicates of the same symptom (several reports beat one).
+   - Stack Overflow's most-viewed recent questions in `kubernetes`, `amazon-eks`, `amazon-ecs`, `opentelemetry` and `splunk`.
+   - Breaking or behaviour-changing items in this month's release notes for tools many people run (EKS, the OTel Collector and Java agent, the Splunk OTel Collector chart), when an issue shows people hitting them.
+   - Abhi's own edge, which no one else can write as credibly: the Collector receivers he owns (Apache Flink, Azure Data Explorer), the OTel Java agent, and Splunk Observability Cloud. A topic there still needs a real complaint behind it.
 3. Read his goals and ideas on the analytics branch (`analytics/goals.json`, `analytics/market-brief.md`) and existing topics in open `radar` issues.
 4. Write `week.target() + 1` topics: three a week unless `WEEK_TARGETS` says otherwise, plus one spare. Each serves a goal and has a lane from `week.LANES`, at most two per lane.
 5. Follow the Editor's rules: a real finding the docs don't give, one setting changed per run, the effective config shown, measured inside the problem's window, and no wait that won't fit a 14-minute script.
