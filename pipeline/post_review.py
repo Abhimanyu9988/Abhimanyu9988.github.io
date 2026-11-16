@@ -3,14 +3,14 @@
 
 Abhi's rule (16 Nov 2026): a post is ready only when both approve. The draft job runs the same check on every draft
 (draft.review_draft). This script runs it on an article written in Claude chat, before it is published, or on a live
-ShowMerit article. It writes nothing: the result is the job summary, and the job fails unless both approve.
+ShowMerit article. It writes nothing, not even its spend record (it holds no write token): the result is the job summary, and the job fails unless both approve.
 
   ARTICLE=<slug>  a ShowMerit article, content/abhimanyu/articles/<slug>.md, with labs/<slug>/evidence
   ISSUE_NO=<n>    a chat article, chat-work/<n>/post.json on branch chat/<n>, with the draft branch's evidence if any
 """
 import base64, json, os, re, sys
 import yaml
-import llm
+import budget, llm
 from radar import HOME_REPO, gh
 
 SITE_REPO = "Abhimanyu9988/showmerit"
@@ -73,6 +73,7 @@ def main():
     else:
         sys.exit("give ARTICLE (a ShowMerit slug) or ISSUE_NO (a chat topic number)")
     context = f"LAB README:\n{readme[:12000]}\n\nEVIDENCE:\n{json.dumps(ev)}"
+    budget.check()                                  # before the first paid call, as every job does
     result = llm.clean_pass(post, context)
     md = summary_md(name, result)
     print(md)

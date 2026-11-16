@@ -700,7 +700,12 @@ def main():
         if not DRY:                                 # before any model or AWS money is spent on this topic again
             import budget
             try:
-                comments = gh("GET", f"/repos/{HOME_REPO}/issues/{issue_no}/comments?per_page=100") or []
+                comments = []
+                for page in range(1, 11):              # Abhi's "raise lab limit" can be on any page
+                    got = gh("GET", f"/repos/{HOME_REPO}/issues/{issue_no}/comments?per_page=100&page={page}") or []
+                    comments += got if isinstance(got, list) else []
+                    if not isinstance(got, list) or len(got) < 100:
+                        break
                 used, cap = budget.lab_spent(issue_no), budget.lab_cap(comments)
             except Exception as e:                      # a limit that can't be read stops the run, like the monthly budget
                 raise RuntimeError(f"the topic's lab spend could not be read, so AWS was not touched: {str(e)[:200]}")
