@@ -2066,5 +2066,6 @@ _l16.clean_pass = lambda *a, **k: {"chatgpt": {"approve": False, "blocking": [{"
 check("secretary: a post ChatGPT or Gemini blocks falls back to the article's own", _c16.smart_post(_art, "n") == _art["linkedin"])
 _l16.ask, _l16.clean_pass = _ra, _rc
 check("secretary: an article day's news line is an opening, not a post", _c16.todays_entry(news_md, "2026-11-13")[0] == "opening")
+check("week: demand must be strong (8 reactions and comments, or 500 views)", week.MIN_REACTIONS == 8 and week.MIN_VIEWS == 500)
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
