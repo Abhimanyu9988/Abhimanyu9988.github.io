@@ -1,0 +1,230 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-src
+  namespace: demo
+data:
+  requirements.txt: |
+    flask==3.1.3
+    waitress==3.0.2
+    requests==2.34.2
+    opentelemetry-distro==0.66b2
+    opentelemetry-exporter-otlp-proto-http==1.45.2
+    opentelemetry-instrumentation-flask==0.66b2
+    opentelemetry-instrumentation-requests==0.66b2
+
+  inventory.py: |
+    # inventory: reserves stock. A fixed pool of sync workers, each request holds one for WORK_MS. During a brownout every
+    # request takes BROWNOUT_MS instead, as if a dependency were stuck. Requests a client already gave up on are still worked,
+    # because a sync worker can't tell, which is what makes a backlog expensive.
+    import os, threading, time
+    from flask import Flask, request
+    app = Flask(__name__)
+    WORK_MS = int(os.environ.get("WORK_MS", "40"))
+    STATE = os.environ.get("BROWNOUT_FILE", "/tmp/brownout")    # shared by every worker process
+    stats = {"handled": 0, "late": 0}
+    lock = threading.Lock()
+
+    @app.post("/admin/brownout")
+    def brownout():
+        secs, delay = float(request.args.get("seconds", "30")), int(request.args.get("delay_ms", "2000"))
+        until = time.time() + secs
+        with open(STATE, "w") as f:
+            f.write(f"{until} {delay}")
+        print(f"BROWNOUT start seconds={secs:g} delay_ms={delay} until={until:.0f}", flush=True)
+        return {"until": until}
+
+    def current_delay():
+        try:
+            until, delay = open(STATE).read().split()
+            return int(delay) if time.time() < float(until) else WORK_MS
+        except (OSError, ValueError):
+            return WORK_MS
+
+    @app.get("/reserve/<int:order>")
+    def reserve(order):
+        # orders sends the moment its own timeout runs out. Starting after that means nobody is waiting for this answer.
+        deadline = float(request.headers.get("X-Caller-Deadline", "0") or 0)
+        late = deadline > 0 and time.time() > deadline
+        time.sleep(current_delay() / 1000)
+        with lock:
+            stats["handled"] += 1
+            stats["late"] += late
+        return {"order": order, "reserved": True}
+
+    SERVER = {}   # the running waitress server, so the reporter can read its queue
+
+    def node_cpu():
+        # /proc/stat isn't namespaced, so this is the whole node: busy and total jiffies across all CPUs
+        f = [int(x) for x in open("/proc/stat").readline().split()[1:]]
+        return sum(f) - f[3] - f[4], sum(f)
+
+    def reporter():
+        # One line a second: requests finished and started late in that second, requests accepted but waiting for a thread,
+        # this container's CPU time so far (cgroup) and the node's CPU counters. Single process, so this is the whole service.
+        last, last_late = 0, 0
+        while True:
+            time.sleep(1)
+            with lock:
+                now, late = stats["handled"], stats["late"]
+            try:
+                cpu = next(l.split()[1] for l in open("/sys/fs/cgroup/cpu.stat") if l.startswith("usage_usec"))
+            except (OSError, StopIteration):
+                cpu = "na"
+            busy, total = node_cpu()
+            q = len(SERVER["s"].task_dispatcher.queue) if "s" in SERVER else -1
+            print(f"INVENTORY t={int(time.time())} handled={now - last} late={late - last_late} queued={q} cpu_usec={cpu} node_busy={busy} node_total={total}", flush=True)
+            last, last_late = now, late
+
+    threading.Thread(target=reporter, daemon=True).start()
+
+    @app.get("/healthz")
+    def healthz():
+        return "ok"
+
+    if __name__ == "__main__":
+        # waitress: one process, a fixed pool of worker threads and a queue in front of them. No fork, so zero-code
+        # OpenTelemetry works unchanged.
+        import logging
+        from waitress import serve
+        logging.getLogger("waitress.queue").setLevel(logging.ERROR)
+        from waitress.server import create_server
+        s = create_server(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8081")), threads=int(os.environ.get("THREADS", "4")),
+                          connection_limit=900, backlog=2048, channel_timeout=120)
+        SERVER["s"] = s
+        a = s.adj
+        print(f"INVENTORY server threads={a.threads} backlog={a.backlog} connection_limit={a.connection_limit} work_ms={WORK_MS}", flush=True)
+        s.run()
+
+  orders.py: |
+    # orders: takes an order and reserves it in inventory with a 500 ms timeout. RETRY_MODE decides what happens on a failure:
+    #   naive  - retry at once, up to RETRIES more times
+    #   budget - retry with exponential backoff and full jitter, and only while the retry budget allows: each order adds
+    #            BUDGET_RATIO of a token, each retry spends one, so retries stay a small share of traffic
+    import os, random, threading, time
+    import requests
+    from flask import Flask
+    app = Flask(__name__)
+    INVENTORY = os.environ.get("INVENTORY_URL", "http://localhost:8081")
+    MODE = os.environ.get("RETRY_MODE", "naive")
+    RETRIES = int(os.environ.get("RETRIES", "3"))
+    TIMEOUT = float(os.environ.get("TIMEOUT_S", "0.5"))
+    BASE, CAP = float(os.environ.get("BACKOFF_BASE_S", "0.1")), float(os.environ.get("BACKOFF_CAP_S", "2"))
+    RATIO, MAX_TOKENS = float(os.environ.get("BUDGET_RATIO", "0.1")), float(os.environ.get("BUDGET_MAX", "10"))
+    tokens, lock = [MAX_TOKENS], threading.Lock()
+    errs = {"timeout": 0, "conn": 0, "http": 0}   # failed calls by kind, reported each second
+    session = requests.Session()
+    session.mount("http://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=256))
+
+    def may_retry():
+        if MODE != "budget":
+            return True
+        with lock:
+            if tokens[0] >= 1:
+                tokens[0] -= 1
+                return True
+            return False
+
+    import logging
+    log = logging.getLogger("orders"); logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+    @app.post("/orders/<int:order>")
+    def place(order):
+        began = time.time()
+        ok, attempts, denied = reserve_with_retries(order)
+        log.info("ORDER %d ok=%d attempts=%d denied=%d ms=%d t=%d", order, ok, attempts, denied, (time.time() - began) * 1000, int(began))
+        return ({"order": order, "attempts": attempts}, 200) if ok else ({"order": order, "failed": True}, 503)
+
+    def reserve_with_retries(order):
+        if MODE == "budget":
+            with lock:
+                tokens[0] = min(MAX_TOKENS, tokens[0] + RATIO)
+        for attempt in range(RETRIES + 1):
+            try:
+                r = session.get(f"{INVENTORY}/reserve/{order}", timeout=TIMEOUT, headers={"X-Caller-Deadline": f"{time.time() + TIMEOUT:.3f}"})
+                if r.status_code == 200:
+                    return True, attempt + 1, 0
+                kind = "http"
+            except requests.Timeout:
+                kind = "timeout"
+            except requests.RequestException:
+                kind = "conn"   # refused or reset, not a timeout
+            with lock:
+                errs[kind] += 1
+            if attempt == RETRIES:
+                break
+            if not may_retry():
+                return False, attempt + 1, 1   # the budget was spent, so this order fails without a retry
+            if MODE == "budget":
+                time.sleep(random.uniform(0, min(CAP, BASE * 2 ** attempt)))
+        return False, attempt + 1, 0
+
+    def reporter():
+        # One line a second with this container's CPU time so far, from its cgroup, so a busy orders pod would show.
+        while True:
+            time.sleep(1)
+            try:
+                cpu = next(l.split()[1] for l in open("/sys/fs/cgroup/cpu.stat") if l.startswith("usage_usec"))
+            except (OSError, StopIteration):
+                cpu = "na"
+            with lock:
+                e = dict(errs); errs.update(timeout=0, conn=0, http=0)
+            print(f"ORDERS t={int(time.time())} cpu_usec={cpu} timeouts={e['timeout']} conn_errors={e['conn']} http_errors={e['http']}", flush=True)
+
+    threading.Thread(target=reporter, daemon=True).start()
+
+    @app.get("/healthz")
+    def healthz():
+        return "ok"
+
+    if __name__ == "__main__":
+        import logging
+        from waitress import serve
+        logging.getLogger("waitress.queue").setLevel(logging.ERROR)
+        serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", "8080")), threads=int(os.environ.get("THREADS", "400")),
+              connection_limit=900, backlog=2048, channel_timeout=120)
+
+---
+# Builds one virtualenv on the app node with pinned packages, once. Both services run from it, in every run.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build
+  namespace: demo
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 420
+  template:
+    spec:
+      restartPolicy: Never
+      nodeName: APP_NODE
+      volumes:
+        - name: src
+          configMap:
+            name: app-src
+        - name: lab
+          hostPath:
+            path: /opt/lab
+            type: DirectoryOrCreate
+      containers:
+        - name: build
+          image: python:3.12-slim
+          volumeMounts:
+            - { name: src, mountPath: /src, readOnly: true }
+            - { name: lab, mountPath: /lab }
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              rm -rf /lab/venv /lab/app && mkdir -p /lab/app
+              cp /src/inventory.py /src/orders.py /src/requirements.txt /lab/app/
+              python -m venv /lab/venv
+              for i in 1 2 3; do /lab/venv/bin/pip install -q --no-cache-dir -r /lab/app/requirements.txt && break; echo "pip attempt $i failed"; sleep 10; done
+              /lab/venv/bin/pip freeze | grep -iE '^(flask|waitress|requests|opentelemetry-(distro|sdk|exporter-otlp-proto-http|instrumentation-flask|instrumentation-requests))=='
+              sha256sum /lab/app/*.py
