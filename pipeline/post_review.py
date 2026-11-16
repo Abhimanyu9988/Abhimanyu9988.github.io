@@ -53,7 +53,22 @@ def from_chat(issue):
     post = json.loads(text_of(HOME_REPO, f"chat-work/{issue}/post.json", f"chat/{issue}"))
     lab = json.loads(text_of(HOME_REPO, f"chat-work/{issue}/lab.json", f"chat/{issue}"))
     readme = next((f.get("content", "") for f in lab.get("files") or [] if f.get("path") == "README.md"), "")
-    return post, readme, {}
+    slug = draft_slug(post.get("title", ""))       # the draft step's PR holds the paid run's raw output under this name
+    try:
+        logs = evidence(HOME_REPO, f"labs/{slug}/evidence", f"draft/{slug}")
+    except Exception as e:
+        print(f"no draft evidence for {slug}: {str(e)[:120]}")
+        logs = {}
+    return post, readme, logs
+
+def draft_slug(title):
+    """draft.title_slug, repeated here so this script needs none of draft.py's settings."""
+    out = ""
+    for w in re.sub(r"[^a-z0-9]+", " ", str(title).lower()).split():
+        if len(out) + len(w) + 1 > 60:
+            break
+        out = f"{out}-{w}" if out else w
+    return out
 
 def summary_md(name, result):
     lines = [f"## Clean pass for {name}", ""]

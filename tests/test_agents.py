@@ -2067,5 +2067,9 @@ check("secretary: a post ChatGPT or Gemini blocks falls back to the article's ow
 _l16.ask, _l16.clean_pass = _ra, _rc
 check("secretary: an article day's news line is an opening, not a post", _c16.todays_entry(news_md, "2026-11-13")[0] == "opening")
 check("week: demand must be strong (8 reactions and comments, or 500 views)", week.MIN_REACTIONS == 8 and week.MIN_VIEWS == 500)
+import draft as _d17
+check("post review: a chat article's evidence is looked up under the draft step's slug",
+      all(post_review.draft_slug(t) == _d17.title_slug(t) for t in
+          ("Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts", "A b", "x" * 70 + " y")))
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
