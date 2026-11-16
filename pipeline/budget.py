@@ -146,10 +146,17 @@ def add_lab(res):
         EXTRA_CLAUDE.append(float(res.get("claude_usd") or 0))
         EXTRA_AWS.extend([AWS_LAB_USD] if res.get("aws_used") else [])
 
-def lab_spent(issue, files=None):
-    """Dollars this topic's paid lab runs have used so far, from the analytics file names alone."""
-    from radar import HOME_REPO, gh
-    files = files if files is not None else (gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or [])
+def lab_spent(issue, files=None, tree=None):
+    """Dollars this topic's paid lab runs have used so far, from the analytics file names alone. It reads the branch's
+    full tree, because a folder listing stops at 1,000 files; an incomplete tree stops the run instead of undercounting."""
+    if files is None:
+        if tree is None:
+            from radar import HOME_REPO, gh
+            tree = gh("GET", f"/repos/{HOME_REPO}/git/trees/analytics?recursive=1") or {}
+        if tree.get("truncated"):
+            raise RuntimeError("the analytics tree is too large to read whole")
+        files = [{"name": t.get("path", "").rsplit("/", 1)[-1]} for t in tree.get("tree") or [] if isinstance(t, dict)
+                 and t.get("path", "").startswith("analytics/")]
     names = [f.get("name", "") for f in files if isinstance(f, dict)] if isinstance(files, list) else []
     return sum(int(h[2]) for h in (LAB_SPEND.fullmatch(n) for n in names) if h and int(h[1]) == int(issue)) / 100
 

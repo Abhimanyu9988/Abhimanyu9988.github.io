@@ -446,9 +446,10 @@ def clean_pass(post, context, who=CLEAN_PASS):
 
 def clean_pass_reasons(result):
     """One reason per blocking point, for editor.decide's list. Empty only when every reviewer approved."""
-    out = []
+    out = [f"{NAMES.get(w, w)} did not review this post. Fix: run the review again" for w in CLEAN_PASS if w not in result]
     for w, r in result.items():
-        if not r.get("approve"):
+        if not isinstance(r, dict) or not r.get("approve"):
+            r = r if isinstance(r, dict) else {}
             for b in r.get("blocking") or [{"problem": "it did not approve and gave no reason", "fix": "ask again"}]:
                 out.append(f"{NAMES.get(w, w)} did not approve: {str(b.get('problem'))[:300]} Fix: {str(b.get('fix'))[:300]}")
     return out

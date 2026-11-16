@@ -434,7 +434,7 @@ good_card = {"scores": {k: {"score": 5, "reasons": []} for k in ("technical", "e
 calls_made = []
 real_score, real_ask, real_refine = editor.score, llm.ask, llm.refine
 real_clean = llm.clean_pass
-llm.clean_pass = lambda *a, **k: {}               # the ChatGPT/Gemini clean pass has its own checks below
+llm.clean_pass = lambda *a, **k: {w: {"approve": True, "blocking": []} for w in llm.CLEAN_PASS}   # its own checks are below
 editor.score = lambda *a: calls_made.append(1) or good_card
 post_ok = {"title": "A plain title", "body": "b", "linkedin": "x"}
 g = draft.review_draft(post_ok, "ctx", {"05-fix.log": "ok"}, None, {}, "build")
@@ -1992,10 +1992,6 @@ check("slack: a tag reaches Abhi, and model text can't ping anyone", body.starts
 os.environ.pop("SLACK_BOT_TOKEN")
 slack_c.api, slack_c.owner, slack_c.channel = real_api, real_owner, real_channel
 
-print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
-sys.exit(1 if fails else 0)
-
-
 # ---------- topic lab limit and clean pass (16 Nov 2026) ----------
 import budget as _b16, llm as _l16
 _files = [{"name": "lab-203-1-1-1-lab-c120.json"}, {"name": "lab-203-2-1-1-lab-c100.json"}, {"name": "lab-204-1-1-1-lab-c999.json"},
@@ -2005,6 +2001,7 @@ check("lab limit: $4 per topic by default", _b16.lab_cap([]) == 4.0 == _b16.LAB_
 check("lab limit: only Abhi's words raise it", _b16.lab_cap([{"user": {"login": "Abhimanyu9988"}, "body": "raise lab limit to $6"}]) == 6.0 and
       _b16.lab_cap([{"user": {"login": "hero-bot[bot]"}, "body": "raise lab limit to $60"}]) == 4.0)
 _lab_src = (ROOT / "pipeline/lab.py").read_text()
+_lab_src = _lab_src[_lab_src.index("def main():"):_lab_src.index("def finish(")]
 check("lab limit: checked before any model or AWS spend", _lab_src.index("budget.lab_cap(") < _lab_src.index("llm.claude_json(") and
       _lab_src.index("budget.lab_cap(") < _lab_src.index("set_boundary()"))
 _real_ask = _l16.ask
@@ -2023,7 +2020,25 @@ _pr_y = __import__("yaml").safe_load((ROOT / ".github/workflows/post-review.yml"
 _pr_steps = _pr_y["jobs"]["review"]["steps"]
 check("post review: runs code from main", all(st["with"]["ref"] == "main" for st in _pr_steps if "checkout" in st.get("uses", "")))
 check("post review: inputs reach the script only through env", all("${{" not in st.get("run", "") for st in _pr_steps))
-check("post review: holds only the reviewers' keys", sorted(set(re.findall(r"secrets\.(\w+)", json.dumps(_pr_y)))) ==
-      ["BOT_PRIVATE_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"])
+check("post review: holds only the reviewers' keys, and no write token", sorted(set(re.findall(r"secrets\.(\w+)", json.dumps(_pr_y)))) ==
+      ["GEMINI_API_KEY", "OPENAI_API_KEY"] and "BOT_TOKEN" not in json.dumps(_pr_y))
+check("post review: the budget is checked before the reviewers are called",
+      (ROOT / "pipeline/post_review.py").read_text().index("budget.check()") < (ROOT / "pipeline/post_review.py").read_text().index("llm.clean_pass("))
+check("clean pass: a missing reviewer is a block", len(_l16.clean_pass_reasons({"chatgpt": {"approve": True, "blocking": []}})) == 1)
+_tree = {"truncated": False, "tree": [{"path": "analytics/lab-203-1-1-1-lab-c150.json"}, {"path": "analytics/spend-x-c5.json"}]}
+check("lab limit: read from the complete tree", _b16.lab_spent(203, tree=_tree) == 1.5)
+try:
+    _b16.lab_spent(203, tree={"truncated": True, "tree": []}); check("lab limit: an incomplete listing stops the run", False)
+except RuntimeError:
+    check("lab limit: an incomplete listing stops the run", True)
 import post_review
 check("post review: a slug must look like one", not post_review.SLUG.fullmatch("../x") and post_review.SLUG.fullmatch("retry-storm"))
+
+import slack as _s16
+_h, _c = _s16.short("one\ntwo\n\nthree\nfour\nfive")
+check("slack: at most three lines in the channel, the rest in the thread", _h.count("\n") == 2 and _c and "thread" in _h)
+_h, _c = _s16.short("Today's post, ready to paste:\n```\nline 1\nline 2\n```")
+check("slack: a code block is never cut in half", "```" not in _h and _c)
+check("slack: a short message is sent as it is", _s16.short("all good") == ("all good", False))
+print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
+sys.exit(1 if fails else 0)

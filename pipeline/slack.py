@@ -38,6 +38,20 @@ def display(role):
     r = roles.get(role)
     return f"{r.get('display', role)} ({r.get('dept', 'Team')})"
 
+SHORT_LINES, SHORT_WIDTH = 3, 200                 # Abhi: "I don't read more than 3 lines"
+
+def short(text, lines=SHORT_LINES, width=SHORT_WIDTH):
+    """(at most `lines` lines for the channel, whether anything was left out). It stops before a code block, so a
+    ready-to-paste post is never cut in half; the full text then goes in the thread."""
+    rows, head = [r for r in text.strip().splitlines()], []
+    for r in rows:
+        if r.lstrip().startswith("```") or len(head) == lines:
+            break
+        if r.strip():
+            head.append(r if len(r) <= width else r[:width - 1].rsplit(" ", 1)[0] + "…")
+    cut = "\n".join(head) != "\n".join(r for r in rows if r.strip())
+    return ("\n".join(head) + (" _(full text in the thread)_" if cut else "")).strip() or "(see the thread)", cut
+
 def say(role, text, mention=False):
     """True when posted. A Slack outage must never stop the work it reports on. `mention` tags the workspace owner,
     Abhi, for messages he has to act on. The tag is added after escaping, so model text can never ping anyone."""
@@ -46,8 +60,13 @@ def say(role, text, mention=False):
     try:
         cid = channel()
         api("conversations.join", channel=cid)
-        body = f"<@{owner()}> {clean(text)}" if mention else clean(text)
-        api("chat.postMessage", channel=cid, text=body, username=display(role), unfurl_links="false")
+        full = clean(text)
+        head, cut = short(full)                    # Abhi reads at most three lines; the rest goes in the thread
+        body = f"<@{owner()}> {head}" if mention else head
+        got = api("chat.postMessage", channel=cid, text=body, username=display(role), unfurl_links="false")
+        if cut:
+            api("chat.postMessage", channel=cid, text=full, thread_ts=(got or {}).get("ts"), username=display(role),
+                unfurl_links="false")
         return True
     except Exception as e:
         print(f"::warning title=slack::message not sent: {' '.join(str(e).split())[:200]}")

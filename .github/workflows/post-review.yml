@@ -1,6 +1,7 @@
 name: post-review
 # ChatGPT and Gemini each pass or block an article and its LinkedIn post against the lab's evidence. Abhi's rule: a
-# post is ready only when both approve. It writes nothing except the spend record, and it runs code from main only.
+# post is ready only when both approve. It holds no write token, writes nothing, and runs code from main only. A review
+# costs a few cents of ChatGPT and Gemini; the monthly budget is checked first, but this job can't record its spend.
 on:
   workflow_dispatch:
     inputs:
@@ -24,12 +25,6 @@ jobs:
         with:
           ref: main
           persist-credentials: false
-      - uses: actions/create-github-app-token@v2
-        id: bot
-        with:
-          app-id: ${{ vars.BOT_APP_ID }}
-          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
-          permission-contents: write
       - run: pip install -q pyyaml==6.0.3
       - name: clean pass from ChatGPT and Gemini
         run: python3 pipeline/post_review.py
@@ -37,8 +32,6 @@ jobs:
           ARTICLE: ${{ inputs.article }}
           ISSUE_NO: ${{ inputs.issue }}
           GH_READ_TOKEN: ${{ github.token }}
-          BOT_TOKEN: ${{ steps.bot.outputs.token }}
-          HERO_PUBLISH: "1"
           REPO: ${{ github.repository }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
