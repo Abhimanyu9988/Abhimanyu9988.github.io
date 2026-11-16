@@ -2040,5 +2040,31 @@ check("slack: at most three lines in the channel, the rest in the thread", _h.co
 _h, _c = _s16.short("Today's post, ready to paste:\n```\nline 1\nline 2\n```")
 check("slack: a code block is never cut in half", "```" not in _h and _c)
 check("slack: a short message is sent as it is", _s16.short("all good") == ("all good", False))
+import datetime as _dt16
+_on = ["openai-2026-11-15-1-1-1-draft-c900.json", "openai-2026-11-16-2-1-1-draft-c700.json", "claude-2026-11-16-3-1-1-draft-c100.json"]
+check("openai credit: only this cycle's ChatGPT files count", _b16.openai_used(_on, _dt16.date(2026, 11, 20)) == 7.0)
+check("openai credit: ChatGPT's share is split out", _l16.openai_usd([{"who": "chatgpt", "model": "gpt-5.5", "in": 1_000_000, "out": 0},
+      {"who": "gemini", "model": "gemini-3.1-pro-preview", "in": 1_000_000, "out": 0}]) == 5.0)
+_th = (ROOT / "pipeline/tech_head.py").read_text()
+check("tech head: comments only on a blocker; the rest goes to the run summary", "GITHUB_STEP_SUMMARY" in _th and
+      _th.index('any(f.get("severity") == "blocker"') < _th.index("comment(int(os.environ[\"PR_NUMBER\"])"))
+import cto as _c16
+_art = {"name": "retry", "title": "Retry storm", "body": "0 of 3 recovered; 4.00 calls per order.",
+        "linkedin": "A 20-second slowdown.\nhttps://showmerit.com/abhimanyu/articles/retry/\n#SRE"}
+_ra, _rc = _l16.ask, _l16.clean_pass
+_ok = {w: {"approve": True, "blocking": []} for w in _l16.CLEAN_PASS}
+_l16.clean_pass = lambda *a, **k: _ok
+_l16.ask = lambda *a, **k: {"used_news": True, "post": "Outages are in the news.\nhttps://showmerit.com/abhimanyu/articles/retry/\n#SRE"}
+check("secretary: a news line that fits and passes sharpens the opening", _c16.smart_post(_art, "Outages are in the news.").startswith("Outages"))
+check("secretary: no news line means the article's own post", _c16.smart_post(_art, "") == _art["linkedin"])
+_l16.ask = lambda *a, **k: {"used_news": True, "post": "See https://news.example\nhttps://showmerit.com/abhimanyu/articles/retry/"}
+check("secretary: a link away from his article is refused", _c16.smart_post(_art, "n") == _art["linkedin"])
+_l16.ask = lambda *a, **k: {"used_news": True, "post": "99% of outages.\nhttps://showmerit.com/abhimanyu/articles/retry/"}
+check("secretary: a number nobody wrote is refused", _c16.smart_post(_art, "n") == _art["linkedin"])
+_l16.ask = lambda *a, **k: {"used_news": True, "post": "Outages.\nhttps://showmerit.com/abhimanyu/articles/retry/"}
+_l16.clean_pass = lambda *a, **k: {"chatgpt": {"approve": False, "blocking": [{"problem": "p", "fix": "f"}]}, "gemini": _ok["gemini"]}
+check("secretary: a post ChatGPT or Gemini blocks falls back to the article's own", _c16.smart_post(_art, "n") == _art["linkedin"])
+_l16.ask, _l16.clean_pass = _ra, _rc
+check("secretary: an article day's news line is an opening, not a post", _c16.todays_entry(news_md, "2026-11-13")[0] == "opening")
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)

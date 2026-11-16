@@ -28,6 +28,9 @@ SPEND = re.compile(r"spend-(\d{4}-\d{2})-.*-c(\d+)\.json")
 CLAUDE_SPEND = re.compile(r"claude-(\d{4}-\d{2}-\d{2})-.*-c(\d+)\.json")
 CLAUDE_CREDIT_USD = 100                        # Max 5x plan, monthly Claude API credit
 CLAUDE_CREDIT_DAY = 29                         # the day the credit arrives (next one 29 Nov 2026)
+OPENAI_CREDIT_USD = 100                        # ChatGPT Pro's monthly API credit, claimed 16 Nov 2026
+OPENAI_CREDIT_DAY = 16
+OPENAI_SPEND = re.compile(r"openai-(\d{4}-\d{2}-\d{2})-.*-c(\d+)\.json")
 EXTRA, EXTRA_AWS = [], []                      # dollars this job adds: models from its lab, and that lab's AWS estimate
 EXTRA_CLAUDE = []                              # the Claude part of EXTRA, paid from the plan's credit
 AWS_ACTUAL = re.compile(r"aws-(\d{4}-\d{2})-(\d{2})-c(\d+)\.json")
@@ -52,10 +55,14 @@ def limit(m=None):
 
 def cycle_start(today=None):
     """The first day of the current Claude credit cycle, as YYYY-MM-DD."""
+    return credit_cycle_start(today, CLAUDE_CREDIT_DAY)
+
+def credit_cycle_start(today, day):
+    """The first day of the credit cycle whose grant arrives on `day` of each month, as YYYY-MM-DD."""
     import calendar
     t = today or datetime.datetime.now(datetime.timezone.utc).date()
     def day_in(y, mo):
-        return datetime.date(y, mo, min(CLAUDE_CREDIT_DAY, calendar.monthrange(y, mo)[1]))
+        return datetime.date(y, mo, min(day, calendar.monthrange(y, mo)[1]))
     start = day_in(t.year, t.month)
     if start > t:
         y, mo = (t.year, t.month - 1) if t.month > 1 else (t.year - 1, 12)
@@ -66,6 +73,11 @@ def claude_used(names, today=None):
     """Dollars of Claude credit used this cycle, at list prices, from file names alone."""
     start = cycle_start(today)
     return sum(int(h[2]) for h in (CLAUDE_SPEND.fullmatch(n) for n in names) if h and h[1] >= start) / 100
+
+def openai_used(names, today=None):
+    """Dollars of OpenAI credit used this cycle, at list prices, from file names alone."""
+    start = credit_cycle_start(today, OPENAI_CREDIT_DAY)
+    return sum(int(h[2]) for h in (OPENAI_SPEND.fullmatch(n) for n in names) if h and h[1] >= start) / 100
 
 def claude_credit():
     """What the CFO reports: Claude credit used and left this cycle, at list prices. Not the Console's own balance."""
@@ -83,6 +95,9 @@ def spent(m=None):
     over = claude_used([f.get("name", "") for f in files]) - CLAUDE_CREDIT_USD
     if over > 0:
         jobs["claude_over_credit"] = math.ceil(over * 100)
+    over = openai_used([f.get("name", "") for f in files]) - OPENAI_CREDIT_USD
+    if over > 0:
+        jobs["openai_over_credit"] = math.ceil(over * 100)
     for f in files:
         hit, aws = SPEND.fullmatch(f.get("name", "")), AWS_ACTUAL.fullmatch(f.get("name", ""))
         if hit and hit[1] == (m or month()):
@@ -172,12 +187,14 @@ def record():
     if not in_pipeline():
         return
     claude, other = llm.cost_split()
+    openai = llm.openai_usd()                       # ChatGPT is paid from the Pro plan's credit first, like Claude
+    other -= openai
     claude += sum(EXTRA_CLAUDE)
     other += sum(EXTRA) - sum(EXTRA_CLAUDE)
-    usd = claude + other
+    usd = claude + other + openai
     if usd <= 0 and not EXTRA_AWS:
         return
-    print(f"::notice title=spend::${usd:.3f} (Claude credit ${claude:.3f}, paid per use ${other:.3f})")
+    print(f"::notice title=spend::${usd:.3f} (Claude credit ${claude:.3f}, OpenAI credit ${openai:.3f}, paid per use ${other:.3f})")
     if not os.environ.get("BOT_TOKEN") or os.environ.get("HERO_PUBLISH") != "1":
         return
     try:
@@ -189,12 +206,12 @@ def record():
         lab_paid = sum(EXTRA_AWS) + sum(EXTRA) - sum(EXTRA_CLAUDE)     # this run's paid lab spend, for the topic's limit
         issue = os.environ.get("ISSUE", "")
         files = ((f"spend-{month()}", job, other), (f"spend-{month()}", "aws_estimate", sum(EXTRA_AWS)),
-                 (f"claude-{day}", job, claude)) + (((f"lab-{int(issue)}", "lab", lab_paid),) if issue.isdigit() else ())
+                 (f"claude-{day}", job, claude), (f"openai-{day}", job, openai)) + (((f"lab-{int(issue)}", "lab", lab_paid),) if issue.isdigit() else ())
         for prefix, name, amount in files:
             if amount > 0:
                 analytics.write_file(f"analytics/{prefix}-{run}-{name}-c{math.ceil(amount * 100)}.json",
                                      json.dumps({"usd": amount, "workflow": os.environ.get("GITHUB_WORKFLOW"), "job": name,
-                                                 "paid_by": "claude_credit" if prefix.startswith("claude") else "per_use"}),
+                                                 "paid_by": {"claude": "claude_credit", "openai": "openai_credit"}.get(prefix.split("-")[0], "per_use")}),
                                      None, f"spend: {name}")
     except Exception as e:
         print(f"::warning title=budget::spend not recorded: {' '.join(str(e).split())[:200]}")

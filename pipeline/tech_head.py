@@ -293,7 +293,13 @@ def main():
                 f"{sum(f.get('severity') == 'blocker' for f in findings)} marked blocker. "
                 + (f"**Incomplete, {len(gaps)} gap(s).** " if gaps else "")
                 + "The full text failed the link-safety check, so read it in the workflow run log.")
-    comment(int(os.environ["PR_NUMBER"]), safe_text(text, fallback))
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write(text + "\n")
+    if blocked or any(f.get("severity") == "blocker" for f in findings):   # Abhi: email me only about blockers, with the fix
+        comment(int(os.environ["PR_NUMBER"]), safe_text(text, fallback))
+    else:
+        print("::notice title=tech head::no blocker, so no comment; the full review is in this run's summary")
     if os.environ.get("TECH_HEAD_MODE", "advisory") == "blocking" and (blocked or complete(reports, ai, left)):
         sys.exit("Tech Head found a blocker, or could not finish its review")
 

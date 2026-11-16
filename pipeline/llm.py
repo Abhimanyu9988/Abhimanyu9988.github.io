@@ -535,6 +535,11 @@ def cost_split(entries=None):
     claude = [e for e in entries if e.get("who") in ("claude", "web_search")]
     return cost_usd(claude)[0], cost_usd([e for e in entries if e not in claude])[0]
 
+def openai_usd(entries=None):
+    """ChatGPT's share, paid from the ChatGPT Pro plan's API credit first."""
+    entries = LEDGER if entries is None else entries
+    return cost_usd([e for e in entries if e.get("who") == "chatgpt"])[0]
+
 def cost_line():
     usd, unknown = cost_usd()
     return f"about ${usd:.2f} at list prices" + (f", excluding unpriced {', '.join(unknown)}" if unknown else "")
