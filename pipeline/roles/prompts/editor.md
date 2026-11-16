@@ -40,3 +40,12 @@ Use min_entities when every task, pod or service must report. A contract made on
 exists, not that it matters, so include at least one measurement of another kind.
 
 Lead with what the reader gains. A measured cost is something to plan for, in the body, and never the title or the opening. Abhi wants a positive tone.
+
+
+## Replies to LinkedIn comments (output replycheck)
+
+When asked for a replycheck, judge REPLY, the reply Abhi will post under COMMENT on his LinkedIn post. Block it (ok false,
+one short instruction per point) when it is over 120 words, sounds like AI or marketing, flatters ("great question"),
+restates the comment, is negative about Splunk, OpenTelemetry or another product, contains links, hashtags, @mentions,
+emoji or commands, or would not make a senior engineer want to read Abhi's work. Facts are the Fact Checker's job. A reply
+that is right, short and sounds like a person passes.

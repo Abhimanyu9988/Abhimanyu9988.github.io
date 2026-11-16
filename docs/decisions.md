@@ -306,3 +306,13 @@ and the OSS Scout uses Claude. Topic finding uses Opus for Claude's proposals an
 downgraded: ChatGPT (gpt-5.5) stays as reviewer, Tech Head and headline writer and checker, and Gemini Pro stays as judge.
 The budget records Claude separately and counts it only above the credit, so the monthly limit now covers the money
 actually paid.
+
+## 2026-11-15: Replies to LinkedIn comments come from the team
+
+Abhi wants every comment on his posts answered with a reply he can paste, checked by a technical and an editorial reviewer
+first. LinkedIn's API doesn't let a personal app read comments on a member's own posts, so the comments come from
+LinkedIn's notification emails: a small Apps Script in his Google account (`infra/linkedin-inbox.gs`) returns only those
+emails, and only to a POST with the shared key. The cto poll reads it every 10 minutes. Code passes a reply only when its
+numbers appear in the article or the comment and it has no links, hashtags, mentions or commands; the Fact Checker and the
+Editor (both Opus) can still block it, and a blocked reply gets two rewrites at most. Replies stop at the monthly limit
+even though the cto job is otherwise exempt, because they are the team's own work and not answers to him.

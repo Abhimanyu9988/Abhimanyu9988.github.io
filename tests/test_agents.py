@@ -1901,5 +1901,93 @@ check("secretary: finds the picked post", cto.todays_post(news_md, "2026-11-12")
 check("secretary: finds an article day's opening line", cto.todays_post(news_md, "2026-11-13") == "News line here. https://y.example")
 check("secretary: nothing for a day with no entry", cto.todays_post(news_md, "2026-11-14") == "")
 
+# ---------- LinkedIn comment replies ----------
+import comments as cm, slack as slack_c
+art_text = (ROOT.parent / "showmerit/content/abhimanyu/articles/preview-otel-java-agent-3-0-in-splunk-with-one-flag.md")
+art_text = art_text.read_text() if art_text.exists() else ("title: 'Preview OTel Java Agent 3.0 in Splunk With One Flag'\nlinkedin: 'Agent upgrades "
+    "usually mean finding out what moved after the rollout. For OpenTelemetry Java agent 3.0, I looked first, with one flag.'\n"
+    "agent 2.33.1, 19 pool metric names, about 1,000 times smaller, UPDATE postgres.stock becomes update stock\n")
+arts = [{"name": "agent3", "title": "Preview OTel Java Agent 3.0 in Splunk With One Flag", "text": art_text},
+        {"name": "sqs", "title": "Follow SQS messages", "text": "title: 'Follow SQS messages'\nlinkedin: 'Queues hide latency until a trace crosses them.'\n"}]
+james = ("James McClymonds commented on your post\n\nAgent upgrades usually mean finding out what moved after the rollout. For "
+         "OpenTelemetry Java agent 3.0, I looked first, with one flag.\n\nJames McClymonds\nVP, Global Cloud Operations\n"
+         "The roughly 1,000x shift is the one that would bite quietly. Did any dashboards break outright?\n"
+         "View comment: https://www.linkedin.com/comm/feed/update/urn:li:activity:1\n\nThis email was intended for Abhimanyu "
+         "(abhi@example.com)\nUnsubscribe: https://www.linkedin.com/x")
+cleaned = cm.clean(james)
+check("comments: links, addresses and the footer are dropped", "http" not in cleaned and "@" not in cleaned and "Unsubscribe" not in cleaned
+      and "dashboards break outright" in cleaned)
+check("comments: the post's article is found from the quoted post text", (cm.best_article(cleaned, arts) or {}).get("name") == "agent3")
+check("comments: no article when the post doesn't match one", cm.best_article("Someone commented on your news post about AI budgets", arts) is None)
+good_reply = "Thanks James. Nothing errored. On agent 2.33.1 all 19 pool metric names moved, and the timing is about 1,000 times smaller."
+src = art_text + "\nThe roughly 1,000x shift is the one that would bite quietly."
+check("comments: numbers from the article pass", cm.code_problems(good_reply, src) == [])
+check("comments: a number not in the article is refused", any("not in the article" in p for p in cm.code_problems("We saw a 37% drop.", src)))
+check("comments: links, hashtags and mentions are refused", len(cm.code_problems("See https://x.example #otel @James", src)) == 3)
+check("comments: commands are refused", any("command" in p for p in cm.code_problems("Run kubectl rollout restart and see.", src)))
+check("comments: long replies are refused", any("words" in p for p in cm.code_problems("word " * 130, src)))
+check("comments: metric names are not numbers or commands", cm.code_problems("Charts on db.client.connections.* go empty.", src) == [])
+
+asked, real_cm_ask = [], roles.ask
+def fake_ask(role, prompt, output):
+    asked.append(role)
+    if role == "community":
+        if "FIX:" in prompt:
+            return {"items": [{"name": "James McClymonds", "comment": "Did any dashboards break outright?", "reply": good_reply}]}
+        return {"items": [{"name": "James McClymonds", "comment": "Did any dashboards break outright?", "reply": "We saw a 37% drop."}]}
+    return {"ok": True, "blocking": [], "notes": "fine"}
+roles.ask = fake_ask
+reply, pts = cm.finish({"name": "James", "comment": "Did any dashboards break outright?", "reply": "We saw a 37% drop."}, cleaned, arts[0])
+check("comments: a reply code refuses is redrafted, and reviewers never see the refused one", reply == good_reply and asked == ["community", "fact_check", "editor"])
+asked.clear()
+roles.ask = lambda role, prompt, output: (asked.append(role) or {"ok": False, "blocking": ["Answer his question."], "notes": ""}) if role != "community" \
+    else {"items": [{"name": "J", "comment": "c", "reply": good_reply}]}
+reply, pts = cm.finish({"name": "J", "comment": "c", "reply": good_reply}, cleaned, arts[0])
+check("comments: a reviewer can block, and after the last draft nothing is sent", reply is None and pts and asked.count("fact_check") == cm.MAX_DRAFTS)
+roles.ask = fake_ask
+
+store, said = {}, []
+rp = lambda path: (store.get(path, ""), "sha" if path in store else None)
+wp = lambda path, text, sha, msg: store.__setitem__(path, text)
+say_fake = lambda role, text: said.append((role, text)) or True
+os.environ.update(LINKEDIN_INBOX_URL="https://script.google.com/macros/s/abc/exec", LINKEDIN_INBOX_KEY="k")
+real_fetch, cm.fetch = cm.fetch, lambda: [{"id": "m1", "date": "2026-11-14T10:00:00Z", "subject": "James McClymonds commented on your post", "body": james}]
+check("comments: one checked reply reaches Slack", cm.run(rp, wp, say_fake, articles=arts) == 1 and said and said[0][0] == "secretary"
+      and good_reply in said[0][1] and "James McClymonds" in said[0][1])
+check("comments: what was handled stays in the private repo", "m1" in json.loads(store[cm.STATE])["seen"])
+said.clear()
+check("comments: a notification is answered once", cm.run(rp, wp, say_fake, articles=arts) == 0 and not said)
+store.clear()
+check("comments: nothing runs past the monthly budget", cm.run(rp, wp, say_fake, budget_left=lambda: False, articles=arts) == 0 and not said)
+roles.ask = lambda role, prompt, output: {"items": []}
+cm.fetch = lambda: [{"id": "m2", "subject": "Ana commented on your post", "body": "Ana commented on your post. View it on LinkedIn."}]
+cm.run(rp, wp, say_fake, articles=arts)
+check("comments: an email with no comment text tells him to open LinkedIn", said and "open it on LinkedIn" in said[-1][1])
+os.environ.pop("LINKEDIN_INBOX_KEY")
+check("comments: off until both inbox secrets exist", cm.run(rp, wp, say_fake, articles=arts) == 0)
+os.environ.pop("LINKEDIN_INBOX_URL")
+os.environ["LINKEDIN_INBOX_URL"] = "https://evil.example/exec"; os.environ["LINKEDIN_INBOX_KEY"] = "k"
+check("comments: only a Google Apps Script address is read", not cm.configured())
+for k in ("LINKEDIN_INBOX_URL", "LINKEDIN_INBOX_KEY"):
+    os.environ.pop(k, None)
+cm.fetch, roles.ask = real_fetch, real_cm_ask
+cm_src = (ROOT / "pipeline/comments.py").read_text()
+check("comments: comment text is never printed to the public logs", not re.search(r"print\([^)]*\{(item|m\[|reply|email_text|said|text)", cm_src))
+cto_yml = (ROOT / ".github/workflows/cto.yml").read_text()
+check("comments: the inbox address and key come from secrets", "secrets.LINKEDIN_INBOX_URL" in cto_yml and "secrets.LINKEDIN_INBOX_KEY" in cto_yml)
+gs = (ROOT / "infra/linkedin-inbox.gs").read_text()
+check("comments: the Gmail script reads only LinkedIn comment emails and needs the key", "from:linkedin.com" in gs and "asked.key !== KEY" in gs
+      and "sendEmail" not in gs and "moveTo" not in gs)
+
+posted, real_api, real_owner, real_channel = [], slack_c.api, slack_c.owner, slack_c.channel
+slack_c.api = lambda method, **p: posted.append((method, p)) or {"ok": True}
+slack_c.owner, slack_c.channel = (lambda: "U1"), (lambda: "C1")
+os.environ["SLACK_BOT_TOKEN"] = "x"
+slack_c.say("secretary", "hi <@U9> <!channel>", mention=True)
+body = [p for m, p in posted if m == "chat.postMessage"][-1]["text"]
+check("slack: a tag reaches Abhi, and model text can't ping anyone", body.startswith("<@U1> ") and "<@U9>" not in body and "<!channel>" not in body)
+os.environ.pop("SLACK_BOT_TOKEN")
+slack_c.api, slack_c.owner, slack_c.channel = real_api, real_owner, real_channel
+
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
