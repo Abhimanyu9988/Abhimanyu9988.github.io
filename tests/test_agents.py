@@ -1501,7 +1501,7 @@ editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb3, real_eg3,
 check("lanes: no lane takes more than two topics", [p["title"] for p in lane_plan] == ["One", "Two", "Four"] and lane_drop[0][0] == "Three")
 check("lanes: Abhi's focus is the only allowed set", set(week.LANES) == {"otel_auto_instrumentation", "ai_monitoring", "kubernetes", "aws", "splunk_observability"} and set(json.load(open(ROOT / "pipeline/schemas/weekplan.json"))["properties"]["topics"]["items"]["properties"]["lane"]["enum"]) == set(week.LANES))
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
-check("week: a spare is counted once", needs == [5])
+check("week: a spare is counted once", needs == [week.target()])   # the target depends on the week the test runs in
 week.propose, week.vet, week.hot_items, week.collect, week.existing_issues = real_prop, real_vet, real_hot, real_coll, real_ei
 os.environ.pop("GALILEO_READY", None)
 real_lc3, real_pn3, real_bp3 = week.lab_check, week.panel, week.build_plan
