@@ -1,0 +1,200 @@
+$ terraform destroy -input=false -no-color -auto-approve
+# exit 0 after 164s
+
+[... earlier output cut ...]
+{
+          - "Name" = "flink-restarts-hide-behi-972224-igw"
+        } -> null
+      - tags_all = {
+          - "Name"     = "flink-restarts-hide-behi-972224-igw"
+          - "hero-lab" = "flink-restarts-hide-behi-972224"
+        } -> null
+      - vpc_id   = "vpc-0f2c255d90ce5348f" -> null
+    }
+
+  # aws_route_table.public will be destroyed
+  - resource "aws_route_table" "public" {
+      - arn              = "arn:aws:ec2:eu-central-1:<account-id>:route-table/rtb-04f2e02f452e8dbf3" -> null
+      - id               = "rtb-04f2e02f452e8dbf3" -> null
+      - owner_id         = "<account-id>" -> null
+      - propagating_vgws = [] -> null
+      - route            = [
+          - {
+              - cidr_block                 = "0.0.0.0/0"
+              - gateway_id                 = "igw-0e29834deebd61213"
+                # (11 unchanged attributes hidden)
+            },
+        ] -> null
+      - tags             = {
+          - "Name" = "flink-restarts-hide-behi-972224-public"
+        } -> null
+      - tags_all         = {
+          - "Name"     = "flink-restarts-hide-behi-972224-public"
+          - "hero-lab" = "flink-restarts-hide-behi-972224"
+        } -> null
+      - vpc_id           = "vpc-0f2c255d90ce5348f" -> null
+    }
+
+  # aws_route_table_association.public[0] will be destroyed
+  - resource "aws_route_table_association" "public" {
+      - id             = "rtbassoc-0a4e45675b0496b97" -> null
+      - route_table_id = "rtb-04f2e02f452e8dbf3" -> null
+      - subnet_id      = "subnet-03ef8d31cabca79d0" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_route_table_association.public[1] will be destroyed
+  - resource "aws_route_table_association" "public" {
+      - id             = "rtbassoc-0d86334fb94b67062" -> null
+      - route_table_id = "rtb-04f2e02f452e8dbf3" -> null
+      - subnet_id      = "subnet-0b2a3bbb08de250ee" -> null
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_subnet.public[0] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-03ef8d31cabca79d0" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1a" -> null
+      - availability_zone_id                           = "euc1-az2" -> null
+      - cidr_block                                     = "10.0.0.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-03ef8d31cabca79d0" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "flink-restarts-hide-behi-972224-public-0"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "flink-restarts-hide-behi-972224-public-0"
+          - "hero-lab" = "flink-restarts-hide-behi-972224"
+        } -> null
+      - vpc_id                                         = "vpc-0f2c255d90ce5348f" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_subnet.public[1] will be destroyed
+  - resource "aws_subnet" "public" {
+      - arn                                            = "arn:aws:ec2:eu-central-1:<account-id>:subnet/subnet-0b2a3bbb08de250ee" -> null
+      - assign_ipv6_address_on_creation                = false -> null
+      - availability_zone                              = "eu-central-1b" -> null
+      - availability_zone_id                           = "euc1-az3" -> null
+      - cidr_block                                     = "10.0.1.0/24" -> null
+      - enable_dns64                                   = false -> null
+      - enable_lni_at_device_index                     = 0 -> null
+      - enable_resource_name_dns_a_record_on_launch    = false -> null
+      - enable_resource_name_dns_aaaa_record_on_launch = false -> null
+      - id                                             = "subnet-0b2a3bbb08de250ee" -> null
+      - ipv6_native                                    = false -> null
+      - map_customer_owned_ip_on_launch                = false -> null
+      - map_public_ip_on_launch                        = true -> null
+      - owner_id                                       = "<account-id>" -> null
+      - private_dns_hostname_type_on_launch            = "ip-name" -> null
+      - tags                                           = {
+          - "Name" = "flink-restarts-hide-behi-972224-public-1"
+        } -> null
+      - tags_all                                       = {
+          - "Name"     = "flink-restarts-hide-behi-972224-public-1"
+          - "hero-lab" = "flink-restarts-hide-behi-972224"
+        } -> null
+      - vpc_id                                         = "vpc-0f2c255d90ce5348f" -> null
+        # (4 unchanged attributes hidden)
+    }
+
+  # aws_vpc.main will be destroyed
+  - resource "aws_vpc" "main" {
+      - arn                                  = "arn:aws:ec2:eu-central-1:<account-id>:vpc/vpc-0f2c255d90ce5348f" -> null
+      - assign_generated_ipv6_cidr_block     = false -> null
+      - cidr_block                           = "10.0.0.0/16" -> null
+      - default_network_acl_id               = "acl-04db8beb37bb1fa40" -> null
+      - default_route_table_id               = "rtb-05e52dc0445d92d9b" -> null
+      - default_security_group_id            = "sg-0b341ab7a7ca3588e" -> null
+      - dhcp_options_id                      = "dopt-04bcca463a9499c85" -> null
+      - enable_dns_hostnames                 = true -> null
+      - enable_dns_support                   = true -> null
+      - enable_network_address_usage_metrics = false -> null
+      - id                                   = "vpc-0f2c255d90ce5348f" -> null
+      - instance_tenancy                     = "default" -> null
+      - ipv6_netmask_length                  = 0 -> null
+      - main_route_table_id                  = "rtb-05e52dc0445d92d9b" -> null
+      - owner_id                             = "<account-id>" -> null
+      - tags                                 = {
+          - "Name" = "flink-restarts-hide-behi-972224-vpc"
+        } -> null
+      - tags_all                             = {
+          - "Name"     = "flink-restarts-hide-behi-972224-vpc"
+          - "hero-lab" = "flink-restarts-hide-behi-972224"
+        } -> null
+        # (4 unchanged attributes hidden)
+    }
+
+Plan: 0 to add, 0 to change, 18 to destroy.
+
+Changes to Outputs:
+  - cluster_name = "flink-restarts-hide-behi-972224" -> null
+aws_route_table_association.public[1]: Destroying... [id=rtbassoc-0d86334fb94b67062]
+aws_route_table_association.public[0]: Destroying... [id=rtbassoc-0a4e45675b0496b97]
+aws_instance.node[0]: Destroying... [id=i-0658723d0aa78f0f7]
+aws_instance.node[1]: Destroying... [id=i-0df05430e2ec68a51]
+aws_route_table_association.public[1]: Destruction complete after 1s
+aws_route_table_association.public[0]: Destruction complete after 1s
+aws_route_table.public: Destroying... [id=rtb-04f2e02f452e8dbf3]
+aws_route_table.public: Destruction complete after 1s
+aws_internet_gateway.main: Destroying... [id=igw-0e29834deebd61213]
+aws_instance.node[0]: Still destroying... [id=i-0658723d0aa78f0f7, 00m10s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0df05430e2ec68a51, 00m10s elapsed]
+aws_internet_gateway.main: Still destroying... [id=igw-0e29834deebd61213, 00m10s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0df05430e2ec68a51, 00m20s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-0658723d0aa78f0f7, 00m20s elapsed]
+aws_internet_gateway.main: Still destroying... [id=igw-0e29834deebd61213, 00m20s elapsed]
+aws_instance.node[0]: Still destroying... [id=i-0658723d0aa78f0f7, 00m30s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0df05430e2ec68a51, 00m30s elapsed]
+aws_instance.node[0]: Destruction complete after 31s
+aws_internet_gateway.main: Still destroying... [id=igw-0e29834deebd61213, 00m30s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0df05430e2ec68a51, 00m40s elapsed]
+aws_internet_gateway.main: Still destroying... [id=igw-0e29834deebd61213, 00m40s elapsed]
+aws_instance.node[1]: Still destroying... [id=i-0df05430e2ec68a51, 00m50s elapsed]
+aws_internet_gateway.main: Destruction complete after 49s
+aws_instance.node[1]: Destruction complete after 52s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destroying... [id=hero-lab-flink-restarts-hide-behi-972224-node-20261116110918300000000001]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destroying... [id=hero-lab-flink-restarts-hide-behi-972224-node-20261116110918369900000004]
+aws_iam_instance_profile.node: Destroying... [id=hero-lab-flink-restarts-hide-behi-972224-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destroying... [id=hero-lab-flink-restarts-hide-behi-972224-node-20261116110918368700000003]
+aws_eks_access_entry.node: Destroying... [id=flink-restarts-hide-behi-972224:arn:aws:iam::<account-id>:role/hero-lab-flink-restarts-hide-behi-972224-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Destruction complete after 0s
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Destruction complete after 0s
+aws_iam_instance_profile.node: Destruction complete after 0s
+aws_eks_access_entry.node: Destruction complete after 0s
+aws_iam_role.node: Destroying... [id=hero-lab-flink-restarts-hide-behi-972224-node]
+aws_eks_cluster.main: Destroying... [id=flink-restarts-hide-behi-972224]
+aws_iam_role.node: Destruction complete after 1s
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 00m10s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 00m20s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 00m30s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 00m40s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 00m50s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 01m00s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 01m10s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 01m20s elapsed]
+aws_eks_cluster.main: Still destroying... [id=flink-restarts-hide-behi-972224, 01m30s elapsed]
+aws_eks_cluster.main: Destruction complete after 1m39s
+aws_iam_role_policy_attachment.cluster: Destroying... [id=hero-lab-flink-restarts-hide-behi-972224-cluster-20261116110918319700000002]
+aws_subnet.public[0]: Destroying... [id=subnet-03ef8d31cabca79d0]
+aws_subnet.public[1]: Destroying... [id=subnet-0b2a3bbb08de250ee]
+aws_iam_role_policy_attachment.cluster: Destruction complete after 0s
+aws_iam_role.cluster: Destroying... [id=hero-lab-flink-restarts-hide-behi-972224-cluster]
+aws_iam_role.cluster: Destruction complete after 0s
+aws_subnet.public[1]: Destruction complete after 1s
+aws_subnet.public[0]: Destruction complete after 1s
+aws_vpc.main: Destroying... [id=vpc-0f2c255d90ce5348f]
+aws_vpc.main: Destruction complete after 1s
+
+Destroy complete! Resources: 18 destroyed.
+
