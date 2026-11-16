@@ -1,15 +1,5 @@
 {
- "round": 3,
- "Editor": [
-  {
-   "problem": "Earlier point 3 is still only partly fixed. app_cpu_cores_after is one average over the whole 70 s per container (min_entities 12). That average hides short CPU starvation in orders (THREADS=400 under opentelemetry-instrument, 100m request, no limit) during the storm seconds. Nothing measures CPU for APP_NODE, which also runs the collector agent. There is no per-second inventory queue depth. Connection-refused and reset errors are not counted apart from timeouts. start_run searches inventory.py for threads=/connection_limit=/backlog=. If inventory uses socketserver's default request_queue_size (5), none of those strings appear, the line prints blank, and the effective backlog stays unknown. A naive run could then fail because of a full listen queue or a starved orders pod, and the brief's 'why does my service stay down' answer would credit the wrong cause.",
-   "fix": "In analyze.sh, sample per-second CPU for the orders pod, the inventory pod and APP_NODE (cgroup cpu.stat, or kubelet /stats/summary from the load pod or a sidecar). Add orders_cpu_peak_after, inventory_cpu_peak_after and node_cpu_peak_after (op present, min_entities 6), each the peak 1-second value in the 70 s window. Have inventory log its queue depth (accepted but not started) every second, and add inventory_queue_depth_peak_after (op present, min_entities 6). In start_run, print the effective values from the running process, not from a search of the source: worker count, socket backlog / request_queue_size (for example `python -c` importing the server class, or `ss -ltn` Send-Q on port 8081), plus somaxconn. Have orders log the exception class for each failed attempt, and add orders_conn_errors_after (refused or reset, separate from timeouts, op present, min_entities 6)."
-  }
- ],
- "Marketing": [
-  {
-   "problem": "The title reads like a label or a changelog. \"Instant Retries vs Backoff With a Retry Budget After a Slowdown, in Splunk APM\" names two policies, not the pain. It doesn't use the words an engineer types after an incident, such as \"stays down after the dependency recovered\" or \"retry storm\". It also doesn't credit Splunk with the answer. The brief's own question is the hook: \"Why does my service stay down after the dependency is healthy again?\"",
-   "fix": "Retitle around that question, and keep the policy names for the body. Use a title with the shape \"Why Your Service Stays Down After the Dependency Recovers (and How to See the Retry Storm in Splunk APM)\". The lab can support every part of it. It measures recovery time, failed orders, and calls per order. It reads the same windows back from Splunk APM. Keep \"Backoff, Jitter and a Retry Budget\" as the subtitle or H2, always as one combined fix."
-  }
- ]
+ "round": 4,
+ "Editor": [],
+ "Marketing": []
 }
