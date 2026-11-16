@@ -1,0 +1,10 @@
+{
+ "run": "43854972224",
+ "issue": 214,
+ "title": "Flink Restarts Hide Behind RUNNING: Count Them in Splunk With OpenTelemetry",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 22.5,
+ "lab_usd": 0.0
+}
