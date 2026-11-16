@@ -42,7 +42,9 @@ Do not add approval requests, manual commands or setup steps for routine decisio
     Slack or the CTO desk issue, can raise the limit, for that month. No model can change it. Costs are list prices plus lab
     estimates, never invoices, so never present them as billing data. Claude is paid from the $100 of Claude API credit
    that comes with Abhi's Max plan (it arrives on the 29th), so Claude's share is recorded as `analytics/claude-*` and
-   only the part above the credit counts toward the limit. ChatGPT, Gemini and AWS count in full.
+   only the part above the credit counts toward the limit. ChatGPT works the same way against the $100 of OpenAI API
+   credit that comes with Abhi's ChatGPT Pro plan (claimed 16 Nov 2026, cycle from the 16th), recorded as `analytics/openai-*`.
+   Gemini and AWS count in full.
 14. **This repo is public, and so is its `analytics` branch and every issue.** Nothing private goes there. Abhi's requests
     and the admin page live in the private `team-admin` repository, and his conversations belong in Slack.
 15. **Few emails.** Abhi hears about an article once, when its PR is ready. Routine progress belongs in the CTO digest.
