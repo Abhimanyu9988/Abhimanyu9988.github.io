@@ -1,0 +1,89 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 427s
+
+aws_iam_role.cluster: Creating...
+aws_iam_role.node: Creating...
+aws_vpc.main: Creating...
+aws_iam_role.cluster: Creation complete after 1s [id=hero-lab-service-still-down-after-215870-cluster]
+aws_iam_role_policy_attachment.cluster: Creating...
+aws_iam_role.node: Creation complete after 1s [id=hero-lab-service-still-down-after-215870-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Creating...
+aws_iam_instance_profile.node: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Creation complete after 0s [id=hero-lab-service-still-down-after-215870-node-20261116034834900800000001]
+aws_iam_role_policy_attachment.cluster: Creation complete after 0s [id=hero-lab-service-still-down-after-215870-cluster-20261116034834939700000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Creation complete after 0s [id=hero-lab-service-still-down-after-215870-node-20261116034834959600000003]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Creation complete after 0s [id=hero-lab-service-still-down-after-215870-node-20261116034835069100000004]
+aws_iam_instance_profile.node: Creation complete after 5s [id=hero-lab-service-still-down-after-215870-node]
+aws_vpc.main: Still creating... [00m10s elapsed]
+aws_vpc.main: Creation complete after 13s [id=vpc-038b76d0e55e51877]
+aws_internet_gateway.main: Creating...
+aws_subnet.public[0]: Creating...
+aws_subnet.public[1]: Creating...
+aws_internet_gateway.main: Creation complete after 1s [id=igw-00b0a42577153b357]
+aws_route_table.public: Creating...
+aws_route_table.public: Creation complete after 2s [id=rtb-0f836d4a70448adc7]
+aws_subnet.public[1]: Still creating... [00m10s elapsed]
+aws_subnet.public[0]: Still creating... [00m10s elapsed]
+aws_subnet.public[0]: Creation complete after 12s [id=subnet-094445ef01bbf05f1]
+aws_subnet.public[1]: Creation complete after 12s [id=subnet-0b8c4d6fd2d608f43]
+aws_route_table_association.public[0]: Creating...
+aws_route_table_association.public[1]: Creating...
+aws_eks_cluster.main: Creating...
+aws_route_table_association.public[1]: Creation complete after 1s [id=rtbassoc-04564839c9f3fea4a]
+aws_route_table_association.public[0]: Creation complete after 1s [id=rtbassoc-0effde6e5beed8402]
+aws_eks_cluster.main: Still creating... [00m10s elapsed]
+aws_eks_cluster.main: Still creating... [00m20s elapsed]
+aws_eks_cluster.main: Still creating... [00m30s elapsed]
+aws_eks_cluster.main: Still creating... [00m40s elapsed]
+aws_eks_cluster.main: Still creating... [00m50s elapsed]
+aws_eks_cluster.main: Still creating... [01m00s elapsed]
+aws_eks_cluster.main: Still creating... [01m10s elapsed]
+aws_eks_cluster.main: Still creating... [01m20s elapsed]
+aws_eks_cluster.main: Still creating... [01m31s elapsed]
+aws_eks_cluster.main: Still creating... [01m41s elapsed]
+aws_eks_cluster.main: Still creating... [01m51s elapsed]
+aws_eks_cluster.main: Still creating... [02m01s elapsed]
+aws_eks_cluster.main: Still creating... [02m11s elapsed]
+aws_eks_cluster.main: Still creating... [02m21s elapsed]
+aws_eks_cluster.main: Still creating... [02m31s elapsed]
+aws_eks_cluster.main: Still creating... [02m41s elapsed]
+aws_eks_cluster.main: Still creating... [02m51s elapsed]
+aws_eks_cluster.main: Still creating... [03m01s elapsed]
+aws_eks_cluster.main: Still creating... [03m11s elapsed]
+aws_eks_cluster.main: Still creating... [03m21s elapsed]
+aws_eks_cluster.main: Still creating... [03m31s elapsed]
+aws_eks_cluster.main: Still creating... [03m41s elapsed]
+aws_eks_cluster.main: Still creating... [03m51s elapsed]
+aws_eks_cluster.main: Still creating... [04m01s elapsed]
+aws_eks_cluster.main: Still creating... [04m11s elapsed]
+aws_eks_cluster.main: Still creating... [04m21s elapsed]
+aws_eks_cluster.main: Still creating... [04m31s elapsed]
+aws_eks_cluster.main: Still creating... [04m41s elapsed]
+aws_eks_cluster.main: Still creating... [04m51s elapsed]
+aws_eks_cluster.main: Still creating... [05m01s elapsed]
+aws_eks_cluster.main: Still creating... [05m11s elapsed]
+aws_eks_cluster.main: Still creating... [05m21s elapsed]
+aws_eks_cluster.main: Still creating... [05m31s elapsed]
+aws_eks_cluster.main: Still creating... [05m41s elapsed]
+aws_eks_cluster.main: Still creating... [05m51s elapsed]
+aws_eks_cluster.main: Still creating... [06m01s elapsed]
+aws_eks_cluster.main: Still creating... [06m11s elapsed]
+aws_eks_cluster.main: Still creating... [06m21s elapsed]
+aws_eks_cluster.main: Creation complete after 6m25s [id=service-still-down-after-215870]
+aws_eks_access_entry.node: Creating...
+aws_eks_access_entry.node: Creation complete after 1s [id=service-still-down-after-215870:arn:aws:iam::<account-id>:role/hero-lab-service-still-down-after-215870-node]
+aws_instance.node[0]: Creating...
+aws_instance.node[1]: Creating...
+aws_instance.node[1]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Creation complete after 14s [id=i-0c122e278985d726c]
+aws_instance.node[1]: Creation complete after 14s [id=i-0090aec1fcd70b0c2]
+
+Apply complete! Resources: 18 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "service-still-down-after-215870"
+
