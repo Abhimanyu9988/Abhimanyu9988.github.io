@@ -1,0 +1,48 @@
+$ bash reproduce.sh
+# exit 0 after 371s
+
+== 1. Waiting for 2 worker nodes
+Flink on ip-10-0-0-54.eu-central-1.compute.internal; the watcher on ip-10-0-1-179.eu-central-1.compute.internal
+== 2. Installing the Splunk OTel Collector (chart 0.163.1)
+== 3. Flink 1.20 session cluster and the StateMachine example job (checkpoints every 5 s)
+Job has been submitted with JobID 6b623e97e17b8b2287eb7b4dcf680834
+image flink:1.20-java17, WATCH flink-version=1.20.5
+== 4. Deleting the TaskManager pod twice, 30 s apart
+baseline: deleted flink-taskmanager-74b6d88cbf-tscs4 at 1794828050; RUNNING again at 1794828061, Flink's restart count 1
+baseline: deleted flink-taskmanager-74b6d88cbf-qbjkw at 1794828095; RUNNING again at 1794828106, Flink's restart count 2
+baseline: 80 one-second samples from 1794828047 to 1794828127; states RESTARTING 8, RUNNING 72; Flink's restart count 0 -> 2; checkpoints completed 15 -> 40, failed 1 -> 8
+baseline-1: TaskManager deleted at 1794828050; RESTARTING at 1794828051.177 (1.2 s after the deletion), RUNNING again at 1794828056.241 (5.1 s not RUNNING); every task RUNNING and a new checkpoint at 1794828051, 0 s after the job already said RUNNING
+baseline-2: TaskManager deleted at 1794828095; RESTARTING at 1794828096.145 (1.1 s after the deletion), RUNNING again at 1794828101.159 (5.0 s not RUNNING); every task RUNNING and a new checkpoint at 1794828097, 0 s after the job already said RUNNING
+RESTARTS baseline 1794828058 1794828100
+HERO_MEASURE: restarts_injected[baseline]=2
+HERO_MEASURE: flink_rest_restarts[baseline]=2
+HERO_MEASURE: deletion_not_running_s[baseline-1]=5.1
+HERO_MEASURE: deletion_running_unrecovered_s[baseline-1]=0
+HERO_MEASURE: deletion_not_running_s[baseline-2]=5.0
+HERO_MEASURE: deletion_running_unrecovered_s[baseline-2]=0
+== 5. The same window in Splunk Observability Cloud's Kubernetes metrics
+  program: data('k8s.container.restarts', filter=filter('k8s.cluster.name', 'flink-restarts-hide-behi-972224') and filter('k8s.container.name', 'taskmanager'), rollup='max').max().publish() resolution=10000ms start=1794828017 stop=1794828127
+  program: data('k8s.deployment.available', filter=filter('k8s.cluster.name', 'flink-restarts-hide-behi-972224') and filter('k8s.deployment.name', 'flink-taskmanager'), rollup='min').max().publish() resolution=10000ms start=1794828017 stop=1794828127
+  metric types: k8s.container.restarts GAUGE, k8s.deployment.available GAUGE
+  k8s.container.restarts (taskmanager) per 10 s: 1794828010=0 1794828020=0 1794828030=0 1794828040=0 1794828050=0 1794828060=0 1794828070=0 1794828080=0 1794828090=0 1794828100=0 1794828110=0 1794828120=0 
+  k8s.deployment.available (flink-taskmanager) per 10 s: 1794828010=1 1794828020=1 1794828030=1 1794828040=1 1794828050=1 1794828060=1 1794828070=1 1794828080=1 1794828090=1 1794828100=1 1794828110=1 1794828120=1 
+TaskManager pods Splunk has a container series for: 3; highest container restart count 0; lowest available replicas over the window 1
+  kube.txt, kubectl once a second: 28 samples; first: KUBE t=1794828044 available=1 pods=flink-taskmanager-74b6d88cbf-tscs4|True|2026-11-16T11:19:30Z|0 
+k8s baseline: 28 kubectl samples, 12 Splunk points
+baseline-1: deleted flink-taskmanager-74b6d88cbf-tscs4 at 1794828050; new pod flink-taskmanager-74b6d88cbf-qbjkw Ready at 1794828052.0 (2.0 s); kubectl available min 0; Splunk points overlapping the gap: 1794828050=1
+baseline-2: deleted flink-taskmanager-74b6d88cbf-qbjkw at 1794828095; new pod flink-taskmanager-74b6d88cbf-8ljkr Ready at 1794828097.0 (2.0 s); kubectl available min 0; Splunk points overlapping the gap: 1794828090=1
+TaskManager pods seen by kubectl: 3; highest container restart count 0
+HERO_MEASURE: splunk_k8s_view[ready_gap_s-1]=2.0
+HERO_MEASURE: splunk_k8s_view[kubectl_available_min-1]=0
+HERO_MEASURE: splunk_k8s_view[available_min-1]=1
+HERO_MEASURE: splunk_k8s_view[ready_gap_s-2]=2.0
+HERO_MEASURE: splunk_k8s_view[kubectl_available_min-2]=0
+HERO_MEASURE: splunk_k8s_view[available_min-2]=1
+HERO_MEASURE: splunk_k8s_view[kubectl_container_restarts_max]=0
+  the chart's k8s_cluster receiver settings: 
+  (no collection_interval line means the receiver default, 10s: one report per 10 s)
+HERO_MEASURE: splunk_k8s_view[taskmanager_pod_series]=3
+HERO_MEASURE: splunk_k8s_view[container_restarts_max]=0
+flink.* metric names for deployment.environment=flink-restarts-hide-behi-972224: 0 (no Flink receiver runs in this phase)
+HERO_RESULT: reproduced
+
