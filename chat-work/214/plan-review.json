@@ -1,39 +1,19 @@
 {
- "round": 1,
+ "round": 2,
  "Editor": [
   {
-   "problem": "The baseline check could not have failed. reproduce.sh passes only when `names = 0`, but no Flink receiver or Prometheus scrape is configured, so zero flink.* metrics is guaranteed by setup. It proves nothing a reader didn't know. It also frames the Splunk distribution as lacking, and the brief itself cites Splunk's docs for getting Flink metrics in through the Prometheus receiver. The brief's real decision is whether job state and pod health are enough, and the baseline never measures pod health.",
-   "fix": "Turn the baseline into what Splunk already shows for the same two deletions. Read k8s.container.restarts, the TaskManager Deployment's available replicas and the pod phase series from the Splunk chart for that window, and report what each one shows for each deletion, for example a new pod name with a container-restart count of 0. Drop the `names = 0` pass condition and splunk_flink_metric_names[before]. Let the receiver phase show how Flink's job-level counters add to the Kubernetes view."
+   "problem": "Earlier point 4 (Splunk rollup) is only partly fixed. `counter` still lives in splunk.sh, which the plan doesn't show. The only sign of rollup='latest' at 10 s is a comment in reproduce.sh. The run prints metric_type, but it never prints the SignalFlow program. So the evidence can't show that `end - base` and splunk_rest_restart_diff are differences of raw cumulative values, rather than per-point deltas that happen to pass.",
+   "fix": "Include splunk.sh in the lab. Have `counter` echo the exact program text and the resolution it requests, for example data('flink.job.restart.count', filter=..., rollup='latest').publish() at 10 s, once per metric into the run log. Do the same for flink.job.checkpoint.count and the two k8s metrics."
   },
   {
-   "problem": "Nothing measures the takeaway, 'state and pod health look fine' while the job is actually down. job_running_share_pct only samples job state once a second. With a single TaskManager and p=2, the RESTARTING state may last under a second and never be sampled, so a share near 100% could come from the sampling alone. Flink can also report job RUNNING while its vertices wait for slots, and the plan captures neither case. The headline 'says RUNNING while it restarts' would rest on a number that cannot tell these cases apart.",
-   "fix": "In the watcher, also record each vertex's state (/jobs/<id> vertices) and a progress signal (numRecordsIn or the last completed checkpoint id) every second. Add a measurement 'seconds per deletion the job state was RUNNING but not all vertices were RUNNING, or no records or checkpoint advanced', one entry per deletion with min_entities 5. Also log every state change that appears between samples, so short RESTARTING states are counted even when no one-second sample lands in them."
-  },
-  {
-   "problem": "The Splunk-versus-REST counts don't use the same window. The restart increase in Splunk runs from the last point before w0 to the last point up to w1+60 (`tail -1`), but Flink's count covers only w0..w1. The checkpoint counts use the last 10 s point before w0 and before w1, while REST counts land on the exact second. With checkpoints every 5 s, the edges alone can move each checkpoint total by about 2, and the comparison would then read as a mismatch between Splunk and Flink.",
-   "fix": "Have analyze.sh report Flink's REST restart and checkpoint counters at the exact timestamps of the Splunk points used as base and end, which means storing the full watcher time series. Use the same end bound (w1) for the restart and checkpoint reads in Splunk. Record both timestamps next to each HERO_MEASURE."
-  },
-  {
-   "problem": "Splunk's rollup isn't stated. `counter` lives in splunk.sh, which isn't shown. flink.job.restart.count is a cumulative counter, and Splunk's default rollup for cumulative counters is delta or rate per resolution, not the raw value. If so, `end - base` measures something else, and splunk_rest_restart_diff = 0 could pass or fail for the wrong reason.",
-   "fix": "Make the SignalFlow call use data('flink.job.restart.count', rollup='latest') (or max), with resolution fixed at 10 s, the same for the checkpoint counts. Print the program text and the metric type Splunk reports in the run log, so the effective config is part of the evidence."
-  },
-  {
-   "problem": "restart_visible_lag_s doesn't measure when a reader could see or alert on the restart. It is computed from the point's timestamp + 10 s, not from the moment the point became queryable in Splunk. That gives a fixed 0\u201310 s figure set by the collection interval, while the brief promises 'how soon each restart showed'.",
-   "fix": "While the deletions run, poll Splunk every 2\u20133 s in the background (a SignalFlow stream or a repeated short-window query). Record the wall-clock time when the incremented value first comes back for each restart. Report both the point-boundary lag and the arrival lag, three values each, not averaged."
+   "problem": "The new Kubernetes baseline reads k8s.deployment.available, and the reproduce.sh header says it uses rollup='latest' at 10 s. The TaskManager has no readiness probe, so the replacement pod can turn Ready within seconds. If the 'latest' value lands after the new pod is Ready, a dip to 0 inside a 10 s bucket never appears. available_min=1 would then come from the sampling, not from what Kubernetes reported, which is the same sampling flaw that was blocked for job state. k8s.container.restarts has the mirror-image risk.",
+   "fix": "Read k8s.deployment.available with rollup='min' and k8s.container.restarts with rollup='max', at 10 s. Also record, from `kubectl get pods -w` or the deletion log, the old and new TaskManager pod names and the times they turned Ready. Report available_min next to the Ready gap seconds for each deletion, so a reader can see whether Splunk's minimum covers that gap."
   }
  ],
  "Marketing": [
   {
-   "problem": "The title is the only option and it leaves out the words engineers search with and the keyword Abhi wants to be known for. It has no OpenTelemetry, no Flink receiver and no Splunk Observability Cloud. The reader's pain (restarts hidden behind RUNNING) is named, but the answer is credited only to 'Splunk'.",
-   "fix": "Retitle so the OpenTelemetry Flink receiver gets the credit, for example 'Flink Says RUNNING After Every Restart: Count Them All in Splunk with the OpenTelemetry Flink Receiver'. Keep 'Flink', 'restarts', 'RUNNING' and 'Splunk' in the first words."
-  },
-  {
-   "problem": "The title says Flink says RUNNING 'while it restarts'. The lab samples job state once a second, and Flink normally shows RESTARTING or another non-RUNNING state during the restart delay. If the job_running_share_pct measurement shows those states, a reader who checks will find the title overstated. The brief's own takeaway says RUNNING again 'within seconds', which is a different claim from the title.",
-   "fix": "Make the title and brief claim only what the samples show: the job is back to RUNNING within seconds, so state and pod health look healthy. Add a lab rule to report the longest non-RUNNING gap and the RUNNING share per phase, so the headline number is true whichever way it comes out."
-  },
-  {
-   "problem": "Demand is rated weak. The only evidence is that Abhi asked for the topic and one AWS blog exists. There are no search, forum or reaction numbers. The title also promises 'every restart' on the strength of 3 restarts from one job, so it rests on one exact match (splunk_rest_restart_diff = 0).",
-   "fix": "Before the run, add at least one real demand signal to the brief, such as Flink mailing-list or StackOverflow threads on 'job RUNNING but restarting', GitHub issues on the receiver, or Splunk community questions. If none turns up, keep the score at 3 or lower. Also write a fallback title for the case where Splunk's count differs from Flink's, so the 'every restart' promise is not locked in."
+   "problem": "The earlier request for a fallback title was not done. The title promises \"Count Them in Splunk\", and the plan rests that promise on one exact match (splunk_rest_restart_diff le 0, from 3 restarts on one job). If Splunk's count differs from Flink's REST count, for example by a missed restart or a counter reset, the title overstates the result and a paid rerun is needed to retitle.",
+   "fix": "Add a fallback title to the brief for the case where splunk_rest_restart_diff is above 0. It should credit the OpenTelemetry Flink receiver for what it does show and keep Flink, restarts, RUNNING and Splunk in the first words. For example: \"Flink Says RUNNING After Every Restart: What the OpenTelemetry Receiver Shows in Splunk, and How to Line It Up\". Also add a rule that the published title is chosen only after splunk_rest_restart_diff is known."
   }
  ]
 }
