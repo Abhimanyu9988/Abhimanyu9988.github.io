@@ -2071,5 +2071,12 @@ import draft as _d17
 check("post review: a chat article's evidence is looked up under the draft step's slug",
       all(post_review.draft_slug(t) == _d17.title_slug(t) for t in
           ("Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts", "A b", "x" * 70 + " y")))
+import comments as _cm18, cto as _c18
+_la18 = _cm18.load_articles
+_cm18.load_articles = lambda: [{"name": "a.md", "text": "---\ntitle: A\ndate: 2026-11-16\nlinkedin_date: 2026-11-17\nlinkedin: post A\n---\nbody"},
+                               {"name": "b.md", "text": "---\ntitle: B\ndate: 2026-11-16\nlinkedin: post B\n---\nbody"}]
+check("secretary: an article's post goes out on its linkedin_date, not its publish date",
+      _c18.todays_article("2026-11-17")["name"] == "a.md" and _c18.todays_article("2026-11-16")["name"] == "b.md")
+_cm18.load_articles = _la18
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
