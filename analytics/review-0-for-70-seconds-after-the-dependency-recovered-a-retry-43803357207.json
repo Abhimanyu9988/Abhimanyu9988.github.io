@@ -1,0 +1,479 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "the evidence checks did not pass: title claim not found in evidence: 0%; title claim not found in evidence: 70 Seconds After the; measurement orders_success_before_pct: too_few_entities; measurement failed_orders_after_slowdown: too_few_entities; measurement calls_after_slowdown: too_few_entities; measurement inventory_late_share_after: too_few_entities; measurement inventory_queue_peak_after: too_few_entities; measurement order_l",
+  "technical score 1 is below 4",
+  "editorial score 1 is below 4",
+  "marketing score 2 is below 4",
+  "editorial: The post is a placeholder, so none of the brief's promised results appear: failed orders, recovery time, calls per order, late-work share or the Splunk APM views. Fix: Write the full article from 04-reproduce.log and 05-fix.log. Include a per-run table for naive-1..3 and budget-1..3 covering every contract measurement, plus the naive-2 and budget-2 windows read back from Splunk.",
+  "technical: The Evidence Contract failed. Several measurements are missing one of the six runs, so a three-runs-per-policy comparison cannot be claimed yet. Fix: Find which run's report is missing or cut short (likely the last run in fix.sh, given the 830 s clock and the cap() reserves). Re-run it, or report it honestly as missing and limit every claim to the runs that completed.",
+  "technical: The title claims '0%' and '70 seconds', and the scanner found neither in the evidence. The null after-slowdown latencies (flags f1-f6) suggest zero successful naive orders, but no line in the evidence states that, and one run is missing. Fix: Quote, per naive run, the analyze.sh line 'after it X of Y failed' and the per-10 s success line. Use '0%' only if all three naive runs show 0 successful orders across the whole 70 s window, and say 'in all three runs'.",
+  "editorial: The title opens with a measured failure instead of what the reader gains, and it credits 'Splunk' vaguely, not the Splunk APM view that answers the reader's question. Fix: Lead with what the reader gains and credit Splunk APM, for example 'Service Still Down After the Dependency Recovered? Spot the Retry Storm in Splunk APM and End It with Backoff and a Retry Budget'. Put the naive-run failure counts in the body.",
+  "technical: The order_latency_ms values for naive-1, naive-2 and naive-3 are null after the slowdown. The contract allows null when there were no successful orders, but the draft never explains this, so a reader would see missing data. Fix: Print n=0 beside each null and state that no naive order succeeded in the 70 s window, so latency has no value. Compare it with the budget runs' after-slowdown p50 and p99 and their n.",
+  "editorial: The TOPIC's Lab line states a load rate that contradicts the brief and the run. Fix: Use 40 orders a second everywhere, which matches k8s/20-load.yaml RATE=40.",
+  "flag not addressed: a value is missing",
+  "flag not addressed: a value is missing",
+  "flag not addressed: a value is missing",
+  "flag not addressed: a value is missing",
+  "flag not addressed: a value is missing",
+  "flag not addressed: a value is missing"
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [
+   {
+    "id": "f1",
+    "kind": "missing_value",
+    "severity": "high",
+    "file": "04-reproduce.log",
+    "line": 44,
+    "text": "HERO_MEASURE: order_latency_ms[naive-1/after-p50]=null",
+    "why": "a value is missing"
+   },
+   {
+    "id": "f2",
+    "kind": "missing_value",
+    "severity": "high",
+    "file": "04-reproduce.log",
+    "line": 45,
+    "text": "HERO_MEASURE: order_latency_ms[naive-1/after-p99]=null",
+    "why": "a value is missing"
+   },
+   {
+    "id": "f3",
+    "kind": "missing_value",
+    "severity": "high",
+    "file": "04-reproduce.log",
+    "line": 154,
+    "text": "HERO_MEASURE: order_latency_ms[naive-2/after-p50]=null",
+    "why": "a value is missing"
+   },
+   {
+    "id": "f4",
+    "kind": "missing_value",
+    "severity": "high",
+    "file": "04-reproduce.log",
+    "line": 155,
+    "text": "HERO_MEASURE: order_latency_ms[naive-2/after-p99]=null",
+    "why": "a value is missing"
+   },
+   {
+    "id": "f5",
+    "kind": "missing_value",
+    "severity": "high",
+    "file": "05-fix.log",
+    "line": 27,
+    "text": "HERO_MEASURE: order_latency_ms[naive-3/after-p50]=null",
+    "why": "a value is missing"
+   },
+   {
+    "id": "f6",
+    "kind": "missing_value",
+    "severity": "high",
+    "file": "05-fix.log",
+    "line": 28,
+    "text": "HERO_MEASURE: order_latency_ms[naive-3/after-p99]=null",
+    "why": "a value is missing"
+   }
+  ],
+  "headline": [
+   {
+    "claim": "0%",
+    "number": "0",
+    "noun": "%",
+    "supported": false,
+    "where": "",
+    "basis": "heuristic",
+    "validated": false
+   },
+   {
+    "claim": "70 Seconds After the",
+    "number": "70",
+    "noun": "after",
+    "supported": false,
+    "where": "",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": false,
+   "results": [
+    {
+     "id": "orders_success_before_pct",
+     "status": "too_few_entities",
+     "values": 5,
+     "needed": 6,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:33"
+    },
+    {
+     "id": "failed_orders_after_slowdown",
+     "status": "too_few_entities",
+     "values": 5,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:35"
+    },
+    {
+     "id": "recovery_after_slowdown",
+     "status": "ok",
+     "values": 7,
+     "needed": 6,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:36"
+    },
+    {
+     "id": "calls_after_slowdown",
+     "status": "too_few_entities",
+     "values": 17,
+     "needed": 18,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:37"
+    },
+    {
+     "id": "inventory_late_share_after",
+     "status": "too_few_entities",
+     "values": 5,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:40"
+    },
+    {
+     "id": "inventory_queue_peak_after",
+     "status": "too_few_entities",
+     "values": 5,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:41"
+    },
+    {
+     "id": "order_latency_ms",
+     "status": "bad_value",
+     "values": 14,
+     "needed": 12,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:42"
+    },
+    {
+     "id": "cpu_cores_after",
+     "status": "too_few_entities",
+     "values": 25,
+     "needed": 30,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:46"
+    },
+    {
+     "id": "splunk_orders_error_pct_after",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "self_reported",
+     "where": "05-fix.log:107"
+    },
+    {
+     "id": "splunk_log_diff_pct",
+     "status": "ok",
+     "values": 2,
+     "needed": 2,
+     "provenance": "corroborated",
+     "where": "05-fix.log:108"
+    }
+   ]
+  },
+  "failures": [
+   "title claim not found in evidence: 0%",
+   "title claim not found in evidence: 70 Seconds After the",
+   "measurement orders_success_before_pct: too_few_entities",
+   "measurement failed_orders_after_slowdown: too_few_entities",
+   "measurement calls_after_slowdown: too_few_entities",
+   "measurement inventory_late_share_after: too_few_entities",
+   "measurement inventory_queue_peak_after: too_few_entities",
+   "measurement order_latency_ms: bad_value",
+   "measurement cpu_cores_after: too_few_entities"
+  ],
+  "passed": false
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 1,
+    "reasons": [
+     "There is no article to check. The POST body is one line: 'Placeholder while the evidence files are collected from the run. The full article replaces this.'",
+     "The Evidence Contract failed (passed=false). Six measurements have 5 of the 6 run values they need, cpu_cores_after has 25 of 30, and order_latency_ms is flagged bad_value.",
+     "The scanner could not find either title claim, '0%' and '70 Seconds After the', in the evidence. With one run missing, nobody can say the result held in all three naive runs.",
+     "The lab design is sound: one setting changes between runs, inventory logs the server settings it started with, timeouts are counted apart from refused or reset calls, and the Splunk count is checked against the load's own count. The measurements just need to be complete."
+    ]
+   },
+   "editorial": {
+    "score": 1,
+    "reasons": [
+     "There is no opening, no finding, no trade-off discussion and no reader guidance. A placeholder cannot be judged as an article.",
+     "The title leads with a failure number ('0%'), not with what the reader gains. It credits 'Splunk' generically, while the brief's question is about seeing the storm in Splunk APM.",
+     "The TOPIC is inconsistent: its Lab line says 60 orders a second, but the open question and the run used 40. Fix this before publishing."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "Demand is rated weak. The only signal is news coverage of the Microsoft 365 outage, with no search volume, reactions, comments or views on retry storms.",
+     "The draft gives readers nothing to find or share. The current title's wording ('0% for 70 Seconds After the Dependency Recovered') is not how people search; their question is closer to 'service still down after dependency recovered'.",
+     "A score above 3 is not possible without a linked demand signal in the BRIEF."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "editorial",
+    "problem": "The post is a placeholder, so none of the brief's promised results appear: failed orders, recovery time, calls per order, late-work share or the Splunk APM views.",
+    "evidence": "POST: 'Placeholder while the evidence files are collected from the run. The full article replaces this.'",
+    "fix": "Write the full article from 04-reproduce.log and 05-fix.log. Include a per-run table for naive-1..3 and budget-1..3 covering every contract measurement, plus the naive-2 and budget-2 windows read back from Splunk."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The Evidence Contract failed. Several measurements are missing one of the six runs, so a three-runs-per-policy comparison cannot be claimed yet.",
+    "evidence": "contract: orders_success_before_pct, failed_orders_after_slowdown, inventory_late_share_after and inventory_queue_peak_after each have 5 of 6 values; calls_after_slowdown has 17 of 18; cpu_cores_after has 25 of 30",
+    "fix": "Find which run's report is missing or cut short (likely the last run in fix.sh, given the 830 s clock and the cap() reserves). Re-run it, or report it honestly as missing and limit every claim to the runs that completed."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The title claims '0%' and '70 seconds', and the scanner found neither in the evidence. The null after-slowdown latencies (flags f1-f6) suggest zero successful naive orders, but no line in the evidence states that, and one run is missing.",
+    "evidence": "TITLE: '0% for 70 Seconds After the Dependency Recovered'; headline supported=false for '0%' and '70'",
+    "fix": "Quote, per naive run, the analyze.sh line 'after it X of Y failed' and the per-10 s success line. Use '0%' only if all three naive runs show 0 successful orders across the whole 70 s window, and say 'in all three runs'."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The title opens with a measured failure instead of what the reader gains, and it credits 'Splunk' vaguely, not the Splunk APM view that answers the reader's question.",
+    "evidence": "TITLE: '0% for 70 Seconds After the Dependency Recovered: A Retry Storm in Splunk'",
+    "fix": "Lead with what the reader gains and credit Splunk APM, for example 'Service Still Down After the Dependency Recovered? Spot the Retry Storm in Splunk APM and End It with Backoff and a Retry Budget'. Put the naive-run failure counts in the body."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The order_latency_ms values for naive-1, naive-2 and naive-3 are null after the slowdown. The contract allows null when there were no successful orders, but the draft never explains this, so a reader would see missing data.",
+    "evidence": "04-reproduce.log:44-45, 154-155; 05-fix.log:27-28: 'order_latency_ms[naive-N/after-p50]=null'",
+    "fix": "Print n=0 beside each null and state that no naive order succeeded in the 70 s window, so latency has no value. Compare it with the budget runs' after-slowdown p50 and p99 and their n."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The TOPIC's Lab line states a load rate that contradicts the brief and the run.",
+    "evidence": "TOPIC Lab: 'an open-loop load of 60 orders a second'; open question and RUN summary: '40 orders a second'",
+    "fix": "Use 40 orders a second everywhere, which matches k8s/20-load.yaml RATE=40."
+   }
+  ],
+  "flags_addressed": [
+   {
+    "id": "f1",
+    "addressed": false,
+    "how": "The post is a placeholder. The null naive-1 after-slowdown p50 is allowed by the contract when no orders succeeded, but the article must say so and show n=0."
+   },
+   {
+    "id": "f2",
+    "addressed": false,
+    "how": "The post is a placeholder. The null naive-1 after-slowdown p99 needs the same n=0 explanation."
+   },
+   {
+    "id": "f3",
+    "addressed": false,
+    "how": "The post is a placeholder. The null naive-2 after-slowdown p50 needs an n=0 explanation."
+   },
+   {
+    "id": "f4",
+    "addressed": false,
+    "how": "The post is a placeholder. The null naive-2 after-slowdown p99 needs an n=0 explanation."
+   },
+   {
+    "id": "f5",
+    "addressed": false,
+    "how": "The post is a placeholder. The null naive-3 after-slowdown p50 needs an n=0 explanation, shown against the missing-run count."
+   },
+   {
+    "id": "f6",
+    "addressed": false,
+    "how": "The post is a placeholder. The null naive-3 after-slowdown p99 needs an n=0 explanation."
+   }
+  ],
+  "claims": [
+   {
+    "text": "The 12-13 November 2026 Microsoft 365 outage was widely covered, with restored servers becoming unresponsive under traffic",
+    "class": "sourced",
+    "source_ref": "https://techcrunch.com/2026/11/13/microsoft-latest-email-outage-turned-into-a-full-blown-global-cloud-crisis"
+   },
+   {
+    "text": "Retries amplify load, and backoff with jitter plus retry limits help",
+    "class": "sourced",
+    "source_ref": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/"
+   },
+   {
+    "text": "Retries and queued work keep a recovering service overloaded, and retry budgets help",
+    "class": "sourced",
+    "source_ref": "https://sre.google/sre-book/addressing-cascading-failures/"
+   },
+   {
+    "text": "Microsoft limited traffic during recovery",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Orders stayed at 0% success for 70 seconds after the dependency recovered (title)",
+    "class": "hypothesis",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/451984a0bd"
+ },
+ "brief": {
+  "reader": "Platform or SRE engineer running services on Kubernetes that call each other over HTTP, watching them in Splunk Observability Cloud",
+  "decision": "How their service-to-service retries should behave so a short slowdown in one dependency ends when the dependency recovers, instead of turning into a longer outage",
+  "question": "Why does my service stay down after the dependency is healthy again, and how do I see a retry storm in Splunk APM?",
+  "takeaway": "After a 20-second slowdown, watch what instant retries do to a dependency that is already healthy again, measured three times per policy: failed orders, recovery to 95% success, calls per order, and how much of inventory's work started after the caller had already given up. Then the same with exponential backoff, full jitter and a retry budget, credited together as one fix, and the same windows in Splunk APM.",
+  "adds": "The AWS Builders' Library and Google SRE book explain retry storms and backoff with jitter in prose. This post runs both policies against the same slowdown on EKS, counts failed orders and calls per order second by second, and reads the same windows back from Splunk Observability Cloud, with the service map from Splunk APM.",
+  "open_question": "After a 20-second slowdown in inventory, with orders arriving at a steady 40 a second, in three alternating runs per policy: how many orders fail in the next 70 seconds, does success return to 95% within that window and how fast, how many inventory calls does each order make, and what share of inventory's work starts after the caller's timeout has passed, with instant retries compared with backoff, full jitter and a 10% retry budget together?",
+  "tradeoffs": [
+   "The budget policy combines backoff, full jitter and a retry budget; the lab credits the combination, not any one part",
+   "A retry budget means some orders fail without a retry while the budget is spent; the lab counts those skipped retries",
+   "Backoff adds latency to the orders that retry; the lab reports p50 and p99 latency of successful orders before and after the slowdown in every run",
+   "The slowdown is simulated (2 s per request for 20 s), with one load level, one timeout (500 ms) and one dependency",
+   "The backlog of abandoned requests still drains after the slowdown; server-side load shedding is not tested"
+  ],
+  "existing_pages": [
+   {
+    "title": "Timeouts, retries, and backoff with jitter",
+    "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
+    "covers": "Why retries amplify load and why backoff with jitter and retry limits help, in prose with diagrams. No lab on Kubernetes and no observability view."
+   },
+   {
+    "title": "Addressing Cascading Failures (Google SRE book)",
+    "url": "https://sre.google/sre-book/addressing-cascading-failures/",
+    "covers": "How retries and queued work keep a recovering service overloaded, and retry budgets. No runnable lab."
+   },
+   {
+    "title": "Microsoft 365 Outage, November 2026: Timeline and Impact",
+    "url": "https://www.pagerly.io/blog/microsoft-365-outage-november-2026",
+    "covers": "A working timeline of last week's outage from Microsoft's status posts. Root cause not yet public."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "The 12-13 November Microsoft 365 outage was widely covered, with reports that restored servers became unresponsive under traffic while Microsoft limited traffic during recovery. No search volume or reaction counts were collected for retry storms."
+  },
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "measurements": [
+   {
+    "id": "orders_success_before_pct",
+    "what": "percent of orders that succeeded in the 20 seconds before the slowdown, the positive control that each run started healthy: naive-1, naive-2, naive-3, budget-1, budget-2, budget-3",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "ge",
+     "value": 95
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "failed_orders_after_slowdown",
+    "what": "orders that failed in the 70 seconds after the 20-second slowdown ended, for each of the six runs",
+    "kind": "failure",
+    "unit": "orders",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "recovery_after_slowdown",
+    "what": "per run: recovered (1 if orders got back to at least 95% success for 5 seconds in a row within 70 seconds of the slowdown ending, else 0) and, for runs that recovered, seconds until they did",
+    "kind": "latency",
+    "unit": "flag and seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "calls_after_slowdown",
+    "what": "per run, in the 70 seconds after the slowdown: inventory calls per order, failed calls that timed out, failed calls refused or reset (kept apart from timeouts so a full listen queue would show), and for budget runs the retries the budget skipped",
+    "kind": "comparison",
+    "unit": "calls",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 18
+   },
+   {
+    "id": "inventory_late_share_after",
+    "what": "percent of the requests inventory handled in the 70 seconds after the slowdown that it started after the caller's 500 ms timeout had passed, from the X-Caller-Deadline header, for each of the six runs",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "inventory_queue_peak_after",
+    "what": "the largest number of requests inventory had accepted but not yet started (waiting for one of its 4 threads), sampled every second in the 70 seconds after the slowdown, for each of the six runs",
+    "kind": "comparison",
+    "unit": "requests",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "order_latency_ms",
+    "what": "p50 and p99 latency of successful orders in the 20 seconds before the slowdown and in the 70 seconds after it, for each run, with n printed beside each; a run with no successful orders after the slowdown reports null there",
+    "kind": "latency",
+    "unit": "ms",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 12
+   },
+   {
+    "id": "cpu_cores_after",
+    "what": "in the 70 seconds after the slowdown, per run: average and busiest-second CPU cores of the inventory and orders containers from their cgroups, and the node's busiest-second CPU percent from /proc/stat, to show whether a busy node rather than the retries held inventory back",
+    "kind": "comparison",
+    "unit": "cores or percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 30
+   },
+   {
+    "id": "splunk_orders_error_pct_after",
+    "what": "percent of orders requests that Splunk Observability Cloud counted as 503s in the window after the slowdown, on 10-second boundaries, from the services' OpenTelemetry HTTP server metric: naive-2, budget-2",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 2
+   },
+   {
+    "id": "splunk_log_diff_pct",
+    "what": "percent difference between Splunk Observability Cloud's orders request count (OpenTelemetry HTTP server metric, orders route) and the load's own count for the same window, on 10-second boundaries; orders arrive at a steady 40 a second, so bucket edges can't move it (inventory's comparison is printed too, but its rate changes fast after the slowdown): naive-2, budget-2",
+    "kind": "comparison",
+    "unit": "percent",
+    "accept": {
+     "op": "le",
+     "value": 10
+    },
+    "min_entities": 2
+   }
+  ],
+  "verdict": "go",
+  "reasons": [
+   "Abhi picked this topic on 16 November 2026 for Monday",
+   "Ties a widely covered outage week to a lesson any service owner can run and see in Splunk APM",
+   "Serves the Splunk MVP and AWS Hero goals with a lab on EKS",
+   "Prototyped in chat: the same code reproduced both behaviours before any AWS spend; three runs per policy on EKS"
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 1.0064
+}
