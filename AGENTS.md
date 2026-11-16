@@ -57,6 +57,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `pipeline/recheck.py` | Rechecks the labs behind live ShowMerit articles: free `check.sh` runs with the article's and the newest versions, cited links, and the weekly paid pick. No model | showmerit labs and articles, releases, Helm indexes, Docker Hub, budget | `analytics/rechecks.json` (public results only), one private `team-admin` issue per failing article |
 | `pipeline/lab_check.py` | Unpacks a chat lab for the free check, whose `check.sh` runs in a job with no secrets | `chat/<issue>` | `work/` |
 | `pipeline/rehearse.sh` | Runs a lab's real scripts on a small Kubernetes cluster, with the Splunk tokens only | Lab scripts | Nothing |
+| `pipeline/post_review.py` | ChatGPT and Gemini each pass or block a chat-written or live article and its LinkedIn post against the evidence; both must approve. The draft job runs the same `llm.clean_pass` | Article, lab evidence | Job summary only |
 | `pipeline/plan_review.py` | The Editor and Marketing review a lab plan before AWS, twice at most. A rerun checks the earlier points | Brief, lab files as data | Log, `plan-review.json` on the lab's branch |
 | `pipeline/clean_footer.py` | Removes an unwanted footer from issue and PR text | Issue and PR text | That text only |
 | `pipeline/splunk_series.py` | Reads a lab's real time series from Splunk for charts | Read token | Log only |

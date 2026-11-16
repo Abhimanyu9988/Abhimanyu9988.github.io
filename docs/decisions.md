@@ -264,6 +264,15 @@ A pod pinned with `nodeName` asked for 500m of CPU, and the rollout never finish
 
 The sweep spent 40 minutes on a leftover VPC, and one 504 on a download then failed a paid lab. `destroy` now also clears leftover security groups, the sweep tries a lab once, and lab rules say every download retries.
 
+## 2026-11-16: A topic's labs stop at $4, and ChatGPT and Gemini must both pass a post
+
+Abhi set $3-4 as the most one lab should cost, with more checking done by the AI first. `lab.py` now stops before any
+model or AWS spend when a topic's recorded lab spend (`analytics/lab-<issue>-...`) plus one more run would pass $4; only
+his own comment "raise lab limit to $N" on the issue raises it. A draft also needs a clean pass from ChatGPT and Gemini
+(`llm.clean_pass`), not 2 of 3, and `post-review.yml` runs that check on articles written in chat. The draft panel now
+reads the lab's own output whole: it used to cut each log to 8,000 characters and called a complete run incomplete.
+The plan review also blocks a check that compares unlike counts, such as Splunk's against the load's.
+
 ## 2026-11-16: The rehearsal checks the lab runner's tools and the evidence size
 
 Issue 203 lost two paid runs to what the rehearsal couldn't see: the analysis used python3, which the runner has and

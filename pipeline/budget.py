@@ -20,6 +20,9 @@ import datetime, json, math, os, re
 
 LIMIT_USD = 50
 AWS_LAB_USD = 1.0                              # the upper estimate quoted for a lab. Nothing reads AWS billing yet
+LAB_CAP_USD = 4.0                              # Abhi's limit for one topic's paid lab runs: AWS estimates plus paid models
+LAB_SPEND = re.compile(r"lab-(\d+)-.*-c(\d+)\.json")
+RAISE_LAB = re.compile(r"(?i)\braise (?:the )?lab limit to \$?(\d+(?:\.\d+)?)")
 LIMITS = "analytics/budget.json"
 SPEND = re.compile(r"spend-(\d{4}-\d{2})-.*-c(\d+)\.json")
 CLAUDE_SPEND = re.compile(r"claude-(\d{4}-\d{2}-\d{2})-.*-c(\d+)\.json")
@@ -143,6 +146,19 @@ def add_lab(res):
         EXTRA_CLAUDE.append(float(res.get("claude_usd") or 0))
         EXTRA_AWS.extend([AWS_LAB_USD] if res.get("aws_used") else [])
 
+def lab_spent(issue, files=None):
+    """Dollars this topic's paid lab runs have used so far, from the analytics file names alone."""
+    from radar import HOME_REPO, gh
+    files = files if files is not None else (gh("GET", f"/repos/{HOME_REPO}/contents/analytics?ref=analytics") or [])
+    names = [f.get("name", "") for f in files if isinstance(f, dict)] if isinstance(files, list) else []
+    return sum(int(h[2]) for h in (LAB_SPEND.fullmatch(n) for n in names) if h and int(h[1]) == int(issue)) / 100
+
+def lab_cap(comments):
+    """The limit for one topic. Only Abhi's own words on the topic issue ("raise lab limit to $6") can raise it."""
+    asked = [float(m[1]) for c in comments or [] if isinstance(c, dict) and (c.get("user") or {}).get("login") == "Abhimanyu9988"
+             for m in [RAISE_LAB.search(c.get("body") or "")] if m]
+    return max([LAB_CAP_USD] + asked)
+
 def record():
     """At the end of a job. A lost record is reported, and never fails the job that earned it."""
     import llm
@@ -163,8 +179,10 @@ def record():
         run = f"{os.environ.get('GITHUB_RUN_ID', '0')}-{os.environ.get('GITHUB_RUN_ATTEMPT', '1')}-{os.getpid()}"
         analytics.ensure_branch()
         day = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+        lab_paid = sum(EXTRA_AWS) + sum(EXTRA) - sum(EXTRA_CLAUDE)     # this run's paid lab spend, for the topic's limit
+        issue = os.environ.get("ISSUE", "")
         files = ((f"spend-{month()}", job, other), (f"spend-{month()}", "aws_estimate", sum(EXTRA_AWS)),
-                 (f"claude-{day}", job, claude))
+                 (f"claude-{day}", job, claude)) + (((f"lab-{int(issue)}", "lab", lab_paid),) if issue.isdigit() else ())
         for prefix, name, amount in files:
             if amount > 0:
                 analytics.write_file(f"analytics/{prefix}-{run}-{name}-c{math.ceil(amount * 100)}.json",

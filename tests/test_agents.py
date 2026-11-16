@@ -433,6 +433,8 @@ good_card = {"scores": {k: {"score": 5, "reasons": []} for k in ("technical", "e
              "blocking": [], "flags_addressed": [], "claims": []}
 calls_made = []
 real_score, real_ask, real_refine = editor.score, llm.ask, llm.refine
+real_clean = llm.clean_pass
+llm.clean_pass = lambda *a, **k: {}               # the ChatGPT/Gemini clean pass has its own checks below
 editor.score = lambda *a: calls_made.append(1) or good_card
 post_ok = {"title": "A plain title", "body": "b", "linkedin": "x"}
 g = draft.review_draft(post_ok, "ctx", {"05-fix.log": "ok"}, None, {}, "build")
@@ -443,6 +445,7 @@ llm.ask = lambda *a, **k: {}
 g = draft.review_draft(post_ok, "ctx", {"05-fix.log": "ok"}, None, {}, "build")
 check("enforce: a failed scorecard stops the draft with EDITOR_REVIEW off", g["decision"] == "stop")
 editor.score, llm.ask, llm.refine = real_score, real_ask, real_refine
+llm.clean_pass = real_clean
 os.environ["EDITOR_MODE"] = "shadow"; os.environ.pop("EDITOR_REVIEW", None)
 check("shadow: the Editor stays off unless asked", not editor.review_on())
 
@@ -1991,3 +1994,36 @@ slack_c.api, slack_c.owner, slack_c.channel = real_api, real_owner, real_channel
 
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
+
+
+# ---------- topic lab limit and clean pass (16 Nov 2026) ----------
+import budget as _b16, llm as _l16
+_files = [{"name": "lab-203-1-1-1-lab-c120.json"}, {"name": "lab-203-2-1-1-lab-c100.json"}, {"name": "lab-204-1-1-1-lab-c999.json"},
+          {"name": "spend-2026-11-1-1-1-draft-c50.json"}]
+check("lab limit: a topic's spend counts only its own lab files", _b16.lab_spent(203, _files) == 2.2 and _b16.lab_spent(205, _files) == 0)
+check("lab limit: $4 per topic by default", _b16.lab_cap([]) == 4.0 == _b16.LAB_CAP_USD)
+check("lab limit: only Abhi's words raise it", _b16.lab_cap([{"user": {"login": "Abhimanyu9988"}, "body": "raise lab limit to $6"}]) == 6.0 and
+      _b16.lab_cap([{"user": {"login": "hero-bot[bot]"}, "body": "raise lab limit to $60"}]) == 4.0)
+_lab_src = (ROOT / "pipeline/lab.py").read_text()
+check("lab limit: checked before any model or AWS spend", _lab_src.index("budget.lab_cap(") < _lab_src.index("llm.claude_json(") and
+      _lab_src.index("budget.lab_cap(") < _lab_src.index("set_boundary()"))
+_real_ask = _l16.ask
+_l16.ask = lambda who, s, p, schema, tool=None: {"approve": True, "blocking": []} if who == "chatgpt" else {"approve": True, "blocking": [{"problem": "p99 claim not in evidence", "fix": "cut it"}]}
+_cp = _l16.clean_pass({"title": "t"}, "ctx")
+check("clean pass: an approve with a blocking point is not a pass", _cp["chatgpt"]["approve"] and not _cp["gemini"]["approve"])
+check("clean pass: each block becomes a reason", len(_l16.clean_pass_reasons(_cp)) == 1 and "Gemini" in _l16.clean_pass_reasons(_cp)[0])
+def _boom(*a, **k): raise RuntimeError("down")
+_l16.ask = _boom
+check("clean pass: a failed call blocks, never passes", not any(r["approve"] for r in _l16.clean_pass({}, "").values()))
+_l16.ask = _real_ask
+check("clean pass: ChatGPT and Gemini both review every draft", _l16.CLEAN_PASS == ("chatgpt", "gemini") and
+      "llm.clean_pass_reasons(llm.clean_pass(" in (ROOT / "pipeline/draft.py").read_text())
+check("panel: the lab's own output comes first and whole", "[-13000:] if main.search" in (ROOT / "pipeline/draft.py").read_text())
+_pr_y = __import__("yaml").safe_load((ROOT / ".github/workflows/post-review.yml").read_text())
+_pr_steps = _pr_y["jobs"]["review"]["steps"]
+check("post review: runs code from main", all(st["with"]["ref"] == "main" for st in _pr_steps if "checkout" in st.get("uses", "")))
+check("post review: inputs reach the script only through env", all("${{" not in st.get("run", "") for st in _pr_steps))
+check("post review: holds only the reviewers' keys", sorted(set(re.findall(r"secrets\.(\w+)", json.dumps(_pr_y)))) ==
+      ["BOT_PRIVATE_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"])
+import post_review
+check("post review: a slug must look like one", not post_review.SLUG.fullmatch("../x") and post_review.SLUG.fullmatch("retry-storm"))
