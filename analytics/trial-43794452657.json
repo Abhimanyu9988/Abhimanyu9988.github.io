@@ -3,7 +3,7 @@
  "issue": 203,
  "title": "Service Still Down After the Dependency Recovered? See the Retry Storm in Splunk APM",
  "model": "claude-sonnet-5-5",
- "status": "reproduced_and_fixed",
+ "status": "panel_rejected",
  "attempts": 1,
  "minutes": 31.8,
  "lab_usd": 0.0
