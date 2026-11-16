@@ -264,6 +264,14 @@ A pod pinned with `nodeName` asked for 500m of CPU, and the rollout never finish
 
 The sweep spent 40 minutes on a leftover VPC, and one 504 on a download then failed a paid lab. `destroy` now also clears leftover security groups, the sweep tries a lab once, and lab rules say every download retries.
 
+## 2026-11-16: The Secretary sends the article's own post; the Tech Head comments only on blockers; ChatGPT has a credit
+
+On article days the Secretary had sent the News Scout's bare news line as "today's post", linking away from his article.
+She now sends the live article's own LinkedIn text, using the news line in the opening only when code and ChatGPT and
+Gemini pass it, and writes it once a day. Abhi asked to be emailed only about blockers, so the Tech Head comments only on
+a blocker, with its fix; other findings stay in the run summary, which the chat reads for every PR it opens. ChatGPT now
+counts against the $100 monthly API credit of his ChatGPT Pro plan, as Claude does against its own.
+
 ## 2026-11-16: A topic's labs stop at $4, and ChatGPT and Gemini must both pass a post
 
 Abhi set $3-4 as the most one lab should cost, with more checking done by the AI first. `lab.py` now stops before any

@@ -776,8 +776,14 @@ def deliver_posts(today=None):
         return False
     kind, news = todays_entry(read_private(NEWS)[0], day)
     article = todays_article(day)
-    if article:
+    cached = (sent.get("drafts") or {}).get(day)
+    if article and cached:                           # written once a day: a Slack outage must not repeat the model calls
+        body, head = cached, f"Today's LinkedIn post for “{article['title']}”, ready to paste:"
+    elif article:
         body, head = smart_post(article, news if kind == "opening" else ""), f"Today's LinkedIn post for “{article['title']}”, ready to paste:"
+        sent["drafts"] = {day: body}
+        write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: wrote {day} post")
+        sha = read_private(SENT)[1]
     elif kind == "pick":
         body, head = news, "Today's LinkedIn news post, ready to paste:"
     else:
@@ -785,6 +791,7 @@ def deliver_posts(today=None):
     if not slack.say("secretary", f"{head}\n```\n{body}\n```"):
         return False
     sent["news"] = (sent.get("news", []) + [day])[-60:]
+    sent.pop("drafts", None)
     write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: sent {day} post")
     return True
 
