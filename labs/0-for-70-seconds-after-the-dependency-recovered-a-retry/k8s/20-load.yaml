@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: load
+  namespace: demo
+data:
+  load.py: |
+    # Open-loop load: RATE orders a second whatever happens, as real users keep arriving. At SLOW_AT seconds it asks
+    # inventory for a slowdown of SLOW_SECONDS, then keeps sending. Prints one line per second, with epoch times.
+    import os, threading, time, http.client
+    RATE, SECONDS = int(os.environ.get("RATE", "60")), int(os.environ.get("LOAD_SECONDS", "170"))
+    HOST, PORT = os.environ.get("ORDERS_HOST", "localhost"), int(os.environ.get("ORDERS_PORT", "8080"))
+    INV, INV_PORT = os.environ.get("INVENTORY_HOST", "localhost"), int(os.environ.get("INVENTORY_PORT", "8081"))
+    FIRST = int(os.environ.get("FIRST", "1"))
+    SLOW_AT, SLOW_S, SLOW_MS = int(os.environ.get("SLOW_AT", "30")), int(os.environ.get("SLOW_SECONDS", "20")), int(os.environ.get("SLOW_MS", "2000"))
+    res, lock = {}, threading.Lock()
+
+    def one(n, sec):
+        ok = False
+        try:
+            c = http.client.HTTPConnection(HOST, PORT, timeout=5)
+            c.request("POST", f"/orders/{n}")
+            ok = c.getresponse().status == 200
+            c.close()
+        except Exception:
+            pass
+        with lock:
+            res.setdefault(sec, [0, 0])[0 if ok else 1] += 1
+
+    def slowdown():
+        c = http.client.HTTPConnection(INV, INV_PORT, timeout=10)
+        c.request("POST", f"/admin/brownout?seconds={SLOW_S}&delay_ms={SLOW_MS}")
+        print("SLOWDOWN reply", c.getresponse().status, flush=True)
+
+    t0 = time.time(); n = FIRST
+    print(f"LOAD start={t0:.0f} rate={RATE} seconds={SECONDS} first={FIRST}", flush=True)
+    for sec in range(SECONDS):
+        if sec == SLOW_AT:
+            print(f"SLOWDOWN start={time.time():.0f} end={time.time() + SLOW_S:.0f} second={SLOW_AT} seconds={SLOW_S} delay_ms={SLOW_MS}", flush=True)
+            threading.Thread(target=slowdown, daemon=True).start()
+        for i in range(RATE):
+            threading.Thread(target=one, args=(n, sec), daemon=True).start(); n += 1
+            time.sleep(max(0, t0 + sec + (i + 1) / RATE - time.time()))
+    time.sleep(6)
+    for sec in range(SECONDS):
+        ok, bad = res.get(sec, [0, 0])
+        print(f"LOAD second={sec} ok={ok} failed={bad}")
+    print(f"LOAD end={time.time():.0f} sent={n - FIRST} ok={sum(v[0] for v in res.values())} failed={sum(v[1] for v in res.values())}")
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  enableServiceLinks: false   # Kubernetes would otherwise set ORDERS_PORT=tcp://..., which load.py reads as a port
+  volumes:
+    - name: load
+      configMap:
+        name: load
+  containers:
+    - name: load
+      image: python:3.12-slim
+      command: ["python", "/load/load.py"]
+      env:
+        - { name: RATE, value: "40" }
+        - { name: LOAD_SECONDS, value: "110" }
+        - { name: FIRST, value: "FIRST" }
+        - { name: ORDERS_HOST, value: "orders" }
+        - { name: INVENTORY_HOST, value: "inventory" }
+        - { name: SLOW_AT, value: "20" }
+        - { name: SLOW_SECONDS, value: "20" }
+        - { name: SLOW_MS, value: "2000" }
+      volumeMounts:
+        - { name: load, mountPath: /load }
+      resources:
+        requests: { cpu: 100m, memory: 128Mi }
