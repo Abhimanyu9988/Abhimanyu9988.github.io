@@ -1,0 +1,89 @@
+# Apache Flink 1.20 session cluster: one JobManager and one TaskManager with 2 slots, on the app node.
+# The restart strategy retries forever every 5 s, so a lost TaskManager brings the job back to RUNNING by itself.
+# Checkpoints every 5 s. FLINK_PROPERTIES is appended to the image's Flink configuration at start.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flink-jobmanager
+  namespace: demo
+spec:
+  selector:
+    app: flink-jobmanager
+  ports:
+    - {name: rest, port: 8081}
+    - {name: rpc, port: 6123}
+    - {name: blob, port: 6124}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-jobmanager
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: flink-jobmanager}
+  template:
+    metadata:
+      labels: {app: flink-jobmanager}
+    spec:
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: APP_NODE
+      containers:
+        - name: jobmanager
+          image: flink:1.20-java17
+          args: ["jobmanager"]
+          ports:
+            - containerPort: 8081
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: flink-jobmanager
+                blob.server.port: 6124
+                jobmanager.memory.process.size: 1200m
+                restart-strategy.type: fixed-delay
+                restart-strategy.fixed-delay.attempts: 1000
+                restart-strategy.fixed-delay.delay: 5 s
+                execution.checkpointing.interval: 5 s
+          resources:
+            requests: {cpu: 250m, memory: 1300Mi}
+          readinessProbe:
+            httpGet: {path: /overview, port: 8081}
+            periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-taskmanager
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: flink-taskmanager}
+  template:
+    metadata:
+      labels: {app: flink-taskmanager}
+    spec:
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 10
+      nodeSelector:
+        kubernetes.io/hostname: APP_NODE
+      containers:
+        - name: taskmanager
+          image: flink:1.20-java17
+          args: ["taskmanager"]
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: flink-jobmanager
+                blob.server.port: 6124
+                taskmanager.numberOfTaskSlots: 2
+                taskmanager.memory.process.size: 1600m
+          resources:
+            requests: {cpu: 500m, memory: 1700Mi}
