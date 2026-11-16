@@ -1,18 +1,29 @@
 {
- "week": "2026-W46",
+ "week": "2026-W47",
  "target": 3,
- "created": "2026-11-15",
+ "created": "2026-11-16",
  "topics": [
   {
-   "issue": 203,
-   "title": "Your Dependency Recovered. Your Service Didn't. A Retry Storm in Splunk APM",
+   "issue": 205,
+   "title": "Pods Stuck Terminating on Fresh EKS AL2023 Nodes? Compare containerd 2.2 and 2.3",
    "state": "queued",
-   "signal": "global Microsoft 365 outage on 12-13 November 2026, covered by TechCrunch and others, with restored servers going unresponsive under traffic",
+   "signal": "2 reactions and 2 comments on a GitHub issue opened 5 Nov 2026",
    "confirmed": true,
-   "picked": true,
+   "picked": false,
+   "chat": true,
+   "scores": "Marketing 2/5, Editor 3/5",
+   "model": "claude-sonnet-5-5"
+  },
+  {
+   "issue": 206,
+   "title": "After a Backend Outage, Your Collector's Startup Probe Sets the Real Queue Size",
+   "state": "queued",
+   "signal": "0 reactions and 11 comments on a GitHub issue opened 7 Nov 2026",
+   "confirmed": true,
+   "picked": false,
    "chat": true,
    "scores": "Marketing 3/5, Editor 3/5",
-   "model": "claude-sonnet-5-5"
+   "model": "claude-opus-5-5"
   }
  ]
 }
