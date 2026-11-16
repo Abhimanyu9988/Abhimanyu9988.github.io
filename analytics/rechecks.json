@@ -1,13 +1,234 @@
 {
  "articles": {
+  "eks-app-slow-cpu-fine-scale-on-splunk-latency-with-keda": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 12
+    },
+    "results": [],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "eks-canary-releases-alb": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 3
+    },
+    "results": [],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "follow-sqs-messages-through-splunk-apm-with-the-otel-java": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 20
+    },
+    "results": [
+     {
+      "passed": true,
+      "set": "article",
+      "versions": {
+       "agent": "2.33.1",
+       "elasticmq-native": "1.7.1",
+       "maven": "3.9.9-eclipse-temurin-21",
+       "python": "3.12-slim",
+       "splunk-otel-collector chart": "0.163.1"
+      }
+     },
+     {
+      "passed": true,
+      "set": "newest",
+      "versions": {
+       "agent": "2.33.1",
+       "elasticmq-native": "1.7.1",
+       "maven": "3.10.0-eclipse-temurin-21",
+       "python": "3.15-slim",
+       "splunk-otel-collector chart": "0.164.0"
+      }
+     }
+    ],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "from-broken-ingress-to-healthy-alb-an-eks-and-splunk-hands": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 13
+    },
+    "results": [],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "one-helm-value-puts-running-java-services-on-eks-onto-the": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 24
+    },
+    "results": [
+     {
+      "passed": true,
+      "set": "article",
+      "versions": {
+       "maven": "3.9.9-eclipse-temurin-21",
+       "postgres": "16.4-alpine",
+       "python": "3.12-slim",
+       "splunk-otel-collector chart": "0.163.1"
+      }
+     },
+     {
+      "passed": true,
+      "set": "newest",
+      "versions": {
+       "maven": "3.10.0-eclipse-temurin-21",
+       "postgres": "16.16-alpine",
+       "python": "3.15-slim",
+       "splunk-otel-collector chart": "0.164.0"
+      }
+     }
+    ],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "one-otel-java-agent-variable-puts-per-statement-postgres": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 6
+    },
+    "results": [
+     {
+      "passed": true,
+      "set": "article",
+      "versions": {
+       "agent": "2.33.1",
+       "maven": "3.9.9-eclipse-temurin-21",
+       "postgres": "16.4-alpine",
+       "python": "3.12-slim",
+       "splunk-otel-collector chart": "0.163.1"
+      }
+     },
+     {
+      "passed": true,
+      "set": "newest",
+      "versions": {
+       "agent": "2.33.1",
+       "maven": "3.10.0-eclipse-temurin-21",
+       "postgres": "16.16-alpine",
+       "python": "3.15-slim",
+       "splunk-otel-collector chart": "0.164.0"
+      }
+     }
+    ],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "opentelemetry-java-agent-in-splunk-apm-one-env-var-zero-code": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 17
+    },
+    "results": [
+     {
+      "passed": true,
+      "set": "article",
+      "versions": {
+       "agent": "2.33.1",
+       "maven": "3.9.9-eclipse-temurin-21",
+       "postgres": "16.4-alpine",
+       "python": "3.12-slim",
+       "splunk-otel-collector chart": "0.163.1"
+      }
+     },
+     {
+      "passed": true,
+      "set": "newest",
+      "versions": {
+       "agent": "2.33.1",
+       "maven": "3.10.0-eclipse-temurin-21",
+       "postgres": "16.16-alpine",
+       "python": "3.15-slim",
+       "splunk-otel-collector chart": "0.164.0"
+      }
+     }
+    ],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "preview-otel-java-agent-3-0-in-splunk-with-one-flag": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 3
+    },
+    "results": [
+     {
+      "passed": true,
+      "set": "article",
+      "versions": {
+       "agent": "2.33.1",
+       "maven": "3.9.9-eclipse-temurin-21",
+       "postgres": "16.4-alpine",
+       "python": "3.12-slim",
+       "splunk-otel-collector chart": "0.163.1"
+      }
+     },
+     {
+      "passed": true,
+      "set": "newest",
+      "versions": {
+       "agent": "2.33.1",
+       "maven": "3.10.0-eclipse-temurin-21",
+       "postgres": "16.16-alpine",
+       "python": "3.15-slim",
+       "splunk-otel-collector chart": "0.164.0"
+      }
+     }
+    ],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
   "scale-to-zero-sqs-workers-on-ecs-fargate": {
    "aws": {
     "date": "2026-11-11",
     "passed": true,
     "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/42941795412",
     "versions": {}
+   },
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 2
+    },
+    "results": [],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
+   }
+  },
+  "trace-a-java-service-on-eks-with-one-annotation-zero-code": {
+   "free": {
+    "date": "2026-11-16",
+    "links": {
+     "broken": 0,
+     "checked": 13
+    },
+    "results": [],
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/43793599872"
    }
   }
  },
- "updated": "2026-11-11T02:07:45Z"
+ "updated": "2026-11-16T02:45:17Z"
 }
