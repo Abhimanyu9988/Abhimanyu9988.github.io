@@ -1501,7 +1501,7 @@ editor.brief, editor.gate1, editor.brief_md, editor.marker = real_eb3, real_eg3,
 check("lanes: no lane takes more than two topics", [p["title"] for p in lane_plan] == ["One", "Two", "Four"] and lane_drop[0][0] == "Three")
 check("lanes: Abhi's focus is the only allowed set", set(week.LANES) == {"otel_auto_instrumentation", "ai_monitoring", "kubernetes", "aws", "splunk_observability"} and set(json.load(open(ROOT / "pipeline/schemas/weekplan.json"))["properties"]["topics"]["items"]["properties"]["lane"]["enum"]) == set(week.LANES))
 check("week: a short plan gets one more Editor round, told why topics were refused", len(rounds) == 2 and rounds[1][1] == [("Bad", "too slow")])
-check("week: a spare is counted once", needs == [5])
+check("week: a spare is counted once", needs == [week.target()])   # the target depends on the week the test runs in
 week.propose, week.vet, week.hot_items, week.collect, week.existing_issues = real_prop, real_vet, real_hot, real_coll, real_ei
 os.environ.pop("GALILEO_READY", None)
 real_lc3, real_pn3, real_bp3 = week.lab_check, week.panel, week.build_plan
@@ -1766,6 +1766,11 @@ check("rehearsal: it holds the Splunk tokens and nothing else", "github.token" n
 check("rehearsal: it waits for the other checks", rh_job["needs"] == ["app", "splunk", "plan-review"])
 rh_sh = (ROOT / "pipeline/rehearse.sh").read_text()
 check("rehearsal: a node has a t3.large's CPU, and a script's real result decides", "ALLOCATABLE_M=1930" in rh_sh and "^HERO_RESULT: $2" in rh_sh)
+_dock = (ROOT / "pipeline/lab.Dockerfile").read_text()
+_stubs = re.search(r'MISSING_ON_LAB_RUNNER="([^"]+)"', rh_sh)[1].split()
+check("rehearsal: python3 and other tools the lab runner lacks fail the rehearsal", {"python3", "python", "pip", "node"} <= set(_stubs) and "missing-tools" in rh_sh)
+check("rehearsal: no stubbed tool is installed in the lab image", not [x for x in _stubs if re.search(rf"[\s/]{x}(\s|$)", _dock.split("apt-get install", 1)[1].split("&&", 1)[0])])
+check("rehearsal: a step that prints more than the evidence keeps fails", "EVIDENCE_CHARS=11000" in rh_sh and int(re.search(r"def tail\(s, n=(\d+)\)", (ROOT / "pipeline/lab.py").read_text())[1]) > 11000)
 check("lab check: AI-written code runs with no secrets and no token", "secrets." not in lc_text and "github.token" not in lc_text and "environment" not in lc_y["jobs"]["app"])
 check("lab check: the issue reaches the shell only through env", "${{" not in " ".join(s.get("run", "") for s in lc_y["jobs"]["app"]["steps"]))
 check("lab check: both jobs run code from main", all(s["with"]["ref"] == "main" for j in lc_y["jobs"].values() for s in j["steps"] if "checkout" in s.get("uses", "")))
