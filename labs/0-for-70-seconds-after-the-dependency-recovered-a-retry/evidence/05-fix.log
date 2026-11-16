@@ -1,0 +1,143 @@
+$ bash fix.sh
+# exit 0 after 583s
+
+[... earlier output cut ...]
+er the slowdown (ok/sent): 0/400 0/400 0/400 0/400 0/400 0/400 0/400
+naive-3: before the slowdown 800 of 800 orders succeeded; during it 800 of 800 failed; after it 2800 of 2800 failed
+naive-3: back to 95% success for 5 s in a row: not within 70 s
+naive-3: orders log, 2804 orders in the window made 11216 inventory calls (4.00 per order); retries skipped because the budget was spent: 0
+naive-3: successful orders before the slowdown: n=785, latency p50 43 ms, p99 52 ms
+naive-3: successful orders in the window after it: n=0, latency p50 None ms, p99 None ms
+naive-3: inventory finished 6093 requests in 69 s of the window (88.3 a second); 6093 of them started after the caller's timeout had passed (100.0%)
+naive-3: inventory as it ran: 4 threads, socket backlog 2048, connection limit 900
+naive-3: inventory queue, accepted but waiting for a thread: peak 894 in the window
+naive-3: CPU in the window from each container's cgroup: inventory average 0.43, busiest second 0.55 cores; orders average 0.89, busiest second 1.21 cores; node busiest second 99.50% busy
+naive-3: failed inventory calls in the window by kind: timeouts 11177, refused or reset 0, HTTP errors 0
+HERO_MEASURE: orders_success_before_pct[naive-3]=100.0
+HERO_MEASURE: failed_orders_during_slowdown[naive-3]=800
+HERO_MEASURE: failed_orders_after_slowdown[naive-3]=2800
+HERO_MEASURE: recovery_after_slowdown[naive-3/recovered]=0
+HERO_MEASURE: calls_after_slowdown[naive-3/calls-per-order]=4.00
+HERO_MEASURE: calls_after_slowdown[naive-3/timeouts]=11177
+HERO_MEASURE: calls_after_slowdown[naive-3/refused-or-reset]=0
+HERO_MEASURE: inventory_late_share_after[naive-3]=100.0
+HERO_MEASURE: inventory_queue_peak_after[naive-3]=894
+HERO_MEASURE: order_latency_ms[naive-3/before-p50]=43
+HERO_MEASURE: order_latency_ms[naive-3/before-p99]=52
+HERO_MEASURE: order_latency_ms[naive-3/after-p50]=null
+HERO_MEASURE: order_latency_ms[naive-3/after-p99]=null
+HERO_MEASURE: cpu_cores_after[naive-3/inventory-avg]=0.43
+HERO_MEASURE: cpu_cores_after[naive-3/inventory-peak]=0.55
+HERO_MEASURE: cpu_cores_after[naive-3/orders-avg]=0.89
+HERO_MEASURE: cpu_cores_after[naive-3/orders-peak]=1.21
+HERO_MEASURE: cpu_cores_after[naive-3/node-peak-pct]=99.50
+naive-3: on 10 s boundaries, 1794802150 to 1794802210: orders sent 2400, inventory finished 5249
+WINDOW naive-3 1794802150 1794802210 2400 5249 0
+== 4. Run budget-3
+inventory pod/inventory-655656b966-hhjwl image python:3.12-slim
+  OTEL_SERVICE_NAME=inventory
+  OTEL_RESOURCE_ATTRIBUTES=deployment.environment=service-still-down-after-215870,deployment.environment.name=service-still-down-after-215870
+  THREADS=4
+  WORK_MS=40
+  2d91878dfaec36cd5570b9bd7e83d6252aeac4df8994585db6aab3c6fc04a8f1  /lab/app/inventory.py
+orders pod/orders-757bdf6fb7-59xkl image python:3.12-slim
+  INVENTORY_URL=http://inventory:8081
+  THREADS=400
+  OTEL_SERVICE_NAME=orders
+  OTEL_RESOURCE_ATTRIBUTES=deployment.environment=service-still-down-after-215870,deployment.environment.name=service-still-down-after-215870
+  RETRY_MODE=budget
+  c6147f647765f9bc89042b6f7e9a773a1b1296c28bb2c89325e3df9a8b307e70  /lab/app/orders.py
+orders retry settings: RETRIES = int(os.environ.get("RETRIES", "3"));TIMEOUT = float(os.environ.get("TIMEOUT_S", "0.5"));BASE, CAP = float(os.environ.get("BACKOFF_BASE_S", "0.1")), float(os.environ.get("BACKOFF_CAP_S", "2"));RATIO, MAX_TOKENS = float(os.environ.get("BUDGET_RATIO", "0.1")), float(os.environ.get("BUDGET_MAX", "10"));
+inventory server as it runs: INVENTORY server threads=4 backlog=2048 connection_limit=900 work_ms=40; node somaxconn 4096
+CPU limits on the two pods: inventory= inventory= orders= orders= (empty means no limit)
+LOAD start=1794802272 rate=40 seconds=110 first=50001
+SLOWDOWN start=1794802292 end=1794802312 second=20 seconds=20 delay_ms=2000
+SLOWDOWN reply 200
+LOAD end=1794802388 sent=4400 ok=2850 failed=1550
+per-second lines: 110
+budget-3: load started 1794802272 at 40 orders a second (4400 sent), slowdown from second 20 for 20 s, watched seconds 40 to 109
+budget-3: success per 10 s after the slowdown (ok/sent): 0/400 50/400 400/400 400/400 400/400 400/400 400/400
+budget-3: before the slowdown 800 of 800 orders succeeded; during it 800 of 800 failed; after it 750 of 2800 failed
+budget-3: back to 95% success for 5 s in a row: 19 s after the slowdown ended
+budget-3: orders log, 2796 orders in the window made 2871 inventory calls (1.03 per order); retries skipped because the budget was spent: 746
+budget-3: successful orders before the slowdown: n=796, latency p50 43 ms, p99 53 ms
+budget-3: successful orders in the window after it: n=2050, latency p50 43 ms, p99 281 ms
+budget-3: inventory finished 3699 requests in 70 s of the window (52.8 a second); 1676 of them started after the caller's timeout had passed (45.3%)
+budget-3: inventory as it ran: 4 threads, socket backlog 2048, connection limit 900
+budget-3: inventory queue, accepted but waiting for a thread: peak 853 in the window
+budget-3: CPU in the window from each container's cgroup: inventory average 0.14, busiest second 0.39 cores; orders average 0.18, busiest second 0.37 cores; node busiest second 42.65% busy
+budget-3: failed inventory calls in the window by kind: timeouts 880, refused or reset 0, HTTP errors 0
+HERO_MEASURE: orders_success_before_pct[budget-3]=100.0
+HERO_MEASURE: failed_orders_during_slowdown[budget-3]=800
+HERO_MEASURE: failed_orders_after_slowdown[budget-3]=750
+HERO_MEASURE: recovery_after_slowdown[budget-3/recovered]=1
+HERO_MEASURE: recovery_after_slowdown[budget-3/seconds]=19
+HERO_MEASURE: calls_after_slowdown[budget-3/calls-per-order]=1.03
+HERO_MEASURE: calls_after_slowdown[budget-3/timeouts]=880
+HERO_MEASURE: calls_after_slowdown[budget-3/refused-or-reset]=0
+HERO_MEASURE: calls_after_slowdown[budget-3/retries-skipped-by-budget]=746
+HERO_MEASURE: inventory_late_share_after[budget-3]=45.3
+HERO_MEASURE: inventory_queue_peak_after[budget-3]=853
+HERO_MEASURE: order_latency_ms[budget-3/before-p50]=43
+HERO_MEASURE: order_latency_ms[budget-3/before-p99]=53
+HERO_MEASURE: order_latency_ms[budget-3/after-p50]=43
+HERO_MEASURE: order_latency_ms[budget-3/after-p99]=281
+HERO_MEASURE: cpu_cores_after[budget-3/inventory-avg]=0.14
+HERO_MEASURE: cpu_cores_after[budget-3/inventory-peak]=0.39
+HERO_MEASURE: cpu_cores_after[budget-3/orders-avg]=0.18
+HERO_MEASURE: cpu_cores_after[budget-3/orders-peak]=0.37
+HERO_MEASURE: cpu_cores_after[budget-3/node-peak-pct]=42.65
+budget-3: on 10 s boundaries, 1794802320 to 1794802380: orders sent 2400, inventory finished 2998
+WINDOW budget-3 1794802320 1794802380 2400 2998 1
+== 5. The naive-2 and budget-2 windows in Splunk Observability Cloud, next to the lab's own counts
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>'), rollup='delta').sum().publish()
+  orders all from 1794801830 to 1794801890: 409 405 404 395 399 403 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>'), rollup='delta').sum().publish()
+  orders all from 1794801830 to 1794801890: 409 405 404 395 399 403 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>') and filter('http.response.status_code', '503'), rollup='delta').sum().publish()
+  orders true from 1794801830 to 1794801890: 409 405 404 395 399 403 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>') and filter('http.response.status_code', '503'), rollup='delta').sum().publish()
+  orders true from 1794801830 to 1794801890: 409 405 404 395 399 403 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'inventory') and filter('http.route', '/reserve/<int:order>'), rollup='delta').sum().publish()
+  inventory all from 1794801830 to 1794801890: 20 486 899 897 878 893 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'inventory') and filter('http.route', '/reserve/<int:order>'), rollup='delta').sum().publish()
+  inventory all from 1794801830 to 1794801890: 20 486 899 897 878 893 
+naive-2, seconds 1794801830 to 1794801890: Splunk orders requests 2415 (errors 2415), lab orders sent 2400; Splunk inventory requests 4073, lab inventory finished 5364
+naive-2: Splunk's orders count differs from the lab's by 0.6%; inventory's by 24.1%
+HERO_MEASURE: splunk_orders_error_pct_after[naive-2]=100.0
+HERO_MEASURE: splunk_log_diff_pct[naive-2]=0.6
+HERO_MEASURE: splunk_inventory_diff_pct[naive-2]=24.1
+-- the service map in Splunk for this environment
+  inventory inferred=false
+  orders inferred=false
+  inventory:8081 inferred=true
+  orders -> inventory
+  orders -> inventory:8081
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>'), rollup='delta').sum().publish()
+  orders all from 1794801990 to 1794802060: 400 400 400 421 400 400 400 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>'), rollup='delta').sum().publish()
+  orders all from 1794801990 to 1794802060: 400 400 400 421 400 400 400 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>') and filter('http.response.status_code', '503'), rollup='delta').sum().publish()
+  orders true from 1794801990 to 1794802060: 400 400 400 144 0 0 0 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'orders') and filter('http.route', '/orders/<int:order>') and filter('http.response.status_code', '503'), rollup='delta').sum().publish()
+  orders true from 1794801990 to 1794802060: 400 400 400 144 0 0 0 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'inventory') and filter('http.route', '/reserve/<int:order>'), rollup='delta').sum().publish()
+  inventory all from 1794801990 to 1794802060: 20 563 887 539 400 400 400 
+  program: data('http.server.request.duration_count', filter=filter('deployment.environment', 'service-still-down-after-215870') and filter('service.name', 'inventory') and filter('http.route', '/reserve/<int:order>'), rollup='delta').sum().publish()
+  inventory all from 1794801990 to 1794802060: 20 563 887 539 400 400 400 
+budget-2, seconds 1794801990 to 1794802060: Splunk orders requests 2821 (errors 1344), lab orders sent 2800; Splunk inventory requests 3209, lab inventory finished 3717
+budget-2: Splunk's orders count differs from the lab's by 0.8%; inventory's by 13.7%
+HERO_MEASURE: splunk_orders_error_pct_after[budget-2]=47.6
+HERO_MEASURE: splunk_log_diff_pct[budget-2]=0.8
+HERO_MEASURE: splunk_inventory_diff_pct[budget-2]=13.7
+-- the service map in Splunk for this environment
+  inventory inferred=false
+  orders inferred=false
+  inventory:8081 inferred=true
+  orders -> inventory
+  orders -> inventory:8081
+budget-1 recovered within the window: 1
+budget-2 recovered within the window: 1
+budget-3 recovered within the window: 1
+HERO_RESULT: fixed
+
