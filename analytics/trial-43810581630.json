@@ -1,0 +1,10 @@
+{
+ "run": "43810581630",
+ "issue": 203,
+ "title": "Service Still Down After the Dependency Recovered? See the Retry Storm in Splunk",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 31.7,
+ "lab_usd": 0.0
+}
