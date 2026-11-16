@@ -1,10 +1,5 @@
 {
- "round": 10,
- "Editor": [
-  {
-   "problem": "The title promises \"See the Retry Storm in Splunk APM\", but the plan reads nothing from Splunk that shows the storm. fix.sh gets two things from Splunk. The first is the orders 503 percentage (splunk_orders_error_pct_after), which shows the outage, not the retries. The second is how far Splunk's request counts differ from the lab's own counts (splunk_log_diff_pct, splunk_inventory_diff_pct), which only checks that the pipeline counts correctly. show_map prints the service map's nodes and edges with no rates, so it shows that orders calls inventory, not that it calls it four times per order. The amplification (inventory calls per order) is measured only in the lab's own logs. The Splunk numbers also come from Splunk Observability Cloud's OpenTelemetry HTTP metric, not from APM traces. As planned, a reader could not see the retry storm in Splunk at all.",
-   "fix": "In fix.sh, for naive-2 and budget-2, print a new value: HERO_MEASURE: splunk_inventory_calls_per_order[$run]=inv/total, using Splunk's inventory and orders request counts from the same window (the values already in $inv and $total). Add it to the brief's measurements with min_entities 2, next to the lab's calls_after_slowdown. Also show where APM displays this: print the request rate on the orders\u2192inventory edge for each window from the APM service map or topology API, or the inventory request rate from APM Troubleshooting MetricSets. If you would rather not add the APM read, change the title to \"...See the Retry Storm in Splunk Observability Cloud\" and keep the service map as supporting context."
-  }
- ],
+ "round": 11,
+ "Editor": [],
  "Marketing": []
 }
