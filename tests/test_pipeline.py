@@ -442,6 +442,8 @@ def draft_ask(who, system, prompt, schema, tool="submit", tier="write"):
         import re as _re
         ids = _re.findall(r'"id": "([hl]\d)"', prompt)
         return {"votes": [{"id": i, "vote": "yes" if i in ("h2", "l3") or who == "claude" else "no", "reason": "r"} for i in ids]}
+    if tool == "submit_review" and "Approve this article" in prompt:   # the ChatGPT/Gemini clean pass on the draft
+        return {"approve": True, "blocking": []}
     writer_calls.append(who)
     return {"title": "Why ECS tasks stay PENDING", "description": "d", "tags": ["AWS", "ECS!", "fargate", "devops", "extra"],
             "body": "Someone hit this at 2am.\n\nBody links https://github.com/aws/x/issues/5 freely.",
