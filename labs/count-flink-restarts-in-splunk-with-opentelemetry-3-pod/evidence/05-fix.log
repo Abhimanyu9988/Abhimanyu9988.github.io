@@ -1,0 +1,70 @@
+$ bash fix.sh
+# exit 0 after 261s
+
+== 1. The Collector with the Flink receiver
+2026-11-16T11:23:51.162Z	info	otelconftelemetry/tracer.go:47	Internal trace telemetry disabled	{"resource": {"service.instance.id": "1406b639-9a5e-4225-a302-d0e61413df63", "service.name": "otelcol-con
+2026-11-16T11:23:51.163Z	warn	builders/builders.go:40	"otlphttp" alias is deprecated; use "otlp_http" instead	{"resource": {"service.instance.id": "1406b639-9a5e-4225-a302-d0e61413df63", "service.name
+2026-11-16T11:23:51.164Z	info	service@v0.165.0/service.go:233	Starting otelcol-contrib...	{"resource": {"service.instance.id": "1406b639-9a5e-4225-a302-d0e61413df63", "service.name": "otelcol-contrib"
+  metric type of flink.job.restart.count: CUMULATIVE_COUNTER
+== 2. Deleting the TaskManager pod three times, 30 s apart, while Splunk is polled every 3 s
+receiver: deleted flink-taskmanager-74b6d88cbf-8ljkr at 1794828298; RUNNING again at 1794828319, Flink's restart count 5
+receiver: deleted flink-taskmanager-74b6d88cbf-ktfjb at 1794828352; RUNNING again at 1794828368, Flink's restart count 7
+receiver: deleted flink-taskmanager-74b6d88cbf-86vdw at 1794828401; RUNNING again at 1794828417, Flink's restart count 9
+receiver: 152 one-second samples from 1794828296 to 1794828448; states RESTARTING 33, RUNNING 119; Flink's restart count 2 -> 9; checkpoints completed 123 -> 181, failed 8 -> 10
+receiver-1: TaskManager deleted at 1794828298; RESTARTING at 1794828299.936 (1.9 s after the deletion), RUNNING again at 1794828304.977 (5.0 s not RUNNING); every task RUNNING and a new checkpoint at 1794828301, 0 s after the job already said RUNNING
+receiver-2: TaskManager deleted at 1794828352; RESTARTING at 1794828353.379 (1.4 s after the deletion), RUNNING again at 1794828358.389 (5.0 s not RUNNING); every task RUNNING and a new checkpoint at 1794828353, 0 s after the job already said RUNNING
+receiver-3: TaskManager deleted at 1794828401; RESTARTING at 1794828402.768 (1.8 s after the deletion), RUNNING again at 1794828407.789 (5.0 s not RUNNING); every task RUNNING and a new checkpoint at 1794828404, 0 s after the job already said RUNNING
+RESTARTS receiver 1794828309 1794828309 1794828319 1794828361 1794828361 1794828413 1794828413
+HERO_MEASURE: restarts_injected[receiver]=3
+HERO_MEASURE: flink_rest_restarts[receiver]=7
+HERO_MEASURE: deletion_not_running_s[receiver-1]=5.0
+HERO_MEASURE: deletion_running_unrecovered_s[receiver-1]=0
+HERO_MEASURE: deletion_not_running_s[receiver-2]=5.0
+HERO_MEASURE: deletion_running_unrecovered_s[receiver-2]=0
+HERO_MEASURE: deletion_not_running_s[receiver-3]=5.0
+HERO_MEASURE: deletion_running_unrecovered_s[receiver-3]=0
+== 3. The same window in Splunk Observability Cloud
+  program: data('flink.job.restart.count', filter=filter('deployment.environment', 'flink-restarts-hide-behi-972224'), rollup='latest').max().publish() resolution=10000ms start=1794828236 stop=1794828448
+  flink.job.restart.count per 10 s (point start = value): 1794828240=2 1794828250=2 1794828260=2 1794828270=2 1794828280=2 1794828290=2 1794828300=2 1794828310=2 1794828320=4 1794828330=5 1794828340=5 1794828350=5 1794828360=5 1794828370=7 1794828380=7 1794828390=7 1794828400=7 1794828410=7 1794828420=9 1794828430=9 1794828440=9 
+at 1794828290 and 1794828440: Splunk's counter 2 -> 9 (+7); Flink's REST API 2 -> 9 (+7)
+HERO_MEASURE: restart_increase[splunk]=7
+HERO_MEASURE: restart_increase[rest]=7
+HERO_MEASURE: splunk_rest_restart_diff[receiver]=0
+  3 s polls (poll time = value): 1794828297=2 1794828301=2 1794828304=2 1794828308=2 1794828312=2 1794828315=2 1794828319=2 1794828322=2 1794828326=2 1794828330=2 1794828333=4 1794828337=4 1794828341=4 1794828344=5 1794828348=5 1794828352=5 1794828355=5 1794828359=5 1794828363=5 1794828366=5 1794828370=5 1794828374=5 1794828378=5 1794828382=7 1794828385=7 1794828389=7 1794828393=7 1794828396=7 1794828400=7 1794828404=7 1794828407=7 1794828411=7 1794828414=7 1794828418=7 1794828422=7 1794828425=7 1794828429=7 1794828433=9 1794828436=9 1794828440=9 1794828444=9 1794828447=9 1794828451=9 1794828455=9 1794828458=9 1794828462=9 1794828466=9 1794828469=9 1794828473=9 
+restart 1: in Flink's REST API at 1794828309; Splunk point 1794828320..1794828330 holds it (21 s); a 3 s poll first returned it at 1794828333 (24 s)
+HERO_MEASURE: restart_visible_lag_s[point-1]=21
+HERO_MEASURE: restart_visible_lag_s[arrival-1]=24
+restart 2: in Flink's REST API at 1794828309; Splunk point 1794828320..1794828330 holds it (21 s); a 3 s poll first returned it at 1794828333 (24 s)
+HERO_MEASURE: restart_visible_lag_s[point-2]=21
+HERO_MEASURE: restart_visible_lag_s[arrival-2]=24
+restart 3: in Flink's REST API at 1794828319; Splunk point 1794828330..1794828340 holds it (21 s); a 3 s poll first returned it at 1794828344 (25 s)
+HERO_MEASURE: restart_visible_lag_s[point-3]=21
+HERO_MEASURE: restart_visible_lag_s[arrival-3]=25
+restart 4: in Flink's REST API at 1794828361; Splunk point 1794828370..1794828380 holds it (19 s); a 3 s poll first returned it at 1794828382 (21 s)
+HERO_MEASURE: restart_visible_lag_s[point-4]=19
+HERO_MEASURE: restart_visible_lag_s[arrival-4]=21
+restart 5: in Flink's REST API at 1794828361; Splunk point 1794828370..1794828380 holds it (19 s); a 3 s poll first returned it at 1794828382 (21 s)
+HERO_MEASURE: restart_visible_lag_s[point-5]=19
+HERO_MEASURE: restart_visible_lag_s[arrival-5]=21
+restart 6: in Flink's REST API at 1794828413; Splunk point 1794828420..1794828430 holds it (17 s); a 3 s poll first returned it at 1794828433 (20 s)
+HERO_MEASURE: restart_visible_lag_s[point-6]=17
+HERO_MEASURE: restart_visible_lag_s[arrival-6]=20
+restart 7: in Flink's REST API at 1794828413; Splunk point 1794828420..1794828430 holds it (17 s); a 3 s poll first returned it at 1794828433 (20 s)
+HERO_MEASURE: restart_visible_lag_s[point-7]=17
+HERO_MEASURE: restart_visible_lag_s[arrival-7]=20
+  metric type of flink.job.checkpoint.count: CUMULATIVE_COUNTER
+  program: data('flink.job.checkpoint.count', filter=filter('deployment.environment', 'flink-restarts-hide-behi-972224') and filter('checkpoint', 'completed'), rollup='latest').max().publish() resolution=10000ms start=1794828236 stop=1794828448
+checkpoints completed from 1794828290 to 1794828440: Splunk +58, Flink's REST API +53
+HERO_MEASURE: checkpoints[splunk-completed]=58
+HERO_MEASURE: checkpoints[rest-completed]=53
+  program: data('flink.job.checkpoint.count', filter=filter('deployment.environment', 'flink-restarts-hide-behi-972224') and filter('checkpoint', 'failed'), rollup='latest').max().publish() resolution=10000ms start=1794828236 stop=1794828448
+checkpoints failed from 1794828290 to 1794828440: Splunk +2, Flink's REST API +2
+HERO_MEASURE: checkpoints[splunk-failed]=2
+HERO_MEASURE: checkpoints[rest-failed]=2
+flink.* metric names in Splunk now: 29 (flink.job.checkpoint.count flink.job.checkpoint.in_progress flink.job.last_checkpoint.size flink.job.last_checkpoint.time flink.job.restart.count flink.jvm.class_loader.classes_loaded flink.jvm.cpu.load flink.jvm.cpu.time flink.jvm.gc.collections.count flink.jvm.gc.collections.time flink.jvm.memory.direct.total_capacity flink.jvm.memory.direct.used flink.jvm.memory.heap.committed flink.jvm.memory.heap.max flink.jvm.memory.heap.used flink.jvm.memory.mapped.total_capacity flink.jvm.memory.mapped.used flink.jvm.memory.metaspace.committed flink.jvm.memory.metaspace.max flink.jvm.memory.metaspace.u)
+flink.jvm.gc.collections.count series for jobmanager: 2 (G1_Old_Generation,G1_Young_Generation)
+HERO_MEASURE: splunk_gc_series[jobmanager]=2
+flink.jvm.gc.collections.count series for taskmanager: 8 (G1_Old_Generation,G1_Young_Generation)
+HERO_MEASURE: splunk_gc_series[taskmanager]=8
+HERO_RESULT: fixed
+

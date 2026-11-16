@@ -1,0 +1,60 @@
+# The upstream OpenTelemetry Collector (contrib 0.165.0) with the Flink metrics receiver, which the Splunk distribution
+# doesn't include. It reads Flink's REST API every 10 s and sends OTLP to the Splunk OTel Collector agent on its node,
+# which forwards to Splunk Observability Cloud like everything else on the cluster.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flink-otel
+  namespace: demo
+data:
+  config.yaml: |
+    receivers:
+      flink_metrics:
+        endpoint: http://flink-jobmanager:8081
+        collection_interval: 10s
+    processors:
+      resource:
+        attributes:
+          - {key: deployment.environment, value: LAB_ENV, action: upsert}
+      batch:
+        timeout: 5s
+    exporters:
+      otlphttp:
+        endpoint: http://${env:HOST_IP}:4318
+    service:
+      pipelines:
+        metrics:
+          receivers: [flink_metrics]
+          processors: [resource, batch]
+          exporters: [otlphttp]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-otel
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: flink-otel}
+  template:
+    metadata:
+      labels: {app: flink-otel}
+    spec:
+      enableServiceLinks: false
+      nodeSelector:
+        kubernetes.io/hostname: APP_NODE
+      containers:
+        - name: otel
+          image: otel/opentelemetry-collector-contrib:0.165.0
+          args: ["--config=/conf/config.yaml"]
+          env:
+            - name: HOST_IP
+              valueFrom: {fieldRef: {fieldPath: status.hostIP}}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+          volumeMounts:
+            - {name: conf, mountPath: /conf}
+      volumes:
+        - name: conf
+          configMap: {name: flink-otel}

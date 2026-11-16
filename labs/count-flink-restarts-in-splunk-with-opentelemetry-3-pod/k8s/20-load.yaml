@@ -1,0 +1,66 @@
+# Reads Flink's REST API once a second, as a dashboard or a health check would: the job's state, how many of its tasks
+# (vertices) are RUNNING, the restart count, the checkpoint counts and the last completed checkpoint. It also prints every
+# job state change from Flink's own timestamps, so a RESTARTING shorter than a second is still counted. Runs on the load node.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: watch-src
+  namespace: demo
+data:
+  watch.py: |
+    import json, os, time, urllib.request
+    BASE = os.environ.get("FLINK", "http://flink-jobmanager:8081")
+    END = time.time() + float(os.environ.get("WATCH_SECONDS", "600"))
+    def get(path):
+        with urllib.request.urlopen(BASE + path, timeout=3) as r:
+            return json.load(r)
+    try:
+        print(f"WATCH flink-version={get('/config').get('flink-version')}", flush=True)
+    except Exception as e:
+        print(f"WATCH flink-version=unknown ({type(e).__name__})", flush=True)
+    seen = {}
+    while time.time() < END:
+        t = int(time.time())
+        try:
+            jobs = [j for j in get("/jobs/overview")["jobs"] if j["state"] not in ("CANCELED", "FINISHED", "FAILED")]
+            if not jobs:
+                print(f"WATCH t={t} state=NONE", flush=True)
+            else:
+                jid = jobs[0]["jid"]
+                job = get(f"/jobs/{jid}")
+                for state, ms in (job.get("timestamps") or {}).items():   # every state change, even one shorter than a second
+                    if jid in seen.get("_jobs", ()) and ms and seen.get(state) != ms:
+                        print(f"STATE {state} at={ms / 1000:.3f}", flush=True)
+                    seen[state] = ms
+                seen["_jobs"] = {jid}
+                vs = [v.get("status") for v in job.get("vertices") or []]
+                m = {x["id"]: x["value"] for x in get(f"/jobs/{jid}/metrics?get=numRestarts,numberOfCompletedCheckpoints,numberOfFailedCheckpoints")}
+                ck = (((get(f"/jobs/{jid}/checkpoints").get("latest") or {}).get("completed")) or {}).get("id", "na")
+                print(f"WATCH t={t} state={job.get('state')} vertices_running={vs.count('RUNNING')}/{len(vs)} restarts={m.get('numRestarts', 'na')} "
+                      f"ckpt_ok={m.get('numberOfCompletedCheckpoints', 'na')} ckpt_fail={m.get('numberOfFailedCheckpoints', 'na')} ckpt_id={ck}", flush=True)
+        except Exception as e:
+            print(f"WATCH t={t} state=UNREACHABLE err={type(e).__name__}", flush=True)
+        time.sleep(max(0.0, t + 1 - time.time()))
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: WATCH_NAME
+  namespace: demo
+spec:
+  enableServiceLinks: false
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  containers:
+    - name: watch
+      image: python:3.12-slim
+      command: ["python", "-u", "/src/watch.py"]
+      env:
+        - {name: WATCH_SECONDS, value: "WATCH_SECONDS_VALUE"}
+      resources:
+        requests: {cpu: 50m, memory: 64Mi}
+      volumeMounts:
+        - {name: src, mountPath: /src}
+  volumes:
+    - name: src
+      configMap: {name: watch-src}

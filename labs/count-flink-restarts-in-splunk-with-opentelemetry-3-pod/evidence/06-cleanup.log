@@ -1,0 +1,5 @@
+$ bash cleanup.sh
+# exit 0 after 8s
+
+cleanup: helm release uninstalled, namespaces deleting
+
