@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-16",
+ "updated": "2026-11-17",
  "team": [
   {
    "role": "Executive Assistant",
@@ -115,8 +115,20 @@
    "role": "Domain Scout",
    "dept": "Finance",
    "mission": "Find domains we can buy within budget, and tell the CFO what is open, leaving or unlikely to free up."
+  },
+  {
+   "role": "Community Manager",
+   "dept": "Marketing",
+   "mission": "Draft Abhi's replies to comments on his LinkedIn posts from the post's article, for the Fact Checker and Editor to check."
+  },
+  {
+   "role": "Fact Checker",
+   "dept": "Engineering",
+   "mission": "Check each LinkedIn reply against the article's lab results before Abhi sees it."
   }
  ],
- "in_review": [],
+ "in_review": [
+  "Draft: Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts"
+ ],
  "published": []
 }
