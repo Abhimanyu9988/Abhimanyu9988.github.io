@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-16T11:47:15Z",
+ "updated": "2026-11-17T00:09:31Z",
  "columns": {
   "needs": [
    {
@@ -163,13 +163,6 @@
     "title": "[chore] Generate a list of collector components with specific operator support",
     "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5850",
     "where": "opentelemetry-operator"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
-    "kind": "Merged",
-    "title": "[exporter/azuredataexplorer] Rename component type to azure_data_explorer",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52822",
-    "where": "opentelemetry-collector-contrib"
    }
   ]
  }
