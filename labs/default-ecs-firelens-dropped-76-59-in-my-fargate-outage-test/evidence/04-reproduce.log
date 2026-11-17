@@ -1,0 +1,53 @@
+$ bash reproduce.sh
+# exit 0 after 357s
+
+== BEFORE: ECS Fargate task, FireLens + AWS for Fluent Bit (public.ecr.aws/aws-observability/aws-for-fluent-bit:3.0.0), default settings
+== log generator: 200 lines/s to stdout -> awsfirelens -> http output -> sink on EC2 (63.181.32.176:8080)
+started Fargate task for config 'default': 8a69c79f5d6741a2b16283cda19f19d5
+task 'default' RUNNING
+== steady state: waiting (max 75s) for >= 8000 records (about 40s at 200/s) per config at the sink
+steady [default] sink n_records=8980 generator seq=9048
+== OUTAGE: closing the sink's ingest listener (180s) at 16:48:41
+{"ingest_listener":"closed","stop_ts":1793724521.8540816}
+probe of ingest port during outage: curl exit code 7 (7=connection refused, 28=timeout; 0 would mean still up)
+outage +30s [default] sink n_records=9180 generator seq=15284 task=RUNNING
+outage +60s [default] sink n_records=9180 generator seq=21518 task=RUNNING
+outage +90s [default] sink n_records=9180 generator seq=27956 task=RUNNING
+outage +120s [default] sink n_records=9180 generator seq=34191 task=RUNNING
+outage +150s [default] sink n_records=9180 generator seq=40427 task=RUNNING
+outage +180s [default] sink n_records=9180 generator seq=46862 task=RUNNING
+== RECOVERY: reopening ingest listener at 16:51:51
+{"ingest_listener":"open","start_ts":1793724711.1994545}
+== drain: poll every 5s; a config is drained when its sink record count is unchanged for 60s; hard stop 418s after recovery
+drain +15s: [default] n_records=11066 idle=5s  
+drain +31s: [default] n_records=11066 idle=21s  
+drain +47s: [default] n_records=11066 idle=37s  
+drain +62s: [default] n_records=11066 idle=52s  
+task end state [default]: ["RUNNING",null,[["log_router","RUNNING",null,null],["app","RUNNING",null,null]]]
+--- log_router (Fluent Bit) log evidence [default] ---
+version line: Fluent Bit v4.1.1
+'failed to flush chunk' (retry scheduled) lines: 189 (cap 1000)
+sample: [2026/11/03 16:48:42.352391753] [ warn] [engine] failed to flush chunk '1-1793724521.349234698.flb', retry in 11 seconds: task_id=0, input=forward.1 > output=http.1 (out_id=1)
+'chunk cannot be retried' (chunk DROPPED) lines: 181 (cap 1000)
+sample: [2026/11/03 16:48:51.357642791] [error] [engine] chunk '1-1793724522.349284824.flb' cannot be retried: task_id=1, input=forward.1 > output=http.1
+--- sink report for config 'default' (unedited output of the sink's /report) ---
+{"run": "default", "phase": "recovered", "generator_done": true, "generated": 47266, "delivered": 11066, "lost": 36200, "lost_pct": 76.59, "n_records": 11066, "n_dups": 0, "stop_seq": 9249, "generated_pre_outage": 9249, "lost_pre_outage": 69, "generated_in_outage": 38017, "lost_in_outage": 36131, "delivered_after_recovery": 1886, "delivered_before_recovery": 0, "drain_time_s": 10.2, "mem_baseline_mib": 21.1, "mem_peak_outage_mib": 22.6, "mem_peak_drain_mib": 22.3, "mem_raw_peak_outage_mib": 22.6, "max_write_ms_steady": 5.9, "max_write_ms_outage": 9.6, "max_write_ms_recovered": 0.15}
+raw: hero_report_default.json (sink /report [default]) jq '.lost_pct' -> 76.59
+HERO_MEASURE: records_lost_pct[default]=76.59
+raw: hero_report_default.json (sink /report [default]) jq '.delivered_after_recovery' -> 1886
+HERO_MEASURE: records_delivered_after_recovery[default]=1886
+raw: hero_report_default.json (sink /report [default]) jq '.drain_time_s' -> 10.2
+HERO_MEASURE: drain_time_s[default]=10.2
+raw: hero_report_default.json (sink /report [default]) jq '.mem_peak_outage_mib' -> 22.6
+HERO_MEASURE: fluentbit_peak_memory_mib[default]=22.6
+raw: hero_report_default.json (sink /report [default]) jq '.max_write_ms_outage' -> 9.6
+HERO_MEASURE: app_stdout_max_write_ms[default]=9.6
+(context) fluentbit baseline memory before outage [default] MiB: 21.1, peak while draining MiB: 22.3
+
+config    lost_pct  after_recov  drain_s  mem_base  mem_peak max_write_ms
+default      76.59         1886     10.2      21.1      22.6          9.6
+
+default config: generated=47266 delivered=11066 lost=36200 (76.59%) | generated during outage=38017, arrived after recovery=1886, lost in outage window=36131 | lost before outage=69
+With default settings, 76.59% of the generated records never reached the destination after a 3-minute outage.
+HERO_RESULT: reproduced
+
