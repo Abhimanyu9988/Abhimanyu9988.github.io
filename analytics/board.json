@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T00:09:31Z",
+ "updated": "2026-11-17T04:42:16Z",
  "columns": {
   "needs": [
    {
@@ -8,6 +8,13 @@
     "title": "Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53221",
+    "kind": "Review",
+    "title": "Update All golang.org/x packages",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53221",
+    "where": "opentelemetry-collector-contrib"
    },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
