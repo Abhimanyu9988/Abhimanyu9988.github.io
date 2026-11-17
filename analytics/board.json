@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T22:42:30Z",
+ "updated": "2026-11-17T23:41:58Z",
  "columns": {
   "needs": [
    {
@@ -98,18 +98,18 @@
   ],
   "working": [
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
-    "kind": "Your PR",
-    "title": "[chore] Remove the stand-in API server EndpointSlice before the operator-restart collector step",
-    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
-    "where": "opentelemetry-operator"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
     "kind": "Your PR",
     "title": "[chore] Nominate Abhimanyu Bajaj as triager",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
     "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
+    "kind": "Your PR",
+    "title": "[chore] Remove the stand-in API server EndpointSlice before the operator-restart collector step",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
+    "where": "opentelemetry-operator"
    },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
