@@ -1,14 +1,7 @@
 {
- "updated": "2026-11-18T20:24:23Z",
+ "updated": "2026-11-18T20:32:27Z",
  "columns": {
   "needs": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/221",
-    "kind": "Approve or reject",
-    "title": "Mask Tokens and Drop Health Check Spans With OTTL Before They Reach Splunk",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/221",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "kind": "Approve or reject",
