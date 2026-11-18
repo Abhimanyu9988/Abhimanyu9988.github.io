@@ -1,0 +1,48 @@
+$ bash reproduce.sh
+# exit 0 after 396s
+
+== 1. Waiting for 2 worker nodes
+ip-10-0-0-180.eu-central-1.compute.internal   <none>   Ready
+ip-10-0-1-6.eu-central-1.compute.internal     <none>   Ready
+app node: ip-10-0-0-180.eu-central-1.compute.internal; load node: ip-10-0-1-6.eu-central-1.compute.internal
+== 2. Installing the Splunk OTel Collector (chart 0.163.1), the same in every run
+collector agent ready on 2 nodes
+== 3. Building one virtualenv with pinned packages on the app node
+opentelemetry-distro==0.66b2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+opentelemetry-instrumentation-flask==0.66b2
+opentelemetry-instrumentation-requests==0.66b2
+opentelemetry-sdk==1.45.2
+opentelemetry-util-http==0.66b2
+requests==2.34.2
+waitress==3.0.2
+52ddbf9a6effd2ab541e12ad13891ae00f53a41c458cb6c9c15bc07299b8086d  /lab/app/inventory.py
+a105dbe7cdf17027c1c5266a20651dfa7f16b3fb71e57bf7984949144a6c38ae  /lab/app/orders.py
+build took 24s
+== 4. Deploying the gateway Collector (contrib 0.165.0), inventory and orders with zero-code OpenTelemetry
+== 5. Run before-1: the gateway with base.yaml (batch only)
+before-1: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/base.yaml (1 ready line); services with OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+LOAD start=1795031367 run=before-1 rate=10 seconds=45 first=1 LOAD end=1795031418 sent=450 ok=450 failed=0 
+before-1 gateway counters at start: GW spans_received=24 GW spans_exported=24 GW filter_in=0 GW filter_out=0 
+before-1 gateway counters at end:   GW spans_received=1469 GW spans_exported=1469 GW filter_in=0 GW filter_out=0 
+before-1: orders sent 450, ok 450; in the window the gateway received 1445 spans, exported 1445, filter in 0, out 0, dropped 0, failed exports 0
+before-1 check: exported 1445 = received 1445 - dropped 0? yes; spans kept 1445 vs 3 x orders ok 1350 (health checks not dropped are in the first number)
+HERO_MEASURE: orders_ok[before-1]=450
+HERO_MEASURE: gateway_spans_received[before-1]=1445
+HERO_MEASURE: gateway_spans_exported[before-1]=1445
+HERO_MEASURE: gateway_spans_dropped_by_filter[before-1]=0
+== 6. Run before-2: the same again
+before-2: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/base.yaml (1 ready line); services with OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+LOAD start=1795031454 run=before-2 rate=10 seconds=45 first=10001 LOAD end=1795031505 sent=450 ok=450 failed=0 
+before-2 gateway counters at start: GW spans_received=27 GW spans_exported=27 GW filter_in=0 GW filter_out=0 
+before-2 gateway counters at end:   GW spans_received=1471 GW spans_exported=1471 GW filter_in=0 GW filter_out=0 
+before-2: orders sent 450, ok 450; in the window the gateway received 1444 spans, exported 1444, filter in 0, out 0, dropped 0, failed exports 0
+before-2 check: exported 1444 = received 1444 - dropped 0? yes; spans kept 1444 vs 3 x orders ok 1350 (health checks not dropped are in the first number)
+HERO_MEASURE: orders_ok[before-2]=450
+HERO_MEASURE: gateway_spans_received[before-2]=1444
+HERO_MEASURE: gateway_spans_exported[before-2]=1444
+HERO_MEASURE: gateway_spans_dropped_by_filter[before-2]=0
+== 7. before-1's sample traces, read back from Splunk APM by trace ID
+before-1: 20 of 20 sample traces in Splunk APM; fewest spans 3; both services in 20; raw token in 60 spans (attributes: http.target(40) http.url(20) url.full(20) url.query(40) ); token=REDACTED in 0 spans
+HERO_RESULT: reproduced
+
