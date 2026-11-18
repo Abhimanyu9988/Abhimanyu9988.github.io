@@ -1,0 +1,125 @@
+$ bash fix.sh
+# exit 0 after 817s
+
+== 1. The before-check: the cluster's own data reaches Splunk
+cluster metric time series in Splunk: 2613
+== 2. The OTTL in named.yaml and all.yaml
+  named.yaml:
+      filter/healthchecks:
+        error_mode: ignore
+        trace_conditions:
+          - span.attributes["url.path"] == "/healthz"
+      transform/redact:
+        error_mode: ignore
+        trace_statements:
+          - replace_pattern(span.attributes["url.query"], "token=[^&]*", "token=REDACTED")
+          - replace_pattern(span.attributes["url.full"], "token=[^&]*", "token=REDACTED")
+  all.yaml:
+      filter/healthchecks:
+        error_mode: ignore
+        trace_conditions:
+          - span.attributes["url.path"] == "/healthz"
+      transform/redact:
+        error_mode: ignore
+        trace_statements:
+          - replace_all_patterns(span.attributes, "value", "token=[^&]*", "token=REDACTED")
+== 3. Run named-1
+named-1: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/named.yaml (1 ready line); services with OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+LOAD start=1795031662 run=named-1 rate=10 seconds=45 first=20001 LOAD end=1795031713 sent=450 ok=450 failed=0 
+named-1 gateway counters at start: GW spans_received=26 GW spans_exported=0 GW filter_in=26 GW filter_out=0 
+named-1 gateway counters at end:   GW spans_received=1468 GW spans_exported=1350 GW filter_in=1468 GW filter_out=1350 
+named-1: orders sent 450, ok 450; in the window the gateway received 1442 spans, exported 1350, filter in 1442, out 1350, dropped 92, failed exports 0
+named-1 check: exported 1350 = received 1442 - dropped 92? yes; spans kept 1350 vs 3 x orders ok 1350 (health checks not dropped are in the first number)
+HERO_MEASURE: orders_ok[named-1]=450
+HERO_MEASURE: gateway_spans_received[named-1]=1442
+HERO_MEASURE: gateway_spans_exported[named-1]=1350
+HERO_MEASURE: gateway_spans_dropped_by_filter[named-1]=92
+== 4. Run named-2
+named-2: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/named.yaml (1 ready line); services with OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+LOAD start=1795031749 run=named-2 rate=10 seconds=45 first=30001 LOAD end=1795031800 sent=450 ok=450 failed=0 
+named-2 gateway counters at start: GW spans_received=26 GW spans_exported=0 GW filter_in=26 GW filter_out=0 
+named-2 gateway counters at end:   GW spans_received=1470 GW spans_exported=1350 GW filter_in=1470 GW filter_out=1350 
+named-2: orders sent 450, ok 450; in the window the gateway received 1444 spans, exported 1350, filter in 1444, out 1350, dropped 94, failed exports 0
+named-2 check: exported 1350 = received 1444 - dropped 94? yes; spans kept 1350 vs 3 x orders ok 1350 (health checks not dropped are in the first number)
+HERO_MEASURE: orders_ok[named-2]=450
+HERO_MEASURE: gateway_spans_received[named-2]=1444
+HERO_MEASURE: gateway_spans_exported[named-2]=1350
+HERO_MEASURE: gateway_spans_dropped_by_filter[named-2]=94
+== 5. Run all-1
+all-1: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/all.yaml (1 ready line); services with OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+LOAD start=1795031837 run=all-1 rate=10 seconds=45 first=40001 LOAD end=1795031888 sent=450 ok=450 failed=0 
+all-1 gateway counters at start: GW spans_received=32 GW spans_exported=0 GW filter_in=32 GW filter_out=0 
+all-1 gateway counters at end:   GW spans_received=1477 GW spans_exported=1350 GW filter_in=1477 GW filter_out=1350 
+all-1: orders sent 450, ok 450; in the window the gateway received 1445 spans, exported 1350, filter in 1445, out 1350, dropped 95, failed exports 0
+all-1 check: exported 1350 = received 1445 - dropped 95? yes; spans kept 1350 vs 3 x orders ok 1350 (health checks not dropped are in the first number)
+HERO_MEASURE: orders_ok[all-1]=450
+HERO_MEASURE: gateway_spans_received[all-1]=1445
+HERO_MEASURE: gateway_spans_exported[all-1]=1350
+HERO_MEASURE: gateway_spans_dropped_by_filter[all-1]=95
+== 6. Run all-2
+all-2: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/all.yaml (1 ready line); services with OTEL_SEMCONV_STABILITY_OPT_IN=http/dup
+LOAD start=1795031923 run=all-2 rate=10 seconds=45 first=50001 LOAD end=1795031974 sent=450 ok=450 failed=0 
+all-2 gateway counters at start: GW spans_received=27 GW spans_exported=0 GW filter_in=27 GW filter_out=0 
+all-2 gateway counters at end:   GW spans_received=1470 GW spans_exported=1350 GW filter_in=1470 GW filter_out=1350 
+all-2: orders sent 450, ok 450; in the window the gateway received 1443 spans, exported 1350, filter in 1443, out 1350, dropped 93, failed exports 0
+all-2 check: exported 1350 = received 1443 - dropped 93? yes; spans kept 1350 vs 3 x orders ok 1350 (health checks not dropped are in the first number)
+HERO_MEASURE: orders_ok[all-2]=450
+HERO_MEASURE: gateway_spans_received[all-2]=1443
+HERO_MEASURE: gateway_spans_exported[all-2]=1350
+HERO_MEASURE: gateway_spans_dropped_by_filter[all-2]=93
+== 7. Every run's sample traces, read back from Splunk APM by trace ID
+all-2: 20 of 20 sample traces in Splunk APM; fewest spans 3; both services in 20; raw token in 0 spans (attributes: none); token=REDACTED in 60 spans
+before-1: 20 of 20 sample traces in Splunk APM; fewest spans 3; both services in 20; raw token in 60 spans (attributes: http.target(40) http.url(20) url.full(20) url.query(40) ); token=REDACTED in 0 spans
+HERO_MEASURE: splunk_sample_traces_found[before-1]=20
+HERO_MEASURE: splunk_spans_per_trace_min[before-1]=3
+HERO_MEASURE: splunk_spans_with_raw_token[before-1]=60
+HERO_MEASURE: splunk_spans_with_masked_token[before-1]=0
+before-2: 20 of 20 sample traces in Splunk APM; fewest spans 3; both services in 20; raw token in 60 spans (attributes: http.target(40) http.url(20) url.full(20) url.query(40) ); token=REDACTED in 0 spans
+HERO_MEASURE: splunk_sample_traces_found[before-2]=20
+HERO_MEASURE: splunk_spans_per_trace_min[before-2]=3
+HERO_MEASURE: splunk_spans_with_raw_token[before-2]=60
+HERO_MEASURE: splunk_spans_with_masked_token[before-2]=0
+named-1: 20 of 20 sample traces in Splunk APM; fewest spans 3; both services in 20; raw token in 60 spans (attributes: http.target(40) http.url(20) ); token=REDACTED in 60 spans
+HERO_MEASURE: splunk_sample_traces_found[named-1]=20
+HERO_MEASURE: splunk_spans_per_trace_min[named-1]=3
+HERO_MEASURE: splunk_spans_with_raw_token[named-1]=60
+HERO_MEASURE: splunk_spans_with_masked_token[named-1]=60
+named-2: 20 of 20 sample traces in Splunk APM; fewest spans 3; both services in 20; raw token in 60 spans (attributes: http.target(40) http.url(20) ); token=REDACTED in 60 spans
+HERO_MEASURE: splunk_sample_traces_found[named-2]=20
+HERO_MEASURE: splunk_spans_per_trace_min[named-2]=3
+HERO_MEASURE: splunk_spans_with_raw_token[named-2]=60
+HERO_MEASURE: splunk_spans_with_masked_token[named-2]=60
+all-1: 20 of 20 sample traces in Splunk APM; fewest spans 3; both services in 20; raw token in 0 spans (attributes: none); token=REDACTED in 60 spans
+HERO_MEASURE: splunk_sample_traces_found[all-1]=20
+HERO_MEASURE: splunk_spans_per_trace_min[all-1]=3
+HERO_MEASURE: splunk_spans_with_raw_token[all-1]=0
+HERO_MEASURE: splunk_spans_with_masked_token[all-1]=60
+HERO_MEASURE: splunk_sample_traces_found[all-2]=20
+HERO_MEASURE: splunk_spans_per_trace_min[all-2]=3
+HERO_MEASURE: splunk_spans_with_raw_token[all-2]=0
+HERO_MEASURE: splunk_spans_with_masked_token[all-2]=60
+== 8. Health checks per config and service in Splunk
+base start 1795031353 base end 1795031639 named start 1795031649 named end 1795031812 all start 1795031823 all end 1795031986 
+  programs: data('spans.count', filter=filter('sf_environment', 'mask-tokens-and-drop-hea-310893') and filter('sf_service', 'orders') and filter('sf_operation', 'GET /healthz'), rollup='delta').sum().publish() ; data('http.server.request.duration_count', filter=filter('deployment.environment', 'mask-tokens-and-drop-hea-310893') and filter('service.name', 'orders') and filter('http.route', '/healthz'), rollup='delta').sum().publish()
+base/orders, 250 s from 19:49:40 to 19:53:50 UTC: APM GET /healthz 166; HTTP metric /healthz 168; probe periods expect about 150
+HERO_MEASURE: splunk_apm_healthz_requests[base/orders]=166
+HERO_MEASURE: splunk_metric_healthz_requests[base/orders]=168
+base/inventory, 250 s from 19:49:40 to 19:53:50 UTC: APM GET /healthz 166; HTTP metric /healthz 163; probe periods expect about 150
+HERO_MEASURE: splunk_apm_healthz_requests[base/inventory]=166
+HERO_MEASURE: splunk_metric_healthz_requests[base/inventory]=163
+named/orders, 140 s from 19:54:30 to 19:56:50 UTC: APM GET /healthz 0; HTTP metric /healthz 90; probe periods expect about 84
+HERO_MEASURE: splunk_apm_healthz_requests[named/orders]=0
+HERO_MEASURE: splunk_metric_healthz_requests[named/orders]=90
+named/inventory, 140 s from 19:54:30 to 19:56:50 UTC: APM GET /healthz 0; HTTP metric /healthz 90; probe periods expect about 84
+HERO_MEASURE: splunk_apm_healthz_requests[named/inventory]=0
+HERO_MEASURE: splunk_metric_healthz_requests[named/inventory]=90
+all/orders, 130 s from 19:57:30 to 19:59:40 UTC: APM GET /healthz 0; HTTP metric /healthz 89; probe periods expect about 78
+HERO_MEASURE: splunk_apm_healthz_requests[all/orders]=0
+HERO_MEASURE: splunk_metric_healthz_requests[all/orders]=89
+all/inventory, 130 s from 19:57:30 to 19:59:40 UTC: APM GET /healthz 0; HTTP metric /healthz 85; probe periods expect about 78
+HERO_MEASURE: splunk_apm_healthz_requests[all/inventory]=0
+HERO_MEASURE: splunk_metric_healthz_requests[all/inventory]=85
+== 9. Verdict
+problems: 0
+HERO_RESULT: fixed
+
