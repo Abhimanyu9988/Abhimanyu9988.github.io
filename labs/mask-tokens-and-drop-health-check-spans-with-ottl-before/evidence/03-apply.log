@@ -1,0 +1,92 @@
+$ terraform apply -input=false -no-color -auto-approve tfplan
+# exit 0 after 465s
+
+aws_iam_role.cluster: Creating...
+aws_vpc.main: Creating...
+aws_iam_role.node: Creating...
+aws_iam_role.cluster: Creation complete after 0s [id=hero-lab-mask-tokens-and-drop-hea-310893-cluster]
+aws_iam_role_policy_attachment.cluster: Creating...
+aws_iam_role.node: Creation complete after 0s [id=hero-lab-mask-tokens-and-drop-hea-310893-node]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Creating...
+aws_iam_instance_profile.node: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Creating...
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Creation complete after 1s [id=hero-lab-mask-tokens-and-drop-hea-310893-node-20261118193936454200000001]
+aws_iam_role_policy_attachment.cluster: Creation complete after 1s [id=hero-lab-mask-tokens-and-drop-hea-310893-cluster-20261118193936468300000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Creation complete after 1s [id=hero-lab-mask-tokens-and-drop-hea-310893-node-20261118193936598200000003]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Creation complete after 1s [id=hero-lab-mask-tokens-and-drop-hea-310893-node-20261118193936645200000004]
+aws_iam_instance_profile.node: Creation complete after 7s [id=hero-lab-mask-tokens-and-drop-hea-310893-node]
+aws_vpc.main: Still creating... [00m10s elapsed]
+aws_vpc.main: Creation complete after 13s [id=vpc-0d9ada90786bf6f55]
+aws_internet_gateway.main: Creating...
+aws_subnet.public[0]: Creating...
+aws_subnet.public[1]: Creating...
+aws_internet_gateway.main: Creation complete after 1s [id=igw-02248467833a58a61]
+aws_route_table.public: Creating...
+aws_route_table.public: Creation complete after 2s [id=rtb-0f27f4dd50892f1f7]
+aws_subnet.public[0]: Still creating... [00m10s elapsed]
+aws_subnet.public[1]: Still creating... [00m10s elapsed]
+aws_subnet.public[1]: Creation complete after 12s [id=subnet-01a6c893c541673e5]
+aws_subnet.public[0]: Creation complete after 13s [id=subnet-0fde0b3f719ba3167]
+aws_route_table_association.public[0]: Creating...
+aws_route_table_association.public[1]: Creating...
+aws_eks_cluster.main: Creating...
+aws_route_table_association.public[1]: Creation complete after 1s [id=rtbassoc-033b83fa695df8493]
+aws_route_table_association.public[0]: Creation complete after 1s [id=rtbassoc-0758af369d62e81d9]
+aws_eks_cluster.main: Still creating... [00m10s elapsed]
+aws_eks_cluster.main: Still creating... [00m20s elapsed]
+aws_eks_cluster.main: Still creating... [00m30s elapsed]
+aws_eks_cluster.main: Still creating... [00m40s elapsed]
+aws_eks_cluster.main: Still creating... [00m50s elapsed]
+aws_eks_cluster.main: Still creating... [01m00s elapsed]
+aws_eks_cluster.main: Still creating... [01m10s elapsed]
+aws_eks_cluster.main: Still creating... [01m20s elapsed]
+aws_eks_cluster.main: Still creating... [01m30s elapsed]
+aws_eks_cluster.main: Still creating... [01m40s elapsed]
+aws_eks_cluster.main: Still creating... [01m50s elapsed]
+aws_eks_cluster.main: Still creating... [02m00s elapsed]
+aws_eks_cluster.main: Still creating... [02m10s elapsed]
+aws_eks_cluster.main: Still creating... [02m20s elapsed]
+aws_eks_cluster.main: Still creating... [02m30s elapsed]
+aws_eks_cluster.main: Still creating... [02m40s elapsed]
+aws_eks_cluster.main: Still creating... [02m50s elapsed]
+aws_eks_cluster.main: Still creating... [03m00s elapsed]
+aws_eks_cluster.main: Still creating... [03m10s elapsed]
+aws_eks_cluster.main: Still creating... [03m20s elapsed]
+aws_eks_cluster.main: Still creating... [03m30s elapsed]
+aws_eks_cluster.main: Still creating... [03m40s elapsed]
+aws_eks_cluster.main: Still creating... [03m50s elapsed]
+aws_eks_cluster.main: Still creating... [04m00s elapsed]
+aws_eks_cluster.main: Still creating... [04m10s elapsed]
+aws_eks_cluster.main: Still creating... [04m20s elapsed]
+aws_eks_cluster.main: Still creating... [04m30s elapsed]
+aws_eks_cluster.main: Still creating... [04m40s elapsed]
+aws_eks_cluster.main: Still creating... [04m50s elapsed]
+aws_eks_cluster.main: Still creating... [05m00s elapsed]
+aws_eks_cluster.main: Still creating... [05m10s elapsed]
+aws_eks_cluster.main: Still creating... [05m20s elapsed]
+aws_eks_cluster.main: Still creating... [05m30s elapsed]
+aws_eks_cluster.main: Still creating... [05m40s elapsed]
+aws_eks_cluster.main: Still creating... [05m50s elapsed]
+aws_eks_cluster.main: Still creating... [06m00s elapsed]
+aws_eks_cluster.main: Still creating... [06m10s elapsed]
+aws_eks_cluster.main: Still creating... [06m20s elapsed]
+aws_eks_cluster.main: Still creating... [06m30s elapsed]
+aws_eks_cluster.main: Still creating... [06m40s elapsed]
+aws_eks_cluster.main: Still creating... [06m50s elapsed]
+aws_eks_cluster.main: Creation complete after 6m58s [id=mask-tokens-and-drop-hea-310893]
+aws_eks_access_entry.node: Creating...
+aws_eks_access_entry.node: Creation complete after 1s [id=mask-tokens-and-drop-hea-310893:arn:aws:iam::<account-id>:role/hero-lab-mask-tokens-and-drop-hea-310893-node]
+aws_instance.node[1]: Creating...
+aws_instance.node[0]: Creating...
+aws_instance.node[1]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Still creating... [00m10s elapsed]
+aws_instance.node[0]: Creation complete after 15s [id=i-0aa94d8bbd0985e52]
+aws_instance.node[1]: Creation complete after 15s [id=i-073e70272f014568d]
+
+Apply complete! Resources: 18 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+cluster_name = "mask-tokens-and-drop-hea-310893"
+
