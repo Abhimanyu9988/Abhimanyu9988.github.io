@@ -1,0 +1,31 @@
+{
+ "round": 1,
+ "Editor": [
+  {
+   "problem": "gateway_cpu_seconds is read 'from its start to the end of the run'. Each run uses a fresh gateway, so the number includes Collector startup, idle time while the services roll out, and the 8 s flush wait. At about 30 spans a second, that overhead will hide any cost from the processors. The brief's own rule is to measure inside the problem's window. gateway_spans_received, gateway_spans_exported and filter in/out are also cumulative from pod start. Because the gateway restarts before the services, those counts include start-up probe spans and the old service pods' shutdown flush.",
+   "fix": "In load_run, have gwstats.py take a snapshot of the gateway's counters (process_cpu_seconds, receiver accepted spans, exporter sent spans, filter in/out) right before the load pod starts and again after the flush. Report the differences as the measures. Also print the raw start and end values so a reader can check the window."
+  },
+  {
+   "problem": "One change enables both filter/healthchecks and transform/redact, so the CPU difference between before and after can't be credited to either one. The filter also removes spans before batch and export, which lowers export CPU and can hide whatever the transform costs. Two runs per config are also too few to separate a CPU change of a fraction of a second from noise.",
+   "fix": "Add a transform-only config (transform/redact, batch) between base and ottl, and run each of the three configs at least 3 times. Report CPU per 1,000 spans received inside the load window as a median and range. If that doesn't fit the budget, drop CPU from the takeaway and the open question and keep only the functional counts."
+  },
+  {
+   "problem": "The /healthz check compares APM's request count for GET /healthz with the services' HTTP server metric 'in the run's 60 s', but the plan doesn't say how the window is set. APM rolls up per minute, a 60 s run won't line up with minute boundaries, and the app metric is a cumulative counter exported every 10 s. Without a defined window, the before runs can disagree because of timing alone, and that would look like a finding. health_counts lives in splunk.sh, which isn't in the plan, so the query can't be reviewed.",
+   "fix": "Include splunk.sh. Take the window from the LOAD start/end timestamps, widened to whole minutes and identical for both sources. Count each service separately (orders, inventory), filter both sources by the same service and http.route=/healthz, and compute the metric as a delta between the counter's values at the two window edges. Add the expected kubelet count for the window (about 36 per service per minute from 2 s and 10 s probes) as a third column so a reader can see which source matches."
+  },
+  {
+   "problem": "The after verdict only confirms what the transform and filter READMEs already document: replace_pattern on a named attribute changes that attribute. The reader's real risk is a token in an attribute the statement doesn't name. The lab fixes OTEL_SEMCONV_STABILITY_OPT_IN=http, so only url.query and url.full exist, and the 'raw token anywhere' scan can't find anything the two statements missed. As planned, the before-to-after zero couldn't have turned out differently.",
+   "fix": "Add one after run with OTEL_SEMCONV_STABILITY_OPT_IN=http/dup on both services, which is common during semconv migrations, and keep ottl.yaml unchanged. Report splunk_spans_with_raw_token for that run and name the attributes that still hold the token (for example http.target and http.url). Then run once more with statements for those attributes added. The article can then show readers how to confirm that every attribute holding the token is covered."
+  }
+ ],
+ "Marketing": [
+  {
+   "problem": "The only title, \"OTTL Is Stable: Mask Tokens in Your Traces Before They Reach Splunk\", opens with release news, so it reads like a changelog. Engineers don't search for \"OTTL is stable\". They search for the problem they just hit, such as masking a token in trace URLs or dropping health-check spans. The title also covers only half of the lab's promise, because the health-check result is missing. \"OTTL is stable\" may also suggest the transform and filter processors are stable. The brief says they are beta and alpha.",
+   "fix": "Replace the title before the run with a problem-led one that names both wins and credits OTTL and the Collector with the answer. Put the stable-OTTL news in the subtitle or the body. The title should keep the structure \"Keep customer tokens out of Splunk traces and drop health-check noise with OTTL in the OpenTelemetry Collector\". Phrase it the way a person would, and don't promise zero raw tokens until splunk_spans_with_raw_token for the after runs is known."
+  },
+  {
+   "problem": "The demand evidence is weak. The brief says only that Abhi picked the topic and that a News piece reported OTTL reaching v1. News coverage shows the release, not that many engineers are stuck on tokens in trace URLs or on health-check spans. The brief offers nothing a marketer could use to score this above 3.",
+   "fix": "Before the run, add real demand evidence to the brief. Examples are GitHub issues and discussions on redacting url.query or url.full, dropping /healthz spans in the Collector, Splunk community threads, and Stack Overflow questions. Name the exact phrases people use and put those phrases in the title. If no evidence turns up, keep the score at 3 or lower."
+  }
+ ]
+}
