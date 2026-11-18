@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-18T20:16:28Z",
+ "updated": "2026-11-18T20:24:23Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/221",
+    "kind": "Approve or reject",
+    "title": "Mask Tokens and Drop Health Check Spans With OTTL Before They Reach Splunk",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/221",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "kind": "Approve or reject",
@@ -104,13 +111,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/44389079363",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/44389079363",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
     "kind": "Your PR",
