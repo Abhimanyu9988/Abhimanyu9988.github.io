@@ -12,6 +12,15 @@
    }
   },
   "eks-canary-releases-alb": {
+   "aws": {
+    "date": "2026-11-18",
+    "passed": true,
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/44218816865",
+    "versions": {
+     "aws-load-balancer-controller chart": "3.6.3",
+     "busybox": "1.38.0"
+    }
+   },
    "free": {
     "date": "2026-11-16",
     "links": {
@@ -230,5 +239,5 @@
    }
   }
  },
- "updated": "2026-11-16T02:45:17Z"
+ "updated": "2026-11-18T02:07:53Z"
 }
