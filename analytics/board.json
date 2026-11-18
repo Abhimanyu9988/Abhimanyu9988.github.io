@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17T23:41:58Z",
+ "updated": "2026-11-18T04:27:24Z",
  "columns": {
   "needs": [
    {
@@ -119,13 +119,6 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
-    "kind": "Your PR",
-    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
     "kind": "Your PR",
     "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
@@ -164,6 +157,13 @@
    }
   ],
   "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "kind": "Merged",
+    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
+    "where": "opentelemetry-collector-contrib"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5924",
     "kind": "Merged",
