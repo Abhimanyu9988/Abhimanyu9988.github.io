@@ -795,7 +795,8 @@ def no_article_note(day):
 def deliver_posts(today=None, hour=None):
     """The Secretary sends him today's LinkedIn post in Slack, once. On an article day it's the live article's own post,
     sharpened with the news line only when that passes; she never sends a bare news line as a post. On Tue/Thu it's the
-    News Scout's pick. GitHub doesn't email him about issues opened as himself."""
+    News Scout's pick, and both go out when they land on the same day. GitHub doesn't email him about issues opened as
+    himself."""
     if not (admin_on() and slack.enabled()):
         return False
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
@@ -803,10 +804,16 @@ def deliver_posts(today=None, hour=None):
     hour = now.hour if hour is None else hour
     sent_text, sha = read_private(SENT)
     sent = json.loads(sent_text) if sent_text.strip() else {"news": []}
-    if day in sent.get("news", []):
-        return False
     kind, news = todays_entry(read_private(NEWS)[0], day)
     article = todays_article(day)
+    if article and kind == "pick" and day not in sent.get("picks", []):
+        # A Tue/Thu that also has an article post due: the News Scout's post still goes out, on its own.
+        if slack.say("secretary", f"Today's LinkedIn news post, ready to paste:\n```\n{news}\n```"):
+            sent["picks"] = (sent.get("picks", []) + [day])[-60:]
+            write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: sent {day} news post")
+            sha = read_private(SENT)[1]
+    if day in sent.get("news", []):
+        return False
     cached = (sent.get("drafts") or {}).get(day)
     if article and cached:                           # written once a day: a Slack outage must not repeat the model calls
         body, head = cached, f"Today's LinkedIn post for “{article['title']}”, ready to paste:"

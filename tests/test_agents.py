@@ -2089,6 +2089,14 @@ _c18.slack.say = lambda role, text, **k: _sent18.append(text) or True
 check("secretary: no note before 10:00, so a late article still goes out", _c18.deliver_posts("2026-11-18", hour=9) is False and not _sent18)
 check("secretary: the no-article note goes out once 10:00 passes", _c18.deliver_posts("2026-11-18", hour=10) and _sent18[-1].startswith("No new article"))
 check("secretary: Thursday with no news pick sends nothing", _c18.deliver_posts("2026-11-19", hour=12) is False)
+_sent18.clear()
+_c18.read_private = lambda path: ("## 2026-11-17 (Tuesday)\n### Post 1 (pick)\nThe FAA post.\n", "sha") if path == _c18.NEWS else ("", "sha")
+_sp = _c18.smart_post
+_c18.smart_post = lambda a, n: a["linkedin"]
+_c18.deliver_posts("2026-11-17", hour=8)
+check("secretary: a Tue/Thu news post still goes out when an article post is due the same day",
+      len(_sent18) == 2 and "The FAA post." in _sent18[0] and "post A" in _sent18[1])
+_c18.smart_post = _sp
 _c18.admin_on, _c18.slack.enabled, _c18.read_private, _c18.write_private, _c18.slack.say = _ao, _se, _rp, _wp, _say
 _cm18.load_articles = _la18
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
