@@ -1,10 +1,10 @@
 {
- "round": 2,
+ "round": 3,
  "Editor": [],
  "Marketing": [
   {
-   "problem": "The demand evidence is still missing. The brief's reasons are only that Abhi picked the topic, that OTTL reached v1, and that the lab suits the MVP goals. None of these shows many engineers stuck on tokens in trace URLs or on health-check spans. A marketer can't score this above 3, and the title's wording is still a guess about what people search for.",
-   "fix": "Before the run, add demand evidence to the brief. Use GitHub issues and discussions on redacting url.query, url.full or http.target, and on dropping /healthz spans in the Collector. Add Splunk community threads and Stack Overflow questions too. Quote the exact phrases people use, and check the title against them, for example 'mask token in URL', 'drop health check spans' and 'redact query string'. If none turns up, record the topic at score 3 or lower."
+   "problem": "The earlier demand-evidence point is not fixed. The brief's reasons still say only that Abhi picked the topic, that OTTL reached v1, that the lab serves the MVP goals, and that the components are released. None of that shows engineers searching for how to mask a token in a trace URL or drop health-check spans. The title's wording is still a guess, so a marketer can't score the topic above 3.",
+   "fix": "Before the run, add a demand-evidence entry to the brief. Search GitHub issues and discussions in opentelemetry-collector-contrib and the Splunk OTel Collector repos, Splunk community threads, and Stack Overflow. Search on redacting url.query, url.full and http.target, and on dropping /healthz or health-check spans. Quote the exact phrases people use (for example 'mask token in URL', 'drop health check spans', 'redact query string'), with links and dates. Then check the title against those phrases. If nothing turns up, record the topic at score 3 or lower in the brief and keep the title wording provisional."
   }
  ]
 }
