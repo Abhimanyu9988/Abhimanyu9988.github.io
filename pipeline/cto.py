@@ -764,13 +764,43 @@ def smart_post(article, news):
         print(f"::warning title=secretary::kept the article's own post: {' '.join(str(e).split())[:200]}")
         return base
 
-def deliver_posts(today=None):
+def post_dates():
+    """(post day, title) for every ShowMerit article with LinkedIn text, oldest first."""
+    try:
+        import yaml, comments
+    except ImportError:
+        return []
+    out = []
+    for a in comments.load_articles():
+        parts = a["text"].split("---", 2)
+        try:
+            meta = yaml.safe_load(parts[1]) or {} if len(parts) == 3 else {}
+        except yaml.YAMLError:
+            continue
+        if str(meta.get("linkedin") or "").strip():
+            out.append((str(meta.get("linkedin_date") or meta.get("date")), str(meta.get("title", ""))))
+    return sorted(out)
+
+def no_article_note(day):
+    """One line for an article day with nothing to post, so silence never stands in for an answer."""
+    dates = post_dates()
+    last = [d for d in dates if d[0] < day]
+    ahead = [d for d in dates if d[0] > day]
+    text = "No new article for today."
+    if last:
+        text += f" The last one, “{last[-1][1]}”, was due {last[-1][0]}."
+    text += f" Next: “{ahead[0][1]}” on {ahead[0][0]}." if ahead else " Nothing is scheduled yet; the CTO is on it."
+    return text
+
+def deliver_posts(today=None, hour=None):
     """The Secretary sends him today's LinkedIn post in Slack, once. On an article day it's the live article's own post,
     sharpened with the news line only when that passes; she never sends a bare news line as a post. On Tue/Thu it's the
     News Scout's pick. GitHub doesn't email him about issues opened as himself."""
     if not (admin_on() and slack.enabled()):
         return False
-    day = today or datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1))).date().isoformat()
+    now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
+    day = today or now.date().isoformat()
+    hour = now.hour if hour is None else hour
     sent_text, sha = read_private(SENT)
     sent = json.loads(sent_text) if sent_text.strip() else {"news": []}
     if day in sent.get("news", []):
@@ -787,9 +817,11 @@ def deliver_posts(today=None):
         sha = read_private(SENT)[1]
     elif kind == "pick":
         body, head = news, "Today's LinkedIn news post, ready to paste:"
+    elif datetime.date.fromisoformat(day).weekday() in (0, 2, 4) and hour >= 10:
+        body, head = "", no_article_note(day)        # an article day with nothing by 10:00 Brussels: say so once
     else:
         return False                                 # an article day whose article isn't live yet: try again next poll
-    if not slack.say("secretary", f"{head}\n```\n{body}\n```"):
+    if not slack.say("secretary", f"{head}\n```\n{body}\n```" if body else head):
         return False
     sent["news"] = (sent.get("news", []) + [day])[-60:]
     sent.pop("drafts", None)

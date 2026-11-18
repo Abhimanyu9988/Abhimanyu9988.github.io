@@ -2077,6 +2077,19 @@ _cm18.load_articles = lambda: [{"name": "a.md", "text": "---\ntitle: A\ndate: 20
                                {"name": "b.md", "text": "---\ntitle: B\ndate: 2026-11-16\nlinkedin: post B\n---\nbody"}]
 check("secretary: an article's post goes out on its linkedin_date, not its publish date",
       _c18.todays_article("2026-11-17")["name"] == "a.md" and _c18.todays_article("2026-11-16")["name"] == "b.md")
+check("secretary: an article day with nothing due says so, naming the last post",
+      _c18.no_article_note("2026-11-18") == "No new article for today. The last one, “A”, was due 2026-11-17. Nothing is scheduled yet; the CTO is on it.")
+_sent18 = []
+_ao, _se, _rp, _wp = _c18.admin_on, _c18.slack.enabled, _c18.read_private, _c18.write_private
+_c18.admin_on, _c18.slack.enabled = (lambda: True), (lambda: True)
+_c18.read_private = lambda path: ("", "sha")
+_c18.write_private = lambda *a, **k: None
+_say = _c18.slack.say
+_c18.slack.say = lambda role, text, **k: _sent18.append(text) or True
+check("secretary: no note before 10:00, so a late article still goes out", _c18.deliver_posts("2026-11-18", hour=9) is False and not _sent18)
+check("secretary: the no-article note goes out once 10:00 passes", _c18.deliver_posts("2026-11-18", hour=10) and _sent18[-1].startswith("No new article"))
+check("secretary: Thursday with no news pick sends nothing", _c18.deliver_posts("2026-11-19", hour=12) is False)
+_c18.admin_on, _c18.slack.enabled, _c18.read_private, _c18.write_private, _c18.slack.say = _ao, _se, _rp, _wp, _say
 _cm18.load_articles = _la18
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
