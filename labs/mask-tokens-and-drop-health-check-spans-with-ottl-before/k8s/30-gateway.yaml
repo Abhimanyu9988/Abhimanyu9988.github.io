@@ -1,0 +1,219 @@
+# The gateway: the upstream OpenTelemetry Collector (contrib 0.165.0, where OTTL is stable for traces, metrics and logs).
+# Both services send it traces and metrics; it forwards everything over OTLP to the Splunk OTel Collector agent on its
+# node, which sends to Splunk Observability Cloud like everything else on the cluster.
+# Three configs, and CONFIG picks one. They differ only in the processors on the traces pipeline:
+#   base.yaml   batch only, as the data arrives
+#   named.yaml  filter/healthchecks drops the kubelet's /healthz spans, and transform/redact masks the token in the two
+#               current HTTP attributes that carry the query string, url.query and url.full
+#   all.yaml    the same filter, and transform/redact masks the token in every span attribute value
+# The metrics pipeline is the same in all three, so the services' HTTP metrics still count every health check.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway
+  namespace: demo
+data:
+  base.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+    processors:
+      batch: { timeout: 2s }
+    exporters:
+      otlphttp:
+        endpoint: http://${env:HOST_IP}:4318
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus: { host: 0.0.0.0, port: 8888 }
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+  named.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+    processors:
+      filter/healthchecks:
+        error_mode: ignore
+        trace_conditions:
+          - span.attributes["url.path"] == "/healthz"
+      transform/redact:
+        error_mode: ignore
+        trace_statements:
+          - replace_pattern(span.attributes["url.query"], "token=[^&]*", "token=REDACTED")
+          - replace_pattern(span.attributes["url.full"], "token=[^&]*", "token=REDACTED")
+      batch: { timeout: 2s }
+    exporters:
+      otlphttp:
+        endpoint: http://${env:HOST_IP}:4318
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus: { host: 0.0.0.0, port: 8888 }
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [filter/healthchecks, transform/redact, batch]
+          exporters: [otlphttp]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+  all.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+    processors:
+      filter/healthchecks:
+        error_mode: ignore
+        trace_conditions:
+          - span.attributes["url.path"] == "/healthz"
+      transform/redact:
+        error_mode: ignore
+        trace_statements:
+          - replace_all_patterns(span.attributes, "value", "token=[^&]*", "token=REDACTED")
+      batch: { timeout: 2s }
+    exporters:
+      otlphttp:
+        endpoint: http://${env:HOST_IP}:4318
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus: { host: 0.0.0.0, port: 8888 }
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [filter/healthchecks, transform/redact, batch]
+          exporters: [otlphttp]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: gateway }
+  template:
+    metadata:
+      labels: { app: gateway }
+    spec:
+      nodeName: APP_NODE
+      enableServiceLinks: false
+      containers:
+        - name: otel
+          image: otel/opentelemetry-collector-contrib:0.165.0
+          args: ["--config=/conf/$(CONFIG)"]
+          env:
+            - name: HOST_IP
+              valueFrom: { fieldRef: { fieldPath: status.hostIP } }
+            - { name: CONFIG, value: base.yaml }
+            - { name: LAB_RUN, value: "none" }
+          ports:
+            - containerPort: 4318
+            - containerPort: 8888
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          readinessProbe:
+            tcpSocket: { port: 4318 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: conf, mountPath: /conf }
+      volumes:
+        - name: conf
+          configMap: { name: gateway }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: demo
+spec:
+  selector: { app: gateway }
+  ports:
+    - { name: otlp-http, port: 4318 }
+    - { name: metrics, port: 8888 }
+---
+# The gateway's own metrics, read by the stats pod after each run.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stats
+  namespace: demo
+data:
+  gwstats.py: |
+    # Reads the gateway Collector's own metrics (Prometheus format on port 8888) and prints the counts this lab uses.
+    # The gateway restarts for every run, so each count covers one run.
+    import re, sys, urllib.request
+    text = urllib.request.urlopen("http://gateway:8888/metrics", timeout=10).read().decode()
+    def total(name, **labels):
+        t = 0.0
+        for line in text.splitlines():
+            m = re.match(r"^([a-zA-Z_:][\w:]*)(\{[^}]*\})?\s+([0-9.eE+-]+)", line)
+            if not m or m[1] not in (name, name + "_total", name + "_seconds_total"):
+                continue
+            got = dict(re.findall(r'(\w+)="([^"]*)"', m[2] or ""))
+            if all(got.get(k) == v for k, v in labels.items()):
+                t += float(m[3])
+        return t
+    rows = {
+        "spans_received": total("otelcol_receiver_accepted_spans", receiver="otlp"),
+        "spans_exported": total("otelcol_exporter_sent_spans", exporter="otlphttp"),
+        "spans_export_failed": total("otelcol_exporter_send_failed_spans", exporter="otlphttp"),
+        "filter_in": total("otelcol_processor_incoming_items", processor="filter/healthchecks", otel_signal="traces"),
+        "filter_out": total("otelcol_processor_outgoing_items", processor="filter/healthchecks", otel_signal="traces"),
+        "cpu_seconds": total("otelcol_process_cpu_seconds"),
+        "uptime_seconds": total("otelcol_process_uptime"),
+    }
+    for k, v in rows.items():
+        print(f"GW {k}={v:g}")
+    if not rows["spans_received"]:
+        print("GW metric names held: " + " ".join(sorted({l.split("{")[0].split(" ")[0] for l in text.splitlines() if l.startswith("otelcol_")}))[:900])
+---
+# Reads the gateway's own metrics after each run. Never sends anything to the services.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stats
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  enableServiceLinks: false
+  volumes:
+    - name: load
+      configMap:
+        name: stats
+  containers:
+    - name: stats
+      image: python:3.12-slim
+      command: ["sleep", "7200"]
+      volumeMounts:
+        - { name: load, mountPath: /stats }
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
