@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: load
+  namespace: demo
+data:
+  load.py: |
+    # Open-loop load: RATE orders a second for LOAD_SECONDS. Every order carries a customer token in its query string, made
+    # fresh for each order, and a W3C traceparent with a trace ID this script picks, so a run's traces can be read back
+    # from Splunk by ID. Every 2 s from second 5 one order is a sample: its trace ID and token are printed.
+    import os, secrets, threading, time, http.client
+    RATE, SECONDS = int(os.environ.get("RATE", "10")), int(os.environ.get("LOAD_SECONDS", "45"))
+    HOST, PORT = os.environ.get("ORDERS_HOST", "orders"), int(os.environ.get("ORDERS_PORT", "8080"))
+    RUN, FIRST = os.environ.get("RUN", "run"), int(os.environ.get("FIRST", "1"))
+    res, lock = {}, threading.Lock()
+
+    def one(n, sec, trace, token):
+        ok = False
+        try:
+            c = http.client.HTTPConnection(HOST, PORT, timeout=5)
+            c.request("POST", f"/orders/{n}?token={token}", headers={"traceparent": f"00-{trace}-{secrets.token_hex(8)}-01"})
+            ok = c.getresponse().status == 200
+            c.close()
+        except Exception:
+            pass
+        with lock:
+            res.setdefault(sec, [0, 0])[0 if ok else 1] += 1
+
+    t0 = time.time(); n = FIRST
+    print(f"LOAD start={t0:.0f} run={RUN} rate={RATE} seconds={SECONDS} first={FIRST}", flush=True)
+    for sec in range(SECONDS):
+        for i in range(RATE):
+            trace, token = secrets.token_hex(16), f"tok_{RUN.replace('-', '')}_{n}_{secrets.token_hex(6)}"
+            if sec >= 5 and sec % 2 == 1 and i == 0:
+                print(f"SAMPLE order={n} trace={trace} token={token}", flush=True)
+            threading.Thread(target=one, args=(n, sec, trace, token), daemon=True).start(); n += 1
+            time.sleep(max(0, t0 + sec + (i + 1) / RATE - time.time()))
+    time.sleep(6)
+    print(f"LOAD end={time.time():.0f} sent={n - FIRST} ok={sum(v[0] for v in res.values())} failed={sum(v[1] for v in res.values())}")
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  enableServiceLinks: false
+  volumes:
+    - name: load
+      configMap:
+        name: load
+  containers:
+    - name: load
+      image: python:3.12-slim
+      command: ["python", "/load/load.py"]
+      env:
+        - { name: RATE, value: "10" }
+        - { name: LOAD_SECONDS, value: "45" }
+        - { name: RUN, value: "RUN" }
+        - { name: FIRST, value: "FIRST" }
+      volumeMounts:
+        - { name: load, mountPath: /load }
+      resources:
+        requests: { cpu: 100m, memory: 128Mi }
