@@ -1,0 +1,398 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical: The reproduce steps point to a different repo and folder than the published lab, so the reader's first command fails or runs different code. Fix: Change the clone URL and cd path to match LAB_URL (Abhimanyu9988.github.io, labs/mask-tokens-and-drop-health-check-spans), or publish the lab at the path the post uses. Then rerun Step 1 from a clean checkout.",
+  "editorial: The source cited for 'OTTL reaches v1' links to a URL whose slug is about Kubernetes workload conformance and AI. That probably isn't the OTTL article, so the post's maturity claim has no valid source. Fix: Replace it with the actual New Stack article on OTTL v1 or the collector-contrib v0.164.0 release notes. If neither can be found, remove the source line and rely on the pkg/ottl README stability table.",
+  "outside claim without a known source: How much of the URL to collect by default is still an open semantic-conventions discussion",
+  "ChatGPT did not approve: The hands-on commands point to a repo/path that is not supported by the evidence. The article says to clone `https://github.com/Abhimanyu9988/showmerit.git` and `cd showmerit/labs/mask-tokens-and-drop-health-check-spans-with-ottl-before`, but the evidence identifies the lab at `https://github.com/Ab Fix: Change the quick-start clone/cd commands to the repository and lab path shown in the evidence, or provide evidence that the `showmerit` repository and `mask-tokens-and-drop-health-check-spans-with-ottl-before` path contain the same lab."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "splunk_spans_with_raw_token",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:75"
+    },
+    {
+     "id": "splunk_spans_with_masked_token",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:76"
+    },
+    {
+     "id": "splunk_sample_traces_found",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:73"
+    },
+    {
+     "id": "splunk_spans_per_trace_min",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:74"
+    },
+    {
+     "id": "gateway_spans_received",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:31"
+    },
+    {
+     "id": "gateway_spans_exported",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:32"
+    },
+    {
+     "id": "gateway_spans_dropped_by_filter",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:33"
+    },
+    {
+     "id": "orders_ok",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:30"
+    },
+    {
+     "id": "splunk_apm_healthz_requests",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:105"
+    },
+    {
+     "id": "splunk_metric_healthz_requests",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:106"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 4,
+    "reasons": [
+     "Every headline number matches the corroborated contract. Before, named and all runs show 60, 60 and 0 raw-token spans, all 20 of 20 traces have 3 spans, and the gateway sent 1,350 spans per run (450 orders \u00d7 3).",
+     "The before-check could have failed: fix.sh requires a before run to show the raw token in Splunk, and check.sh asserts that base.yaml exports health-check spans and tokens. Only the traces pipeline changes between configs, and the post shows that config.",
+     "Guesses are marked as guesses: the extra health-check counts are called 'likely\u2026 I didn't measure that', and CPU cost is listed as untested.",
+     "The reproduce steps clone a different repo and folder from the published lab, and one source link does not appear to point to the article it names (see blocking)."
+    ]
+   },
+   "editorial": {
+    "score": 4,
+    "reasons": [
+     "Real finding for a specific reader: with http/dup, naming url.query and url.full still leaves the token in http.target and http.url on every span. The per-attribute table shows exactly where. The docs show statements one at a time and don't show this.",
+     "The trade-offs are honest and stay in the body: transform is beta and filter is alpha, replace_all_patterns cost is unmeasured, the filter keys on url.path, and slow health checks still show up in the HTTP metric.",
+     "Opening line 'that token sat in 60 spans of every 20 sample traces' is awkward. Use 'in all 60 spans of the 20 sample traces'. The first paragraph describes the problem before the gain, but the second paragraph delivers the gain quickly.",
+     "Logs and tables read like a real session. A few section headers ('What to plan for', 'What I didn't test') are stock but useful."
+    ]
+   },
+   "marketing": {
+    "score": 4,
+    "reasons": [
+     "The brief has a real linked signal: semantic-conventions issue 860, open since March 2024, with 6 reactions and 24 comments. The post links to it. That is modest but real.",
+     "Several 2026 guides use the same wording ('Drop \u2026 Probe Spans with OTTL', 'Redact \u2026 Tokens, and URL Secrets with OTTL'). The headline uses those words: 'Mask Tokens', 'Drop Health Check Spans', 'OTTL'.",
+     "OTTL v1 and the proposal to graduate the transform processor give the post a timely hook. The brief has no search volume or traffic data, so this is not scored 5."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The reproduce steps point to a different repo and folder than the published lab, so the reader's first command fails or runs different code.",
+    "evidence": "Post: 'git clone https://github.com/Abhimanyu9988/showmerit.git; cd showmerit/labs/mask-tokens-and-drop-health-check-spans-with-ottl-before' vs LAB_URL https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/mask-tokens-and-drop-health-check-spans",
+    "fix": "Change the clone URL and cd path to match LAB_URL (Abhimanyu9988.github.io, labs/mask-tokens-and-drop-health-check-spans), or publish the lab at the path the post uses. Then rerun Step 1 from a clean checkout."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The source cited for 'OTTL reaches v1' links to a URL whose slug is about Kubernetes workload conformance and AI. That probably isn't the OTTL article, so the post's maturity claim has no valid source.",
+    "evidence": "[OTTL reaches v1 (The New Stack)](https://thenewstack.io/kubernetes-workload-conformance-ai/)",
+    "fix": "Replace it with the actual New Stack article on OTTL v1 or the collector-contrib v0.164.0 release notes. If neither can be found, remove the source line and rely on the pkg/ottl README stability table."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "Splunk's guide says instrumentation that knows a query parameter is sensitive should scrub it before setting url.query, url.path and url.full",
+    "class": "sourced",
+    "source_ref": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/manage-sensitive-data"
+   },
+   {
+    "text": "How much of the URL to collect by default is still an open semantic-conventions discussion",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/semantic-conventions/issues/860"
+   },
+   {
+    "text": "OTEL_SEMCONV_STABILITY_OPT_IN=http/dup emits both the old and the stable HTTP conventions",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/specs/semconv/non-normative/http-migration/"
+   },
+   {
+    "text": "Services emit the older HTTP attribute names during a semantic-convention migration",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/specs/semconv/non-normative/http-migration/"
+   },
+   {
+    "text": "OTTL is stable for traces, metrics and logs",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl"
+   },
+   {
+    "text": "In contrib 0.165.0 the transform processor is beta",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor"
+   },
+   {
+    "text": "In contrib 0.165.0 the filter processor is alpha for traces",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/filterprocessor"
+   },
+   {
+    "text": "OTTL reached v1 (The New Stack)",
+    "class": "sourced",
+    "source_ref": "https://thenewstack.io/kubernetes-workload-conformance-ai/"
+   },
+   {
+    "text": "Instrumentation can only scrub the parameter names it was built for",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Health-check counts above the probe figure likely come from new pods' first checks after each restart",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Adding statements for http.target and http.url would be the narrower alternative",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "replace_all_patterns runs the pattern on every attribute value of every span (CPU cost implied, not measured)",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "Services that only emit the older names need the filter to match http.target instead",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The EKS cluster took 6m58s; Step 2 about 7 minutes; Step 3 about 14 minutes",
+    "class": "estimate",
+    "source_ref": ""
+   }
+  ],
+  "prompt_version": "editor/dce97c8b60"
+ },
+ "brief": {
+  "reader": "Platform or SRE engineer who runs OpenTelemetry Collectors in front of Splunk Observability Cloud and owns what reaches it",
+  "question": "Customer tokens show up in our trace URLs and health checks fill our traces. Can the Collector fix both before the data reaches Splunk, without losing real traces, and does naming the URL attributes cover every place the token lands?",
+  "demand": {
+   "level": "strong",
+   "evidence": "open-telemetry/semantic-conventions issue 860 'Http client and server span default collection behavior for url.full and url.query attributes' (open since 29 Mar 2024; 6 reactions, 24 comments) and issue 128 'Semantic conventions vs GDPR' (20 comments); Splunk docs 'Manage sensitive data in Splunk Observability Cloud' (instrumentation must scrub sensitive values before setting url.query, url.path, url.full); guides people use, with their wording: OneUptime 'Drop Kubernetes Liveness and Readiness Probe Spans with OTTL' (10 Sep 2026), OneUptime 'Redact Passwords, Tokens, and URL Secrets with OTTL Patterns' (10 Sep 2026), Dash0 'Redacting Sensitive Data in the OpenTelemetry Collector' (updated 15 Jul 2026), Better Stack 'Redacting Sensitive Data with the OpenTelemetry Collector'. Phrases: 'drop health check spans', 'redact query parameters', 'mask token in URL', 'probe spans'. News: OTTL v1 in contrib v0.164.0 (The New Stack, Oct 2026); transform processor stable graduation proposed 18 Nov 2026 (collector-contrib 53322)."
+  },
+  "reasons": [
+   "Demand: semconv issue 860 on url.full/url.query collection (6 reactions, 24 comments), Splunk's sensitive-data docs, and 2026 guides titled 'Drop Kubernetes Liveness and Readiness Probe Spans with OTTL' and 'Redact Passwords, Tokens, and URL Secrets with OTTL Patterns' (details in demand)",
+   "Abhi picked this topic for Friday 20 November 2026; OTTL reached v1 in Collector contrib v0.164.0",
+   "Serves the OpenTelemetry and Splunk MVP goals with a lab on EKS that reads its proof back from Splunk; released components only",
+   "Title by outcome: both all runs 0 raw-token spans with 3 masked spans and both services per trace -> 'Mask Tokens and Drop Health Check Spans With OTTL Before They Reach Splunk'; named runs also 0 -> same title, and the body says naming url.query and url.full was enough here",
+   "If an all run keeps any raw token: 'Mask Tokens in Trace URLs With OTTL: Where Each Config Caught Them', with the counts; the named-attribute gap stays in the body, never the headline"
+  ],
+  "decision": "Whether to clean trace data in the Collector with OTTL, now that OTTL is stable: which spans to drop, which values to mask, and whether naming the URL attributes is enough",
+  "takeaway": "OTTL in a gateway Collector (contrib 0.165.0, where OTTL is stable) can drop the kubelet's health-check spans and mask a customer token before anything reaches Splunk, while the sample traces keep their 3 spans and both services (20 of 20 per run is the target). Measured on EKS with zero-code Python services emitting old and new HTTP attribute names: masking two named attributes (url.query, url.full) versus every attribute value, read back from Splunk APM trace by trace, with the attributes that still hold the token named, and health checks counted in APM and in the services' own metrics.",
+  "open_question": "On EKS with two zero-code Python services that pass a customer token in the query string and emit both current and older HTTP attribute names, behind a gateway Collector contrib 0.165.0: with batch only, with a filter plus replace_pattern on url.query and url.full, and with the same filter plus replace_all_patterns on every attribute value, two runs each of 45 s at 10 orders a second, how many spans of 20 sample traces per run in Splunk APM hold the raw token and in which attributes, how many hold the masked value, do traces keep all 3 spans and both services, and how many /healthz requests do APM and the services' HTTP metric count per config over the same 10 s points?",
+  "measurements": [
+   {
+    "id": "splunk_spans_with_raw_token",
+    "what": "spans of the run's 20 sample traces in Splunk APM holding the run's raw token anywhere: before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_spans_with_masked_token",
+    "what": "spans of the run's sample traces in Splunk APM holding token=REDACTED: before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_sample_traces_found",
+    "what": "sample traces read back from Splunk APM by trace ID: before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "count",
+    "unit": "traces",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_spans_per_trace_min",
+    "what": "fewest spans in any found sample trace (3 is complete): before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_spans_received",
+    "what": "spans the gateway accepted inside the load window (counter after the flush minus counter before the load): before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "count",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_spans_exported",
+    "what": "spans the gateway sent on to the Splunk agent inside the same window: before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_spans_dropped_by_filter",
+    "what": "spans filter/healthchecks dropped inside the same window (0 when it isn't in the pipeline): before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "orders_ok",
+    "what": "orders that succeeded out of 450 sent: before-1, before-2, named-1, named-2, all-1, all-2",
+    "kind": "failure",
+    "unit": "orders",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_apm_healthz_requests",
+    "what": "requests Splunk APM counts for the GET /healthz operation over the whole 10 s points inside the config's period (both sources have 10 s resolution), per service: base/orders, base/inventory, named/orders, named/inventory, all/orders, all/inventory",
+    "kind": "comparison",
+    "unit": "requests",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_metric_healthz_requests",
+    "what": "requests the service's own HTTP server metric counts for the /healthz route over the same 10 s points: base/orders, base/inventory, named/orders, named/inventory, all/orders, all/inventory",
+    "kind": "comparison",
+    "unit": "requests",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   }
+  ],
+  "adds": "The OTTL, transform and filter processor docs and vendor guides (Dash0, Better Stack, OneUptime) show redaction and health-check statements one at a time, and Splunk's docs ask instrumentation to scrub sensitive query values, but none measures end to end what reaches Splunk. This lab runs three gateway configs on EKS with real zero-code services emitting old and new HTTP names and real kubelet checks, reads each sample trace back from Splunk APM by its ID, names the attributes that still hold the token, and counts health checks in APM and in the services' metrics per config.",
+  "tradeoffs": [
+   "Naming url.query and url.full misses the older http.target and http.url the same spans carry during a semantic-convention migration; masking every attribute value covers both but runs the pattern on every attribute",
+   "Dropping health-check spans removes them from traces only; the services' HTTP metrics still count them, and a slow health check no longer shows in a trace",
+   "A gateway Collector is one more hop to run; the agent could run the same processors",
+   "The OTTL language is stable, while the transform processor is beta and the filter processor alpha, which matters for adoption",
+   "One token name in the query string, one load level and one gateway; a token in a header, a body or a span event needs its own statement"
+  ],
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "existing_pages": [
+   {
+    "title": "OpenTelemetry Transformation Language (pkg/ottl README)",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl",
+    "covers": "OTTL grammar, contexts and stability (stable for traces, metrics and logs)."
+   },
+   {
+    "title": "Transform processor README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/transformprocessor",
+    "covers": "trace_statements, error_mode and examples such as replace_pattern for a password."
+   },
+   {
+    "title": "Filter processor README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/filterprocessor",
+    "covers": "trace_conditions, context inference and the deprecated traces.span form."
+   },
+   {
+    "title": "Kubernetes workload conformance, and OTTL reaches v1 (The New Stack)",
+    "url": "https://thenewstack.io/kubernetes-workload-conformance-ai/",
+    "covers": "News that OTTL reached v1, stable for traces, metrics and logs, in Collector Contrib v0.164.0 and later."
+   },
+   {
+    "title": "Manage sensitive data in Splunk Observability Cloud",
+    "url": "https://help.splunk.com/en/splunk-observability-cloud/manage-data/manage-sensitive-data",
+    "covers": "Instrumentation that knows a query parameter is sensitive must scrub it before setting url.query, url.path and url.full."
+   },
+   {
+    "title": "Redacting Sensitive Data in the OpenTelemetry Collector (Dash0)",
+    "url": "https://dash0.com/guides/scrubbing-sensitive-data-with-opentelemetry",
+    "covers": "Transform processor replace_pattern on a named URL attribute."
+   },
+   {
+    "title": "HTTP semantic convention stability migration (OpenTelemetry)",
+    "url": "https://opentelemetry.io/docs/specs/semconv/non-normative/http-migration/",
+    "covers": "OTEL_SEMCONV_STABILITY_OPT_IN: http emits only the stable conventions, http/dup emits both old and stable during migration."
+   },
+   {
+    "title": "Migrate to Stabilized OpenTelemetry HTTP Semantic Conventions (Honeycomb)",
+    "url": "https://docs.honeycomb.io/troubleshoot/product-lifecycle/recommended-migrations/migrate-to-opentelemetry-semantic-conventions",
+    "covers": "Recommends setting http/dup during the migration so both attribute sets are emitted."
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 1.0164
+}
