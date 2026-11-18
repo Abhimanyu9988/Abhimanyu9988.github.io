@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-src
+  namespace: demo
+data:
+  requirements.txt: |
+    flask==3.1.3
+    waitress==3.0.2
+    requests==2.34.2
+    opentelemetry-distro==0.66b2
+    opentelemetry-exporter-otlp-proto-http==1.45.2
+    opentelemetry-instrumentation-flask==0.66b2
+    opentelemetry-instrumentation-requests==0.66b2
+
+  inventory.py: |
+    # inventory: reserves stock for an order. orders passes the customer's token in the query string, as many internal APIs
+    # still do, so the token lands in the URL attributes of every span on the way. Zero-code OpenTelemetry: no tracing here.
+    import os, time
+    from flask import Flask, request
+    from waitress import serve
+
+    app = Flask(__name__)
+    WORK_MS = int(os.environ.get("WORK_MS", "20"))
+
+
+    @app.get("/reserve/<int:order>")
+    def reserve(order):
+        if not request.args.get("token"):
+            return {"error": "no token"}, 401
+        time.sleep(WORK_MS / 1000)
+        return {"order": order, "reserved": True}
+
+
+    @app.get("/healthz")
+    def healthz():
+        return "ok"
+
+
+    if __name__ == "__main__":
+        print(f"INVENTORY server threads=8 work_ms={WORK_MS}", flush=True)
+        serve(app, host="0.0.0.0", port=8081, threads=8)
+
+  orders.py: |
+    # orders: takes an order and reserves stock from inventory. The caller sends the customer's token in the query string, and
+    # orders passes it on the same way. Zero-code OpenTelemetry: no tracing here.
+    import os
+    import requests
+    from flask import Flask, request
+    from waitress import serve
+
+    app = Flask(__name__)
+    INVENTORY = os.environ.get("INVENTORY_URL", "http://inventory:8081")
+    session = requests.Session()
+
+
+    @app.post("/orders/<int:order>")
+    def create(order):
+        token = request.args.get("token", "")
+        r = session.get(f"{INVENTORY}/reserve/{order}", params={"token": token}, timeout=2)
+        return ({"order": order, "ok": True}, 200) if r.ok else ({"order": order, "ok": False}, 502)
+
+
+    @app.get("/healthz")
+    def healthz():
+        return "ok"
+
+
+    if __name__ == "__main__":
+        print("ORDERS server threads=16", flush=True)
+        serve(app, host="0.0.0.0", port=8080, threads=16)
+
+---
+# Builds one virtualenv on the app node with pinned packages, once. Both services run from it, in every run.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build
+  namespace: demo
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 420
+  template:
+    spec:
+      restartPolicy: Never
+      nodeName: APP_NODE
+      volumes:
+        - name: src
+          configMap:
+            name: app-src
+        - name: lab
+          hostPath:
+            path: /opt/lab
+            type: DirectoryOrCreate
+      containers:
+        - name: build
+          image: python:3.12-slim
+          volumeMounts:
+            - { name: src, mountPath: /src, readOnly: true }
+            - { name: lab, mountPath: /lab }
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              rm -rf /lab/venv /lab/app && mkdir -p /lab/app
+              cp /src/inventory.py /src/orders.py /src/requirements.txt /lab/app/
+              python -m venv /lab/venv
+              for i in 1 2 3; do /lab/venv/bin/pip install -q --no-cache-dir -r /lab/app/requirements.txt && break; echo "pip attempt $i failed"; sleep 10; done
+              /lab/venv/bin/pip freeze | grep -iE '^(flask|waitress|requests|opentelemetry-(distro|sdk|exporter-otlp-proto-http|instrumentation-flask|instrumentation-requests|util-http))=='
+              sha256sum /lab/app/*.py
