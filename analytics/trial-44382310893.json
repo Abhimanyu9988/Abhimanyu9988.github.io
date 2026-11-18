@@ -1,0 +1,10 @@
+{
+ "run": "44382310893",
+ "issue": 220,
+ "title": "Mask Tokens and Drop Health Check Spans With OTTL Before They Reach Splunk",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 32.1,
+ "lab_usd": 0.0
+}
