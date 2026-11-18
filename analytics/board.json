@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-18T07:35:28Z",
+ "updated": "2026-11-18T12:35:00Z",
  "columns": {
   "needs": [
    {
@@ -112,13 +112,6 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
-    "kind": "Your PR",
-    "title": "[chore] Remove the stand-in API server EndpointSlice before the operator-restart collector step",
-    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
-    "where": "opentelemetry-operator"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "kind": "Your PR",
     "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
@@ -164,6 +157,13 @@
    }
   ],
   "done": [
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
+    "kind": "Merged",
+    "title": "[chore] Remove the stand-in API server EndpointSlice before the operator-restart collector step",
+    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
+    "where": "opentelemetry-operator"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
     "kind": "Merged",
