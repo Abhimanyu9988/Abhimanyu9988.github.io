@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-18T20:32:27Z",
+ "updated": "2026-11-19T18:29:25Z",
  "columns": {
   "needs": [
    {
@@ -40,17 +40,17 @@
   ],
   "maybe": [
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
-    "kind": "Mentioned",
-    "title": "[receiver/kubeletstats] Added k8s.pod.filesystem.inode.used metric",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
     "kind": "Mentioned",
     "title": "[chore][receiver/k8scluster] migrated semconv from v1.9.0 to v1.40.0 in metadata.go",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51874",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
+    "kind": "Mentioned",
+    "title": "[receiver/kubeletstats] Added k8s.pod.filesystem.inode.used metric",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52877",
     "where": "opentelemetry-collector-contrib"
    },
    {
@@ -105,17 +105,17 @@
   ],
   "working": [
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
-    "kind": "Your PR",
-    "title": "[chore] Nominate Abhimanyu Bajaj as triager",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "kind": "Your PR",
     "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
+    "kind": "Your PR",
+    "title": "[chore] Nominate Abhimanyu Bajaj as triager",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
     "where": "opentelemetry-collector-contrib"
    },
    {
