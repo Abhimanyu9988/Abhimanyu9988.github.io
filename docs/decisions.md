@@ -6,7 +6,8 @@ Newest first. Each entry says what was decided and why, so a future agent does n
 
 Abhi approved this design. Every lab with a `check.sh` reruns it on the 1st and 16th, once with the article's versions and
 once with the newest agent, chart and image releases, and every cited link is fetched again. Each lab also runs once a
-quarter on AWS with the newest versions, one lab a week, inside the monthly budget. Results go to the public
+quarter on AWS with the newest versions. Abhi wants that on one day a month: the first Tuesday runs the labs due in a
+3-month cycle, one after another, with the budget checked before each lab. Results go to the public
 `analytics/rechecks.json`, which showmerit's build reads, so each article shows its last recheck linked to the run. A
 failure opens one private `team-admin` issue for Abhi, and a repeat failure comments on it. Nothing goes to a vendor:
 Abhi decides that. A failed lab never turns a run red. A newer image keeps the tag's shape and major version, because a
