@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-19T19:12:39Z",
+ "updated": "2026-11-19T19:23:25Z",
  "columns": {
   "needs": [
    {
@@ -105,6 +105,13 @@
   ],
   "working": [
    {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
+    "kind": "Your PR",
+    "title": "[chore] Nominate Abhimanyu Bajaj as triager",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52832",
     "kind": "Your PR",
     "title": "[receiver/flinkmetrics] Support additional JVM garbage collectors",
@@ -116,13 +123,6 @@
     "kind": "Your PR",
     "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
-    "kind": "Your PR",
-    "title": "[chore] Nominate Abhimanyu Bajaj as triager",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
     "where": "opentelemetry-collector-contrib"
    },
    {
