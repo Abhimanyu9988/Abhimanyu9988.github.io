@@ -1,29 +1,40 @@
 {
  "week": "2026-W47",
  "target": 3,
- "created": "2026-11-16",
+ "created": "2026-11-20",
  "topics": [
   {
-   "issue": 205,
-   "title": "Pods Stuck Terminating on Fresh EKS AL2023 Nodes? Compare containerd 2.2 and 2.3",
+   "issue": 222,
+   "title": "Cannot find module 'forwarded-parse' in Next.js Standalone: Traced and Fixed",
    "state": "queued",
-   "signal": "2 reactions and 2 comments on a GitHub issue opened 5 Nov 2026",
+   "signal": "7 reactions and 3 comments on a GitHub issue opened 25 Oct 2026",
    "confirmed": true,
    "picked": false,
    "chat": true,
-   "scores": "Marketing 2/5, Editor 3/5",
+   "scores": "Marketing 3/5, Editor 3/5",
    "model": "claude-sonnet-5-5"
   },
   {
-   "issue": 206,
-   "title": "After a Backend Outage, Your Collector's Startup Probe Sets the Real Queue Size",
+   "issue": 223,
+   "title": "Argo CD Repo-Server Evicted for Disk? Check ARGOCD_EXEC_TIMEOUT First",
    "state": "queued",
-   "signal": "0 reactions and 11 comments on a GitHub issue opened 7 Nov 2026",
+   "signal": "8 reactions and 0 comments on a GitHub issue opened 27 Oct 2026",
    "confirmed": true,
    "picked": false,
    "chat": true,
    "scores": "Marketing 3/5, Editor 3/5",
    "model": "claude-opus-5-5"
+  },
+  {
+   "issue": 224,
+   "title": "AWS SDK for Go v2 Schema Serde: Binary Size Down, Startup Heap Measured",
+   "state": "queued",
+   "signal": "2 reactions and 9 comments on a GitHub issue opened 22 Oct 2026, labelled bug",
+   "confirmed": true,
+   "picked": false,
+   "chat": true,
+   "scores": "Marketing 3/5, Editor 3/5",
+   "model": "claude-haiku-5-5"
   }
  ]
 }
