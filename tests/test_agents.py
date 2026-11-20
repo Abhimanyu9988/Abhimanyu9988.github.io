@@ -1547,6 +1547,19 @@ hot_map, hot_view = week.hot_items()
 prob_mod.collect = real_pc
 check("hot: only real signals count, with the real numbers", set(hot_map) == {"https://g/1", "https://s/1"} and "9 reactions and 2 comments" in hot_map["https://g/1"] and "500 views" in hot_map["https://s/1"])
 check("hot: its repos are watched too", "fluent/fluent-bit" in prob_mod.WATCH)
+real_wgh, real_sog = week.gh, prob_mod.so_get
+def fake_gh(method, path):
+    if path.endswith("/3"):
+        raise RuntimeError("not found")
+    return {"/repos/o/r/issues/1": {"reactions": {"total_count": 5}, "comments": 4}, "/repos/o/r/issues/2": {"reactions": {"total_count": 2}, "comments": 3}}[path]
+week.gh, prob_mod.so_get = fake_gh, (lambda url: {"items": [{"view_count": 2100}]})
+sig, seen_d = week.measure_demand(["https://github.com/o/r/issues/1", "https://github.com/o/r/issues/2", "https://github.com/o/r/issues/3",
+                                   "https://stackoverflow.com/questions/99/why", "https://example.com/blog", "https://github.com/o/r/issues/1"])
+week.gh, prob_mod.so_get = real_wgh, real_sog
+check("demand: code sums real counts across reports, and skips links it can't read",
+      sig == "3 independent reports of this symptom: 14 reactions and comments across 2 GitHub issues; 2,100 views on 1 Stack Overflow question"
+      and set(seen_d) == {"https://github.com/o/r/issues/1", "https://github.com/o/r/issues/2", "https://stackoverflow.com/questions/99/why"})
+check("demand: nothing measured means no signal, never a guess", week.measure_demand(["https://example.com/x"]) == ("", {}))
 real_lc2, real_pn2, real_bp = week.lab_check, week.panel, week.build_plan
 week.lab_check, week.panel = (lambda ts: {}), (lambda ts, rej, ex: {})
 seen_rej = {}
