@@ -333,3 +333,6 @@ emails, and only to a POST with the shared key. The cto poll reads it every 10 m
 numbers appear in the article or the comment and it has no links, hashtags, mentions or commands; the Fact Checker and the
 Editor (both Opus) can still block it, and a blocked reply gets two rewrites at most. Replies stop at the monthly limit
 even though the cto job is otherwise exempt, because they are the team's own work and not answers to him.
+
+## 20 Nov 2026: demand is measured across several reports
+For two weeks every chat topic scored 3/5 from Marketing, because it only ever saw one GitHub issue's count, and Stack Overflow is blocked from chat. Chat topics now list `more_demand` links, and `week.measure_demand` reads their real counts in GitHub Actions and sums them. Links it can't read are dropped, never estimated.

@@ -82,7 +82,7 @@ Do not add approval requests, manual commands or setup steps for routine decisio
 | `Abhimanyu9988/team-admin` | Private admin page and daily log, written by `cto.py` | Spend, runs, ledger | `README.md`, `log-*.md`, `tasks.json` |
 | `infra/slack-listener.yml` | AWS Lambda that wakes `cto.yml` when Abhi messages Slack | Signed Slack events | One workflow start |
 | `pipeline/live_board.py` | His board of open source and articles only: cards for `site/board.html`, and a Slack message linking to it. No model | GitHub, ideas, spend | `analytics/board.json` (public data only), that message, `analytics/slack-board.json` |
-| `pipeline/week.py` | The Editor plans the week in one call, Lab Check, the panel and code filter it, then survivors get a brief. Also runs an article he asks for | New items, his ideas, goals, `TOPIC` | Issues, `analytics/week-plan.json`, Slack, first lab |
+| `pipeline/week.py` | The Editor plans the week in one call, Lab Check, the panel and code filter it, then survivors get a brief. Also runs an article he asks for. `measure_demand` reads each chat topic's demand links (GitHub issues, Stack Overflow questions) and gives Marketing one combined, measured signal | New items, his ideas, goals, `TOPIC` | Issues, `analytics/week-plan.json`, Slack, first lab |
 | `docs/chat-article.md` | How a Claude chat writes a lab and article with no API writing | A confirmed topic | `chat/<issue>` branch, then the normal review and PR |
 | `docs/rechecks.md` | How published labs are rechecked, where results go and what Abhi does with a failure | Live articles | Nothing |
 | `docs/weekly-plan.md` | How a Claude chat plans the week, with `week.py --check` and one ChatGPT approval | Real complaints, goals | The `plan_json` input to `radar.yml` |
