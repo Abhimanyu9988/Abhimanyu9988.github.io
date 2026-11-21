@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T09:17:38Z",
+ "updated": "2026-11-21T00:09:36Z",
  "columns": {
   "needs": [
    {
@@ -93,13 +93,6 @@
     "kind": "Mentioned",
     "title": "[receiver/kubelet_stats] Add ephemeral and projected volume types to k8s.volume.type",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52198",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
-    "kind": "Mentioned",
-    "title": "Promote `kubeletstats` Receiver to Stable - Observability",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
     "where": "opentelemetry-collector-contrib"
    }
   ],
