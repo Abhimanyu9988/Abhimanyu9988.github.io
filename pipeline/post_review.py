@@ -6,6 +6,7 @@ Abhi's rule (16 Nov 2026): a post is ready only when both approve. The draft job
 ShowMerit article. It writes nothing, not even its spend record (it holds no write token): the result is the job summary, and the job fails unless both approve.
 
   ARTICLE=<slug>  a ShowMerit article, content/abhimanyu/articles/<slug>.md, with labs/<slug>/evidence
+                  (SITE_REF=<branch> reviews the article on an open ShowMerit PR branch instead of main)
   ISSUE_NO=<n>    a chat article, chat-work/<n>/post.json on branch chat/<n>, with the draft branch's evidence if any
 """
 import base64, json, os, re, sys
@@ -37,17 +38,17 @@ def evidence(repo, folder, ref="main", budget=80_000):
         out[r["name"]] = t; budget -= len(t)
     return out
 
-def from_site(slug):
-    raw = text_of(SITE_REPO, f"content/abhimanyu/articles/{slug}.md")
+def from_site(slug, ref="main"):
+    raw = text_of(SITE_REPO, f"content/abhimanyu/articles/{slug}.md", ref)
     _, front, body = raw.split("---", 2)
     meta = yaml.safe_load(front) or {}
     post = {"title": meta.get("title", ""), "description": meta.get("description", ""), "body": body.strip(),
             "linkedin": meta.get("linkedin", "")}
     try:
-        readme = text_of(SITE_REPO, f"labs/{slug}/README.md")
+        readme = text_of(SITE_REPO, f"labs/{slug}/README.md", ref)
     except Exception:
         readme = ""
-    return post, readme, evidence(SITE_REPO, f"labs/{slug}/evidence")
+    return post, readme, evidence(SITE_REPO, f"labs/{slug}/evidence", ref)
 
 def from_chat(issue):
     post = json.loads(text_of(HOME_REPO, f"chat-work/{issue}/post.json", f"chat/{issue}"))
@@ -80,7 +81,7 @@ def summary_md(name, result):
 def main():
     slug, issue = os.environ.get("ARTICLE", "").strip(), os.environ.get("ISSUE_NO", "").strip()
     if slug and SLUG.fullmatch(slug):
-        post, readme, ev = from_site(slug)
+        post, readme, ev = from_site(slug, os.environ.get("SITE_REF") or "main")
         name = slug
     elif issue.isdigit():
         post, readme, ev = from_chat(int(issue))

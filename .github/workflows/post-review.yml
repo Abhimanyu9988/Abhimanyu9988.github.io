@@ -9,6 +9,10 @@ on:
         description: "A ShowMerit article slug (content/abhimanyu/articles/<slug>.md)"
         required: false
         type: string
+      ref:
+        description: "ShowMerit branch to read the article from (default main), to review a PR before merging"
+        required: false
+        type: string
       issue:
         description: "Or a chat topic issue number (chat-work/<issue>/post.json on chat/<issue>)"
         required: false
@@ -30,6 +34,7 @@ jobs:
         run: python3 pipeline/post_review.py
         env:
           ARTICLE: ${{ inputs.article }}
+          SITE_REF: ${{ inputs.ref }}
           ISSUE_NO: ${{ inputs.issue }}
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
