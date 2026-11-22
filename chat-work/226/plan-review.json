@@ -1,0 +1,26 @@
+{
+ "round": 1,
+ "Editor": [
+  {
+   "problem": "The Splunk Prometheus total uses a wildcard: data('orders_created*'). prometheus-client 0.26.0 exposes `orders_created_created` next to `orders_created_total`. That series is a Unix timestamp of about 1.7e9 per pod. Whether it reaches Splunk as a separate gauge depends on the scrape protocol the receiver negotiates. If it does, splunk_prometheus_orders becomes a timestamp sum. Every equality check in fix.sh would fail, and the everywhere '>1.5x' gate would pass for the wrong reason.",
+   "fix": "Set PROMETHEUS_DISABLE_CREATED_SERIES=True in both orders Deployments. Replace the wildcard with the exact names: sum data('orders_created_total') and data('orders_created'), the name with the _total suffix trimmed. In each run, print every sf_metric that matches orders_created* along with its series count, so the article shows which name Splunk actually holds."
+  },
+  {
+   "problem": "The open question asks which dimensions tell the duplicate series apart, but that answer has no entry in the Evidence Contract. The `dims` jq groups series by `.pod // k8s.pod.name // \"?\"`. Prometheus scrape series may carry neither key. The agent's k8sattributes processor may also tag them by connection IP, which can point to the wrong pod. Either way, all series fall into one group, and the dimensions that differ between the two pods get reported as the duplicate key. The headline answer could be wrong without anyone noticing.",
+   "fix": "Group by the scrape target, which is the same whatever agent scraped it: `service.instance.id` or `instance` (pod IP:port), with the pod name as a fallback. Add a measurement 'duplicate_dims' (kind comparison, op present, min_entities 2, one for each everywhere run). Also save the full dimension set of every series for each run to a file."
+  },
+  {
+   "problem": "The plan never records the effective agent config. Only the diff of the values files is printed. Without the rendered config, the reader can't see that the spec.nodeName selector actually resolved to the agent's node. They also can't see that the autodetect runs scraped through the receiver_creator/k8s_observer rule and not through some other default job. So the cause isn't shown.",
+   "fix": "In set_config, after each rollout, dump the rendered agent ConfigMap (kubectl -n splunk get cm -l app=splunk-otel-collector,component=otel-collector-agent -o yaml). Print the prometheus/orders receiver block, or the receiver_creator prometheus rule for autodetect, with K8S_NODE_NAME as resolved on each agent pod. Keep it as an artifact for each config."
+  },
+  {
+   "problem": "The before-state is only partly proven. pod_scrapers is asserted to be 2 for the node and autodetect runs, but nothing checks that it is 4 for the everywhere runs. The doubling in Splunk could then come from something other than two agents scraping each pod, such as a second default job or a resource-attribute split. The takeaway credits the cause to 'every agent scrapes every pod' without proving it.",
+   "fix": "In reproduce.sh and in fix.sh's re-read, assert pod_scrapers == 4 for everywhere-1 and everywhere-2. Print the scraper IPs next to the node IPs (agent hostNetwork), so the article can show that each pod was read by both agents."
+  },
+  {
+   "problem": "The OpenTelemetry reference may not count what the pods count. http.server.request.duration_count counts every POST, whatever its status. orders_created_total presumably counts only orders that were created. A 5xx or timeout during a pod's startup would show up as an OTel-vs-pod mismatch and mark a correct config 'not fixed'.",
+   "fix": "Filter the OTel query to http.request.method=POST, http.route=/orders/<n> and http.response.status_code=200. Or make orders.py increment the Prometheus counter on every POST before the response is built, and state which choice was made. Record orders_ok next to both, so any gap can be traced to failures."
+  }
+ ],
+ "Marketing": []
+}
