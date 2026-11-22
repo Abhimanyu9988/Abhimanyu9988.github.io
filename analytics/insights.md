@@ -1,25 +1,28 @@
-# What's working (as of 2026-11-15)
+# What's working (as of 2026-11-22)
 
 Written by Claude, ChatGPT and Gemini from analytics/ledger.csv. The topic finders read this.
 
-All numbers are tiny (site 84 views, +15; best post 64 views), so treat everything below as directional.
-
 ### What's working
-- **Hands-on EKS labs on dev.to.** `eks-canary-releases-alb` leads with 64 views, 2 reactions and 1 comment. The KEDA latency-scaling post is second with 40 views but no engagement.
-- **Java/OTel "one flag / one value" posts on the site.** These get the most site views: 13, 11 (+2) and 5. The "zero-code" and "one-annotation" titles seem to draw a small, steady trickle.
-- **Dev.to is the discovery channel.** Its top posts beat the best site post (13).
-- **Recaps aren't working.** `open-source-summary-2026-10` has 0 dev.to views and 1 site view.
+- **Treat all of this as directional.** Whole-site views are 109 (+25), and the best dev.to post has 64 views. A few views is noise.
+- **EKS posts about a concrete traffic or scaling problem lead on dev.to.**
+  - `eks-canary-releases-alb` has 64 views, 2 reactions and 1 comment. It is the only post with both reactions and a comment.
+  - The KEDA latency-scaling post is second with 40 views and no engagement.
+- **On the personal site, practical OTel/Java-on-EKS posts lead.** The Java agent env-var post has 13 views, the Helm-value post 12, the retry-storm post 9, Flink restarts 8, and the agent 3.0 preview 7 (+2).
+- **Generic summaries aren't working.** `open-source-summary-2026-10` has 0 dev.to views and 2 site views. The hands-on "break it in a lab, then fix it" format fits the AWS Container Hero goal better.
 
 ### Try next
-- Write 1–2 more problem-first EKS/ALB break-fix labs. Break something on purpose, show the evidence, then fix it. Examples are ALB weighted routing, 502s on ingress, and Pending pods. Compare their views against the canary post.
-- Make the pain explicit in titles, and include load numbers, exact YAML and a repo link. The repo link also helps the Hero nomination.
-- Pause the monthly summary, or cut it to a short link-only note.
-- Publish on the site first, then cross-post to dev.to with a canonical link. Promote each post the same day on LinkedIn, Reddit or AWS community channels. Dev.to views barely moved (+0 almost everywhere), so distribution may be the bottleneck.
-- Retry the ECS Fargate scale-to-zero topic with a sharper title. It got only 10 views from one post, which doesn't prove the topic is weak.
-- End posts with a specific question to draw comments. Review median views per topic after about 4–6 posts or 4 weeks.
+- **Follow up on the canary post.** Example: "EKS canary went wrong: roll back ALB weighted traffic using metrics and traces". Open with the failure symptom, then show the evidence and the fix.
+- **Write a sibling ALB post.** Example: "ALB 502/504 after EKS deploy: reproduce the target-health or readiness gap". If both posts do well, treat that as a real signal.
+- **Lead titles with the AWS service and the symptom, and make Splunk/OTel the supporting tool.** Candidate topics are Karpenter stalls, ECS Fargate tasks stuck in PROVISIONING or OOM-killed, and an SQS backlog where KEDA doesn't scale.
+- **Reframe scaling posts around user pain.** Example: "CPU looks fine but the app is slow".
+- **Re-promote the ECS Fargate scale-to-zero post.** Add a short "what broke" intro and a diagram, share it in AWS communities, and re-check after 2 weeks.
+- **Drop the monthly summaries.**
+- **Keep a steady cadence, with about one lab post per week or two.**
+  - Check views, reactions and comments at 7 and 14 days.
+  - End each post with a question to draw comments.
+  - Wait for about 4–5 posts per theme before judging.
 
 ### Where they disagree
-- **Java/OTel posts:** Claude would keep them site-only as a secondary series and not expand yet. ChatGPT and Gemini would cross-post them to dev.to, where views are higher.
-- **Where to put effort:** Claude says distribution is the bottleneck. Gemini would lean heavily on dev.to and add Hashnode or Medium.
-- **Why the canary post won:** Claude credits its vendor-neutral topic. ChatGPT and Gemini credit the practical EKS lab format.
-- **Summary posts:** Gemini would drop them entirely. ChatGPT would only pause them. Claude would shrink them to a link-only note.
+- **Distribution:** Gemini wants to add Hashnode and AWS Community platforms. ChatGPT prefers dev.to first with the site as canonical, plus LinkedIn. Claude prefers AWS Community Builders, r/aws and dev.to tags.
+- **Focus:** Gemini says to spend 100% of writing time on lab posts. Claude and ChatGPT only say to drop the summaries.
+- **Cadence:** ChatGPT suggests weekly posts for 4 weeks. Claude suggests one every 1–2 weeks.
