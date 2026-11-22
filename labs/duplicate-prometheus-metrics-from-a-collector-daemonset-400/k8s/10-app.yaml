@@ -1,0 +1,133 @@
+# Two orders pods, one on each node (orders-a on NODE_A, orders-b on NODE_B), behind one Service. Both run from their
+# node's virtualenv. Zero-code OpenTelemetry starts each one and pushes metrics over OTLP to the Splunk OTel Collector
+# agent on its own node (the agent's host port 4318), so OpenTelemetry counts each order once, by design. The pods also
+# carry the standard prometheus.io annotations in every run, so only the agent's config decides who scrapes them.
+# LAB_RUN is set per run, so each run's series in Splunk are its own, and both pods restart with counters at 0.
+# orders.py increments orders_created_total only in the POST handler, which always answers 200, so the pods' count and
+# OpenTelemetry's POST-200 count measure the same orders. It also turns off the _created series (disable_created_metrics);
+# PROMETHEUS_DISABLE_CREATED_SERIES says the same to the client library.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-a
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: orders, copy: a }
+  template:
+    metadata:
+      labels: { app: orders, copy: a }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      nodeName: NODE_A
+      enableServiceLinks: false
+      volumes:
+        - name: lab
+          hostPath: { path: /opt/lab }
+      containers:
+        - name: app
+          image: python:3.12-slim
+          command: ["/lab/venv/bin/opentelemetry-instrument", "/lab/venv/bin/python", "/lab/app/orders.py"]
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+            - name: HOST_IP
+              valueFrom:
+                fieldRef: { fieldPath: status.hostIP }
+            - { name: LAB_RUN, value: "none" }
+            - { name: OTEL_SERVICE_NAME, value: orders }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://$(HOST_IP):4318" }
+            - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: http/protobuf }
+            - { name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment=LAB_ENV,deployment.environment.name=LAB_ENV,k8s.pod.name=$(POD_NAME),run=$(LAB_RUN)" }
+            - { name: OTEL_TRACES_EXPORTER, value: none }
+            - { name: OTEL_METRICS_EXPORTER, value: otlp }
+            - { name: OTEL_METRIC_EXPORT_INTERVAL, value: "10000" }
+            - { name: OTEL_LOGS_EXPORTER, value: none }
+            - { name: OTEL_SEMCONV_STABILITY_OPT_IN, value: http }
+            - { name: OTEL_PYTHON_FLASK_EXCLUDED_URLS, value: "metrics,scrapes,healthz" }
+            - { name: PROMETHEUS_DISABLE_CREATED_SERIES, value: "True" }
+            - { name: PYTHONUNBUFFERED, value: "1" }
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - { name: lab, mountPath: /lab, readOnly: true }
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 60
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-b
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: orders, copy: b }
+  template:
+    metadata:
+      labels: { app: orders, copy: b }
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: /metrics
+    spec:
+      nodeName: NODE_B
+      enableServiceLinks: false
+      volumes:
+        - name: lab
+          hostPath: { path: /opt/lab }
+      containers:
+        - name: app
+          image: python:3.12-slim
+          command: ["/lab/venv/bin/opentelemetry-instrument", "/lab/venv/bin/python", "/lab/app/orders.py"]
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+            - name: HOST_IP
+              valueFrom:
+                fieldRef: { fieldPath: status.hostIP }
+            - { name: LAB_RUN, value: "none" }
+            - { name: OTEL_SERVICE_NAME, value: orders }
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://$(HOST_IP):4318" }
+            - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: http/protobuf }
+            - { name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment=LAB_ENV,deployment.environment.name=LAB_ENV,k8s.pod.name=$(POD_NAME),run=$(LAB_RUN)" }
+            - { name: OTEL_TRACES_EXPORTER, value: none }
+            - { name: OTEL_METRICS_EXPORTER, value: otlp }
+            - { name: OTEL_METRIC_EXPORT_INTERVAL, value: "10000" }
+            - { name: OTEL_LOGS_EXPORTER, value: none }
+            - { name: OTEL_SEMCONV_STABILITY_OPT_IN, value: http }
+            - { name: OTEL_PYTHON_FLASK_EXCLUDED_URLS, value: "metrics,scrapes,healthz" }
+            - { name: PROMETHEUS_DISABLE_CREATED_SERIES, value: "True" }
+            - { name: PYTHONUNBUFFERED, value: "1" }
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - { name: lab, mountPath: /lab, readOnly: true }
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 2
+            failureThreshold: 60
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders
+  namespace: demo
+spec:
+  selector: { app: orders }
+  ports:
+    - port: 8080
