@@ -9,3 +9,12 @@ plugins: [jekyll-seo-tag]          # og:image from each post's cover, so link pr
 # Site analytics: GoatCounter (no cookies). minima loads _includes/google-analytics.html when this is set.
 google_analytics: goatcounter
 goatcounter: abhimanyu9988
+# Articles that moved to ShowMerit: their pages here point search engines and readers to the ShowMerit copy.
+showmerit_articles: https://showmerit.com/abhimanyu/articles/
+moved_to_showmerit:
+  - scale-to-zero-sqs-workers-on-ecs-fargate
+  - eks-canary-releases-alb
+  - trace-a-java-service-on-eks-with-one-annotation-zero-code
+  - from-broken-ingress-to-healthy-alb-an-eks-and-splunk-hands
+  - eks-app-slow-cpu-fine-scale-on-splunk-latency-with-keda
+  - open-source-summary-2026-10
