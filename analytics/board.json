@@ -1,7 +1,21 @@
 {
- "updated": "2026-11-22T19:32:36Z",
+ "updated": "2026-11-22T19:42:12Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/229",
+    "kind": "Approve or reject",
+    "title": "Duplicate Prometheus Metrics From a Collector DaemonSet: 400 Orders Became 200",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/229",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/228",
+    "kind": "Approve or reject",
+    "title": "Count Every Order Once With Prometheus and OpenTelemetry Side by Side in Splunk",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/228",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/227",
     "kind": "Approve or reject",
@@ -105,10 +119,10 @@
   ],
   "working": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45061004083",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45062022209",
     "kind": "Lab Engineer is testing an article",
     "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45061004083",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45062022209",
     "where": "Abhimanyu9988.github.io"
    },
    {
