@@ -1,0 +1,40 @@
+name: answers
+# Daily answers email. ChatGPT approves the Answers Scout's drafts (saved in the private team-admin repo), and one
+# "Answers to post" issue opens there at 20:00 Brussels, which GitHub emails to Abhi. Two schedules cover summer and
+# winter time; the script skips the run that is more than an hour early. Runs code from main only.
+on:
+  schedule:
+    - cron: "48 17,18 * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency: { group: answers, cancel-in-progress: false }
+jobs:
+  send:
+    if: github.repository == 'Abhimanyu9988/Abhimanyu9988.github.io'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - run: pip install -q pyyaml==6.0.3
+      - uses: actions/create-github-app-token@v2
+        id: admin
+        with:
+          app-id: ${{ vars.BOT_APP_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
+          owner: Abhimanyu9988
+          repositories: team-admin
+          permission-contents: write
+          permission-issues: write
+      - name: ChatGPT approves today's answers, then the email goes out at 20:00 Brussels
+        run: python3 pipeline/answers.py
+        env:
+          ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
+          GH_READ_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          MODEL_AUTO: ${{ vars.MODEL_AUTO }}
