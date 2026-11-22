@@ -1,0 +1,10 @@
+{
+ "run": "45056931620",
+ "issue": 226,
+ "title": "Count Every Order Once With Prometheus and OpenTelemetry Side by Side in Splunk",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_and_fixed",
+ "attempts": 1,
+ "minutes": 28.7,
+ "lab_usd": 0.0
+}
