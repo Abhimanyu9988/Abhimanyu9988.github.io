@@ -76,6 +76,38 @@ def hot_items():
         view.append({"title": i["title"], "url": i["url"], "signal": signal, "says": str(i.get("reporter_says") or "")[:300]})
     return hot, view
 
+MAX_DEMAND_LINKS = 6                            # demand_url plus up to five more reports of the same symptom
+GH_ISSUE = re.compile(r"https://github\.com/([\w.-]+/[\w.-]+)/issues/(\d+)")
+SO_QUESTION = re.compile(r"https://stackoverflow\.com/questions/(\d+)")
+
+def measure_demand(urls):
+    """(signal, {url: heat}) measured by code from each link's own API, so no count is typed in by hand. Several reports of one
+    symptom beat one, and Marketing was scoring a single issue at 3/5 for two weeks because it never saw the rest. Runs in
+    GitHub Actions, where both the GitHub and Stack Exchange APIs are reachable. Links it can't read are left out, never guessed."""
+    import problems
+    issues, heat_gh, views, seen = 0, 0, 0, {}
+    questions = 0
+    for url in list(dict.fromkeys(u for u in urls if isinstance(u, str)))[:MAX_DEMAND_LINKS]:
+        try:
+            if m := GH_ISSUE.fullmatch(url.split("#")[0].rstrip("/")):
+                i = gh("GET", f"/repos/{m[1]}/issues/{m[2]}")
+                h = (i.get("reactions") or {}).get("total_count", 0) + i.get("comments", 0)
+                issues, heat_gh, seen[url] = issues + 1, heat_gh + h, h
+            elif m := SO_QUESTION.match(url):
+                got = problems.so_get(f"https://api.stackexchange.com/2.3/questions/{m[1]}?site=stackoverflow").get("items", [])
+                if got:
+                    v = got[0].get("view_count", 0)
+                    questions, views, seen[url] = questions + 1, views + v, v
+        except Exception as e:
+            print(f"warn: demand link not measured: {e}")
+    parts = []
+    if issues:
+        parts.append(f"{heat_gh} reactions and comments across {issues} GitHub issue{'s' if issues > 1 else ''}")
+    if questions:
+        parts.append(f"{views:,} views on {questions} Stack Overflow question{'s' if questions > 1 else ''}")
+    reports = issues + questions
+    return (f"{reports} independent report{'s' if reports > 1 else ''} of this symptom: " + "; ".join(parts)) if parts else "", seen
+
 def propose(items, existing, want, refused=(), hot=()):
     tried = f"\n\nALREADY REFUSED THIS WEEK. Learn from these reasons, and don't offer the same idea again:\n{json.dumps(list(refused))[:4000]}" if refused else ""
     return roles.ask("editor", f"Plan this week's articles. Give {want} topics, best first. {NO_REFS}\n\n"
@@ -333,6 +365,11 @@ def confirm_topics(topics):
 def plan_from_chat(text):
     existing, _ = existing_issues()
     topics, dropped = check_plan(json.loads(text)["topics"], {norm(t) for t in existing})
+    for t in topics:                           # code re-measures the chat's links, so Marketing scores real, combined demand
+        signal, seen = measure_demand([t["demand_url"], *(t.get("more_demand") or [])])
+        if t["demand_url"] in seen:
+            t["signal"] = signal
+            t["sources"] = list(dict.fromkeys([*(t.get("sources") or []), *seen]))
     approved = headline_check(topics) if topics else {}
     for n, t in enumerate(topics):             # ChatGPT's headline becomes one more option, and Marketing decides
         t["titles"] = list(dict.fromkeys([t["title"], *t.get("titles", []), *([approved[n][0]] if n in approved else [])]))

@@ -56,6 +56,11 @@
       "type": "string",
       "description": "the url from HOT PROBLEMS this topic answers. Leave empty for a topic Abhi asked for"
      },
+     "more_demand": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "up to five more links reporting the same symptom; code measures each"
+     },
      "lane": {
       "enum": [
        "otel_auto_instrumentation",
