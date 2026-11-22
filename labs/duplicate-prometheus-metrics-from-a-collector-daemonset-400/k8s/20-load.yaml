@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: load
+  namespace: demo
+data:
+  load.py: |
+    # Open-loop load: RATE orders a second for LOAD_SECONDS, to the orders Service, which spreads them over both pods.
+    # Every order is counted here, so the lab knows the true number before it looks at Splunk.
+    import os, threading, time, http.client
+    RATE, SECONDS = int(os.environ.get("RATE", "10")), int(os.environ.get("LOAD_SECONDS", "30"))
+    HOST, PORT, RUN, FIRST = os.environ.get("ORDERS_HOST", "orders"), 8080, os.environ.get("RUN", "run"), int(os.environ.get("FIRST", "1"))
+    ok, failed, lock = [0], [0], threading.Lock()
+
+    def one(n):
+        good = False
+        try:
+            c = http.client.HTTPConnection(HOST, PORT, timeout=5)
+            c.request("POST", f"/orders/{n}")
+            good = c.getresponse().status == 200
+            c.close()
+        except Exception:
+            pass
+        with lock:
+            (ok if good else failed)[0] += 1
+
+    t0, n = time.time(), FIRST
+    print(f"LOAD start={t0:.0f} run={RUN} rate={RATE} seconds={SECONDS}", flush=True)
+    for sec in range(SECONDS):
+        for i in range(RATE):
+            threading.Thread(target=one, args=(n,), daemon=True).start(); n += 1
+            time.sleep(max(0, t0 + sec + (i + 1) / RATE - time.time()))
+    time.sleep(6)
+    print(f"LOAD end={time.time():.0f} sent={n - FIRST} ok={ok[0]} failed={failed[0]}", flush=True)
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: NODE_A
+  enableServiceLinks: false
+  volumes:
+    - name: load
+      configMap:
+        name: load
+  containers:
+    - name: load
+      image: python:3.12-slim
+      command: ["python", "/load/load.py"]
+      env:
+        - { name: RATE, value: "10" }
+        - { name: LOAD_SECONDS, value: "20" }
+        - { name: RUN, value: "RUN" }
+        - { name: FIRST, value: "FIRST" }
+      volumeMounts:
+        - { name: load, mountPath: /load }
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
