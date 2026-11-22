@@ -1,0 +1,26 @@
+# Config "everywhere": the Prometheus scrape job many teams add to the agent first. Pod discovery finds every orders pod
+# in the cluster, and the agent is a DaemonSet, so the agent on every node finds and scrapes every orders pod.
+agent:
+  config:
+    receivers:
+      prometheus/orders:
+        config:
+          scrape_configs:
+            - job_name: orders
+              scrape_interval: 10s
+              kubernetes_sd_configs:
+                - role: pod
+                  namespaces:
+                    names: [demo]
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_label_app]
+                  regex: orders
+                  action: keep
+                - source_labels: [__meta_kubernetes_pod_name]
+                  target_label: pod
+    service:
+      pipelines:
+        metrics/orders:
+          receivers: [prometheus/orders]
+          processors: [memory_limiter, batch, resource_detection, resource]
+          exporters: [signalfx]
