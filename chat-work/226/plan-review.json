@@ -1,13 +1,9 @@
 {
- "round": 4,
+ "round": 5,
  "Editor": [
   {
-   "problem": "Earlier point 1 is only partly fixed: the brief still promises an unmeasured result. The gates are fixed. But the takeaway still says, without a condition, that the counter 'reaches Splunk once per agent', and the title rule in the brief's reasons only covers whether the node runs match. If resource_detection doesn't split the two agents' series (splunk_series_per_pod_max = 1 in the everywhere runs), the takeaway is false while reproduce.sh and fix.sh both pass.",
-   "fix": "Rewrite the takeaway and the brief's title rule so they depend on the result. Say 'once per agent, told apart by <dimension>' only if splunk_series_per_pod_max[everywhere-*] = 2 and splunk_dims_splitting_a_pod names host.name or host.id. If it is 1, the takeaway becomes 'both agents write to one series, and the pods' scrape records show the double scraping'. Also make set_config fail when the printed metrics/orders pipeline is empty or has no resourcedetection processor. Right now a missing pipeline prints nothing and the run carries on."
-  },
-  {
-   "problem": "Earlier point 3 isn't shown to be fixed. In the visible splunk_run, `names` is computed but never written to metric-names-<run>.txt, there's no per-name series count, and nothing writes the series JSON to series-<run>.json. The file is cut off before dims_n is assigned, so I can't confirm it is set to 'error', not 0, when jq fails or got = '{}'. fix.sh's `!= error` guard suggests this was done, but the plan doesn't show it.",
-   "fix": "In splunk_run, for all six runs: write each orders_created* sf_metric with its series count to metric-names-<run>.txt, write the raw series result to series-<run>.json, and set dims_n and per_pod to 'error' when jq exits non-zero or the result is empty. Show these lines in the plan, and have fix.sh fail when either file is missing or empty."
+   "problem": "The new pipeline check in set_config looks for the wrong processor name. It runs `grep -A12 'metrics/orders:' ... | grep -q 'resource_detection' || fail`, but the Collector's processor is called `resourcedetection` (no underscore), and that is the key the Splunk OTel Collector chart renders. On a correct config the check never matches, so `set_config everywhere` stops reproduce.sh at step 2 before any run, and the node config would stop the same way. That is a paid rerun with no data.",
+   "fix": "Change the grep to match the real key, for example `grep -A12 'metrics/orders:' config-$1.yaml | grep -qE 'resourcedetection'`, and fix the comment to match. Also fail when the printed pipeline line is empty. Before paying for EKS, run the grep against `helm template` output for chart 0.163.1 with values-everywhere.yaml and values-node.yaml."
   }
  ],
  "Marketing": []
