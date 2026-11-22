@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-22T19:22:58Z",
+ "updated": "2026-11-22T19:32:36Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/227",
+    "kind": "Approve or reject",
+    "title": "Count Every Order Once With Prometheus and OpenTelemetry Side by Side in Splunk",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/227",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "kind": "Approve or reject",
@@ -97,6 +104,13 @@
    }
   ],
   "working": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45061004083",
+    "kind": "Lab Engineer is testing an article",
+    "title": "Running now",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45061004083",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "kind": "Your PR",
