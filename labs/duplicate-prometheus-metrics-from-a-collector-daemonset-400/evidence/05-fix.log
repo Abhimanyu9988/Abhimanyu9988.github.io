@@ -1,0 +1,91 @@
+$ bash fix.sh
+# exit 0 after 601s
+
+== 1. The one change in values-node.yaml, and the one value in values-autodetect.yaml
+  node:                   selectors:
+  node:                     - role: pod
+  node:                       field: spec.nodeName=${env:K8S_NODE_NAME}
+  autodetect: autodetect:
+  autodetect:   prometheus: true
+== Run node-1
+agent config node: ready on 2 nodes, chart splunk-otel-collector-0.163.1
+  config-node.yaml: prometheus/orders:;- job_name: orders;role: pod;- field: spec.nodeName=${env:K8S_NODE_NAME};role: pod;regex: orders;
+  config-node.yaml pipeline:  metrics/orders:  - signalfx  - memory_limiter  - batch  - resource_detection  - resource  - prometheus/orders  - otlp_http 
+  splunk-otel-collector-agent-bsl7c: K8S_NODE_NAME from spec.nodeName, node and IP ip-10-0-1-6.eu-central-1.compute.internal 10.0.1.6
+  splunk-otel-collector-agent-nl546: K8S_NODE_NAME from spec.nodeName, node and IP ip-10-0-0-146.eu-central-1.compute.internal 10.0.0.146
+node-1 before the load: orders-a-9cb4df854-wb7fr: 1 scraper(s) at 0; orders-b-6df79594c-8xwz4: 1 scraper(s) at 0;
+node-1: orders sent 200, ok 200; the pods counted 200; scrapers per pod (IP:scrapes): orders-a-9cb4df854-wb7fr [ 10.0.0.146(agent on ip-10-0-0-146.eu-central-1.compute.internal):9 ] orders-b-6df79594c-8xwz4 [ 10.0.1.6(agent on ip-10-0-1-6.eu-central-1.compute.internal):10 ] 
+HERO_MEASURE: orders_ok[node-1]=200
+HERO_MEASURE: pod_scrapers[node-1]=2
+== Run node-2
+node-2 before the load: orders-a-6c69f9578c-c9kgj: 1 scraper(s) at 0; orders-b-5b794bd4bb-9hwlb: 1 scraper(s) at 0;
+node-2: orders sent 200, ok 200; the pods counted 200; scrapers per pod (IP:scrapes): orders-a-6c69f9578c-c9kgj [ 10.0.0.146(agent on ip-10-0-0-146.eu-central-1.compute.internal):10 ] orders-b-5b794bd4bb-9hwlb [ 10.0.1.6(agent on ip-10-0-1-6.eu-central-1.compute.internal):9 ] 
+HERO_MEASURE: orders_ok[node-2]=200
+HERO_MEASURE: pod_scrapers[node-2]=2
+== Run autodetect-1
+agent config autodetect: ready on 2 nodes, chart splunk-otel-collector-0.163.1
+  config-autodetect.yaml: - targets:
+  config-autodetect.yaml: prometheus/autodetect:
+  config-autodetect.yaml: - job_name: autodetect-metrics
+  config-autodetect.yaml: scrape_interval: 10s
+  config-autodetect.yaml: - targets:
+  config-autodetect.yaml: rule: type == "pod" && annotations["prometheus.io/scrape"] == "true"
+  splunk-otel-collector-agent-4ts9f: K8S_NODE_NAME from spec.nodeName, node and IP ip-10-0-1-6.eu-central-1.compute.internal 10.0.1.6
+  splunk-otel-collector-agent-w8qf9: K8S_NODE_NAME from spec.nodeName, node and IP ip-10-0-0-146.eu-central-1.compute.internal 10.0.0.146
+autodetect-1 before the load: orders-a-74dbf6b7f4-4ss5t: 1 scraper(s) at 0; orders-b-6d488bfdcf-gmcxb: 1 scraper(s) at 0;
+autodetect-1: orders sent 200, ok 200; the pods counted 200; scrapers per pod (IP:scrapes): orders-a-74dbf6b7f4-4ss5t [ 10.0.0.146(agent on ip-10-0-0-146.eu-central-1.compute.internal):9 ] orders-b-6d488bfdcf-gmcxb [ 10.0.1.6(agent on ip-10-0-1-6.eu-central-1.compute.internal):9 ] 
+HERO_MEASURE: orders_ok[autodetect-1]=200
+HERO_MEASURE: pod_scrapers[autodetect-1]=2
+== Run autodetect-2
+autodetect-2 before the load: orders-a-c4f57b55f-6hjpv: 1 scraper(s) at 0; orders-b-64b9f7484b-2xz58: 1 scraper(s) at 0;
+autodetect-2: orders sent 200, ok 200; the pods counted 200; scrapers per pod (IP:scrapes): orders-a-c4f57b55f-6hjpv [ 10.0.0.146(agent on ip-10-0-0-146.eu-central-1.compute.internal):9 ] orders-b-64b9f7484b-2xz58 [ 10.0.1.6(agent on ip-10-0-1-6.eu-central-1.compute.internal):9 ] 
+HERO_MEASURE: orders_ok[autodetect-2]=200
+HERO_MEASURE: pod_scrapers[autodetect-2]=2
+== 2. Every run in Splunk
+autodetect-2 in Splunk: orders_created_total (series by name: orders_created_total 2 ) 200 over 2 series, at most 1 a target (targets: 10.0.0.99:8080,10.0.1.97:8080); OpenTelemetry POST 200 count 200; the pods counted 200
+HERO_MEASURE: pod_orders[autodetect-2]=200
+HERO_MEASURE: splunk_prometheus_orders[autodetect-2]=200
+HERO_MEASURE: splunk_prometheus_series[autodetect-2]=2
+HERO_MEASURE: splunk_otel_orders[autodetect-2]=200
+HERO_MEASURE: splunk_series_per_pod_max[autodetect-2]=1
+HERO_MEASURE: splunk_dims_splitting_a_pod[autodetect-2]=0
+everywhere-1 in Splunk: orders_created_total (series by name: orders_created_total 4 ) 400 over 4 series, at most 2 a target (targets: 10.0.0.76:8080,10.0.1.5:8080); OpenTelemetry POST 200 count 200; the pods counted 200
+  everywhere-1 series told apart by AWSUniqueId,cloud.availability_zone,host.id,host.name: 10.0.0.76:8080 AWSUniqueId=i-046e48b462955f32c_eu-central-1_300054528837 cloud.availability_zone=eu-central-1a host.id=i-046e48b462955f32c host.name=ip-10-0-0-146.eu-central-1.compute.internal; 10.0.0.76:8080 AWSUniqueId=i-0788642e8a31ba1bb_eu-central-1_300054528837 cloud.availability_zone=eu-central-1b host.id=i-0788642e8a31ba1bb host.name=ip-10-0-1-6.eu-central-1.compute.internal; 10.0.1.5:8080 AWSUniqueId=i-046e48b462955f32c_eu-central-1_300054528837 cloud.availability_zone=eu-central-1a host.id=i-046
+HERO_MEASURE: pod_orders[everywhere-1]=200
+HERO_MEASURE: splunk_prometheus_orders[everywhere-1]=400
+HERO_MEASURE: splunk_prometheus_series[everywhere-1]=4
+HERO_MEASURE: splunk_otel_orders[everywhere-1]=200
+HERO_MEASURE: splunk_series_per_pod_max[everywhere-1]=2
+HERO_MEASURE: splunk_dims_splitting_a_pod[everywhere-1]=4
+everywhere-2 in Splunk: orders_created_total (series by name: orders_created_total 4 ) 400 over 4 series, at most 2 a target (targets: 10.0.0.114:8080,10.0.1.24:8080); OpenTelemetry POST 200 count 200; the pods counted 200
+  everywhere-2 series told apart by AWSUniqueId,cloud.availability_zone,host.id,host.name: 10.0.0.114:8080 AWSUniqueId=i-046e48b462955f32c_eu-central-1_300054528837 cloud.availability_zone=eu-central-1a host.id=i-046e48b462955f32c host.name=ip-10-0-0-146.eu-central-1.compute.internal; 10.0.0.114:8080 AWSUniqueId=i-0788642e8a31ba1bb_eu-central-1_300054528837 cloud.availability_zone=eu-central-1b host.id=i-0788642e8a31ba1bb host.name=ip-10-0-1-6.eu-central-1.compute.internal; 10.0.1.24:8080 AWSUniqueId=i-046e48b462955f32c_eu-central-1_300054528837 cloud.availability_zone=eu-central-1a host.id=i-
+HERO_MEASURE: pod_orders[everywhere-2]=200
+HERO_MEASURE: splunk_prometheus_orders[everywhere-2]=400
+HERO_MEASURE: splunk_prometheus_series[everywhere-2]=4
+HERO_MEASURE: splunk_otel_orders[everywhere-2]=200
+HERO_MEASURE: splunk_series_per_pod_max[everywhere-2]=2
+HERO_MEASURE: splunk_dims_splitting_a_pod[everywhere-2]=4
+node-1 in Splunk: orders_created_total (series by name: orders_created_total 2 ) 200 over 2 series, at most 1 a target (targets: 10.0.0.76:8080,10.0.1.160:8080); OpenTelemetry POST 200 count 200; the pods counted 200
+HERO_MEASURE: pod_orders[node-1]=200
+HERO_MEASURE: splunk_prometheus_orders[node-1]=200
+HERO_MEASURE: splunk_prometheus_series[node-1]=2
+HERO_MEASURE: splunk_otel_orders[node-1]=200
+HERO_MEASURE: splunk_series_per_pod_max[node-1]=1
+HERO_MEASURE: splunk_dims_splitting_a_pod[node-1]=0
+node-2 in Splunk: orders_created_total (series by name: orders_created_total 2 ) 200 over 2 series, at most 1 a target (targets: 10.0.0.110:8080,10.0.1.212:8080); OpenTelemetry POST 200 count 200; the pods counted 200
+HERO_MEASURE: pod_orders[node-2]=200
+HERO_MEASURE: splunk_prometheus_orders[node-2]=200
+HERO_MEASURE: splunk_prometheus_series[node-2]=2
+HERO_MEASURE: splunk_otel_orders[node-2]=200
+HERO_MEASURE: splunk_series_per_pod_max[node-2]=1
+HERO_MEASURE: splunk_dims_splitting_a_pod[node-2]=0
+autodetect-1 in Splunk: orders_created_total (series by name: orders_created_total 2 ) 200 over 2 series, at most 1 a target (targets: 10.0.0.184:8080,10.0.1.52:8080); OpenTelemetry POST 200 count 200; the pods counted 200
+HERO_MEASURE: pod_orders[autodetect-1]=200
+HERO_MEASURE: splunk_prometheus_orders[autodetect-1]=200
+HERO_MEASURE: splunk_prometheus_series[autodetect-1]=2
+HERO_MEASURE: splunk_otel_orders[autodetect-1]=200
+HERO_MEASURE: splunk_series_per_pod_max[autodetect-1]=1
+HERO_MEASURE: splunk_dims_splitting_a_pod[autodetect-1]=0
+problems: 0
+HERO_RESULT: fixed
+
