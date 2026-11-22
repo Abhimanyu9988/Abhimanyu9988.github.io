@@ -1,0 +1,348 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "technical: The clone command and folder don't match where the lab is published, so a reader can't reproduce Step 1. Fix: Replace the clone and cd lines with the published location (git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git && cd Abhimanyu9988.github.io/labs/count-every-order-once-with-prometheus-a), or publish the lab at the path the post uses, and rerun Step 1 exactly as written.",
+  "technical: The post claims one scraper per pod for the node-selector runs, but the evidence for those runs is missing from the article. Fix: Add a 'Scrapers per pod' column to the proof table for all six runs, from pods-<run>.txt (4,4,2,2,2,2). Paste the exact node-1 'scrapers per pod' line from the run logs and delete the 'cut from the saved output' sentence.",
+  "editorial: The advice on autodetect is unclear and leaves out its main trade-off. 'Once per node' can be read as the opposite of the finding, and the post doesn't say that autodetect picks up every annotated pod on the node. Fix: Rewrite as 'scrapes each annotated pod once, by the agent on its own node'. Add a bullet that autodetect scrapes every pod with prometheus.io/scrape=\"true\" on the node, not just yours, and one line that pushing OTLP from the app avoids scraping altogether.",
+  "editorial: Log blocks are trimmed with '...' and don't look like a real session. The line that names the splitting dimensions is never shown, only described. Fix: Paste the exact lines from 04-reproduce.log and 05-fix.log with no '...', including lab.sh's '<run> series told apart by <dims>: <values>' line for everywhere-1, so the dimension claim is backed by output.",
+  "ChatGPT did not approve: The build instructions point to an unsupported and likely wrong repository/path: `git clone https://github.com/Abhimanyu9988/showmerit.git` and `cd showmerit/labs/count-every-order-once-with-prometheus-and-opentelemetry`. The evidence gives the lab URL/path as `https://github.com/Abhimanyu9988/Abhim Fix: Change the clone and `cd` commands to the evidenced repository/path, or provide evidence that the `showmerit` repository and stated directory contain the exact lab. For example: `git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git` then `cd Abhimanyu9988.github.io/labs/count-every",
+  "ChatGPT did not approve: The LinkedIn post says the work was done in a \u201cthrowaway AWS account,\u201d but the evidence only shows a disposable lab whose resources were cleaned up and destroyed. It does not establish that the AWS account itself was throwaway. Fix: Rephrase to match the evidence, e.g. \u201cI built and tested it in a disposable AWS lab and destroyed the resources afterward,\u201d or provide evidence that the AWS account was actually throwaway."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "orders_ok",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:28"
+    },
+    {
+     "id": "pod_orders",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:46"
+    },
+    {
+     "id": "pod_scrapers",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:29"
+    },
+    {
+     "id": "splunk_prometheus_orders",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:47"
+    },
+    {
+     "id": "splunk_prometheus_series",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:48"
+    },
+    {
+     "id": "splunk_otel_orders",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:49"
+    },
+    {
+     "id": "splunk_series_per_pod_max",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:50"
+    },
+    {
+     "id": "splunk_dims_splitting_a_pod",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "self_reported",
+     "where": "05-fix.log:51"
+    }
+   ]
+  },
+  "failures": [],
+  "passed": true
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The six-run table comes from Splunk and the pods' own counts back it up (splunk_prometheus_orders, splunk_otel_orders, splunk_series_per_pod_max). Each config change was saved and checked, and OpenTelemetry's count was 200 in every run.",
+     "Step 1 can't be run as written: it clones github.com/Abhimanyu9988/showmerit.git and a folder ending -and-opentelemetry, but the lab is at Abhimanyu9988.github.io/labs/count-every-order-once-with-prometheus-a.",
+     "One scraper per pod in the node runs is asserted, not shown: 'Their per-run log lines were cut from the saved output'. pod_scrapers and splunk_dims_splitting_a_pod come only from the lab's own output (self-reported).",
+     "The post names the dimensions that split a pod's counter (host.name, host.id, cloud.availability_zone, AWSUniqueId) without showing the lab line that prints them."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "Clear reader and a real, actionable finding: duplicate series differ only in host.name, host.id and availability zone, so a sum() doubles, and grouping by service.instance.id catches it.",
+     "Node-scoped discovery is already documented (OpenTelemetry blueprint, Bindplane), so what's new is the measurement in a backend. The post is good but not a big surprise to a senior reader.",
+     "Reads as generated: 'Here's how it works, and how to build it yourself', 'The trick:', a templated TL;DR with a Time line, and log lines trimmed with '...' that don't look like a real session.",
+     "The trade-offs are thin in the body: the post doesn't say that autodetect scrapes every annotated pod on the node, and it leaves out the push-only OTLP option the brief listed."
+    ]
+   },
+   "marketing": {
+    "score": 4,
+    "reasons": [
+     "The BRIEF links five GitHub threads about duplicate Prometheus scraping by several Collectors (contrib 48546, 12300; discussion 9998; operator 4494, 2251). The TOPIC cites 69 reactions and comments, so the demand signal is real.",
+     "The headline credits Splunk and OpenTelemetry with the answer, but it doesn't use the reader's search words ('duplicate metrics', 'DaemonSet scrapes twice'), so it's held below 5.",
+     "The 400-vs-200 hook in the opening is concrete and easy to share."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "technical",
+    "problem": "The clone command and folder don't match where the lab is published, so a reader can't reproduce Step 1.",
+    "evidence": "Step 1: 'git clone https://github.com/Abhimanyu9988/showmerit.git' / 'cd showmerit/labs/count-every-order-once-with-prometheus-and-opentelemetry' vs LAB_URL https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/count-every-order-once-with-prometheus-a",
+    "fix": "Replace the clone and cd lines with the published location (git clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git && cd Abhimanyu9988.github.io/labs/count-every-order-once-with-prometheus-a), or publish the lab at the path the post uses, and rerun Step 1 exactly as written."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The post claims one scraper per pod for the node-selector runs, but the evidence for those runs is missing from the article.",
+    "evidence": "'`fix.sh` also checked one scraper per pod in both node runs. Their per-run log lines were cut from the saved output'",
+    "fix": "Add a 'Scrapers per pod' column to the proof table for all six runs, from pods-<run>.txt (4,4,2,2,2,2). Paste the exact node-1 'scrapers per pod' line from the run logs and delete the 'cut from the saved output' sentence."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The advice on autodetect is unclear and leaves out its main trade-off. 'Once per node' can be read as the opposite of the finding, and the post doesn't say that autodetect picks up every annotated pod on the node.",
+    "evidence": "'`autodetect.prometheus: true` scrapes them once per node with no job to maintain.'",
+    "fix": "Rewrite as 'scrapes each annotated pod once, by the agent on its own node'. Add a bullet that autodetect scrapes every pod with prometheus.io/scrape=\"true\" on the node, not just yours, and one line that pushing OTLP from the app avoids scraping altogether."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "Log blocks are trimmed with '...' and don't look like a real session. The line that names the splitting dimensions is never shown, only described.",
+    "evidence": "'everywhere-1 in Splunk: orders_created_total ... 400 over 4 series, at most 2 a target ...' and 'The two series of one pod differ only in where the agent ran: `host.name`, `host.id`, `cloud.availability_zone` and `AWSUniqueId`.'",
+    "fix": "Paste the exact lines from 04-reproduce.log and 05-fix.log with no '...', including lab.sh's '<run> series told apart by <dims>: <values>' line for everywhere-1, so the dimension claim is backed by output."
+   }
+  ],
+  "flags_addressed": [],
+  "claims": [
+   {
+    "text": "Commenters in collector-contrib issue 48546 describe the DaemonSet case and weigh the Target Allocator, hashmod sharding and node-scoped discovery.",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/48546"
+   },
+   {
+    "text": "The chart already sets K8S_NODE_NAME on every agent pod from spec.nodeName.",
+    "class": "sourced",
+    "source_ref": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/helm-charts/splunk-otel-collector/values.yaml"
+   },
+   {
+    "text": "autodetect.prometheus scrapes pods with the prometheus.io/scrape annotation through the agent's k8s_observer, which only watches its own node.",
+    "class": "sourced",
+    "source_ref": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/helm-charts/splunk-otel-collector/values.yaml"
+   },
+   {
+    "text": "Many teams run Prometheus endpoints next to OpenTelemetry while they move over.",
+    "class": "estimate",
+    "source_ref": ""
+   },
+   {
+    "text": "The chart's resource detection stamping host dimensions per node is exactly right for host metrics.",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Cluster-level endpoints such as kube-state-metrics live on one node and suit a single scraper or the Target Allocator.",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "A pod on a node without an agent isn't scraped by node-scoped discovery.",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Multiple Collector pods can produce duplicate metrics (discussion 9998).",
+    "class": "sourced",
+    "source_ref": "https://github.com/open-telemetry/opentelemetry-collector/discussions/9998"
+   },
+   {
+    "text": "The OpenTelemetry Kubernetes blueprint recommends that DaemonSet Collectors scrape only pods on their own node.",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/docs/guidance/blueprints/k8s-observability-blueprint/"
+   },
+   {
+    "text": "Bindplane's Kubernetes Prometheus Node source filters pod discovery by spec.nodeName.",
+    "class": "sourced",
+    "source_ref": "https://docs.bindplane.com/integrations/sources/kubernetes-prometheus-node"
+   }
+  ],
+  "prompt_version": "editor/dce97c8b60"
+ },
+ "brief": {
+  "reader": "Platform or SRE engineer running the Splunk OTel Collector chart on Kubernetes who adds Prometheus scraping for apps that still expose /metrics next to OpenTelemetry",
+  "question": "We scrape our apps' Prometheus endpoints with the Collector agent on every node, and the app also sends OpenTelemetry metrics. Do our Prometheus counters reach Splunk once per pod, and what is the simplest agent config that guarantees it?",
+  "demand": {
+   "level": "strong",
+   "evidence": "opentelemetry-collector-contrib issue 48546 '[receiver/prometheus] Implement leader election' (open since May 2026): a DaemonSet with one Prometheus receiver config scrapes the same targets from every instance; commenters weigh the Target Allocator, hashmod sharding and node-scoped pod discovery. OpenTelemetry Collector discussion 9998 'Otel collector deployment with multiple pods result in duplicate metrics' (users still reporting it in June and October 2025). opentelemetry-operator issues 4494 (Target Allocator duplicated targets/metrics, dual stack) and 2251 (double scraping). opentelemetry-collector-contrib issue 12300 (load-balanced Collectors, out-of-order samples). The OpenTelemetry Kubernetes observability blueprint and Bindplane's Kubernetes Prometheus Node source both recommend scraping only pods on the Collector's own node."
+  },
+  "reasons": [
+   "Several independent reports of one symptom: the same Prometheus target scraped by more than one Collector (contrib 48546, discussion 9998, operator 4494 and 2251, contrib 12300)",
+   "Abhi picked this topic for Monday 23 November 2026",
+   "Serves the Splunk MVP and OpenTelemetry goals with a lab on EKS that reads every number back from Splunk Observability Cloud; released components only",
+   "Title by outcome: node and autodetect runs match the pods in Splunk, and the everywhere runs hold 2 series a target that sum to about twice -> 'Count Every Order Once With Prometheus and OpenTelemetry Side by Side in Splunk', with the doubled series and their splitting dimension in the body",
+   "If the everywhere runs hold 1 series a target: a title about scraping each pod once per node, such as 'Scrape Each Pod Once: Prometheus Next to OpenTelemetry on the Splunk OTel Collector DaemonSet', with the extra scrapes shown from the pods' records. If any node or autodetect run doesn't match the pods: a softer title about where the extra series come from"
+  ],
+  "decision": "How to configure Prometheus scraping on the Splunk OTel Collector agent DaemonSet so each pod is scraped once: a node field selector on the scrape job, or the chart's autodetect.prometheus value",
+  "takeaway": "On a DaemonSet agent, a Prometheus scrape job with cluster-wide pod discovery runs in every agent, so each pod is scraped once per node (the pods' own scraper records show it). Scoping discovery to the agent's node (one field selector) or using the Splunk OTel Collector chart's autodetect.prometheus (node-scoped through the k8s_observer) scrapes each pod once, and the Prometheus counter in Splunk then matches the pods' own count and OpenTelemetry's pushed count. What the double scraping does in Splunk is stated from the result: if the everywhere runs hold 2 series a target, told apart by host.name or host.id, the counter reaches Splunk once per agent and sums to about twice; if they hold 1, both agents write to one series and the extra scrapes show only in the pods' records. Measured on EKS with two nodes, read back from Splunk per run.",
+  "open_question": "On EKS with two nodes, one orders pod on each, and the Splunk OTel Collector chart 0.163.1 agent: with a prometheus/orders scrape job using cluster-wide pod discovery, with the same job plus a spec.nodeName field selector, and with autodetect.prometheus=true, two runs each of 20 s at 10 orders a second, how many scraper-and-pod pairs read /metrics, how many series and what total does Splunk hold for the Prometheus counter compared with the pods' own count, which dimensions tell duplicate series apart, and does OpenTelemetry's pushed request count match the pods in every run?",
+  "measurements": [
+   {
+    "id": "orders_ok",
+    "what": "orders that succeeded out of 200 sent, counted by the load: everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "failure",
+    "unit": "orders",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "pod_orders",
+    "what": "orders the two pods counted in their own Prometheus counters, read inside the pods: everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "count",
+    "unit": "orders",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "pod_scrapers",
+    "what": "scraper-and-pod pairs from each pod's own record of who read its /metrics, each scraper IP named by its agent's node (4 = every agent scraped every pod, 2 = one each): everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "comparison",
+    "unit": "pairs",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_prometheus_orders",
+    "what": "the run's Prometheus counter in Splunk Observability Cloud, the newest value of each series summed: everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "comparison",
+    "unit": "orders",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_prometheus_series",
+    "what": "metric time series in Splunk holding the run's Prometheus counter: everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_otel_orders",
+    "what": "OpenTelemetry's own count of the same orders in Splunk (http.server.request.duration_count for POST with status 200, pushed over OTLP): everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "comparison",
+    "unit": "orders",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_series_per_pod_max",
+    "what": "the most metric time series any one scrape target (service.instance.id, a pod's IP and port) has for the run's Prometheus counter in Splunk (1 = one per pod): everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "comparison",
+    "unit": "series",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_dims_splitting_a_pod",
+    "what": "dimensions whose values differ between Splunk series of the same scrape target (0 = one series a pod; names and values printed): everywhere-1, everywhere-2, node-1, node-2, autodetect-1, autodetect-2",
+    "kind": "comparison",
+    "unit": "dimensions",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   }
+  ],
+  "adds": "The OpenTelemetry Kubernetes blueprint, Bindplane and Lightstep docs describe node-scoped Prometheus scraping for DaemonSet Collectors, and the Splunk chart documents autodetect.prometheus, but none measures the result in a backend. This lab runs three agent configs on EKS, counts orders in the pods, in Splunk's Prometheus series and in OpenTelemetry's pushed metric side by side, names the dimension that tells duplicate series apart, and records who scraped each pod.",
+  "tradeoffs": [
+   "A node field selector keeps your own scrape job and relabel rules; autodetect needs only the prometheus.io annotations but scrapes every annotated pod on the node",
+   "Node-scoped scraping needs an agent on every node that runs scraped pods; a pod on a node without an agent isn't scraped",
+   "Cluster-level endpoints such as kube-state-metrics live on one node only, so they suit a single-replica scraper or the Target Allocator rather than this pattern",
+   "Pushing OTLP from the app avoids scraping altogether; keeping Prometheus side by side during a move to OpenTelemetry is what this lab covers",
+   "One app, two nodes, one load level and a 10 s scrape interval"
+  ],
+  "splunk_fit": "natural",
+  "goal_id": "",
+  "verdict": "go",
+  "existing_pages": [
+   {
+    "title": "Kubernetes Cluster Observability (OpenTelemetry blueprint)",
+    "url": "https://opentelemetry.io/docs/guidance/blueprints/k8s-observability-blueprint/",
+    "covers": "DaemonSet Collectors scrape pods on their own node, so each target is scraped by one Collector, with no Target Allocator."
+   },
+   {
+    "title": "Important Components for Kubernetes (OpenTelemetry)",
+    "url": "https://opentelemetry.io/docs/platforms/kubernetes/collector/components/",
+    "covers": "Which receivers suit a DaemonSet or a Deployment, and where extra replicas duplicate data."
+   },
+   {
+    "title": "Kubernetes Prometheus Node source (Bindplane)",
+    "url": "https://docs.bindplane.com/integrations/sources/kubernetes-prometheus-node",
+    "covers": "Prometheus receiver with pod discovery filtered by spec.nodeName so each DaemonSet Collector scrapes only local pods."
+   },
+   {
+    "title": "Run the Collector as a DaemonSet (Lightstep)",
+    "url": "https://docs.lightstep.com/docs/otel-collector-prometheus-receiver-scaling-with-daemonset",
+    "covers": "Deploying a DaemonSet Collector to ingest Prometheus metrics, with a separate Deployment for static targets."
+   },
+   {
+    "title": "Prometheus receiver README",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/prometheusreceiver",
+    "covers": "The receiver takes a Prometheus scrape_configs block, including kubernetes_sd_configs."
+   },
+   {
+    "title": "Splunk OTel Collector chart values (autodetect.prometheus)",
+    "url": "https://github.com/signalfx/splunk-otel-collector-chart/blob/main/helm-charts/splunk-otel-collector/values.yaml",
+    "covers": "autodetect.prometheus=true makes the agent scrape pods with prometheus.io annotations."
+   }
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 1.1078
+}
