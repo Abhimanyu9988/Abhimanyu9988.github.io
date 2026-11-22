@@ -4,15 +4,37 @@
  "created": "2026-11-22",
  "topics": [
   {
-   "issue": 226,
-   "title": "Count Every Order Once With Prometheus and OpenTelemetry Side by Side in Splunk",
+   "issue": 232,
+   "title": "Upgrade to SQLAlchemy 2.1 and Still See Every Query in Splunk APM",
    "state": "queued",
-   "signal": "4 independent reports of this symptom: 69 reactions and comments across 4 GitHub issues",
+   "signal": "5 independent reports of this symptom: 13 reactions and comments across 5 GitHub issues",
    "confirmed": true,
-   "picked": true,
+   "picked": false,
    "chat": true,
    "scores": "Marketing 4/5, Editor 3/5",
    "model": "claude-sonnet-5-5"
+  },
+  {
+   "issue": 233,
+   "title": "Autoscale EKS Pods on Splunk Metrics With KEDA Without Hitting maxReplicas",
+   "state": "queued",
+   "signal": "5 independent reports of this symptom: 17 reactions and comments across 5 GitHub issues",
+   "confirmed": true,
+   "picked": false,
+   "chat": true,
+   "scores": "Marketing 4/5, Editor 3/5",
+   "model": "claude-opus-5-5"
+  },
+  {
+   "issue": 234,
+   "title": "Keep Every Span Through a Collector Restart With a Persistent Queue to Splunk",
+   "state": "queued",
+   "signal": "3 independent reports of this symptom: 32 reactions and comments across 3 GitHub issues",
+   "confirmed": true,
+   "picked": false,
+   "chat": true,
+   "scores": "Marketing 3/5, Editor 3/5",
+   "model": "claude-haiku-5-5"
   }
  ]
 }
