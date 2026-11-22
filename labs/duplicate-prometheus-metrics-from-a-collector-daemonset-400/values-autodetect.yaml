@@ -1,0 +1,5 @@
+# Config "autodetect": no scrape job of our own. One chart value turns on the agent's Prometheus autodetection: its
+# receiver_creator watches the k8s_observer, which sees only the pods on the agent's node, and scrapes the pods that carry
+# the prometheus.io/scrape annotation (every orders pod has it, in every run) every 10 s.
+autodetect:
+  prometheus: true
