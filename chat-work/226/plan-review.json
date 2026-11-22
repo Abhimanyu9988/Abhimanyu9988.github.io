@@ -1,10 +1,5 @@
 {
- "round": 5,
- "Editor": [
-  {
-   "problem": "The new pipeline check in set_config looks for the wrong processor name. It runs `grep -A12 'metrics/orders:' ... | grep -q 'resource_detection' || fail`, but the Collector's processor is called `resourcedetection` (no underscore), and that is the key the Splunk OTel Collector chart renders. On a correct config the check never matches, so `set_config everywhere` stops reproduce.sh at step 2 before any run, and the node config would stop the same way. That is a paid rerun with no data.",
-   "fix": "Change the grep to match the real key, for example `grep -A12 'metrics/orders:' config-$1.yaml | grep -qE 'resourcedetection'`, and fix the comment to match. Also fail when the printed pipeline line is empty. Before paying for EKS, run the grep against `helm template` output for chart 0.163.1 with values-everywhere.yaml and values-node.yaml."
-  }
- ],
+ "round": 6,
+ "Editor": [],
  "Marketing": []
 }
