@@ -1,0 +1,29 @@
+# Config "node": the same scrape job with one change. The pod discovery has a field selector for the agent's own node
+# (K8S_NODE_NAME is set on every agent pod by the chart), so each agent finds only the orders pods on its node.
+agent:
+  config:
+    receivers:
+      prometheus/orders:
+        config:
+          scrape_configs:
+            - job_name: orders
+              scrape_interval: 10s
+              kubernetes_sd_configs:
+                - role: pod
+                  namespaces:
+                    names: [demo]
+                  selectors:
+                    - role: pod
+                      field: spec.nodeName=${env:K8S_NODE_NAME}
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_label_app]
+                  regex: orders
+                  action: keep
+                - source_labels: [__meta_kubernetes_pod_name]
+                  target_label: pod
+    service:
+      pipelines:
+        metrics/orders:
+          receivers: [prometheus/orders]
+          processors: [memory_limiter, batch, resource_detection, resource]
+          exporters: [signalfx]
