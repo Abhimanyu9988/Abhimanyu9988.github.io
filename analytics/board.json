@@ -1,7 +1,21 @@
 {
- "updated": "2026-11-22T19:42:12Z",
+ "updated": "2026-11-22T19:52:20Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/231",
+    "kind": "Approve or reject",
+    "title": "Count Every Order Once With Prometheus and OpenTelemetry Side by Side in Splunk",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/231",
+    "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/230",
+    "kind": "Approve or reject",
+    "title": "Scrape Each Pod Once and Avoid Duplicate Prometheus Metrics on a DaemonSet",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/230",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/229",
     "kind": "Approve or reject",
@@ -118,13 +132,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45062022209",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45062022209",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
     "kind": "Your PR",
