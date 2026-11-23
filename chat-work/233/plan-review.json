@@ -1,0 +1,22 @@
+{
+ "round": 1,
+ "Editor": [
+  {
+   "problem": "The before-check (replicas_max == 8 in both total runs) may fail on timing, not on the cause. With a 60 s scale-up window and the default HPA step limits, the total query probably goes 1\u21923, then about 60 s later 3\u21927, then 15 s later 7\u21928. That is the metric's delay (10 s export, a rate rollup, a 12 s query window) plus about 135 s, so 8 may only arrive near the end of the 180 s load and the sampling loop's 15 s grace. A run that ends at 7 fails reproduce.sh even though it shows the climb. The check would then fail because the window is too short.",
+   "fix": "Gate the before-state on the HPA's own desiredReplicas reaching MAX_PODS, which the timeline already records. Add it as a HERO_MEASURE hpa_desired_max per run, with min_entities 4. Also report seconds_to_max, so the total runs record time to the cap, not a 'settle' time. If the budget allows, lengthen LOAD_SECONDS to 240 s by trimming setup waits, so the Deployment itself reaches 8 well inside the window."
+  },
+  {
+   "problem": "The per-pod check cannot prove the takeaway's 'settles at load over target'. It only requires replicas_max < 8, so a run that overshoots to 7 and drifts down would pass. seconds_to_settle is the time of the last change, so a run still climbing at t=175 s looks the same as one that held at 3 since t=90 s. A 'settled' result that could not have failed for overshoot is not evidence of settling.",
+   "fix": "In fix.sh, require replicas_max <= 4 for perpod-1 and perpod-2. Add a measurement held_seconds = load end minus the last replica change, kind comparison, min_entities 4, and require at least 60 s for the per-pod runs. Report seconds_to_settle only for runs that meet that hold."
+  },
+  {
+   "problem": "The takeaway and brief say the fix 'divides the same load by the running pod count'. The lab runs .mean() across the series that report to Splunk, and that is only the per-pod rate when there is exactly one series per pod and every running pod is already reporting. New pods report late (about a 10 s export, then a rate point), so for a while the mean is taken over fewer pods than are running. The query in queries.json is not shown, so one series per pod cannot be checked either. The HPA's metric value is written to the timeline but is not a measurement, so the cause (about 30 per step for total, about 10 at 3 pods for perpod) is never shown.",
+   "fix": "Add HERO_MEASUREs per run: reporting_pods (Splunk .count() at the end of the load, from splunk_run) next to ready replicas, and metric_value_end (the HPA's currentMetrics value at the last sample). Fail fix.sh if reporting_pods differs from ready replicas at the end of a per-pod run. Reword the takeaway to 'the mean rate across the pods reporting to Splunk' and save each run's effective ScaledObject (kubectl get scaledobject shop -o yaml)."
+  },
+  {
+   "problem": "The 60 s scale-up window is not the Kubernetes default (0 s), and it may be what stops the per-pod query from overshooting while new pods are not yet reporting. The README admits it is there so 'a new pod's traffic reaches Splunk before the next step'. The title promises 'Without Hitting maxReplicas' in general. A reader on default behavior may see a different result, so the window is part of the recipe, but nothing tests it.",
+   "fix": "Either add one run, perpod-default, with the ScaledObject's behavior block removed and everything else the same (one setting changed), and report its replicas_max. Or, if the budget does not allow it, put the 60 s scale-up window in the takeaway and brief as a required part of the recipe, and list 'default scale-up behavior not tested' under what the lab does not test."
+  }
+ ],
+ "Marketing": []
+}
