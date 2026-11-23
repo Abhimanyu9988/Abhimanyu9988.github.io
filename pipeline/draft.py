@@ -187,7 +187,7 @@ LINKEDIN_RULES = """A LinkedIn post that stops the scroll, in Abhi's first perso
 - One line that says I built and tested it (build) or reproduced it (problem) in a throwaway AWS account and that the
   post has every step, ending with a colon; then a line containing only {LINKS} (dev.to and Medium go there).
 - One honest question for readers, about their own practice.
-- Last line: 3 or 4 hashtags.
+- Last line: 3 or 4 hashtags, the last one always #showmerit.
 Never: "I'm excited to share", "game-changer", "Here's the thing", "Let that sink in", hype adjectives, more than
 one emoji, @mentions, other URLs. Every number and claim must be in the ARTICLE."""
 

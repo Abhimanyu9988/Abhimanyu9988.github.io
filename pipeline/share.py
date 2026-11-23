@@ -24,6 +24,16 @@ def blog():
     return site["url"] + (site.get("baseurl") or "")
 
 def linkedin_text(raw, canonical, devto=None, medium=None):
+    return with_showmerit(_linkedin_text(raw, canonical, devto, medium))
+
+def with_showmerit(text):
+    """Abhi's rule: every LinkedIn post ends its hashtags with #showmerit."""
+    if re.search(r"(?i)#showmerit\b", text):
+        return text
+    tags = re.search(r"\n((?:#\w+[ \t]*)+)$", text)
+    return text + (" #showmerit" if tags else "\n\n#showmerit")
+
+def _linkedin_text(raw, canonical, devto=None, medium=None):
     """Fill in the links. {LINKS} is where the writer wants them; older posts used {POST_URL}."""
     links = [f"Read it on dev.to: {devto}" if devto else f"Read it here: {canonical}"]
     if medium:
