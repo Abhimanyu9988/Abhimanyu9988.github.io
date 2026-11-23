@@ -237,7 +237,7 @@ import publish
 block = "\n".join(publish.share_block(post_meta, "https://abhimanyu9988.github.io/posts/why-ecs/",
                                        {"devto": {"url": "https://dev.to/abhi/why-ecs"}}, "why-ecs"))
 check("ready-to-post email: LinkedIn text ready to copy with the dev.to link filled in, plus the optional bot route",
-      "```text\nQueue full, zero tasks. Seen it? AWS\nFull write-up: https://dev.to/abhi/why-ecs\n```" in block
+      "```text\nQueue full, zero tasks. Seen it? AWS\nFull write-up: https://dev.to/abhi/why-ecs\n\n#showmerit\n```" in block
       and "`/medium <your Medium story link>`" in block and "shareActive" not in block)
 mpost = {"title": "T", "linkedin": "x", "content": "Clone it:\n\n```bash\ngit clone https://github.com/Abhimanyu9988/Abhimanyu9988.github.io.git\n```\nSee https://github.com/aws/x/issues/5 <account-id>"}
 mblock = "\n".join(publish.share_block(mpost, "https://abhimanyu9988.github.io/posts/t/", {}, "t"))
@@ -615,10 +615,12 @@ for bad in ("/medium https://evil.example/x", "/medium", "/medium https://medium
 li = share.linkedin_text("ECS said 1 task.\n\nI reproduced it.\n{LINKS}\n\n#aws #ecs", "https://abhimanyu9988.github.io/posts/x/",
                          "https://dev.to/a/x", "https://medium.com/p/1a2b3c4d5e")
 check("share: dev.to and Medium links go where the writer put {LINKS}, above the hashtags",
-      li.endswith("Read it on dev.to: https://dev.to/a/x\nOn Medium: https://medium.com/p/1a2b3c4d5e\n\n#aws #ecs"))
+      li.endswith("Read it on dev.to: https://dev.to/a/x\nOn Medium: https://medium.com/p/1a2b3c4d5e\n\n#aws #ecs #showmerit"))
 old = share.linkedin_text("Old.\nFull write-up: {POST_URL}\n\n#aws", "https://s/p/", "https://dev.to/a/x", "https://medium.com/p/1a2b3c4d5e")
+check("share: every LinkedIn post ends with #showmerit, once", share.with_showmerit("a\n\n#aws #showmerit") == "a\n\n#aws #showmerit"
+      and share.with_showmerit("a") == "a\n\n#showmerit")
 check("share: older posts get the dev.to link and Medium right under it",
-      old == "Old.\nFull write-up: https://dev.to/a/x\nOn Medium: https://medium.com/p/1a2b3c4d5e\n\n#aws")
+      old == "Old.\nFull write-up: https://dev.to/a/x\nOn Medium: https://medium.com/p/1a2b3c4d5e\n\n#aws #showmerit")
 lb = share.body_for({"slug": "x", "title": "X", "canonical": "https://abhimanyu9988.github.io/posts/x/", "linkedin": li,
                      "image": "https://abhimanyu9988.github.io/assets/posts/x/cover.png", "alt": "cover [1]"})
 check("share: the draft carries the cover image for /post and passes the link-safety check",
