@@ -6,29 +6,29 @@ Abhi's own topic ideas. Put these first:
 End of his ideas.
 
 What worked for others:
-- Splunk MVP recognition in the sources comes from community contribution, mostly helping people. The first cohort was picked from Splunk Answers participation and top Splunk User Group leaders. No source ties MVP status to an article count or to publishing twice a week.
-- Rich Mahlerwein gave documentation feedback and won a Document Feedback Champion trophy. He then got more involved in the community and joined the SplunkTrust. His route was feedback and participation, not article volume.
-- Clara Merriman is known for her 'Clara-fication' blog series and .conf presentations, and she also worked on Splunk internally. The pages give no publishing cadence for her. Suat Çelikok has held SplunkTrust membership across six consecutive cohorts, with no detail on what he published.
-- On the AWS side, Vijay Kodam wrote a couple of blog posts in mid-2024 and posted articles on LinkedIn. He applied in January 2025 and joined AWS Community Builders. His advice was to submit two pieces of work and not use GenAI-generated text. One AWS Machine Learning Hero created lots of content and spent about a year in Community Builders first. I can't verify any of these people as MVPs.
-- Splunk and AWS integration posts exist and fit both audiences. Jansen Ang wrote about a Splunk-based AI agent using Strands Agents and Amazon Bedrock AgentCore, posted under the AWS Community Builders organization on DEV. Ana Jovanovska wrote a two-part Splunk Add-on for AWS series covering IAM and CloudTrail on AWS Builder Center. Eric Hammond published practical AWS articles and answered questions on StackOverflow and ServerFault. The pages show no share counts or results for any of them.
+- No page documents anyone becoming a Splunk MVP by publishing two articles a week. MVP is described as recognition for consistent participation in at least one Splunk community program, and Splunk sends invitations to members who qualify.
+- The first MVP cohort came from Splunk Answers participation and top Splunk User Group leaders, with other community programs added later. Answers, Slack and user groups are the core, and blogging is one route among several.
+- Clara Merriman (SplunkTrust) is known for a named blog series, 'Clara-fication', and for .conf sessions. This is an observed pattern of visibility from a recurring series. It is not a proven route to MVP.
+- Rich Mahlerwein (SplunkTrust) gave the Splunk docs team feedback and earned a Document Feedback Champion trophy. He then got more involved and became SplunkTrust, and he is active on Answers and Slack as @Richfez. His route was feedback plus steady help to other users.
+- On the AWS side, Ana Jovanovska published a two-part step-by-step 'Integrating AWS Logs with Splunk' series on AWS Builder Center. It included real troubleshooting and version gotchas. Eric Nyuydze Wiryenkfea's monitoring-stack article was featured in the AWS Community Builders weekly Spotlight digest. This suggests AWS curators surface Builder Center content, but the pages give no reach numbers.
 
 Topics to try:
-- Splunk Add-on for AWS: what breaks when you ingest CloudTrail, and how to fix it. This follows the CloudTrail and IAM integration theme, so it suits both audiences.
-- Which Splunk Answers questions about AWS data come up repeatedly? Turn each answer into a how-to. This ties writing to the question-answering the Splunk side rewards.
-- Building a Bedrock or AgentCore agent that investigates logs through Splunk, with the lessons that didn't fit in the tutorial. A similar post exists, so add a different angle.
-- What does Splunk actually say about how MVPs are chosen, and what can't a writer control? Check the official source first. The criteria are secret and the cohort timing is unclear.
-- Documentation gaps found while connecting Splunk to AWS. Rich Mahlerwein's route started with documentation feedback, so this could pair articles with feedback.
+- What broke when I sent CloudTrail, VPC Flow Logs and S3 access logs to Splunk: a troubleshooting-first how-to with version gotchas, following the pattern of the Builder Center series.
+- A recurring named series on Splunk on AWS, such as Bedrock or generative AI turning plain-English requests into SPL, or S3 and Federated Search. Clara Merriman's named series is the model, and an APN blog shows demand for the topic.
+- What I learned answering Splunk Answers questions about AWS data ingestion. Each article would be tied to real community threads, so the writing doubles as the participation Splunk says it rewards.
+- Cross-post the AWS articles to AWS Builder Center and the Splunk Community Blog to get in front of AWS Community Builders curators.
+- How Splunk MVP selection actually works, from official sources. This is a verified-facts piece that corrects the myth of a publishing quota, and it is only worth writing if it is checked against current Splunk pages.
 
 Avoid:
-- Don't plan around a fixed article count as the route to MVP. Splunk keeps its criteria secret to avert gaming, and no source links MVP status to volume.
-- Don't assume an MVP round will happen before January 2027. The 2026–2027 cohort is already announced, and sources differ on cadence (twice a year versus end of each year). Confirm with the Splunk community team.
-- Don't use GenAI-generated text in application pieces. Vijay Kodam advised against it.
-- Don't promise reach or share results. The pages have no share counts, traffic data or visibility timelines, so how engineers share these posts is unknown.
+- Don't plan around a January 2027 MVP date. The 2026–2027 cohort was announced about 124 days ago, the next selection timing is unconfirmed, and the criteria are kept secret.
+- Don't claim or imply that publishing two articles a week earns MVP. No page supports it, and MVP is by invitation, not application.
+- Don't pad output just to hit the quota. The examples that got noticed were detailed, troubleshooting-rich or part of a named series, and nothing shows that volume drove visibility.
+- Don't treat the old pages (.conf19 nomination form, 2017–2018 SplunkTrust thread, 2020 Splunkies) as current rules. The summary also couldn't verify how any of the named people reached MVP.
 
 Sources:
-- https://community.splunk.com/t5/Community-Blog/Announcing-Our-New-Splunk-Community-MVPs-Program/ba-p/584369
 - https://community.splunk.com/t5/Community-Blog/re-Introducing-the-Splunk-Community-Champions-2026-2027-Splunk/ba-p/762396
-- https://community.splunk.com/t5/Community-Blog/SplunkTrust-Where-Are-They-Now-Rich-Mahlerwein/ba-p/641918
-- https://docs.splunk.com/Documentation/Community/1.0/community/Trust
-- https://community.splunk.com:443/t5/Community-Blog/Announcing-Our-Splunk-MVPs/ba-p/633063
 - https://www.splunk.com/en_us/blog/learn/splunk-community.html
+- https://community.splunk.com/t5/Community-Blog/Announcing-Our-New-Splunk-Community-MVPs-Program/ba-p/584369
+- https://community.splunk.com/t5/Welcome-Center/Splunk-Community-Badges-How-to-Earn-Recognition-and-Rewards/ta-p/758213
+- https://community.splunk.com/t5/SplunkTrust/ct-p/splunk-trust
+- https://community.splunk.com/t5/Community-Blog/bg-p/Community-Blog/label-name/mvp
