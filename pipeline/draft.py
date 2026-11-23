@@ -178,12 +178,12 @@ already works. Say "my app" rather than "my shop". Other shapes:
 characters. The tools and services go in the description, the body and the "Try it yourself" section. The opening is
 a two or three line everyday story (a shop, a café, a queue) that makes the problem obvious before any term appears."""
 
-LINKEDIN_RULES = """A LinkedIn post that stops the scroll, in Abhi's first person, plain text, no markdown, 50 to 90 words, for everyday readers.
+LINKEDIN_RULES = """A LinkedIn post that stops the scroll, in Abhi's first person, plain text, no markdown, 1,000 to 1,500 characters: a story hook under 60 characters, then teach the real fix inside the post (the config or query, the math, the numbers) so it stands without the link, 2 or 3 takeaway lines, the link, one closing question.
 - Lines 1 and 2 are all most people see before "...see more" (under 150 characters together). Make them a contrast
   or a surprising, true number from the reader's world: what they normally live with, then what happened here.
   Example shape: "I sold 200 orders. / My dashboard said 400."
 - Then short lines with white space between groups. One idea per line.
-- What happened and the fix in two or three short lines, plain words, no config values, no arrows.
+- What happened, why (the mechanism in one or two lines) and the fix, with the real names and one short config or query.
 - One line on why it matters at work.
 - One line that says I built and tested it (build) or reproduced it (problem) in a throwaway AWS account and that the
   post has every step, ending with a colon; then a line containing only {LINKS} (dev.to and Medium go there).
