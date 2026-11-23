@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T13:42:25Z",
+ "updated": "2026-11-23T16:04:19Z",
  "columns": {
   "needs": [
    {
@@ -8,13 +8,6 @@
     "title": "Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53455",
-    "kind": "Review",
-    "title": "[exporter/azuredataexplorer] Add opt-in Ingest V2 queued ingestion",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53455",
-    "where": "opentelemetry-collector-contrib"
    },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
@@ -61,6 +54,13 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
+    "id": "https://github.com/open-telemetry/semantic-conventions/issues/4074",
+    "kind": "Mentioned",
+    "title": "Add k8s controller spec",
+    "url": "https://github.com/open-telemetry/semantic-conventions/issues/4074",
+    "where": "semantic-conventions"
+   },
+   {
     "id": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
     "kind": "Mentioned",
     "title": "[k8s] Promote k8s pod volume metrics to release candidate",
@@ -73,13 +73,6 @@
     "title": "[receiver/sqlserver] Query-plan obfuscation produces invalid XML with duplicate xmlns attributes",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50111",
     "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/semantic-conventions/issues/4074",
-    "kind": "Mentioned",
-    "title": "Add k8s owner spec",
-    "url": "https://github.com/open-telemetry/semantic-conventions/issues/4074",
-    "where": "semantic-conventions"
    },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52906",
