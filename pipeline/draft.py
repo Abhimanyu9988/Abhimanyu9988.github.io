@@ -169,22 +169,20 @@ in the title or opening bigger than what EVIDENCE proves; missing proof that the
 LinkedIn post that the article does not support; over 1,100 words of prose or an output block over 10 lines.
 Minor: tone that reads robotic or like an AI, clarity, a title that doesn't state the outcome, anything skippable."""
 
-BUILD_TITLE_RULES = """A good title states the OUTCOME the reader gets, with a big but true promise and the service name
-early, so an ECS/EKS engineer reads it and thinks "I want that running". Name the result, not the tool's feature;
-a scope word ("any app", "zero code changes", "from 0 to 10") or a time ("in 20 minutes") only if EVIDENCE backs it.
-Name every tool the reader will learn (EKS, the ALB controller, Argo CD, Splunk Observability...) when it fits.
-Under 90 characters. Catchy beats plain: a journey ("From X to Y"), a contrast, or a bold, true result. Shapes that
-work: "From Broken Ingress to Healthy ALB: An EKS and Splunk Hands-On Lab", "Monitor any app on EKS with zero code
-changes", "Scale ECS workers from SQS queue depth, from 0 to 5 in a minute". Never generic ("Expose an app and prove
-health"). The opening shows the payoff in the first sentence."""
+BUILD_TITLE_RULES = """Abhi's rule: titles and openings are for everyday readers, people curious about tech, not only
+engineers. A good title is a short, plain-language moment from a business or everyday life, with a true number, and
+no jargon: no tool or product names unless an ordinary reader knows them, no acronyms, no config words. Example he
+approved: "I Sold 200 Orders. My Dashboard Said 400." Other shapes: "Black Friday Traffic Tripled. My App Added
+Servers by Itself.", "My Store Went Down for 3 Minutes. Nobody Noticed." Only what EVIDENCE backs. Under 60
+characters. The tools and services go in the description, the body and the "Try it yourself" section. The opening is
+a two or three line everyday story (a shop, a café, a queue) that makes the problem obvious before any term appears."""
 
-LINKEDIN_RULES = """A LinkedIn post that stops the scroll, in Abhi's first person, plain text, no markdown, 120 to 220 words.
+LINKEDIN_RULES = """A LinkedIn post that stops the scroll, in Abhi's first person, plain text, no markdown, 50 to 90 words, for everyday readers.
 - Lines 1 and 2 are all most people see before "...see more" (under 150 characters together). Make them a contrast
   or a surprising, true number from the reader's world: what they normally live with, then what happened here.
-  Example shape: "A Kubernetes rollback usually means a redeploy. / Mine took 16 seconds and didn't restart a single pod."
+  Example shape: "I sold 200 orders. / My dashboard said 400."
 - Then short lines with white space between groups. One idea per line.
-- How it works in two to four lines starting with an arrow, plain words, no jargon soup.
-- The proof: two to four lines of the real numbers from the ARTICLE.
+- What happened and the fix in two or three short lines, plain words, no config values, no arrows.
 - One line on why it matters at work.
 - One line that says I built and tested it (build) or reproduced it (problem) in a throwaway AWS account and that the
   post has every step, ending with a colon; then a line containing only {LINKS} (dev.to and Medium go there).
@@ -260,7 +258,7 @@ def linkedin_md(l):
             f"the article. Others: {', '.join(l['others'])}.\n\n")
 
 POST_SCHEMA = {"type": "object", "required": ["title", "description", "tags", "body", "linkedin", "source_replies"], "properties": {
-    "title": {"type": "string", "description": "max 80 characters; names the symptom the reader hit, no clickbait"},
+    "title": {"type": "string", "description": "max 60 characters; a plain everyday or business moment with a true number, no jargon, no clickbait"},
     "description": {"type": "string", "description": "one or two sentences for previews"},
     "tags": {"type": "array", "items": {"type": "string"}, "maxItems": 4},
     "body": {"type": "string", "description": "the article in markdown"},
@@ -388,11 +386,7 @@ def style_signals():
             "\n\nHow the top ones open and section themselves:\n" + "\n".join(shapes) +
             f"\n\nWhat has worked on Abhi's own posts:\n{own or 'nothing measured yet'}")
 
-TITLE_RULES = """A good title names the SYMPTOM the reader saw, in their words, with the service name early (ECS, EKS,
-Fargate...), so it stops the right person scrolling and matches what they'd search. A metric or API name belongs in
-it only if that's what they'd type. A small surprise or contrast is good; clickbait and promises the lab doesn't back
-are not. Under 75 characters. Shapes that work: "ECS shows 1 running task while 3 are still draining", "Fargate worker stuck at 0 tasks? The scaling guard never runs", "EKS pods stuck in ContainerCreating after
-an upgrade". The opening puts the reader in that moment in the first sentence."""
+TITLE_RULES = BUILD_TITLE_RULES
 
 POSITIVE = ("\nStay positive about products. Abhi works at Cisco on Splunk and contributes to OpenTelemetry. Never frame Splunk, OpenTelemetry or Galileo as broken, missing, "
             "wrong or lacking. Show what they make possible and how to get the most from them. "
@@ -407,7 +401,7 @@ KINDS = {
 }
 
 HEADLINE_SCHEMA = {"type": "object", "required": ["title", "hook"], "properties": {
-    "title": {"type": "string", "description": "max 75 characters: the reader's symptom, true to the evidence"},
+    "title": {"type": "string", "description": "max 60 characters: a plain everyday or business moment, true to the evidence, no jargon"},
     "hook": {"type": "string", "description": "the first two or three sentences of the post"}}}
 
 HEADLINES_SCHEMA = {"type": "object", "required": ["options", "pick"], "properties": {
