@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T05:37:22Z",
+ "updated": "2026-11-23T13:42:25Z",
  "columns": {
   "needs": [
    {
@@ -61,18 +61,18 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50111",
-    "kind": "Mentioned",
-    "title": "[receiver/sqlserver] Query-plan obfuscation produces invalid XML with duplicate xmlns attributes",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50111",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
     "kind": "Mentioned",
     "title": "[k8s] Promote k8s pod volume metrics to release candidate",
     "url": "https://github.com/open-telemetry/semantic-conventions/issues/4156",
     "where": "semantic-conventions"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50111",
+    "kind": "Mentioned",
+    "title": "[receiver/sqlserver] Query-plan obfuscation produces invalid XML with duplicate xmlns attributes",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50111",
+    "where": "opentelemetry-collector-contrib"
    },
    {
     "id": "https://github.com/open-telemetry/semantic-conventions/issues/4074",
@@ -104,13 +104,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
-    "kind": "Your PR",
-    "title": "[receiver/kubeletstats] Add opt-in PVC-level volume metrics (PoC)",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/52279",
-    "where": "opentelemetry-collector-contrib"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
     "kind": "Your PR",
