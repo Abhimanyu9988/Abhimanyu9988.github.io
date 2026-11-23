@@ -172,10 +172,9 @@ Minor: tone that reads robotic or like an AI, clarity, a title that doesn't stat
 BUILD_TITLE_RULES = """Abhi's rule: titles and openings are for everyday readers, people curious about tech, not only
 engineers. A good title is a short, plain-language moment from a business or everyday life, with a true number, and
 no jargon: no tool or product names unless an ordinary reader knows them, no acronyms, no config words. Example he
-approved: "I Sold 200 Orders. My Dashboard Said 400." Use big-stakes words that show the reader this
-helps at scale: "my revenue app", "our customer-facing app", "checkout", "payments", not a small shop. Other shapes:
-"My Revenue App Needed 3 Servers. It Kept Adding Until 8.", "Our Customer-Facing App Went Down for 3 Minutes. Nobody
-Noticed." Only what EVIDENCE backs. Under 60
+approved: "I Sold 200 Orders. My Dashboard Said 400." Plain is fine: don't add bigger stakes when the title
+already works. Say "my app" rather than "my shop". Other shapes:
+"My App Kept Renting Servers for Traffic That Never Grew", "My App Went Down for 3 Minutes. Nobody Noticed." Only what EVIDENCE backs. Under 60
 characters. The tools and services go in the description, the body and the "Try it yourself" section. The opening is
 a two or three line everyday story (a shop, a café, a queue) that makes the problem obvious before any term appears."""
 
