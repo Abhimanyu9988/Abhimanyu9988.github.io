@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T03:35:12Z",
+ "updated": "2026-11-23T05:37:22Z",
  "columns": {
   "needs": [
    {
@@ -8,6 +8,13 @@
     "title": "Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "where": "Abhimanyu9988.github.io"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53455",
+    "kind": "Review",
+    "title": "[exporter/azuredataexplorer] Add opt-in Ingest V2 queued ingestion",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53455",
+    "where": "opentelemetry-collector-contrib"
    },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
