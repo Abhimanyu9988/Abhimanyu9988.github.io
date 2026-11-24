@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-23T16:04:19Z",
+ "updated": "2026-11-24T00:09:46Z",
  "columns": {
   "needs": [
    {
@@ -79,20 +79,6 @@
     "kind": "Mentioned",
     "title": "[exporter/azuredataexplorer] ingestion_type: managed never streams (plain JSON sent with gzip declared) and payloads are uploaded uncompressed",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52906",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
-    "kind": "Mentioned",
-    "title": "[receiver/kubeletstats] Add optional per-pod ephemeral-storage inode metrics (InodesUsed / InodesFree / Inodes)",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52240",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
-    "kind": "Mentioned",
-    "title": "Memory Limit Utilization metrics do not use the Working Set",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
     "where": "opentelemetry-collector-contrib"
    }
   ],
