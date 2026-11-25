@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-24T23:23:04Z",
+ "updated": "2026-11-25T00:09:21Z",
  "columns": {
   "needs": [
    {
@@ -86,13 +86,6 @@
     "kind": "Mentioned",
     "title": "[receiver/sqlserver] Query-plan obfuscation produces invalid XML with duplicate xmlns attributes",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/50111",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52906",
-    "kind": "Mentioned",
-    "title": "[exporter/azuredataexplorer] ingestion_type: managed never streams (plain JSON sent with gzip declared) and payloads are uploaded uncompressed",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52906",
     "where": "opentelemetry-collector-contrib"
    }
   ],
