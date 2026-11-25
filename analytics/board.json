@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-25T20:04:02Z",
+ "updated": "2026-11-25T20:23:21Z",
  "columns": {
   "needs": [
    {
@@ -90,13 +90,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45689673386",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45689673386",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/signalfx/splunk-otel-collector-chart/pull/2742",
     "kind": "Your PR",
