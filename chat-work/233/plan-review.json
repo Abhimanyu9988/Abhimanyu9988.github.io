@@ -1,10 +1,5 @@
 {
- "round": 6,
- "Editor": [
-  {
-   "problem": "Earlier point 3 is still open. The plan still leaves out queries.json, k8s/30-scale.yaml (the ScaledObject with its behavior block and the TriggerAuthentication), splunk.sh (signalflow, series, wait_cluster) and helpers.sh (tag, query_for, run_extras, cap, first_order). The new check in start_run compares query_for against queries.json, and neither is visible, so it proves nothing to a reviewer. The takeaway credits a 60 s scale-up window and 8 pods per 15 s, and min/maxReplicaCount 1-8 is what the total runs are gated on. None of these appear in any file shown. keda_scaler_errors, pods_running_end and the per-pod order count all come from run_extras, which nobody can see.",
-   "fix": "Add all four files to the plan in full. They must show: in 30-scale.yaml, pollingInterval: 5, minReplicaCount: 1, maxReplicaCount: 8, advanced.horizontalPodAutoscalerConfig.behavior (scaleUp stabilizationWindowSeconds 60 with a Pods policy of 8 per 15 s; scaleDown 300) and the TriggerAuthentication splunk-keda that maps accessToken and realm from the Secret; in queries.json, the two queries exactly as the README quotes them; in helpers.sh, tag, query_for, run_extras (with the event filter on SO_UID), cap and first_order; in splunk.sh, signalflow, series and wait_cluster. Also, in start_run, after saving scaledobject-<run>.yaml, read spec.advanced.horizontalPodAutoscalerConfig.behavior.scaleUp.stabilizationWindowSeconds and spec.maxReplicaCount back from the live HPA (hpa-<run>.json), and fail unless they are 60 and 8. The window the takeaway credits is then shown in the run's own output."
-  }
- ],
+ "round": 7,
+ "Editor": [],
  "Marketing": []
 }
