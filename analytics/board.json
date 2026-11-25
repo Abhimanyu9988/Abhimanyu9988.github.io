@@ -1,19 +1,12 @@
 {
- "updated": "2026-11-25T20:42:01Z",
+ "updated": "2026-11-25T20:52:28Z",
  "columns": {
   "needs": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/246",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/247",
     "kind": "Approve or reject",
-    "title": "Batch Processor Deprecated? Size sending_queue in Items, Keep Every Span",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/246",
-    "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/245",
-    "kind": "Approve or reject",
-    "title": "After One Collector Change, My App Sent 43% Fewer Spans in an Outage",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/245",
+    "title": "Batch Processor Deprecated? Size sending_queue in Items Before an Outage",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/247",
     "where": "Abhimanyu9988.github.io"
    },
    {
@@ -104,13 +97,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45696844673",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45696844673",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/signalfx/splunk-otel-collector-chart/pull/2742",
     "kind": "Your PR",
