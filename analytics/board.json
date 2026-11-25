@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-25T20:23:21Z",
+ "updated": "2026-11-25T20:32:50Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/245",
+    "kind": "Approve or reject",
+    "title": "After One Collector Change, My App Sent 43% Fewer Spans in an Outage",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/245",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "kind": "Approve or reject",
@@ -90,6 +97,13 @@
    }
   ],
   "working": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45695927116",
+    "kind": "Lab Engineer is testing an article",
+    "title": "Running now",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45695927116",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/signalfx/splunk-otel-collector-chart/pull/2742",
     "kind": "Your PR",
