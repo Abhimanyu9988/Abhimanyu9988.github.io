@@ -1,0 +1,10 @@
+{
+ "run": "45616937443",
+ "issue": 233,
+ "title": "Autoscale EKS Pods on Splunk Metrics With KEDA Without Hitting maxReplicas",
+ "model": "claude-sonnet-5-5",
+ "status": "reproduced_fix_failed",
+ "attempts": 1,
+ "minutes": 32.3,
+ "lab_usd": 0.0
+}
