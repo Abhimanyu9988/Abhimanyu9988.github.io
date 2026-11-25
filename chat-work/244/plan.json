@@ -1,17 +1,17 @@
 {
  "topics": [
   {
-   "title": "The Batch Processor Is Going Away. Will Your Spans Survive an Outage?",
+   "title": "Batch Processor Deprecated? Move Batching to sending_queue Through an Outage",
    "titles": [
+    "Batch Processor Deprecated? Move Batching to sending_queue Through an Outage",
     "The Batch Processor Is Going Away. Will Your Spans Survive an Outage?",
-    "Delete One Line From Your Collector Config: Is Your Queue Still Big Enough?",
-    "Move Collector Batching Into the Exporter and Count Every Span Through an Outage",
-    "Your Collector's Queue Holds 1,000 Requests. After the Migration, 1,000 of What?"
+    "Batch Processor Deprecated? Move Batching Into the Exporter and Keep Your Spans Through an Outage",
+    "Delete One Line From Your Collector Config: Is Your Queue Still Big Enough?"
    ],
-   "hook": "The OpenTelemetry Collector's batch processor is deprecated, and the migration is one line: drop the processor and turn on batching in the exporter. The OpenTelemetry blog warns that the same queue_size can then hold much less data. This lab counts what that means in a 40-second outage.",
+   "hook": "The OpenTelemetry Collector's batch processor is deprecated, and the migration is one line: drop the processor and turn on batching in the exporter. The OpenTelemetry blog warns that the same queue_size can then hold much less data. This lab counts what that means in a 30-second outage.",
    "payoff": "Readers see, span by span, what the gateway accepted, refused, dropped and delivered with the batch processor, after the one-line migration, and after sizing the queue in items, and pick their queue size on purpose.",
-   "proof": "The gateway Collector's own counters (receiver accepted and refused, exporter enqueue failures, sent, queue size against capacity) for six runs with one change at a time, and the span count Splunk APM holds for each run.",
-   "lab": "EKS with two t3.large nodes, the Splunk OTel Collector chart 0.163.1 as the agent, a contrib 0.165.0 gateway Collector, a contrib 0.165.0 relay between the gateway and the agent that is scaled to 0 for 40 s to make the outage, and telemetrygen v0.165.0 sending 60 spans a second as single-span requests.",
+   "proof": "Spans the sender generated, and the gateway Collector's own counters (receiver accepted and refused, exporter enqueue failures, sent, queue size against capacity) for six runs with one change at a time, plus the span count Splunk APM holds for each run's window.",
+   "lab": "EKS with two t3.large nodes, the Splunk OTel Collector chart 0.163.1 as the agent, a contrib 0.165.0 gateway Collector, a contrib 0.165.0 relay between the gateway and the agent that is scaled to 0 for 30 s to make the outage, and telemetrygen v0.165.0 sending 60 spans a second as single-span requests (no child spans), each worker logging how many it generated.",
    "sources": [
     "https://opentelemetry.io/blog/2026/collector-batching-migration/",
     "https://docs.splunk.com/Observability/gdi/opentelemetry/components/batch-processor.html"
@@ -31,11 +31,11 @@
     "reader": "SRE or platform engineer running an OpenTelemetry Collector gateway in front of Splunk Observability Cloud",
     "decision": "How to migrate from the deprecated batch processor to exporter-level batching without losing spans when the backend has an outage",
     "question": "If I remove the batch processor and turn on batching in the exporter, is my sending queue still big enough to ride out an outage?",
-    "takeaway": "Measured on EKS with contrib 0.165.0: what the gateway accepted, refused, dropped and delivered through a 40 s outage with the batch processor and the default queue, after the one-line migration with the same default queue, and after setting the queue to sizer items with queue_size 100000, two runs each.",
+    "takeaway": "Measured on EKS with contrib 0.165.0: of the spans the sender generated, what the gateway accepted, refused, dropped and delivered through a 30 s outage with the batch processor and the default queue, after the one-line migration with the same default queue, and after setting the queue to sizer items with queue_size 100000, two runs each.",
     "adds": "The OpenTelemetry blog explains that the same queue_size can hold much less data after the migration and suggests sizing in items. No page shows, with the Collector's own counters and the spans a backend holds, what happens to spans through an outage before and after the migration.",
-    "open_question": "On EKS with a contrib 0.165.0 gateway receiving 60 single-span OTLP requests a second and a 40 s outage of its export target, two runs each: how many spans does the gateway accept, refuse back to the sender, fail to enqueue and deliver, and how full does its queue get, with the batch processor and the default sending_queue, with the batch processor removed and sending_queue batch enabled, and with sending_queue sizer items and queue_size 100000?",
+    "open_question": "On EKS with a contrib 0.165.0 gateway receiving 60 single-span OTLP requests a second and a 30 s outage of its export target, two runs each: of the spans the sender generates, how many does the gateway accept, refuse back to the sender (attempts), fail to enqueue and send, and how full does its queue get, with the batch processor and the default sending_queue, with the batch processor removed and sending_queue batch enabled, and with sending_queue sizer items and queue_size 100000?",
     "tradeoffs": [
-     "A queue sized in items costs more memory and some CPU, and the blog notes items and bytes sizers cost more than requests",
+     "A queue sized in items costs more memory and some CPU, and the blog notes items and bytes sizers cost more than requests; all three configs here cap the retry interval at 5 s so the drain is comparable",
      "Pushback to clients versus silent drops: where a full queue's error ends up depends on what sits in front of the exporter",
      "A persistent queue (file_storage) survives restarts but is a separate change, not measured here",
      "One load shape: many small requests, like many pods or short-lived clients sending to one gateway"
@@ -53,11 +53,22 @@
      }
     ],
     "demand": {
-     "level": "strong",
-     "evidence": "The batch processor deprecation was announced on the OpenTelemetry blog on 11 Nov 2026, with batching on by default from v0.171.0 and removal planned in v0.177.0. opentelemetry-lambda 2747 tracks its impact; collector 16398 and contrib 53069, 52830 and 53075 discuss queue_batch and sending_queue behaviour this month. The Splunk distribution ships the batch processor in its default pipelines."
+     "level": "weak",
+     "evidence": "A milestone more than engagement: the OpenTelemetry blog announced the batch processor's deprecation on 11 Nov 2026, with batching on by default from v0.171.0 and removal planned in v0.177.0, and the Splunk distribution ships the batch processor in its default pipelines. GitHub engagement is low so far: opentelemetry-lambda 2747 tracks the impact; collector 16398 and contrib 53069, 52830 and 53075 discuss queue_batch and sending_queue behaviour (13 reactions and comments across 5 issues, counted by radar)."
     },
     "splunk_fit": "natural",
     "measurements": [
+     {
+      "id": "load_spans_generated",
+      "what": "spans the sender (telemetrygen, 4 workers) says it generated in the run: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "kind": "count",
+      "unit": "spans",
+      "accept": {
+       "op": "gt",
+       "value": 0
+      },
+      "min_entities": 6
+     },
      {
       "id": "gateway_spans_accepted",
       "what": "spans the gateway's OTLP receiver accepted in the run: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
@@ -71,7 +82,7 @@
      },
      {
       "id": "gateway_spans_refused",
-      "what": "spans the gateway's receiver refused back to the sender (a sender may retry them, so this counts attempts): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "requests' spans the gateway's receiver refused back to the sender; the sender retries, so this counts attempts, not spans: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "failure",
       "unit": "spans",
       "accept": {
@@ -91,7 +102,7 @@
      },
      {
       "id": "gateway_spans_sent",
-      "what": "spans the gateway's exporter delivered by the end of the drain: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "spans the gateway's exporter sent by the end of the drain: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "count",
       "unit": "spans",
       "accept": {
@@ -100,8 +111,8 @@
       "min_entities": 6
      },
      {
-      "id": "spans_not_delivered",
-      "what": "spans the gateway accepted but did not send by the end of the drain (accepted minus sent): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "id": "spans_lost",
+      "what": "spans the sender generated that the gateway never sent (generated minus sent): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "failure",
       "unit": "spans",
       "accept": {
@@ -131,7 +142,7 @@
      },
      {
       "id": "seconds_to_drain",
-      "what": "seconds from the end of the outage until the queue is empty: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "seconds from the end of the outage until the queue reads 0 and sent stops moving for 6 s (-1 if not within 60 s): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "latency",
       "unit": "seconds",
       "accept": {
@@ -141,7 +152,7 @@
      },
      {
       "id": "splunk_apm_spans",
-      "what": "spans Splunk APM counts for the load service in the run's window: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "spans Splunk APM counts for the load service from the run's load start to 20 s after its drain, runs at least 30 s apart: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "comparison",
       "unit": "spans",
       "accept": {
