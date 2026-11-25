@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-25T00:54:09Z",
+ "updated": "2026-11-25T06:06:53Z",
  "columns": {
   "needs": [
    {
@@ -54,17 +54,17 @@
     "where": "opentelemetry-collector-contrib"
    },
    {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
-    "kind": "Mentioned",
-    "title": "Memory Limit Utilization metrics do not use the Working Set",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
-    "where": "opentelemetry-collector-contrib"
-   },
-   {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
     "kind": "Mentioned",
     "title": "Promote `kubeletstats` Receiver to Stable - Observability",
     "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/52264",
+    "where": "opentelemetry-collector-contrib"
+   },
+   {
+    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
+    "kind": "Mentioned",
+    "title": "Memory Limit Utilization metrics do not use the Working Set",
+    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/40444",
     "where": "opentelemetry-collector-contrib"
    },
    {
