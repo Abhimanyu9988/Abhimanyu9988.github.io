@@ -308,6 +308,14 @@ def verdict_md(v, kind="problem"):
     head = "Build check" if kind == "build" else "Replication check"
     return f"**{head}:** {v['yes']} of 3 say the lab {what}\n" + "\n".join(lines)
 
+def keep_verdict(issue_no, text):
+    """The panel's reasons go to the job log and summary first. On 25 Nov GitHub refused the issue comment (HTTP 500),
+    and the reasons for issue 233's rejection were lost because the comment was the only place they went."""
+    print(f"Panel verdict for issue {int(issue_no)}:\n{text}")
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write(f"## Panel verdict, issue {int(issue_no)}\n\n{text}\n")
+
 def put(branch, path, data, msg):
     raw = data if isinstance(data, bytes) else data.encode()
     gh("PUT", f"/repos/{HOME_REPO}/contents/{path}",
@@ -755,6 +763,7 @@ def open_pr(issue_no, res, topic):
                                   f"{v['yes']} of 3 accepted it.")
         if budget.in_pipeline():
             record_trial({**res, "status": "panel_rejected"}, topic)   # a lab the panel refused must not count as finished
+        keep_verdict(issue_no, verdict_md(v, kind))
         comment(issue_no, "\u26a0\ufe0f The lab reported reproduced-and-fixed, but the panel did not confirm the "
                           f"result, so nothing was drafted.\n\n{verdict_md(v, kind)}\n\nThe lab and raw output are in the "
                           f"`lab` attachment of workflow run {res['run_id']}.")
