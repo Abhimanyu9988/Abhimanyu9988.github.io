@@ -11,7 +11,7 @@
    "hook": "The OpenTelemetry Collector's batch processor is deprecated, and the migration is one line: drop the processor and turn on batching in the exporter. The OpenTelemetry blog warns that the same queue_size can then hold much less data. This lab counts what that means in a 30-second outage.",
    "payoff": "Readers see, span by span, what the gateway accepted, refused, dropped and delivered with the batch processor, after the one-line migration, and after sizing the queue in items, and pick their queue size on purpose.",
    "proof": "Spans the sender generated, and the gateway Collector's own counters (receiver accepted and refused, exporter enqueue failures, sent, queue size against capacity) for six runs with one change at a time, plus the span count Splunk APM holds for each run's window.",
-   "lab": "EKS with two t3.large nodes, the Splunk OTel Collector chart 0.163.1 as the agent, a contrib 0.165.0 gateway Collector, a contrib 0.165.0 relay between the gateway and the agent that is scaled to 0 for 30 s to make the outage, and telemetrygen v0.165.0 sending 60 spans a second as single-span requests (no child spans), each worker logging how many it generated.",
+   "lab": "EKS with two t3.large nodes, the Splunk OTel Collector chart 0.163.1 as the agent, a contrib 0.165.0 gateway Collector, a contrib 0.165.0 relay between the gateway and the agent that is scaled to 0 for 30 s to make the outage, and telemetrygen v0.165.0 sending 60 spans a second as single-span requests (2 spans a trace, telemetrygen's default), each worker logging how many traces it generated; all three gateway configs cap the retry interval at 5 s.",
    "sources": [
     "https://opentelemetry.io/blog/2026/collector-batching-migration/",
     "https://docs.splunk.com/Observability/gdi/opentelemetry/components/batch-processor.html"
@@ -35,10 +35,11 @@
     "adds": "The OpenTelemetry blog explains that the same queue_size can hold much less data after the migration and suggests sizing in items. No page shows, with the Collector's own counters and the spans a backend holds, what happens to spans through an outage before and after the migration.",
     "open_question": "On EKS with a contrib 0.165.0 gateway receiving 60 single-span OTLP requests a second and a 30 s outage of its export target, two runs each: of the spans the sender generates, how many does the gateway accept, refuse back to the sender (attempts), fail to enqueue and send, and how full does its queue get, with the batch processor and the default sending_queue, with the batch processor removed and sending_queue batch enabled, and with sending_queue sizer items and queue_size 100000?",
     "tradeoffs": [
-     "A queue sized in items costs more memory and some CPU, and the blog notes items and bytes sizers cost more than requests; all three configs here cap the retry interval at 5 s so the drain is comparable",
-     "Pushback to clients versus silent drops: where a full queue's error ends up depends on what sits in front of the exporter",
+     "A queue sized in items costs more memory and some CPU, and the blog notes items and bytes sizers cost more than requests",
+     "Where a full queue's error goes: with the batch processor in front, the processor answers the receiver, so the sender may not hear about it; with exporter batching, the queue's error can go back to the sender. The refused count shows which happened",
+     "All three configs cap the exporter's retry interval at 5 s (default 30 s) so drains are comparable; with the default, a drain can take longer",
      "A persistent queue (file_storage) survives restarts but is a separate change, not measured here",
-     "One load shape: many small requests, like many pods or short-lived clients sending to one gateway"
+     "One load shape: many small requests, like many pods or short-lived clients sending to one gateway; two runs per config"
     ],
     "existing_pages": [
      {
@@ -60,7 +61,7 @@
     "measurements": [
      {
       "id": "load_spans_generated",
-      "what": "spans the sender (telemetrygen, 4 workers) says it generated in the run: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "spans the sender generated: telemetrygen's own trace count from its 4 workers times 2 (a parent and its default one child span, sent one span per request; the free check confirms the gateway accepts exactly that many when nothing is refused or dropped): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "count",
       "unit": "spans",
       "accept": {
@@ -122,7 +123,7 @@
      },
      {
       "id": "queue_peak",
-      "what": "highest sending queue size read every 2 s during the run, in the queue's own unit: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "highest sending queue size read every 2 s during the run, in the queue's own unit; the queue's capacity is printed with it: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "limit",
       "unit": "queue units",
       "accept": {
@@ -131,18 +132,19 @@
       "min_entities": 6
      },
      {
-      "id": "queue_capacity",
-      "what": "the sending queue's capacity, in the same unit: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
-      "kind": "limit",
-      "unit": "queue units",
+      "id": "gateway_accept_rate",
+      "what": "spans a second the gateway accepted between 2 s and 10 s into the load, before the outage, from its counter read every 2 s: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "kind": "rate",
+      "unit": "spans/s",
       "accept": {
-       "op": "present"
+       "op": "gt",
+       "value": 0
       },
       "min_entities": 6
      },
      {
       "id": "seconds_to_drain",
-      "what": "seconds from the end of the outage until the queue reads 0 and sent stops moving for 6 s (-1 if not within 60 s): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "seconds from the relay's return until the gateway's queue, read every 2 s, is back at or below its highest read before the outage (-1 if not within the reads): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "latency",
       "unit": "seconds",
       "accept": {
