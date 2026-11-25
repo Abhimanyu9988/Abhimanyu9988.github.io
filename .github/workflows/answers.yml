@@ -1,5 +1,5 @@
 name: answers
-# Daily answers email. ChatGPT approves the Answers Scout's drafts (saved in the private team-admin repo), and one
+# Daily answers email. ChatGPT approves the Answers Scout's drafts and Claude Opus double-checks them (saved in the private team-admin repo), and one
 # "Answers to post" issue opens there at 20:00 Brussels, which GitHub emails to Abhi. Two schedules cover summer and
 # winter time; the script skips the run that is more than an hour early. Runs code from main only.
 on:
@@ -29,7 +29,7 @@ jobs:
           repositories: team-admin
           permission-contents: write
           permission-issues: write
-      - name: ChatGPT approves today's answers, then the email goes out at 20:00 Brussels
+      - name: ChatGPT approves and Opus double-checks today's answers, then the email goes out at 20:00 Brussels
         run: python3 pipeline/answers.py
         env:
           ADMIN_TOKEN: ${{ steps.admin.outputs.token }}
@@ -37,4 +37,6 @@ jobs:
           REPO: ${{ github.repository }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_BEST_MODEL: ${{ vars.CLAUDE_BEST_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}

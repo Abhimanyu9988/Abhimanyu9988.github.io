@@ -1,6 +1,7 @@
 name: post-review
-# ChatGPT and Gemini each pass or block an article and its LinkedIn post against the lab's evidence. Abhi's rule: a
-# post is ready only when both approve. It holds no write token, writes nothing, and runs code from main only. A review
+# ChatGPT, Gemini and Claude Opus each pass or block an article and its LinkedIn post against the lab's evidence; for
+# a standalone post (post_text), ChatGPT and Opus double-check it against its sources. Abhi's rule: nothing is posted
+# until every reviewer approves. It holds no write token, writes nothing, and runs code from main only. A review
 # costs a few cents of ChatGPT and Gemini; the monthly budget is checked first, but this job can't record its spend.
 on:
   workflow_dispatch:
@@ -17,6 +18,18 @@ on:
         description: "Or a chat topic issue number (chat-work/<issue>/post.json on chat/<issue>)"
         required: false
         type: string
+      post_text:
+        description: "Or a standalone post's text (weekly LinkedIn post, Reddit draft): ChatGPT and Opus double-check it"
+        required: false
+        type: string
+      post_kind:
+        description: "What post_text is, e.g. LinkedIn post or Reddit post"
+        required: false
+        type: string
+      post_sources:
+        description: "The links and facts post_text rests on"
+        required: false
+        type: string
 permissions:
   contents: read
 jobs:
@@ -30,16 +43,21 @@ jobs:
           ref: main
           persist-credentials: false
       - run: pip install -q pyyaml==6.0.3
-      - name: clean pass from ChatGPT and Gemini
+      - name: clean pass from ChatGPT, Gemini and Claude Opus (or ChatGPT + Opus double check for a post)
         run: python3 pipeline/post_review.py
         env:
           ARTICLE: ${{ inputs.article }}
           SITE_REF: ${{ inputs.ref }}
           ISSUE_NO: ${{ inputs.issue }}
+          POST_TEXT: ${{ inputs.post_text }}
+          POST_KIND: ${{ inputs.post_kind }}
+          POST_SOURCES: ${{ inputs.post_sources }}
           GH_READ_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_BEST_MODEL: ${{ vars.CLAUDE_BEST_MODEL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
           MODEL_AUTO: ${{ vars.MODEL_AUTO }}

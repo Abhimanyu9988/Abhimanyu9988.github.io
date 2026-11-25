@@ -572,7 +572,7 @@ def review_draft(post, context, logs, brief, topic, kind, scripts=None):
             except Exception as e:
                 llm.warn(f"editor review skipped: {str(e)[:300]}")
         verdict, reasons = editor.decide(card, report, known, require_card=enforce)   # an outage is never approval
-        reasons = reasons + llm.clean_pass_reasons(llm.clean_pass(p, context))   # ChatGPT and Gemini must both approve
+        reasons = reasons + llm.clean_pass_reasons(llm.clean_pass(p, context))   # ChatGPT, Gemini and Claude Opus must all approve
         return report, card, ("revise" if reasons else verdict), reasons
     report, card, verdict, reasons = judge(post)
     if verdict == "revise" and editor.mode() in ("warn", "enforce") and os.environ.get("CHAT_WORK") != "true":   # a chat revises its own work

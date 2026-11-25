@@ -83,7 +83,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           COMMUNITY_MODEL: ${{ vars.COMMUNITY_MODEL }}
-          FACT_CHECK_MODEL: ${{ vars.FACT_CHECK_MODEL }}
+          FACT_CHECK_GPT_MODEL: ${{ vars.FACT_CHECK_GPT_MODEL }}
           EDITOR_MODEL: ${{ vars.EDITOR_MODEL }}
           LINKEDIN_INBOX_URL: ${{ secrets.LINKEDIN_INBOX_URL }}    # his Gmail script, infra/linkedin-inbox.gs
           LINKEDIN_INBOX_KEY: ${{ secrets.LINKEDIN_INBOX_KEY }}
