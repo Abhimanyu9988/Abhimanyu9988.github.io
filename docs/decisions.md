@@ -336,3 +336,10 @@ even though the cto job is otherwise exempt, because they are the team's own wor
 
 ## 20 Nov 2026: demand is measured across several reports
 For two weeks every chat topic scored 3/5 from Marketing, because it only ever saw one GitHub issue's count, and Stack Overflow is blocked from chat. Chat topics now list `more_demand` links, and `week.measure_demand` reads their real counts in GitHub Actions and sums them. Links it can't read are dropped, never estimated.
+
+## 25 Nov 2026: an article every weekday, and LinkedIn only on Monday and Friday
+Abhi moved to an article every weekday, Monday to Friday, and to two LinkedIn posts a week: Monday's tech news of the
+past week and Friday's what the team did. Both come from chat scheduled tasks as private `team-admin` issues. So the
+Secretary (`cto.deliver_posts`) no longer sends a LinkedIn post for each article, and `smart_post` is gone with it. She
+still passes on a scout's standalone news pick if one is written, and on any weekday (`ARTICLE_DAYS`) with no article by
+10:00 Brussels she says so once.
