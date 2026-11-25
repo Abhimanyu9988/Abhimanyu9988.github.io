@@ -1,5 +1,10 @@
 {
- "round": 9,
- "Editor": [],
+ "round": 10,
+ "Editor": [
+  {
+   "problem": "A change since the last review makes the per-pod check unreliable. Every run now uses the same Splunk label (query_for fills RUN with $LAB_NAME-shop). The comment on helpers.sh tag() still says each run gets its own label so no older series is read, but that is no longer true. KEDA's perpod query reads rollup='delta' with extrapolation='zero', then sum(over='20s'), then .mean(). Series from the up to 7 total-run pods that start_run removes match the same filter. If SignalFlow fills those series with zeros, they lower the mean and could push the perpod runs past 4 pods. The guard meant to catch this is splunk_run's .count(), which does not count the same thing as KEDA's query. It uses rollup='rate' with no extrapolation and does not use the 20 s window, so it counts only live series. It would report 3 = 3 ready even while KEDA's .mean() divides by 3 plus the dead pods. The check compares two different series sets, so it could pass when the mean is wrong.",
+   "fix": "In splunk_run, count the series exactly as KEDA reads them. Use the queries.json prefix up to .sum(by=['k8s.pod.name']), then .count().publish(), with the same 12 s window. Also compute the mean the same way and record it as splunk_mean_end beside metric_value_end. Keep the fix.sh gate on count == ready_replicas_end against this like-for-like count. If you would rather remove the risk than detect it, give each run its own label again (tag \"$1\") and wait for the first pod's series before starting the load. Then fix the tag() comment so it matches the code."
+  }
+ ],
  "Marketing": []
 }
