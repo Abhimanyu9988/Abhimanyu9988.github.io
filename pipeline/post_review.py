@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""ChatGPT and Gemini each give an article and its LinkedIn post a pass or a block, judged against the lab's evidence.
+"""ChatGPT, Gemini and Claude Opus each give an article and its LinkedIn post a pass or a block, judged against the lab's
+evidence. For anything else that will be posted (a weekly LinkedIn post, a Reddit draft), ChatGPT's best model and Claude
+Opus double-check the text against its sources.
 
-Abhi's rule (16 Nov 2026): a post is ready only when both approve. The draft job runs the same check on every draft
+Abhi's rules: a post is ready only when every reviewer approves (ChatGPT and Gemini since 16 Nov 2026, Opus added
+25 Nov 2026), and nothing is posted or updated until ChatGPT and Opus have both double-checked it. The draft job runs the same check on every draft
 (draft.review_draft). This script runs it on an article written in Claude chat, before it is published, or on a live
 ShowMerit article. It writes nothing, not even its spend record (it holds no write token): the result is the job summary, and the job fails unless both approve.
 
   ARTICLE=<slug>  a ShowMerit article, content/abhimanyu/articles/<slug>.md, with labs/<slug>/evidence
                   (SITE_REF=<branch> reviews the article on an open ShowMerit PR branch instead of main)
   ISSUE_NO=<n>    a chat article, chat-work/<n>/post.json on branch chat/<n>, with the draft branch's evidence if any
+  POST_TEXT=...   a standalone post, with POST_KIND (e.g. "LinkedIn post", "Reddit post") and POST_SOURCES (the links
+                  and facts it rests on). Checked by ChatGPT and Claude Opus only. The job log ends with
+                  "DOUBLE CHECK: PASS" or "DOUBLE CHECK: BLOCK", so a chat session can read the verdict.
 """
 import base64, json, os, re, sys
 import yaml
@@ -78,7 +84,26 @@ def summary_md(name, result):
         lines += [f"  - {b.get('problem')} Fix: {b.get('fix')}" for b in r.get("blocking") or []]
     return "\n".join(lines) + "\n"
 
+def text_post():
+    """A standalone post: ChatGPT and Opus double-check it against its sources. Exit 1 unless both approve."""
+    text, kind = os.environ.get("POST_TEXT", "").strip(), " ".join(os.environ.get("POST_KIND", "post").split())[:60] or "post"
+    if len(text) > 20000:
+        sys.exit("POST_TEXT is too long for a post")
+    sources = os.environ.get("POST_SOURCES", "").strip()[:30000]
+    budget.check()                                  # before the first paid call, as every job does
+    result = llm.clean_pass({"kind": kind, "text": text}, f"SOURCES:\n{sources or '(none given)'}", who=llm.DOUBLE_CHECK, kind=kind)
+    ok = all(r["approve"] for r in result.values()) and set(result) == set(llm.DOUBLE_CHECK)
+    md = summary_md(kind, result).replace("## Clean pass", "## Double check") + f"\nDOUBLE CHECK: {'PASS' if ok else 'BLOCK'}\n"
+    print(md)
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+            f.write(md)
+    if not ok:
+        sys.exit(1)
+
 def main():
+    if os.environ.get("POST_TEXT", "").strip():
+        return text_post()
     slug, issue = os.environ.get("ARTICLE", "").strip(), os.environ.get("ISSUE_NO", "").strip()
     if slug and SLUG.fullmatch(slug):
         post, readme, ev = from_site(slug, os.environ.get("SITE_REF") or "main")
@@ -87,7 +112,7 @@ def main():
         post, readme, ev = from_chat(int(issue))
         name = f"chat article {issue}"
     else:
-        sys.exit("give ARTICLE (a ShowMerit slug) or ISSUE_NO (a chat topic number)")
+        sys.exit("give ARTICLE (a ShowMerit slug), ISSUE_NO (a chat topic number) or POST_TEXT (a standalone post)")
     context = f"LAB README:\n{readme[:12000]}\n\nEVIDENCE:\n{json.dumps(ev)}"
     budget.check()                                  # before the first paid call, as every job does
     result = llm.clean_pass(post, context)

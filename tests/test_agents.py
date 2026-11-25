@@ -2018,7 +2018,7 @@ _lab_src = _lab_src[_lab_src.index("def main():"):_lab_src.index("def finish(")]
 check("lab limit: checked before any model or AWS spend", _lab_src.index("budget.lab_cap(") < _lab_src.index("llm.claude_json(") and
       _lab_src.index("budget.lab_cap(") < _lab_src.index("set_boundary()"))
 _real_ask = _l16.ask
-_l16.ask = lambda who, s, p, schema, tool=None: {"approve": True, "blocking": []} if who == "chatgpt" else {"approve": True, "blocking": [{"problem": "p99 claim not in evidence", "fix": "cut it"}]}
+_l16.ask = lambda who, s, p, schema, tool=None, **k: {"approve": True, "blocking": []} if who != "gemini" else {"approve": True, "blocking": [{"problem": "p99 claim not in evidence", "fix": "cut it"}]}
 _cp = _l16.clean_pass({"title": "t"}, "ctx")
 check("clean pass: an approve with a blocking point is not a pass", _cp["chatgpt"]["approve"] and not _cp["gemini"]["approve"])
 check("clean pass: each block becomes a reason", len(_l16.clean_pass_reasons(_cp)) == 1 and "Gemini" in _l16.clean_pass_reasons(_cp)[0])
@@ -2026,7 +2026,7 @@ def _boom(*a, **k): raise RuntimeError("down")
 _l16.ask = _boom
 check("clean pass: a failed call blocks, never passes", not any(r["approve"] for r in _l16.clean_pass({}, "").values()))
 _l16.ask = _real_ask
-check("clean pass: ChatGPT and Gemini both review every draft", _l16.CLEAN_PASS == ("chatgpt", "gemini") and
+check("clean pass: ChatGPT, Gemini and Claude Opus all review every draft", _l16.CLEAN_PASS == ("chatgpt", "gemini", "claude") and
       "llm.clean_pass_reasons(llm.clean_pass(" in (ROOT / "pipeline/draft.py").read_text())
 check("panel: the lab's own output comes first and whole", "[-13000:] if main.search" in (ROOT / "pipeline/draft.py").read_text())
 _pr_y = __import__("yaml").safe_load((ROOT / ".github/workflows/post-review.yml").read_text())
@@ -2034,10 +2034,16 @@ _pr_steps = _pr_y["jobs"]["review"]["steps"]
 check("post review: runs code from main", all(st["with"]["ref"] == "main" for st in _pr_steps if "checkout" in st.get("uses", "")))
 check("post review: inputs reach the script only through env", all("${{" not in st.get("run", "") for st in _pr_steps))
 check("post review: holds only the reviewers' keys, and no write token", sorted(set(re.findall(r"secrets\.(\w+)", json.dumps(_pr_y)))) ==
-      ["GEMINI_API_KEY", "OPENAI_API_KEY"] and "BOT_TOKEN" not in json.dumps(_pr_y))
+      ["ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"] and "BOT_TOKEN" not in json.dumps(_pr_y))
 check("post review: the budget is checked before the reviewers are called",
       (ROOT / "pipeline/post_review.py").read_text().index("budget.check()") < (ROOT / "pipeline/post_review.py").read_text().index("llm.clean_pass("))
-check("clean pass: a missing reviewer is a block", len(_l16.clean_pass_reasons({"chatgpt": {"approve": True, "blocking": []}})) == 1)
+_seen = []
+_l16.ask = lambda who, s, p, schema, tool=None, **k: (_seen.append((who, k.get("tier"))), {"approve": True, "blocking": []})[1]
+_dc = _l16.clean_pass({"text": "t"}, "SOURCES: x", who=_l16.DOUBLE_CHECK, kind="LinkedIn post")
+_l16.ask = _real_ask
+check("double check: ChatGPT and Claude Opus (best tier) both review a standalone post", _l16.DOUBLE_CHECK == ("chatgpt", "claude") and
+      sorted(_dc) == ["chatgpt", "claude"] and ("claude", "best") in _seen)
+check("clean pass: a missing reviewer is a block", len(_l16.clean_pass_reasons({"chatgpt": {"approve": True, "blocking": []}})) == 2)
 _tree = {"truncated": False, "tree": [{"path": "analytics/lab-203-1-1-1-lab-c150.json"}, {"path": "analytics/spend-x-c5.json"}]}
 check("lab limit: read from the complete tree", _b16.lab_spent(203, tree=_tree) == 1.5)
 try:

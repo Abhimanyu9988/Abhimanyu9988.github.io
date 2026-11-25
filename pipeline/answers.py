@@ -1,6 +1,8 @@
 """Daily answers email. The chat Answers Scout drafts answers to real questions and saves them in the private
-team-admin repo (answers/inbox/<YYYY-MM-DD>.json). Here ChatGPT approves, fixes or rejects each one, and the approved
-answers go to Abhi as one issue in team-admin at 20:00 Brussels, which GitHub emails him. He posts them himself.
+team-admin repo (answers/inbox/<YYYY-MM-DD>.json). Here ChatGPT approves, fixes or rejects each one, then Claude Opus
+double-checks ChatGPT's final text (approve or reject, no edits, so what he gets is exactly what both passed). Abhi's
+rule (25 Nov 2026): nothing is posted until ChatGPT's best model and Opus have both approved it. The answers both passed
+go to Abhi as one issue in team-admin at 20:00 Brussels, which GitHub emails him. He posts them himself.
 
 Everything in the inbox came from the web: ChatGPT judges it as data, and none of it is ever run or followed.
 Writes go only to the private team-admin repo (its own token), never to this public repo: the answers link to other
@@ -33,6 +35,23 @@ Judge ONE draft answer against the question. Approve only if all are true:
 - No @mentions and no personal data.
 If small edits fix it, make them and approve the fixed text. If it can't be fixed, reject.
 Reply as JSON: {"verdict": "approve" or "reject", "answer": "<final answer text, plain markdown>", "reason": "<one line>"}"""
+
+
+DOUBLE = REVIEW.split("If small edits fix it")[0] + """You are the second, independent check, after ChatGPT. Judge the answer exactly as written: do not edit it.
+Reply with {"verdict": "approve" or "reject", "reason": "<one line>"}"""
+DOUBLE_SCHEMA = {"type": "object", "required": ["verdict", "reason"], "properties": {
+    "verdict": {"enum": ["approve", "reject"]}, "reason": {"type": "string"}}}
+
+
+def opus_check(item, answer):
+    """Claude Opus judges ChatGPT's final answer. A failed call is a reject, never a pass."""
+    prompt = json.dumps({"site": item.get("site"), "question_title": item.get("question_title"),
+                         "question_url": item.get("question_url"), "answer": answer}, ensure_ascii=False)
+    try:
+        got = llm.claude_json(DOUBLE, prompt, DOUBLE_SCHEMA, tool="submit_check", tier="best", max_tokens=16000)
+        return {"verdict": "approve" if got.get("verdict") == "approve" else "reject", "reason": str(got.get("reason", ""))[:300]}
+    except Exception as err:
+        return {"verdict": "reject", "reason": f"Opus check failed: {' '.join(str(err).split())[:200]}"}
 
 
 def admin(method, path, body=None):
@@ -92,16 +111,18 @@ def main():
             verdict = llm.gpt_json(REVIEW, prompt, max_tokens=8000)
         except Exception as err:                    # one bad reply drops that answer, not the email
             verdict = {"verdict": "reject", "reason": f"ChatGPT check failed: {' '.join(str(err).split())[:200]}"}
-        results.append({**item, "chatgpt": verdict, "model": model})
-        if verdict.get("verdict") == "approve" and str(verdict.get("answer", "")).strip():
-            approved.append((item, str(verdict["answer"]).strip()))
+        final = str(verdict.get("answer", "")).strip()
+        second = opus_check(item, final) if verdict.get("verdict") == "approve" and final else None
+        results.append({**item, "chatgpt": verdict, "model": model, "opus": second, "opus_model": llm.claude_model("best")})
+        if second and second["verdict"] == "approve":
+            approved.append((item, final))
     write(f"answers/checked/{day}.json", json.dumps(results, indent=2, ensure_ascii=False) + "\n",
-          f"answers: ChatGPT verdicts for {day}")
+          f"answers: ChatGPT and Opus verdicts for {day}")
     if not approved:
         print("nothing approved today; no email")
         return
     parts = [f"{len(approved)} questions you can answer today. Open the link, paste the text, post. "
-             f"Every answer was approved by ChatGPT ({model}).", ""]
+             f"Every answer was approved by ChatGPT ({model}) and double-checked by Claude ({llm.claude_model('best')}).", ""]
     for n, (item, answer) in enumerate(approved, 1):
         fence = "````" if "```" in answer else "```"
         parts += [f"### {n}. {quiet(item.get('question_title'))}",
