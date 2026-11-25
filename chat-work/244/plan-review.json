@@ -1,10 +1,5 @@
 {
- "round": 5,
- "Editor": [
-  {
-   "problem": "Earlier point 4(b), part 2, is only half fixed. The Evidence Contract now has the drain_complete entry for all 6 runs. But the plan still cuts off lib.sh's measures function at 'echo \"HERO_MEASURE: load_spans_generated[$1]='. So the line written to results.txt still can't be checked. fix.sh's pass test reads columns 4 (refused), 5 (enqueue failed), 7 (lost) and 12 (drain_complete). It also prints columns 2 and 6 as generated and sent. If that line is out of order, sized-* could pass or fail on the wrong number, and nothing in the output would show it. The same cut also hides apm_spans. fix.sh calls it, but splunk.sh doesn't define it. Without it, no one can see how splunk_apm_spans filters by service, environment and time window.",
-   "fix": "Include the whole lib.sh in the plan. The results.txt line in measures must be exactly: '$1 $gen $acc $ref $enq $sent $lost $peak $capa $rate $drained $drain_complete' (12 columns, drain_complete last). It must also print a HERO_MEASURE line for each contract id, including drain_complete[$1], queue_peak[$1] with capacity, gateway_accept_rate[$1] and seconds_to_drain[$1]. Also show apm_spans. It should read spans.count with sf_service=checkout-load and deployment.environment=$LAB_NAME, over the run's own window from runs.txt (load start to drain end + 20 s). It should print the SignalFlow program it ran next to the count."
-  }
- ],
+ "round": 6,
+ "Editor": [],
  "Marketing": []
 }
