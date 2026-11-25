@@ -103,7 +103,7 @@
      },
      {
       "id": "gateway_spans_sent",
-      "what": "spans the gateway's exporter sent by the end of the drain: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "spans the gateway's exporter sent by the end of the drain; the log flags a run whose drain didn't complete (queue empty, sent stopped, sent covering what the exporter took) within 60 s: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "count",
       "unit": "spans",
       "accept": {
@@ -144,7 +144,7 @@
      },
      {
       "id": "seconds_to_drain",
-      "what": "seconds from the relay's return until the gateway's queue, read every 2 s, is back at or below its highest read before the outage (-1 if not within the reads): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "seconds from the relay's return until the gateway's queue, read every 2 s, is back at or below its highest read before the outage for 3 reads in a row, measured from the relay's scale-up command so its rollout is included (-1 if not within the reads): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "latency",
       "unit": "seconds",
       "accept": {
