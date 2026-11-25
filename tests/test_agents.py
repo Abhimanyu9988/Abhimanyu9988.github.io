@@ -2112,5 +2112,15 @@ check("secretary: a Tue/Thu news post still goes out when an article post is due
 _c18.smart_post = _sp
 _c18.admin_on, _c18.slack.enabled, _c18.read_private, _c18.write_private, _c18.slack.say = _ao, _se, _rp, _wp, _say
 _cm18.load_articles = _la18
+import draft as _d25, tempfile as _tf25
+_sum25 = _tf25.NamedTemporaryFile("w+", delete=False, suffix=".md"); _sum25.close()
+_old25 = os.environ.get("GITHUB_STEP_SUMMARY"); os.environ["GITHUB_STEP_SUMMARY"] = _sum25.name
+_d25.keep_verdict(233, "**Build check:** 1 of 3")
+check("draft: the panel's verdict is kept in the job summary before the issue comment",
+      "1 of 3" in open(_sum25.name).read() and "issue 233" in open(_sum25.name).read())
+if _old25 is None: os.environ.pop("GITHUB_STEP_SUMMARY", None)
+else: os.environ["GITHUB_STEP_SUMMARY"] = _old25
+_dsrc = (ROOT / "pipeline/draft.py").read_text()
+check("draft: the verdict is kept before the comment that can fail", _dsrc.index("keep_verdict(issue_no, verdict_md(v, kind))") < _dsrc.index("but the panel did not confirm"))
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")
 sys.exit(1 if fails else 0)
