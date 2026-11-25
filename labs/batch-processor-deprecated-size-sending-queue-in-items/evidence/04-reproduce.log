@@ -1,0 +1,111 @@
+$ bash reproduce.sh
+# exit 0 after 545s
+
+== 1. Waiting for 2 worker nodes
+ip-10-0-0-246.eu-central-1.compute.internal   <none>   Ready
+ip-10-0-1-42.eu-central-1.compute.internal    <none>   Ready
+app node: ip-10-0-0-246.eu-central-1.compute.internal; load node: ip-10-0-1-42.eu-central-1.compute.internal
+== 2. Installing the Splunk OTel Collector (chart 0.163.1), the same in every run
+collector agent ready on 2 nodes
+== 3. Deploying the gateway and the relay (contrib 0.165.0) and the stats pod
+effective gateway configs:
+  batch.yaml    | processors:
+  batch.yaml    |   batch: {}
+  batch.yaml    | exporters:
+  batch.yaml    |   otlphttp:
+  batch.yaml    |     endpoint: http://relay:4318
+  batch.yaml    |     retry_on_failure:
+  batch.yaml    |       max_interval: 5s
+  batch.yaml    | service:
+  migrated.yaml | exporters:
+  migrated.yaml |   otlphttp:
+  migrated.yaml |     endpoint: http://relay:4318
+  migrated.yaml |     retry_on_failure:
+  migrated.yaml |       max_interval: 5s
+  migrated.yaml |     sending_queue:
+  migrated.yaml |       batch:
+  migrated.yaml |         enabled: true
+  migrated.yaml | service:
+== Run batch-1: batch.yaml, 50 s of load, the relay down from 10 s to 40 s
+batch-1: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/batch.yaml (1 ready line)
+batch-1: relay scaled to 0 at +12s; relay endpoints now: []
+batch-1: relay scaled to 1 at +43s, ready at +45s (outage 31s)
+batch-1: drain complete: queue 0, sent 3008, target 3008 (accepted 3008, enqueue failed 0; rule for batch: accepted - enqueue failed)
+batch-1 load: "per-second": 15 per worker; traces per worker: 376 376 376 376 
+batch-1 queue reads: 31, highest size 172 of 1000 (before the outage: 0); accepted 60.0 spans/s from 2 s to 10 s into the load
+batch-1: the load generated 1504 traces = 3008 spans (4 workers reported, 2 spans a trace); the gateway accepted 3008, refused 0 attempts, failed to enqueue 0, sent 3008; export attempts failed 0; generated but never sent 0 (generated - sent); drain target 3008, complete 1; queue back to its pre-outage level 10s after the relay returned (-1: not within the reads)
+HERO_MEASURE: load_spans_generated[batch-1]=3008
+HERO_MEASURE: gateway_spans_accepted[batch-1]=3008
+HERO_MEASURE: gateway_accept_rate[batch-1]=60.0
+HERO_MEASURE: gateway_spans_refused[batch-1]=0
+HERO_MEASURE: gateway_enqueue_failed[batch-1]=0
+HERO_MEASURE: gateway_spans_sent[batch-1]=3008
+HERO_MEASURE: queue_peak[batch-1]=172
+batch-1 queue capacity: 1000
+HERO_MEASURE: seconds_to_drain[batch-1]=10
+HERO_MEASURE: drain_complete[batch-1]=1
+note: batch-1 saw no failed export attempt, so the outage may not have reached the gateway
+== Run migrated-1: migrated.yaml, 50 s of load, the relay down from 10 s to 40 s
+migrated-1: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/migrated.yaml (1 ready line)
+migrated-1: relay scaled to 0 at +11s; relay endpoints now: []
+migrated-1: relay scaled to 1 at +43s, ready at +44s (outage 32s)
+migrated-1: drain complete: queue 0, sent 1712, target 1712 (accepted 1712, enqueue failed 4; rule for migrated: accepted)
+migrated-1 load: "per-second": 15 per worker; traces per worker: 214 214 214 214 
+migrated-1 queue reads: 35, highest size 1000 of 1000 (before the outage: 12); accepted 60.6 spans/s from 2 s to 10 s into the load
+migrated-1: the load generated 856 traces = 1712 spans (4 workers reported, 2 spans a trace); the gateway accepted 1712, refused 4 attempts, failed to enqueue 4, sent 1712; export attempts failed 0; generated but never sent 0 (generated - sent); drain target 1712, complete 1; queue back to its pre-outage level 9s after the relay returned (-1: not within the reads)
+HERO_MEASURE: load_spans_generated[migrated-1]=1712
+HERO_MEASURE: gateway_spans_accepted[migrated-1]=1712
+HERO_MEASURE: gateway_accept_rate[migrated-1]=60.6
+HERO_MEASURE: gateway_spans_refused[migrated-1]=4
+HERO_MEASURE: gateway_enqueue_failed[migrated-1]=4
+HERO_MEASURE: gateway_spans_sent[migrated-1]=1712
+HERO_MEASURE: queue_peak[migrated-1]=1000
+migrated-1 queue capacity: 1000
+HERO_MEASURE: seconds_to_drain[migrated-1]=9
+HERO_MEASURE: drain_complete[migrated-1]=1
+== Run batch-2: batch.yaml, 50 s of load, the relay down from 10 s to 40 s
+batch-2: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/batch.yaml (1 ready line)
+batch-2: relay scaled to 0 at +11s; relay endpoints now: []
+batch-2: relay scaled to 1 at +42s, ready at +44s (outage 31s)
+batch-2: drain complete: queue 0, sent 3008, target 3008 (accepted 3008, enqueue failed 0; rule for batch: accepted - enqueue failed)
+batch-2 load: "per-second": 15 per worker; traces per worker: 376 376 376 376 
+batch-2 queue reads: 31, highest size 162 of 1000 (before the outage: 0); accepted 60.0 spans/s from 2 s to 10 s into the load
+batch-2: the load generated 1504 traces = 3008 spans (4 workers reported, 2 spans a trace); the gateway accepted 3008, refused 0 attempts, failed to enqueue 0, sent 3008; export attempts failed 0; generated but never sent 0 (generated - sent); drain target 3008, complete 1; queue back to its pre-outage level 8s after the relay returned (-1: not within the reads)
+HERO_MEASURE: load_spans_generated[batch-2]=3008
+HERO_MEASURE: gateway_spans_accepted[batch-2]=3008
+HERO_MEASURE: gateway_accept_rate[batch-2]=60.0
+HERO_MEASURE: gateway_spans_refused[batch-2]=0
+HERO_MEASURE: gateway_enqueue_failed[batch-2]=0
+HERO_MEASURE: gateway_spans_sent[batch-2]=3008
+HERO_MEASURE: queue_peak[batch-2]=162
+batch-2 queue capacity: 1000
+HERO_MEASURE: seconds_to_drain[batch-2]=8
+HERO_MEASURE: drain_complete[batch-2]=1
+note: batch-2 saw no failed export attempt, so the outage may not have reached the gateway
+== Run migrated-2: migrated.yaml, 50 s of load, the relay down from 10 s to 40 s
+migrated-2: gateway otel/opentelemetry-collector-contrib:0.165.0 --config=/conf/migrated.yaml (1 ready line)
+migrated-2: relay scaled to 0 at +11s; relay endpoints now: []
+migrated-2: relay scaled to 1 at +42s, ready at +44s (outage 31s)
+migrated-2: drain complete: queue 0, sent 1840, target 1840 (accepted 1840, enqueue failed 3; rule for migrated: accepted)
+migrated-2 load: "per-second": 15 per worker; traces per worker: 230 230 230 230 
+migrated-2 queue reads: 31, highest size 1000 of 1000 (before the outage: 16); accepted 60.4 spans/s from 2 s to 10 s into the load
+migrated-2: the load generated 920 traces = 1840 spans (4 workers reported, 2 spans a trace); the gateway accepted 1840, refused 3 attempts, failed to enqueue 3, sent 1840; export attempts failed 0; generated but never sent 0 (generated - sent); drain target 1840, complete 1; queue back to its pre-outage level 10s after the relay returned (-1: not within the reads)
+HERO_MEASURE: load_spans_generated[migrated-2]=1840
+HERO_MEASURE: gateway_spans_accepted[migrated-2]=1840
+HERO_MEASURE: gateway_accept_rate[migrated-2]=60.4
+HERO_MEASURE: gateway_spans_refused[migrated-2]=3
+HERO_MEASURE: gateway_enqueue_failed[migrated-2]=3
+HERO_MEASURE: gateway_spans_sent[migrated-2]=1840
+HERO_MEASURE: queue_peak[migrated-2]=1000
+migrated-2 queue capacity: 1000
+HERO_MEASURE: seconds_to_drain[migrated-2]=10
+HERO_MEASURE: drain_complete[migrated-2]=1
+== Summary
+run         generated  rate/s  accepted  refused  enq_fail     sent   lost    peak  capacity  drain_s  complete
+batch-1          3008    60.0      3008        0         0     3008      0     172      1000       10         1
+migrated-1       1712    60.6      1712        4         4     1712      0    1000      1000        9         1
+batch-2          3008    60.0      3008        0         0     3008      0     162      1000        8         1
+migrated-2       1840    60.4      1840        3         3     1840      0    1000      1000       10         1
+(refused counts attempts: the sender may retry a refused request. lost = generated by the sender - sent by the gateway.)
+HERO_RESULT: reproduced
+
