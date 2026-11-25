@@ -1,14 +1,7 @@
 {
- "updated": "2026-11-25T20:52:28Z",
+ "updated": "2026-11-25T21:16:20Z",
  "columns": {
   "needs": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/247",
-    "kind": "Approve or reject",
-    "title": "Batch Processor Deprecated? Size sending_queue in Items Before an Outage",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/247",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "kind": "Approve or reject",
@@ -150,6 +143,13 @@
    }
   ],
   "done": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/247",
+    "kind": "Published",
+    "title": "Batch Processor Deprecated? Size sending_queue in Items Before an Outage",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/247",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/242",
     "kind": "Published",
