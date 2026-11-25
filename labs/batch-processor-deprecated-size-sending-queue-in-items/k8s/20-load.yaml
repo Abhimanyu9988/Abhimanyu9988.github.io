@@ -1,0 +1,30 @@
+# The load: telemetrygen v0.165.0 sends 60 spans a second (4 workers at 15 each; its rate limit counts spans) for 50 s, one
+# span per OTLP request (--batch=false). Each trace is a parent and one child span (its default --child-spans=1), like many pods or short-lived clients sending small requests to one gateway. Every span carries the
+# run's label. Each worker logs how many traces it generated; 2 spans each is the sender's own count. --allow-export-failures keeps it sending when the gateway refuses a request.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: load
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  enableServiceLinks: false
+  containers:
+    - name: load
+      image: ghcr.io/open-telemetry/opentelemetry-collector-contrib/telemetrygen:v0.165.0
+      args:
+        - traces
+        - --otlp-http
+        - --otlp-endpoint=gateway.demo.svc.cluster.local:4318
+        - --otlp-insecure
+        - --batch=false
+        - --workers=4
+        - --rate=15
+        - --duration=50s
+        - --service=checkout-load
+        - --allow-export-failures
+        - --otlp-attributes=deployment.environment="LAB_ENV"
+        - --telemetry-attributes=lab.run="RUN"
+      resources:
+        requests: { cpu: 100m, memory: 64Mi }
