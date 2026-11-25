@@ -1,0 +1,401 @@
+{
+ "mode": "warn",
+ "decision": "revise",
+ "reasons": [
+  "the evidence checks did not pass: title claim not found in evidence: 43%",
+  "technical score 3 is below 4",
+  "editorial score 3 is below 4",
+  "marketing score 2 is below 4",
+  "editorial: The title leads with a measured cost and frames the OpenTelemetry migration as causing a loss. Its 43% is one run's number (1,712/3,008), the other migrated run is 39% (1,840/3,008), and the evidence scan marks the title claim unsupported. Fix: Retitle around what the reader gains, for example: \"Moving Off the Batch Processor: Size sending_queue in Items and Keep Every Span Through a 30 s Outage\". Move the migrated-run numbers into the body as a range (1,712 and 1,840 of 3,008, 39 to 43% fewer) and present them as something to plan for.",
+  "editorial: The opening promises a loss story. The result the reader can act on (an items-sized queue carried all 3,008 spans with the queue peaking at about 2% of capacity) does not appear until the second section. Fix: Open with the result: exporter-level batching with sizer: items and queue_size: 100000 delivered 3,008 of 3,008 spans in both runs, with the queue peaking at 1,960 and 2,072 of 100,000. Then explain that the default 1,000-request queue fills with single-span requests, so it needs sizing during the migration.",
+  "technical: The explanation for the drop is not shown by the evidence. 4 and 3 refused attempts cannot account for 1,296 and 1,168 fewer generated spans, and no measurement shows the sender blocking or waiting. Fix: Do one of two things. Option 1: add a measurement inside the outage window, such as the gateway receiver's HTTP request duration (otelcol_http_server_request_duration) or the export latency and errors in telemetrygen's log, read every 2 s from 10 s to 40 s, and show that requests were held while the queue was at 1,000/1,000. Option 2: label the mechanism as a hypothesis. In either case, add the enqueue_failed column (measured, 04-reproduce.log:41) to the table.",
+  "technical: The post says the Splunk APM counts 'agreed' and 'match', but they are exactly half the gateway's span counts. The 'one per trace' explanation is asserted without naming the metric or filter, so a sharp reader will see an unexplained 2x gap. Fix: Show the SignalFlow program used (apm_program_for in fix.sh) and the dimension or filter that makes it count one span per trace. Alternatively, relabel the column as 'traces in Splunk APM' and say plainly that Splunk APM's count matches the sender's trace count exactly in all six runs, which is a positive and accurate second source.",
+  "editorial: The lab link points to a different repo and slug than the lab that produced the evidence, so readers may not find the scripts and raw logs. Fix: Point the 'lab folder' link at LAB_URL, or at whichever path actually holds 04-reproduce.log and 05-fix.log, and check that it resolves.",
+  "ChatGPT did not approve: The article claims: \u201cEvery script and the raw output of every run are in the lab folder\u201d and links to `https://github.com/Abhimanyu9988/showmerit/tree/main/labs/after-one-collector-change-my-app-sent-43-fewer-spans-in-an/evidence`. The evidence gives a different lab URL: `https://github.com/Abhimany Fix: Change the article link to the lab URL supported by the evidence, or provide evidence that the `showmerit/.../after-one-collector-change.../evidence` folder exists and contains the scripts and raw outputs.",
+  "Gemini did not approve: The article lists the Splunk APM span counts as '1,504, 1,504 and 1,504 for the batch and sized runs'. However, there were four such runs (batch-1, batch-2, sized-1, sized-2) and the evidence shows a count of 1,504 for all four of them, not three. Fix: List all four 1,504 values, or rephrase to say '1,504 for all four batch and sized runs'.",
+  "Claude did not approve: The article says \"Splunk's counts match (below)\" and \"Splunk APM agreed as a second source\". It doesn't. Splunk APM counted 1,504 / 856 / 920 spans, while the gateway sent 3,008 / 1,712 / 1,840: exactly half in every run. The evidence doesn't explain why. telemetrygen sends 2 spans per trace, and th Fix: Remove \"match\"/\"agreed\". Say Splunk APM showed half the spans the gateway sent (one per trace) in every run and that the cause wasn't found, so only the run-to-run ratio is confirmed. Or find the cause and fix the count before using it as a second source.",
+  "Claude did not approve: The title, the lede (\"That's 43% fewer\"), the LinkedIn post and the GitHub reply all say 43%. That comes from only the worse migrated run (1,712 vs 3,008). The second migrated run sent 1,840, which is 39% fewer. Since the piece reports two runs per config, quoting one run's number as the result over Fix: Say \"39\u201343% fewer\" (or \"about 40% fewer\") in the title, lede, LinkedIn post and source reply, or name it as the worse of two runs. In LinkedIn, give both migrated results (1,712 and 1,840).",
+  "Claude did not approve: The 'lab folder' link points to github.com/Abhimanyu9988/showmerit/tree/main/labs/after-one-collector-change-my-app-sent-43-fewer-spans-in-an/evidence. The lab actually lives at github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/batch-processor-deprecated-move-batching. Readers followin Fix: Point the link to the real lab location (the LAB_URL), or publish the lab at the linked path.",
+  "Claude did not approve: The README says check.sh 'runs the same configs, load and stats script in Docker, with no AWS account', and that it 'confirms the gateway accepts exactly that many [2 spans a trace]'. The evidence has no check.sh output, so that check never ran. It matters because Splunk APM shows one span per trace Fix: Run check.sh and include its output in the evidence, or change the README to say it wasn't run."
+ ],
+ "evidence": {
+  "schema": "scan/1",
+  "flags": [],
+  "headline": [
+   {
+    "claim": "43%",
+    "number": "43",
+    "noun": "%",
+    "supported": false,
+    "where": "",
+    "basis": "heuristic",
+    "validated": false
+   }
+  ],
+  "contract": {
+   "passed": true,
+   "results": [
+    {
+     "id": "load_spans_generated",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:37"
+    },
+    {
+     "id": "gateway_spans_accepted",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:38"
+    },
+    {
+     "id": "gateway_spans_refused",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:40"
+    },
+    {
+     "id": "gateway_enqueue_failed",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:41"
+    },
+    {
+     "id": "gateway_spans_sent",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:42"
+    },
+    {
+     "id": "drain_complete",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:46"
+    },
+    {
+     "id": "queue_peak",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:43"
+    },
+    {
+     "id": "gateway_accept_rate",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "04-reproduce.log:39"
+    },
+    {
+     "id": "seconds_to_drain",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "self_reported",
+     "where": "04-reproduce.log:45"
+    },
+    {
+     "id": "splunk_apm_spans",
+     "status": "ok",
+     "values": 6,
+     "needed": 6,
+     "provenance": "corroborated",
+     "where": "05-fix.log:67"
+    }
+   ]
+  },
+  "failures": [
+   "title claim not found in evidence: 43%"
+  ],
+  "passed": false
+ },
+ "scorecard": {
+  "scores": {
+   "technical": {
+    "score": 3,
+    "reasons": [
+     "The contract passed with six values for every measurement. The configs, load flags and gateway counters are real and reproducible, and the sized fix is shown cleanly: 3,008 of 3,008 spans in both runs, with the queue peaking at about 2% of capacity.",
+     "The cause of the drop is asserted but not measured. 4 and 3 refused attempts cannot explain 1,296 and 1,168 fewer generated spans, and nothing in the evidence shows the sender waiting.",
+     "The Splunk APM counts are exactly half the span counts (1,504 vs 3,008). The post calls this 'agreement' and adds 'one per trace' without showing which metric or filter produces that.",
+     "The headline 43% comes from one run (1,712/3,008). The other migrated run is 39% (1,840/3,008), and the scan marks the title number unsupported. enqueue_failed was measured but is left out of the table, and seconds_to_drain is self-reported."
+    ]
+   },
+   "editorial": {
+    "score": 3,
+    "reasons": [
+     "The reader is clear, and the body is plain, honest about trade-offs (retry cap, unmeasured memory, one load shape) and easy to act on.",
+     "There is a real finding beyond the blog: after the migration, a full default queue pushes the cost back to the sender instead of dropping spans inside the Collector. Sizing in items removes that cost.",
+     "The title and opening lead with a measured cost ('43% fewer spans') and frame the OpenTelemetry migration as the cause of a loss. They should credit the product with the answer: exporter batching plus an items-sized queue keeps every span.",
+     "The tone mostly sounds like a person. The configs are clean files rather than a real session, and the outage numbers are shown only as a table, with no captured counter output."
+    ]
+   },
+   "marketing": {
+    "score": 2,
+    "reasons": [
+     "Demand is weak: 13 reactions and comments across 5 GitHub issues, plus the deprecation milestone. There is no search, view or engagement data.",
+     "Timing is good, because the deprecation affects nearly every Collector config, including the Splunk distribution's default pipelines. But the headline does not use the words people search with ('batch processor deprecated', 'sending_queue', 'queue_size').",
+     "A fear-led percentage headline taken from one run is likely to draw corrections rather than reach the SRE making the migration decision."
+    ]
+   }
+  },
+  "blocking": [
+   {
+    "dimension": "editorial",
+    "problem": "The title leads with a measured cost and frames the OpenTelemetry migration as causing a loss. Its 43% is one run's number (1,712/3,008), the other migrated run is 39% (1,840/3,008), and the evidence scan marks the title claim unsupported.",
+    "evidence": "TITLE: \"After One Collector Change, My App Sent 43% Fewer Spans in an Outage\"; EVIDENCE REPORT failures: \"title claim not found in evidence: 43%\"",
+    "fix": "Retitle around what the reader gains, for example: \"Moving Off the Batch Processor: Size sending_queue in Items and Keep Every Span Through a 30 s Outage\". Move the migrated-run numbers into the body as a range (1,712 and 1,840 of 3,008, 39 to 43% fewer) and present them as something to plan for."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The opening promises a loss story. The result the reader can act on (an items-sized queue carried all 3,008 spans with the queue peaking at about 2% of capacity) does not appear until the second section.",
+    "evidence": "\"So I made that one change and switched off the Collector's backend for 30 seconds. In the same 50 seconds, my app sent 1,712 spans instead of 3,008. That's 43% fewer.\"",
+    "fix": "Open with the result: exporter-level batching with sizer: items and queue_size: 100000 delivered 3,008 of 3,008 spans in both runs, with the queue peaking at 1,960 and 2,072 of 100,000. Then explain that the default 1,000-request queue fills with single-span requests, so it needs sizing during the migration."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The explanation for the drop is not shown by the evidence. 4 and 3 refused attempts cannot account for 1,296 and 1,168 fewer generated spans, and no measurement shows the sender blocking or waiting.",
+    "evidence": "\"The Collector then told my app \\\"not now\\\" (4 and 3 refused requests in the two runs). My test app sends each span and waits for the answer, so it waited instead of sending.\"",
+    "fix": "Do one of two things. Option 1: add a measurement inside the outage window, such as the gateway receiver's HTTP request duration (otelcol_http_server_request_duration) or the export latency and errors in telemetrygen's log, read every 2 s from 10 s to 40 s, and show that requests were held while the queue was at 1,000/1,000. Option 2: label the mechanism as a hypothesis. In either case, add the enqueue_failed column (measured, 04-reproduce.log:41) to the table."
+   },
+   {
+    "dimension": "technical",
+    "problem": "The post says the Splunk APM counts 'agreed' and 'match', but they are exactly half the gateway's span counts. The 'one per trace' explanation is asserted without naming the metric or filter, so a sharp reader will see an unexplained 2x gap.",
+    "evidence": "\"its span count for the app was 1,504, 1,504 and 1,504 for the batch and sized runs, and 856 and 920 for the two migrated runs. That's exactly one per trace\"",
+    "fix": "Show the SignalFlow program used (apm_program_for in fix.sh) and the dimension or filter that makes it count one span per trace. Alternatively, relabel the column as 'traces in Splunk APM' and say plainly that Splunk APM's count matches the sender's trace count exactly in all six runs, which is a positive and accurate second source."
+   },
+   {
+    "dimension": "editorial",
+    "problem": "The lab link points to a different repo and slug than the lab that produced the evidence, so readers may not find the scripts and raw logs.",
+    "evidence": "Post links github.com/Abhimanyu9988/showmerit/tree/main/labs/after-one-collector-change-my-app-sent-43-fewer-spans-in-an/evidence; LAB_URL is github.com/Abhimanyu9988/Abhimanyu9988.github.io/tree/main/labs/batch-processor-deprecated-move-batching",
+    "fix": "Point the 'lab folder' link at LAB_URL, or at whichever path actually holds 04-reproduce.log and 05-fix.log, and check that it resolves."
+   }
+  ],
+  "flags_addressed": [
+   {
+    "id": "title claim not found in evidence: 43%",
+    "addressed": false,
+    "how": "The draft still uses 43% in the title. It is one run's figure (migrated-1), the other run is 39%, and the evidence scan could not validate it. The figure needs to come out of the title and appear in the body as a range."
+   }
+  ],
+  "claims": [
+   {
+    "text": "The Collector's batch processor is being retired; the migration is one line: drop the processor and turn on batching inside the exporter",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   },
+   {
+    "text": "The OpenTelemetry blog warns that after the migration the same queue size can hold much less data",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   },
+   {
+    "text": "sizer: items with queue_size: 100000 is what the blog suggests",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   },
+   {
+    "text": "By default the sending queue holds 1,000 requests",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   },
+   {
+    "text": "After the migration, batching happens after the queue, so each tiny request takes its own place in line",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "My test app sends each span and waits for the answer, so it waited instead of sending",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "Splunk APM's count is exactly one per trace because each trace has two spans",
+    "class": "hypothesis",
+    "source_ref": ""
+   },
+   {
+    "text": "The default retry max interval is 30 s, so with defaults a drain can take longer",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   },
+   {
+    "text": "A queue sized in spans uses more memory",
+    "class": "estimate",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   },
+   {
+    "text": "A queue on disk (file_storage) survives a Collector restart",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   },
+   {
+    "text": "The migration is the future: batching moves into the exporter",
+    "class": "sourced",
+    "source_ref": "https://opentelemetry.io/blog/2026/collector-batching-migration/"
+   }
+  ],
+  "prompt_version": "editor/dce97c8b60"
+ },
+ "brief": {
+  "reader": "SRE or platform engineer running an OpenTelemetry Collector gateway in front of Splunk Observability Cloud",
+  "decision": "How to migrate from the deprecated batch processor to exporter-level batching without losing spans when the backend has an outage",
+  "question": "If I remove the batch processor and turn on batching in the exporter, is my sending queue still big enough to ride out an outage?",
+  "takeaway": "Measured on EKS with contrib 0.165.0: of the spans the sender generated, what the gateway accepted, refused, dropped and delivered through a 30 s outage with the batch processor and the default queue, after the one-line migration with the same default queue, and after setting the queue to sizer items with queue_size 100000, two runs each.",
+  "adds": "The OpenTelemetry blog explains that the same queue_size can hold much less data after the migration and suggests sizing in items. No page shows, with the Collector's own counters and the spans a backend holds, what happens to spans through an outage before and after the migration.",
+  "open_question": "On EKS with a contrib 0.165.0 gateway receiving 60 single-span OTLP requests a second and a 30 s outage of its export target, two runs each: of the spans the sender generates, how many does the gateway accept, refuse back to the sender (attempts), fail to enqueue and send, and how full does its queue get, with the batch processor and the default sending_queue, with the batch processor removed and sending_queue batch enabled, and with sending_queue sizer items and queue_size 100000?",
+  "tradeoffs": [
+   "A queue sized in items costs more memory and some CPU, and the blog notes items and bytes sizers cost more than requests",
+   "Where a full queue's error goes: with the batch processor in front, the processor answers the receiver, so the sender may not hear about it; with exporter batching, the queue's error can go back to the sender. The refused count shows which happened",
+   "All three configs cap the exporter's retry interval at 5 s (default 30 s) so drains are comparable; with the default, a drain can take longer",
+   "A persistent queue (file_storage) survives restarts but is a separate change, not measured here",
+   "One load shape: many small requests, like many pods or short-lived clients sending to one gateway; two runs per config"
+  ],
+  "existing_pages": [
+   {
+    "title": "Deprecating the Collector Batch Processor (OpenTelemetry blog)",
+    "url": "https://opentelemetry.io/blog/2026/collector-batching-migration/",
+    "covers": "Why the batch processor is deprecated, the one-line migration, default batch settings, and that queue capacity changes after migration, with example items and bytes queue sizes."
+   },
+   {
+    "title": "Batch processor (Splunk Distribution of the OpenTelemetry Collector docs)",
+    "url": "https://docs.splunk.com/Observability/gdi/opentelemetry/components/batch-processor.html",
+    "covers": "The Splunk distribution includes the batch processor in its predefined agent and gateway pipelines, with its default settings."
+   }
+  ],
+  "demand": {
+   "level": "weak",
+   "evidence": "A milestone more than engagement: the OpenTelemetry blog announced the batch processor's deprecation on 11 Nov 2026, with batching on by default from v0.171.0 and removal planned in v0.177.0, and the Splunk distribution ships the batch processor in its default pipelines. GitHub engagement is low so far: opentelemetry-lambda 2747 tracks the impact; collector 16398 and contrib 53069, 52830 and 53075 discuss queue_batch and sending_queue behaviour (13 reactions and comments across 5 issues, counted by radar)."
+  },
+  "splunk_fit": "natural",
+  "measurements": [
+   {
+    "id": "load_spans_generated",
+    "what": "spans the sender generated: telemetrygen's own trace count from its 4 workers times 2 (a parent and its default one child span, sent one span per request; the free check confirms the gateway accepts exactly that many when nothing is refused or dropped): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "count",
+    "unit": "spans",
+    "accept": {
+     "op": "gt",
+     "value": 0
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_spans_accepted",
+    "what": "spans the gateway's OTLP receiver accepted in the run: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "count",
+    "unit": "spans",
+    "accept": {
+     "op": "gt",
+     "value": 0
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_spans_refused",
+    "what": "requests' spans the gateway's receiver refused back to the sender; the sender retries, so this counts attempts, not spans: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "failure",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_enqueue_failed",
+    "what": "spans the gateway's exporter could not put in its full queue: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "failure",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_spans_sent",
+    "what": "spans the gateway's exporter sent by the end of the drain (lost = generated minus sent): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "count",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "drain_complete",
+    "what": "1 when the gateway's queue is empty, sent has stopped moving for 3 reads, and sent covers what the exporter took (accepted minus enqueue failed for batch, accepted for migrated and sized); 0 otherwise. Spans lost per run are generated minus sent, printed in the summary: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "failure",
+    "unit": "flag",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "queue_peak",
+    "what": "highest sending queue size read every 2 s during the run, in the queue's own unit; the queue's capacity is printed with it: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "limit",
+    "unit": "queue units",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "gateway_accept_rate",
+    "what": "spans a second the gateway accepted between 2 s and 10 s into the load, before the outage, from its counter read every 2 s: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "rate",
+    "unit": "spans/s",
+    "accept": {
+     "op": "gt",
+     "value": 0
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "seconds_to_drain",
+    "what": "seconds from the relay's return until the gateway's queue, read every 2 s, is back at or below its highest read before the outage for 3 reads in a row, measured from the relay's scale-up command so its rollout is included (-1 if not within the reads): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "latency",
+    "unit": "seconds",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   },
+   {
+    "id": "splunk_apm_spans",
+    "what": "spans Splunk APM counts for the load service from the run's load start to 20 s after its drain, runs at least 30 s apart: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+    "kind": "comparison",
+    "unit": "spans",
+    "accept": {
+     "op": "present"
+    },
+    "min_entities": 6
+   }
+  ],
+  "verdict": "go",
+  "reasons": [
+   "A deprecation this month that touches nearly every Collector config, including the Splunk distribution's defaults",
+   "One change per run on a proven gateway and Splunk agent setup",
+   "Counts come from the Collector's own counters, so no number depends on backend lag",
+   "Positive and practical: the migration plus the queue setting that keeps every span"
+  ],
+  "gate1": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "usd": 1.4061
+}
