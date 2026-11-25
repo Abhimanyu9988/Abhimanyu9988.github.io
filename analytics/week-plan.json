@@ -1,40 +1,18 @@
 {
- "week": "2026-W47",
+ "week": "2026-W48",
  "target": 3,
- "created": "2026-11-22",
+ "created": "2026-11-25",
  "topics": [
   {
-   "issue": 232,
-   "title": "Upgrade to SQLAlchemy 2.1 and Still See Every Query in Splunk APM",
+   "issue": 244,
+   "title": "Move Collector Batching Into the Exporter and Count Every Span Through an Outage",
    "state": "queued",
    "signal": "5 independent reports of this symptom: 13 reactions and comments across 5 GitHub issues",
    "confirmed": true,
-   "picked": false,
-   "chat": true,
-   "scores": "Marketing 4/5, Editor 3/5",
-   "model": "claude-sonnet-5-5"
-  },
-  {
-   "issue": 233,
-   "title": "Autoscale EKS Pods on Splunk Metrics With KEDA Without Hitting maxReplicas",
-   "state": "queued",
-   "signal": "5 independent reports of this symptom: 17 reactions and comments across 5 GitHub issues",
-   "confirmed": true,
-   "picked": false,
-   "chat": true,
-   "scores": "Marketing 4/5, Editor 3/5",
-   "model": "claude-opus-5-5"
-  },
-  {
-   "issue": 234,
-   "title": "Keep Every Span Through a Collector Restart With a Persistent Queue to Splunk",
-   "state": "queued",
-   "signal": "3 independent reports of this symptom: 32 reactions and comments across 3 GitHub issues",
-   "confirmed": true,
-   "picked": false,
+   "picked": true,
    "chat": true,
    "scores": "Marketing 3/5, Editor 3/5",
-   "model": "claude-haiku-5-5"
+   "model": "claude-sonnet-5-5"
   }
  ]
 }
