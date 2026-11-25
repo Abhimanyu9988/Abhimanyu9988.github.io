@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-25T15:25:04Z",
+ "updated": "2026-11-25T16:21:20Z",
  "columns": {
   "needs": [
    {
@@ -90,13 +90,6 @@
    }
   ],
   "working": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45644231328",
-    "kind": "Lab Engineer is testing an article",
-    "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45644231328",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53281",
     "kind": "Your PR",
