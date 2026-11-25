@@ -3,7 +3,7 @@
  "issue": 244,
  "title": "Batch Processor Deprecated? Move Batching to sending_queue Through an Outage",
  "model": "claude-sonnet-5-5",
- "status": "reproduced_and_fixed",
+ "status": "panel_rejected",
  "attempts": 1,
  "minutes": 26.2,
  "lab_usd": 0.0
