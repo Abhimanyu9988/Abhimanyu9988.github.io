@@ -7,6 +7,7 @@ import json, os, pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import editor, roles
 
+HIDDEN = ("main.tf", "cleanup.sh")
 SHOWN = ("reproduce.sh", "fix.sh", "lib.sh", "propagate.sh", "k8s/10-app.yaml", "k8s/20-load.yaml", "README.md")     # the Editor can only judge the scripts it sees
 RULE = ("Review this lab's PLAN before it runs, and name now anything you would mark down in the finished article. "
         "A problem found here costs nothing, and a problem found after the run costs a paid rerun. "
@@ -44,7 +45,10 @@ def rule_for(name, rule, earlier):
 def plan_text(title, brief, lab, full):
     files = {f["path"]: f["content"] for f in lab.get("files") or []}
     text = f"TITLE: {title}\n\nBRIEF:\n{json.dumps(brief)[:7000]}\n\nLAB SUMMARY: {lab.get('summary')}\n"
-    return text + ("".join(f"\nFILE {p}:\n{files[p][:9000]}\n" for p in SHOWN if p in files) if full else "")
+    # The main scripts first, then every other file the lab carries, so a query, manifest or helper the scripts use is
+    # never judged unseen. main.tf and cleanup.sh only build and remove the cluster.
+    order = [p for p in SHOWN if p in files] + sorted(p for p in files if p not in SHOWN and p not in HIDDEN)
+    return text + ("".join(f"\nFILE {p}:\n{files[p][:9000]}\n" for p in order) if full else "")
 
 def blocked(name, got):
     """Lines for the log, and whether this review stops the lab. A `go` with blocking points still stops it."""
