@@ -1,0 +1,287 @@
+# The gateway: the upstream OpenTelemetry Collector (contrib 0.165.0). The load sends it traces; it exports them over OTLP
+# to the relay, which forwards them to the Splunk OTel Collector agent on its node, which sends to Splunk Observability
+# Cloud. Scaling the relay to 0 is the outage: the gateway's export target is gone, so its sending queue fills.
+# Three configs, and CONFIG picks one. All three cap the exporter's retry interval at 5 s (default 30 s), so the drain after
+# the outage is measured without waiting on a long backoff. Each run changes one thing from the one before:
+#   batch.yaml     the batch processor with its defaults, and the exporter's default sending_queue (1000 requests)
+#   migrated.yaml  the one-line migration from the OpenTelemetry blog: no batch processor, sending_queue batch enabled;
+#                  the queue keeps its defaults
+#   sized.yaml     migrated.yaml, with the queue sized in items: sizer items, queue_size 100000
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway
+  namespace: demo
+data:
+  batch.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+    processors:
+      batch: {}
+    exporters:
+      otlphttp:
+        endpoint: http://relay:4318
+        retry_on_failure:
+          max_interval: 5s
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus: { host: 0.0.0.0, port: 8888 }
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlphttp]
+  migrated.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+    exporters:
+      otlphttp:
+        endpoint: http://relay:4318
+        retry_on_failure:
+          max_interval: 5s
+        sending_queue:
+          batch:
+            enabled: true
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus: { host: 0.0.0.0, port: 8888 }
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlphttp]
+  sized.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+    exporters:
+      otlphttp:
+        endpoint: http://relay:4318
+        retry_on_failure:
+          max_interval: 5s
+        sending_queue:
+          sizer: items
+          queue_size: 100000
+          batch:
+            enabled: true
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus: { host: 0.0.0.0, port: 8888 }
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlphttp]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: demo
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: gateway }
+  template:
+    metadata:
+      labels: { app: gateway }
+    spec:
+      nodeName: APP_NODE
+      enableServiceLinks: false
+      containers:
+        - name: otel
+          image: otel/opentelemetry-collector-contrib:0.165.0
+          args: ["--config=/conf/$(CONFIG)"]
+          env:
+            - { name: CONFIG, value: batch.yaml }
+            - { name: LAB_RUN, value: "none" }
+          ports:
+            - containerPort: 4318
+            - containerPort: 8888
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            tcpSocket: { port: 4318 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: conf, mountPath: /conf }
+      volumes:
+        - name: conf
+          configMap: { name: gateway }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: demo
+spec:
+  selector: { app: gateway }
+  ports:
+    - { name: otlp-http, port: 4318 }
+    - { name: metrics, port: 8888 }
+---
+# The relay: the same Collector image, passing traces on to the Splunk agent on its node. It has no processors and keeps
+# the exporter's defaults. Scaled to 0, it is the gateway's outage; scaled back to 1, the gateway drains its queue.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: relay
+  namespace: demo
+data:
+  relay.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          http: { endpoint: 0.0.0.0:4318 }
+    exporters:
+      otlphttp:
+        endpoint: http://${env:HOST_IP}:4318
+    service:
+      telemetry:
+        metrics:
+          readers:
+            - pull:
+                exporter:
+                  prometheus: { host: 0.0.0.0, port: 8888 }
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [otlphttp]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: relay }
+  template:
+    metadata:
+      labels: { app: relay }
+    spec:
+      nodeName: APP_NODE
+      enableServiceLinks: false
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: otel
+          image: otel/opentelemetry-collector-contrib:0.165.0
+          args: ["--config=/conf/relay.yaml"]
+          env:
+            - name: HOST_IP
+              valueFrom: { fieldRef: { fieldPath: status.hostIP } }
+          ports:
+            - containerPort: 4318
+            - containerPort: 8888
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          readinessProbe:
+            tcpSocket: { port: 4318 }
+            periodSeconds: 2
+          volumeMounts:
+            - { name: conf, mountPath: /conf }
+      volumes:
+        - name: conf
+          configMap: { name: relay }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: relay
+  namespace: demo
+spec:
+  selector: { app: relay }
+  ports:
+    - { name: otlp-http, port: 4318 }
+    - { name: metrics, port: 8888 }
+---
+# The gateway's and the relay's own metrics, read by the stats pod. `gwstats.py` prints the counts once; `gwstats.py watch N`
+# prints the gateway's queue size, accepted and sent counts every 2 s, N times.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stats
+  namespace: demo
+data:
+  gwstats.py: |
+    import re, sys, time, urllib.request
+    def read(host):
+        try:
+            return urllib.request.urlopen(f"http://{host}:8888/metrics", timeout=5).read().decode()
+        except Exception:
+            return ""
+    def total(text, name, **labels):
+        t = 0.0
+        for line in text.splitlines():
+            m = re.match(r"^([a-zA-Z_:][\w:]*)(\{[^}]*\})?\s+([0-9.eE+-]+)", line)
+            if not m or m[1] not in (name, name + "_total"):
+                continue
+            got = dict(re.findall(r'(\w+)="([^"]*)"', m[2] or ""))
+            if all(got.get(k) == v for k, v in labels.items()):
+                t += float(m[3])
+        return t
+    if sys.argv[1:2] == ["watch"]:
+        for _ in range(int(sys.argv[2])):
+            g = read("gateway")
+            print(f"Q {time.time():.0f} size={total(g, 'otelcol_exporter_queue_size', exporter='otlphttp'):g} "
+                  f"capacity={total(g, 'otelcol_exporter_queue_capacity', exporter='otlphttp'):g} up={1 if g else 0} "
+                  f"accepted={total(g, 'otelcol_receiver_accepted_spans', receiver='otlp'):g} "
+                  f"sent={total(g, 'otelcol_exporter_sent_spans', exporter='otlphttp'):g}", flush=True)
+            time.sleep(2)
+        sys.exit(0)
+    g, r = read("gateway"), read("relay")
+    rows = {
+        "accepted": total(g, "otelcol_receiver_accepted_spans", receiver="otlp"),
+        "refused": total(g, "otelcol_receiver_refused_spans", receiver="otlp"),
+        "enqueue_failed": total(g, "otelcol_exporter_enqueue_failed_spans", exporter="otlphttp"),
+        "sent": total(g, "otelcol_exporter_sent_spans", exporter="otlphttp"),
+        "send_failed": total(g, "otelcol_exporter_send_failed_spans", exporter="otlphttp"),
+        "queue_size": total(g, "otelcol_exporter_queue_size", exporter="otlphttp"),
+        "queue_capacity": total(g, "otelcol_exporter_queue_capacity", exporter="otlphttp"),
+        "relay_accepted": total(r, "otelcol_receiver_accepted_spans", receiver="otlp"),
+    }
+    for k, v in rows.items():
+        print(f"GW {k}={v:g}")
+    if g and not rows["accepted"]:
+        print("GW metric names held: " + " ".join(sorted({l.split("{")[0].split(" ")[0] for l in g.splitlines() if l.startswith("otelcol_")}))[:900])
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stats
+  namespace: demo
+spec:
+  restartPolicy: Never
+  nodeName: LOAD_NODE
+  enableServiceLinks: false
+  volumes:
+    - name: stats
+      configMap:
+        name: stats
+  containers:
+    - name: stats
+      image: python:3.12-slim
+      command: ["sleep", "7200"]
+      volumeMounts:
+        - { name: stats, mountPath: /stats }
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
