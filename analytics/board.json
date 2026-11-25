@@ -1,7 +1,14 @@
 {
- "updated": "2026-11-25T20:32:50Z",
+ "updated": "2026-11-25T20:42:01Z",
  "columns": {
   "needs": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/246",
+    "kind": "Approve or reject",
+    "title": "Batch Processor Deprecated? Size sending_queue in Items, Keep Every Span",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/246",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/245",
     "kind": "Approve or reject",
@@ -98,10 +105,10 @@
   ],
   "working": [
    {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45695927116",
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45696844673",
     "kind": "Lab Engineer is testing an article",
     "title": "Running now",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45695927116",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45696844673",
     "where": "Abhimanyu9988.github.io"
    },
    {
