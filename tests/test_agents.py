@@ -2062,22 +2062,6 @@ _th = (ROOT / "pipeline/tech_head.py").read_text()
 check("tech head: comments only on a blocker; the rest goes to the run summary", "GITHUB_STEP_SUMMARY" in _th and
       _th.index('any(f.get("severity") == "blocker"') < _th.index("comment(int(os.environ[\"PR_NUMBER\"])"))
 import cto as _c16
-_art = {"name": "retry", "title": "Retry storm", "body": "0 of 3 recovered; 4.00 calls per order.",
-        "linkedin": "A 20-second slowdown.\nhttps://showmerit.com/abhimanyu/articles/retry/\n#SRE"}
-_ra, _rc = _l16.ask, _l16.clean_pass
-_ok = {w: {"approve": True, "blocking": []} for w in _l16.CLEAN_PASS}
-_l16.clean_pass = lambda *a, **k: _ok
-_l16.ask = lambda *a, **k: {"used_news": True, "post": "Outages are in the news.\nhttps://showmerit.com/abhimanyu/articles/retry/\n#SRE"}
-check("secretary: a news line that fits and passes sharpens the opening", _c16.smart_post(_art, "Outages are in the news.").startswith("Outages"))
-check("secretary: no news line means the article's own post", _c16.smart_post(_art, "") == _art["linkedin"])
-_l16.ask = lambda *a, **k: {"used_news": True, "post": "See https://news.example\nhttps://showmerit.com/abhimanyu/articles/retry/"}
-check("secretary: a link away from his article is refused", _c16.smart_post(_art, "n") == _art["linkedin"])
-_l16.ask = lambda *a, **k: {"used_news": True, "post": "99% of outages.\nhttps://showmerit.com/abhimanyu/articles/retry/"}
-check("secretary: a number nobody wrote is refused", _c16.smart_post(_art, "n") == _art["linkedin"])
-_l16.ask = lambda *a, **k: {"used_news": True, "post": "Outages.\nhttps://showmerit.com/abhimanyu/articles/retry/"}
-_l16.clean_pass = lambda *a, **k: {"chatgpt": {"approve": False, "blocking": [{"problem": "p", "fix": "f"}]}, "gemini": _ok["gemini"]}
-check("secretary: a post ChatGPT or Gemini blocks falls back to the article's own", _c16.smart_post(_art, "n") == _art["linkedin"])
-_l16.ask, _l16.clean_pass = _ra, _rc
 check("secretary: an article day's news line is an opening, not a post", _c16.todays_entry(news_md, "2026-11-13")[0] == "opening")
 check("week: demand must be strong (8 reactions and comments, or 500 views)", week.MIN_REACTIONS == 8 and week.MIN_VIEWS == 500)
 import draft as _d17
@@ -2101,15 +2085,17 @@ _say = _c18.slack.say
 _c18.slack.say = lambda role, text, **k: _sent18.append(text) or True
 check("secretary: no note before 10:00, so a late article still goes out", _c18.deliver_posts("2026-11-18", hour=9) is False and not _sent18)
 check("secretary: the no-article note goes out once 10:00 passes", _c18.deliver_posts("2026-11-18", hour=10) and _sent18[-1].startswith("No new article"))
-check("secretary: Thursday with no news pick sends nothing", _c18.deliver_posts("2026-11-19", hour=12) is False)
+check("secretary: Thursday is an article day now, so a missing article is noted", _c18.deliver_posts("2026-11-19", hour=12) and _sent18[-1].startswith("No new article"))
+check("secretary: a weekend day sends nothing", _c18.deliver_posts("2026-11-21", hour=12) is False)
+check("secretary: every weekday is an article day", _c18.ARTICLE_DAYS == (0, 1, 2, 3, 4))
 _sent18.clear()
 _c18.read_private = lambda path: ("## 2026-11-17 (Tuesday)\n### Post 1 (pick)\nThe FAA post.\n", "sha") if path == _c18.NEWS else ("", "sha")
-_sp = _c18.smart_post
-_c18.smart_post = lambda a, n: a["linkedin"]
 _c18.deliver_posts("2026-11-17", hour=8)
-check("secretary: a Tue/Thu news post still goes out when an article post is due the same day",
-      len(_sent18) == 2 and "The FAA post." in _sent18[0] and "post A" in _sent18[1])
-_c18.smart_post = _sp
+check("secretary: a scout's news pick still goes out, and a live article gets no LinkedIn post",
+      len(_sent18) == 1 and "The FAA post." in _sent18[0] and "post A" not in _sent18[0])
+_sent18.clear()
+_c18.read_private = lambda path: ("", "sha")
+check("secretary: a live article sends nothing, even after 10:00", _c18.deliver_posts("2026-11-16", hour=12) is False and not _sent18)
 _c18.admin_on, _c18.slack.enabled, _c18.read_private, _c18.write_private, _c18.slack.say = _ao, _se, _rp, _wp, _say
 _cm18.load_articles = _la18
 print("\nALL PASSED" if not fails else f"\n{fails} FAILED")

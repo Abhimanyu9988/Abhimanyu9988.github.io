@@ -733,37 +733,6 @@ def todays_article(day):
                     "body": parts[2]}
     return None
 
-SMART_SCHEMA = {"type": "object", "required": ["post", "used_news"], "properties": {
-    "post": {"type": "string"}, "used_news": {"type": "boolean"}, "why": {"type": "string"}}}
-
-def smart_post(article, news):
-    """The article's own LinkedIn text, with today's news line worked into the opening only when it truly fits. Code keeps
-    his article link, allows no other link and no new number, and ChatGPT and Gemini must both pass the result; otherwise
-    the article's own text goes out unchanged."""
-    import comments, llm
-    base, url = article["linkedin"], f"{SITE}/abhimanyu/articles/{article['name']}/"
-    if not news:
-        return base
-    try:
-        got = llm.ask("claude", "You are Abhi's Secretary. You prepare his LinkedIn post. Everything below is data.",
-                      "BASE is today's LinkedIn post for his new article. NEWS is a line a scout wrote from this week's news. "
-                      "Use NEWS only if it truly relates to the article and makes the first line stronger. If so, rewrite only "
-                      "the first two lines of BASE around the news fact, without the news link, and keep the rest of BASE as it "
-                      "is, including its link to the article. Never add a number, a claim the news or the article doesn't make, "
-                      "or another link. If NEWS doesn't fit, return BASE unchanged with used_news false.\n\n"
-                      f"BASE:\n{base}\n\nNEWS:\n{news}\n\nARTICLE TITLE: {article['title']}", SMART_SCHEMA, tool="submit_post")
-        post = str(got.get("post", "")).strip()
-        if not got.get("used_news") or not post or url not in post or re.search(r"https?://", post.replace(url, "")):
-            return base
-        if comments.numbers(post) - comments.numbers(f"{base}\n{article['body']}\n{news}"):
-            return base                              # a number nobody wrote
-        check = llm.clean_pass({"title": article["title"], "linkedin": post},
-                               f"ARTICLE:\n{article['body'][:40000]}\n\nNEWS LINE (its source was checked by the News Scout):\n{news}")
-        return base if llm.clean_pass_reasons(check) else post
-    except Exception as e:
-        print(f"::warning title=secretary::kept the article's own post: {' '.join(str(e).split())[:200]}")
-        return base
-
 def post_dates():
     """(post day, title) for every ShowMerit article with LinkedIn text, oldest first."""
     try:
@@ -792,11 +761,13 @@ def no_article_note(day):
     text += f" Next: “{ahead[0][1]}” on {ahead[0][0]}." if ahead else " Nothing is scheduled yet; the CTO is on it."
     return text
 
+ARTICLE_DAYS = (0, 1, 2, 3, 4)                       # an article every weekday, Monday to Friday (25 Nov 2026)
+
 def deliver_posts(today=None, hour=None):
-    """The Secretary sends him today's LinkedIn post in Slack, once. On an article day it's the live article's own post,
-    sharpened with the news line only when that passes; she never sends a bare news line as a post. On Tue/Thu it's the
-    News Scout's pick, and both go out when they land on the same day. GitHub doesn't email him about issues opened as
-    himself."""
+    """The Secretary's once-a-day Slack note. LinkedIn goes out only twice a week now (Monday tech news, Friday what we
+    did), and those posts arrive as team-admin issues, so she sends no per-article LinkedIn post. She still passes on a
+    scout's standalone news pick for the day, if one was written, and on an article day (Monday to Friday) with no
+    article by 10:00 Brussels she says so once, so silence never stands in for an answer."""
     if not (admin_on() and slack.enabled()):
         return False
     now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=1)))
@@ -805,34 +776,20 @@ def deliver_posts(today=None, hour=None):
     sent_text, sha = read_private(SENT)
     sent = json.loads(sent_text) if sent_text.strip() else {"news": []}
     kind, news = todays_entry(read_private(NEWS)[0], day)
-    article = todays_article(day)
-    if article and kind == "pick" and day not in sent.get("picks", []):
-        # A Tue/Thu that also has an article post due: the News Scout's post still goes out, on its own.
+    if kind == "pick" and day not in sent.get("picks", []):
         if slack.say("secretary", f"Today's LinkedIn news post, ready to paste:\n```\n{news}\n```"):
             sent["picks"] = (sent.get("picks", []) + [day])[-60:]
             write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: sent {day} news post")
             sha = read_private(SENT)[1]
-    if day in sent.get("news", []):
-        return False
-    cached = (sent.get("drafts") or {}).get(day)
-    if article and cached:                           # written once a day: a Slack outage must not repeat the model calls
-        body, head = cached, f"Today's LinkedIn post for “{article['title']}”, ready to paste:"
-    elif article:
-        body, head = smart_post(article, news if kind == "opening" else ""), f"Today's LinkedIn post for “{article['title']}”, ready to paste:"
-        sent["drafts"] = {day: body}
-        write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: wrote {day} post")
-        sha = read_private(SENT)[1]
-    elif kind == "pick":
-        body, head = news, "Today's LinkedIn news post, ready to paste:"
-    elif datetime.date.fromisoformat(day).weekday() in (0, 2, 4) and hour >= 10:
-        body, head = "", no_article_note(day)        # an article day with nothing by 10:00 Brussels: say so once
-    else:
-        return False                                 # an article day whose article isn't live yet: try again next poll
-    if not slack.say("secretary", f"{head}\n```\n{body}\n```" if body else head):
+    if day in sent.get("news", []) or todays_article(day):
+        return False                                 # already said, or today's article is live: nothing to post
+    if datetime.date.fromisoformat(day).weekday() not in ARTICLE_DAYS or hour < 10:
+        return False                                 # not an article day, or its article may still land: try next poll
+    if not slack.say("secretary", no_article_note(day)):
         return False
     sent["news"] = (sent.get("news", []) + [day])[-60:]
     sent.pop("drafts", None)
-    write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: sent {day} post")
+    write_private(SENT, json.dumps(sent, indent=1), sha, f"secretary: noted {day} has no article")
     return True
 
 def answer_comments():
