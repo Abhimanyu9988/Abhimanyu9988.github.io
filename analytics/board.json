@@ -1,14 +1,7 @@
 {
- "updated": "2026-11-25T17:42:01Z",
+ "updated": "2026-11-25T17:52:00Z",
  "columns": {
   "needs": [
-   {
-    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/242",
-    "kind": "Approve or reject",
-    "title": "keep the panel's reasons in the job log before commenting",
-    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/242",
-    "where": "Abhimanyu9988.github.io"
-   },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "kind": "Approve or reject",
@@ -150,6 +143,13 @@
    }
   ],
   "done": [
+   {
+    "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/242",
+    "kind": "Published",
+    "title": "keep the panel's reasons in the job log before commenting",
+    "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/242",
+    "where": "Abhimanyu9988.github.io"
+   },
    {
     "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
     "kind": "Merged",
