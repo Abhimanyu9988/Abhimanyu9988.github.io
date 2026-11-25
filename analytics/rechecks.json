@@ -228,6 +228,16 @@
    }
   },
   "trace-a-java-service-on-eks-with-one-annotation-zero-code": {
+   "aws": {
+    "date": "2026-11-25",
+    "passed": false,
+    "run": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/actions/runs/45528619550",
+    "versions": {
+     "curl": "8.23.0",
+     "eclipse-temurin": "17.0.21_9-jdk",
+     "opentelemetry-operator chart": "0.129.2"
+    }
+   },
    "free": {
     "date": "2026-11-16",
     "links": {
@@ -239,5 +249,5 @@
    }
   }
  },
- "updated": "2026-11-18T02:07:53Z"
+ "updated": "2026-11-25T02:08:51Z"
 }
