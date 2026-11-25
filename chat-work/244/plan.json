@@ -103,7 +103,7 @@
      },
      {
       "id": "gateway_spans_sent",
-      "what": "spans the gateway's exporter sent by the end of the drain; the log flags a run whose drain didn't complete (queue empty, sent stopped, sent covering what the exporter took) within 60 s: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "what": "spans the gateway's exporter sent by the end of the drain (lost = generated minus sent): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "count",
       "unit": "spans",
       "accept": {
@@ -112,10 +112,10 @@
       "min_entities": 6
      },
      {
-      "id": "spans_lost",
-      "what": "spans the sender generated that the gateway never sent (generated minus sent): batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
+      "id": "drain_complete",
+      "what": "1 when the gateway's queue is empty, sent has stopped moving for 3 reads, and sent covers what the exporter took (accepted minus enqueue failed for batch, accepted for migrated and sized); 0 otherwise. Spans lost per run are generated minus sent, printed in the summary: batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2",
       "kind": "failure",
-      "unit": "spans",
+      "unit": "flag",
       "accept": {
        "op": "present"
       },
