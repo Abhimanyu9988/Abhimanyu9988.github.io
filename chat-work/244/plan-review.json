@@ -1,35 +1,14 @@
 {
- "round": 1,
+ "round": 2,
  "Editor": [
   {
-   "problem": "The load rate in the brief is probably wrong. telemetrygen `traces` sends a parent and a child span per trace by default (--child-spans is 1), and --rate=15 with --workers=4 is 60 traces a second. With --batch=false that is likely about 120 single-span requests a second, not 60. The open question, the takeaway and every queue-capacity argument (1000 requests vs 40 s of load) depend on that rate, and nothing in the plan measures it.",
-   "fix": "Add --child-spans=0 to k8s/20-load.yaml, or keep the default and change the brief to the real rate. Either way, add a measurement `gateway_accept_rate` (accepted spans per second over the 10 s before the outage, from two counter reads) for all 6 runs, so the stated rate comes from the lab and not from the flags."
+   "problem": "Earlier point 1 is only half fixed. Adding --child-spans=0 to k8s/20-load.yaml makes the flag math match the brief (4 workers \u00d7 15 = 60 single-span requests a second). But the `gateway_accept_rate` measurement it asked for is not in the contract or in lib.sh. load_spans_generated / 50 s gives an average over the whole run, and the outage drags that average down: when the gateway refuses a request, telemetrygen's synchronous exporter blocks the worker while the SDK retries. So the claim that '60 requests a second against a 1000-request queue is about 1800 over 30 s' still comes from the flags, not from the lab.",
+   "fix": "Add `acc=` (otelcol_receiver_accepted_spans) to each `gwstats.py watch` line. In measures(), compute gateway_accept_rate[run] from the two reads around t_load+2 s and t_load+10 s, before the outage. Add it to the contract as kind 'rate', unit spans/s, op present, min_entities 6, and print it in the summary table."
   },
   {
-   "problem": "The title promises to 'Count Every Span Through an Outage', but there is no count from the sender. --allow-export-failures plus the SDK's own retries mean refused counts attempts, not spans. Spans the sender gave up on, or dropped at shutdown when the 60 s load ended, appear in no counter. accepted \u2212 sent can be 0 while spans were still lost before the gateway.",
-   "fix": "Count from the sender: give each run's spans a unique label (lab.run already exists) and count unique spans that reach the relay or Splunk per run. Or read telemetrygen's own sent and failed totals from its log into a measurement `load_spans_generated` and compare it with accepted for all 6 runs. Without that, retitle to what the counters show (accepted, refused, delivered)."
-  },
-  {
-   "problem": "lost() adds refused and enqueue_failed. In the migrated config, a span the full queue rejects is counted once in otelcol_exporter_enqueue_failed_spans and again in otelcol_receiver_refused_spans, because the error goes back to the receiver. Refused also counts sender retries. The summed figure double-counts and isn't a span count, yet the reproduce check and any article table would use it as 'spans lost'.",
-   "fix": "Don't sum them. Report refused and enqueue_failed as separate columns, and base reproduce.sh's check on enqueue_failed > 0 (migrated) and enqueue_failed = 0 (batch). Write in the brief that refused counts attempts, and say which component's error reached the client in each config."
-  },
-  {
-   "problem": "seconds_to_drain and spans_not_delivered treat queue_size = 0 as 'drained'. The queue-size metric excludes requests the exporter's consumers hold while they retry. The default retry_on_failure backoff grows up to a 30 s interval, so after a 40 s outage some batches may wait close to 30 s before their next try. DRAIN_MAX=30 starts after the load ends, and the final read comes 3 s after the queue reads 0. Spans still in retry would show up as 'not delivered' and be charged to the config.",
-   "fix": "Define drained as sent increasing to equal accepted (with queue_size 0 and sent unchanged across two reads), not queue_size alone. Raise DRAIN_MAX to at least 90 s, and record send_failed and queue_size at the final read. Log the effective retry_on_failure and num_consumers for each config with the printed configs."
-  },
-  {
-   "problem": "splunk_apm_spans is compared with the gateway's sent count over different windows. apm_spans reads [t_load, t_end] (load start to load end). The gateway's sent count runs to the end of the drain, and spans queued during the outage arrive after t_end. If APM places spans.count by arrival time, outage runs undercount and look like data loss. It isn't the same window, counted the same way.",
-   "fix": "Write the drain-end time (time of the gw-end read) into runs.txt and read APM from t_load to drain end + 20 s, rounded out to whole 10 s points. Make sure windows of runs next to each other don't overlap (add a 30 s gap between runs). Compare APM with relay_accepted, the same spans one step downstream, as well as with gateway sent, and report the difference rather than asserting equality."
+   "problem": "Earlier point 4 is not fixed, and seconds_to_drain would come out wrong. The drain loop in outage_run starts only after `kubectl wait pod/load ... Succeeded`, at about t_load+50 s. The relay comes back at about t_load+40 s plus rollout time. drained = t_drained \u2212 t_up therefore has a floor of roughly 10 s plus the 6 s stability window. Every config, including batch, where the queue never fills, would report about 15 s or more. That measures when the load ended, not the drain, and the comparison across configs would be meaningless. The plan also still treats queue_size = 0 as 'drained' and never checks that sent has caught up with accepted.",
+   "fix": "Compute seconds_to_drain from the watcher file q-$run.txt, which already has timestamped reads every 2 s for 120 s. Take the first read after t_up where queue size is back at or below its pre-outage level (the highest value in the reads before t_down) and stays there for 3 reads. Record it against t_up, and write t_down/t_up to runs.txt. Keep the post-load loop only for 'sent has stopped moving and sent = accepted', and record that as a separate measurement, drain_complete (yes/no), so the gw-end counters are known to be final."
   }
  ],
- "Marketing": [
-  {
-   "problem": "The brief and the measurement list promise Splunk APM span counts for all six runs (batch-1, batch-2, migrated-1, migrated-2, sized-1, sized-2). The lab only reads spans.count in fix.sh, so the sized runs alone would have it. The 'spans a backend holds' angle is the stated gap in existing pages, and it would be missing for the before and after runs. It is also the Splunk tie-in that supports the Splunk MVP goal.",
-   "fix": "Read the Splunk APM span count for every run, with a unique run tag or a separate window per run so the counts don't overlap. Add a wait for ingest lag before reading. If that can't be done, drop splunk_apm_spans from the promise and the 'adds' line, and let the Collector counters carry the story."
-  },
-  {
-   "problem": "The title is an instruction followed by a claim, 'Count Every Span'. It doesn't name the pain the reader just hit, and it leaves out the words they would search for: 'batch processor deprecated', 'sending_queue', 'exporter batching'. The promise is also loose. The plan measures counts, so it can't show that every span survives unless the sized config really delivers all of them. Refused spans can be retried by the sender, so the counts are attempts.",
-   "fix": "Retitle around the reader's trigger and the gain, for example: 'Batch Processor Deprecated? Move Batching Into the Exporter and Keep Every Span Through a Backend Outage'. Keep the 'keep every span' promise only if sized-1 and sized-2 each deliver every accepted span. Otherwise promise 'size the queue so an outage doesn't cost you spans' and report the measured numbers."
-  }
- ]
+ "Marketing": []
 }
