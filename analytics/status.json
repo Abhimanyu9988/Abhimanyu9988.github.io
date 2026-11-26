@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-25",
+ "updated": "2026-11-26",
  "team": [
   {
    "role": "Executive Assistant",
@@ -124,11 +124,14 @@
   {
    "role": "Fact Checker",
    "dept": "Engineering",
-   "mission": "Check each LinkedIn reply against the article's lab results before Abhi sees it."
+   "mission": "Check each LinkedIn reply against the article's lab results before Abhi sees it (ChatGPT; the Editor is Opus, so every reply gets both)."
   }
  ],
  "in_review": [
   "Draft: Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts"
  ],
- "published": []
+ "published": [
+  "Draft: Batch Processor Deprecated? Size sending_queue in Items Before an Outage",
+  "Draft: keep the panel's reasons in the job log before commenting"
+ ]
 }
