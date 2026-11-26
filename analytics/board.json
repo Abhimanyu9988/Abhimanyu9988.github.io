@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-25T21:16:20Z",
+ "updated": "2026-11-26T00:09:12Z",
  "columns": {
   "needs": [
    {
@@ -156,20 +156,6 @@
     "title": "keep the panel's reasons in the job log before commenting",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/242",
     "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
-    "kind": "Merged",
-    "title": "[chore] Remove the stand-in API server EndpointSlice before the operator-restart collector step",
-    "url": "https://github.com/open-telemetry/opentelemetry-operator/pull/5952",
-    "where": "opentelemetry-operator"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
-    "kind": "Merged",
-    "title": "[chore][processor/probabilisticsampler] Add Warnings section to README",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/51952",
-    "where": "opentelemetry-collector-contrib"
    }
   ]
  }
