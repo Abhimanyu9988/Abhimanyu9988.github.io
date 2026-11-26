@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-26T20:15:51Z",
+ "updated": "2026-11-26T20:32:36Z",
  "columns": {
   "needs": [
    {
@@ -8,13 +8,6 @@
     "title": "Count Flink Restarts in Splunk With OpenTelemetry: 3 Pod Deletions, 7 Restarts",
     "url": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/215",
     "where": "Abhimanyu9988.github.io"
-   },
-   {
-    "id": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53639",
-    "kind": "Review",
-    "title": "[chore] Update core dependencies",
-    "url": "https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/53639",
-    "where": "opentelemetry-collector-contrib"
    },
    {
     "id": "https://github.com/Abhimanyu9988/Abhimanyu9988.github.io/pull/128",
