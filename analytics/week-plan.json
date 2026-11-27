@@ -1,18 +1,29 @@
 {
  "week": "2026-W48",
  "target": 3,
- "created": "2026-11-25",
+ "created": "2026-11-27",
  "topics": [
   {
-   "issue": 244,
-   "title": "Move Collector Batching Into the Exporter and Count Every Span Through an Outage",
+   "issue": 248,
+   "title": "New EKS Pod, First Request Times Out? Network Policy Attach Time, Measured",
    "state": "queued",
-   "signal": "5 independent reports of this symptom: 13 reactions and comments across 5 GitHub issues",
+   "signal": "5 independent reports of this symptom: 18 reactions and comments across 5 GitHub issues",
    "confirmed": true,
-   "picked": true,
+   "picked": false,
    "chat": true,
-   "scores": "Marketing 3/5, Editor 3/5",
+   "scores": "Marketing 4/5, Editor 3/5",
    "model": "claude-sonnet-5-5"
+  },
+  {
+   "issue": 249,
+   "title": "Keep stdout and stderr Apart in Long Kubernetes Logs With One Recombine Key",
+   "state": "queued",
+   "signal": "2 independent reports of this symptom: 14 reactions and comments across 2 GitHub issues",
+   "confirmed": true,
+   "picked": false,
+   "chat": true,
+   "scores": "Marketing 3/5, Editor 2/5",
+   "model": "claude-opus-5-5"
   }
  ]
 }
